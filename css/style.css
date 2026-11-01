@@ -1,0 +1,48 @@
+/* ===== Base ===== */
+* { box-sizing: border-box; margin: 0; padding: 0; user-select: none; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+body, html { width: 100%; height: 100%; overflow: hidden; background: #0f0f15; color: white; touch-action: none; }
+.hidden { display: none !important; }
+
+#game-canvas { width: 100vw; height: 100vh; display: block; background: #12121c; }
+
+/* ===== HUD bisogni (generato da js/data/needs.js) ===== */
+.needs-hud-container { position: absolute; top: 8px; left: 8px; background: rgba(15, 15, 25, 0.85); backdrop-filter: blur(8px); border-radius: 8px; padding: 4px 6px; width: 125px; border: 1px solid rgba(255,255,255,0.15); z-index: 40; display: flex; flex-direction: column; gap: 2px; }
+.need-row { display: flex; flex-direction: column; }
+.need-info { font-size: 0.50rem; font-weight: bold; margin-bottom: 1px; display: flex; justify-content: space-between; }
+.bar-bg { height: 3px; background: #222; border-radius: 2px; overflow: hidden; }
+.bar-fill { height: 100%; transition: width 0.2s linear; }
+
+/* ===== Joystick touch ===== */
+#left-touch-zone { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; pointer-events: auto; }
+#dynamic-joystick { position: absolute; width: 100px; height: 100px; border: 2px solid rgba(255,255,255,0.3); border-radius: 50%; background: rgba(0,0,0,0.3); display: none; pointer-events: none; transform: translate(-50%, -50%); z-index: 30; }
+#joystick-knob { position: absolute; top: 50%; left: 50%; width: 40px; height: 40px; background: rgba(255, 255, 255, 0.8); border-radius: 50%; transform: translate(-50%, -50%); box-shadow: 0 0 10px rgba(0,0,0,0.5); }
+
+/* ===== Pulsanti HUD ===== */
+.hud-controls { position: absolute; bottom: 20px; right: 20px; display: flex; flex-direction: column; gap: 10px; z-index: 40; pointer-events: auto; }
+.btn-hud { width: 50px; height: 50px; border-radius: 50%; background: rgba(30, 30, 40, 0.85); border: 2px solid rgba(255,255,255,0.3); color: white; font-weight: bold; font-size: 1.1rem; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(5px); cursor: pointer; }
+.btn-hud.active { background: #2e86de; border-color: #54a0ff; }
+
+/* ===== Schermata iniziale e card ===== */
+#ui-setup-screen { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #0a0a0e; z-index: 999; display: flex; justify-content: center; align-items: center; pointer-events: auto; }
+.card { background: rgba(25, 25, 35, 0.95); border-radius: 16px; padding: 24px; width: 90%; max-width: 380px; border: 1px solid rgba(255,255,255,0.15); text-align: center; }
+.card p { margin: 15px 0; color: #ccc; }
+.input-group { margin: 15px 0; text-align: left; }
+label { font-size: 0.85rem; color: #aaa; margin-bottom: 5px; display: block; }
+input[type="text"] { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #444; background: #1a1a22; color: white; font-size: 1rem; }
+.btn-primary { width: 100%; padding: 14px; border: none; border-radius: 10px; background: #ff4757; color: white; font-weight: bold; font-size: 1rem; cursor: pointer; }
+.btn-primary:active { background: #ff6b81; }
+
+/* ===== Popup di interazione (generato da js/ui/popup.js) ===== */
+.popup-interact { position: absolute; top: 22%; left: 50%; transform: translate(-50%, -50%); display: flex; flex-direction: column; gap: 6px; z-index: 50; pointer-events: auto; max-width: 90vw; }
+.btn-pop { background: #2ed573; border: none; color: white; padding: 10px 16px; border-radius: 8px; font-weight: bold; font-size: 0.85rem; cursor: pointer; box-shadow: 0 4px 15px rgba(0,0,0,0.5); text-align: center; }
+.btn-pop-alt { background: #feca57; color: #111; }
+.btn-pop-action { background: #ff9f43; color: white; }
+.btn-pop-exit { background: #9b59b6; color: white; }
+.btn-pop-locked { background: #718093 !important; cursor: not-allowed; }
+
+/* ===== Pulsanti contestuali in basso ===== */
+#btn-place-furniture { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); z-index: 60; }
+#btn-return-home { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); background: #2e86de; color: white; padding: 14px 28px; border: 2px solid #fff; border-radius: 30px; font-weight: bold; font-size: 1rem; z-index: 100; pointer-events: auto; box-shadow: 0 6px 20px rgba(0,0,0,0.8); cursor: pointer; }
+
+/* ===== Modali ===== */
+.fullscreen-modal { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.85); backdrop-filter: blur(10px); display: flex; justify-content: center; align-items: center; z-index: 500; pointer-events: auto; }

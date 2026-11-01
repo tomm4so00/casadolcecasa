@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Sims Apartment - Realtime Multiplayer (Firebase)</title>
+  <link rel="stylesheet" href="css/style.css">
+
+  <!-- Firebase SDK (versione "compat", espone window.firebase) -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+  <script type="module" src="js/main.js"></script>
+</head>
+<body>
+
+  <canvas id="game-canvas"></canvas>
+
+  <!-- Barre dei bisogni: il contenuto è generato da js/ui/hud.js -->
+  <div id="needs-hud" class="needs-hud-container hidden"></div>
+
+  <div id="left-touch-zone"></div>
+  <div id="dynamic-joystick"><div id="joystick-knob"></div></div>
+
+  <div id="hud-actions" class="hud-controls hidden">
+    <button class="btn-hud" id="btn-sprint">🏃</button>
+  </div>
+
+  <!-- Popup di interazione: i pulsanti sono generati da js/ui/popup.js -->
+  <div id="pop-interaction" class="popup-interact hidden"></div>
+
+  <button id="btn-place-furniture" class="btn-pop hidden">📌 Lascia Mobile</button>
+  <button id="btn-return-home" class="hidden">🏡 Torna a Casa</button>
+
+  <div id="ui-setup-screen">
+    <div class="card">
+      <h2>Sims Apartment 3D</h2>
+      <div class="input-group">
+        <label for="nickname">Nome Giocatore</label>
+        <input type="text" id="nickname" value="Marco" placeholder="Inserisci il tuo nome...">
+      </div>
+      <button class="btn-primary" id="start-game-btn" type="button">Entra nel Gioco</button>
+    </div>
+  </div>
+
+  <div id="wardrobe-modal" class="fullscreen-modal hidden">
+    <div class="card">
+      <h2>🚪 Guardaroba</h2>
+      <p>Cambio abiti completato!</p>
+      <button class="btn-primary" data-close-modal>Chiudi</button>
+    </div>
+  </div>
+
+  <div id="computer-modal" class="fullscreen-modal hidden">
+    <div class="card">
+      <h2>💻 PC Privato</h2>
+      <p>Desktop Windows Attivo.</p>
+      <button class="btn-primary" data-close-modal>Spegni PC</button>
+    </div>
+  </div>
+
+</body>
+</html>
