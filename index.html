@@ -1166,6 +1166,7 @@
       data.missionSet = 3;
       data.sleeping = !!isSleeping;
       if (drugStock > 0) data.drugStock = drugStock;
+      if (coffeeAt) data.coffeeAt = coffeeAt;
       if (Object.keys(invest).length) { data.invest = {}; Object.keys(invest).forEach(k => { data.invest[k] = { units: Math.round(invest[k].units * 1e6) / 1e6, cost: Math.round(invest[k].cost * 100) / 100 }; }); }
       if (drug.active) data.drug = { doses: drug.doses, lastDose: drug.lastDose, endAt: drug.endAt, dAtDose: Math.round(drug.dAtDose * 10) / 10, crisisAt: drug.crisisAt || 0 };
       if (bornAt) data.bornAt = bornAt;
@@ -1186,6 +1187,7 @@
       gameMinutes = num(s.gameMinutes, gameMinutes);
       bornAt = num(s.bornAt, 0);
       drugStock = Math.max(0, Math.floor(num(s.drugStock, 0)));
+      coffeeAt = num(s.coffeeAt, 0);
       invest = {}; BIZ.forEach(b => { const v = s.invest && s.invest[b.id]; if (v && num(v.units, 0) > 0) invest[b.id] = { units: num(v.units, 0), cost: num(v.cost, 0) }; });
       drug = (s.drug && num(s.drug.endAt, 0) > 0) ? { active: true, doses: num(s.drug.doses, 1), lastDose: num(s.drug.lastDose, 0), endAt: num(s.drug.endAt, 0), dAtDose: num(s.drug.dAtDose, 0), crisisAt: num(s.drug.crisisAt, 0) } : { active: false, doses: 0, lastDose: 0, endAt: 0, dAtDose: 0, crisisAt: 0 };
       epitaph = typeof s.epitaph === 'string' ? s.epitaph.slice(0, 60) : '';
@@ -1492,7 +1494,7 @@
     const INTRO_PAGES = [
       { title: '🏠 Benvenuto in Casa dolce casa', text: 'Il tuo personaggio vive in tempo reale, come un Tamagotchi: fame, sonno, igiene e felicità calano col passare delle ore, anche quando il gioco è chiuso.\n\nTieni d\'occhio le barre in alto a sinistra.' },
       { title: '☠️ Come non morire', text: 'Se Fame, Sonno o Igiene arrivano a 0%, la Salute inizia a scendere. Se la Salute arriva a 0% il personaggio muore per sempre e non può più giocare.\n\nSe lo abbandoni del tutto, dopo circa 3 giorni è finita. Prenditene cura ogni giorno!\n\n⚠️ Al bar c\'è chi vende droga: crea dipendenza e fa crollare la salute. Meglio starne alla larga.\n\n👥 Vicino a un altro giocatore compaiono i tasti per dialogare, fare complimenti, insultare, picchiare, dare cibo cucinato, soldi o droga.\n\n🗨️ La chat globale (pulsante 🗨️ a destra) è visibile a tutti i giocatori e resta salvata nel tempo.' },
-      { title: '🛠️ Cosa fare ogni giorno', text: '🍽️ Fame: in cucina prendi il cibo dal frigo (5 €), cucinalo sul fornello e mangia (+50%). Circa 2 pasti al giorno.\n\n😴 Sonno: nella tua stanza coricati sul letto. Per riposare bene servono circa 8 ore: puoi lasciarlo a letto di notte.\n\n🚿 Igiene: fai la doccia in bagno, circa 2 volte al giorno (il lavandino dà solo +20%).\n\n😊 Felicità: guarda la TV, riposa sul divano, fai una passeggiata o vai al bar o balla in discoteca (ma ti toglie sonno).\n\n💻 Dal PC della tua stanza puoi comprare vestiti e mobili online e avviare un business: investi i tuoi soldi e il loro valore sale e scende nel tempo.' },
+      { title: '🛠️ Cosa fare ogni giorno', text: '🍽️ Fame: in cucina prendi il cibo dal frigo (5 €), cucinalo sul fornello e mangia (+50%). Circa 2 pasti al giorno.\n\n😴 Sonno: nella tua stanza coricati sul letto. Per riposare bene servono circa 8 ore: puoi lasciarlo a letto di notte. In emergenza la macchina del caffè in cucina dà un po\' di sonno, ma costa salute.\n\n🚿 Igiene: fai la doccia in bagno, circa 2 volte al giorno (il lavandino dà solo +20%).\n\n😊 Felicità: guarda la TV, riposa sul divano, fai una passeggiata o vai al bar o balla in discoteca (ma ti toglie sonno).\n\n💻 Dal PC della tua stanza puoi comprare vestiti e mobili online e avviare un business: investi i tuoi soldi e il loro valore sale e scende nel tempo.' },
       { title: '💼 Soldi e consigli', text: 'Per guadagnare vai al lavoro: nel salone esci di casa e apri "Lavoro". Porta gli oggetti ai punti giusti per fare bene il turno.\n\nI soldi stanno nella cassaforte della tua stanza: proteggila con un PIN.\n\n🔔 Attiva le notifiche (pulsante a destra) per essere avvisato quando il personaggio sta male.\n\n❓ Puoi rileggere questa guida in ogni momento dal pulsante a destra.' }
     ];
     async function showIntro(force = false) {
@@ -1576,6 +1578,7 @@
     let kitchenFurniture = {
       stove: { x: -100, y: -100, w: 70, h: 70, z: 60, name: "Cucina Attrezzata 🍳", color: "#c0392b", topColor: "#e74c3c", moveable: false },
       fridge: { x: 100, y: -100, w: 70, h: 70, z: 140, name: "Frigorifero 🧊", color: "#bdc3c7", topColor: "#ecf0f1", moveable: false },
+      coffee: { x: 0, y: -115, w: 38, h: 38, z: 70, name: "Macchina del caffè ☕", color: "#2d3436", topColor: "#636e72", moveable: false },
       doorExit: { x: 0, y: 160, w: 60, h: 15, z: 110, name: "Uscita Salone", color: "#e74c3c", topColor: "#ff6b6b", moveable: false }
     };
 
@@ -2257,6 +2260,43 @@
     }
     document.addEventListener('DOMContentLoaded', () => { const i = document.getElementById('gchat-input'); if (i) i.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); sendChat(); } else if (e.key === 'Escape') closeGlobalChat(); }); });
 
+    // ---------------------------------------------------------------- MACCHINA DEL CAFFÈ (cucina)
+    const COFFEE_SLEEP = 12, COFFEE_HEALTH = 4, COFFEE_CD_MS = 20 * 60 * 1000, COFFEE_MIN_HEALTH = 10;
+    let coffeeAt = 0, coffeeBrewUntil = 0;
+    function coffeeLeftMs() { return coffeeAt + COFFEE_CD_MS - Date.now(); }
+    function useCoffee() {
+      const left = coffeeLeftMs();
+      if (left > 0) { toast(`☕ La macchina si sta scaldando: riprova tra ${Math.ceil(left / 60000)} min.`, 3000); return; }
+      if (sleepLevel >= 90) { toast('😳 Non hai affatto sonno: non ti serve un caffè.'); return; }
+      if (healthLevel <= COFFEE_MIN_HEALTH) { toast('🚫 Con questa salute un altro caffè potrebbe esserti fatale!', 3500); return; }
+      coffeeAt = Date.now(); coffeeBrewUntil = performance.now() + 2500;
+      sleepLevel = Math.min(100, sleepLevel + COFFEE_SLEEP);
+      healthLevel = Math.max(1, healthLevel - COFFEE_HEALTH);
+      toast(`☕ Caffè! Sonno +${COFFEE_SLEEP}%, salute −${COFFEE_HEALTH}%`, 3500);
+    }
+    function drawCoffeeMachine(it, t) {
+      const brewing = performance.now() < coffeeBrewUntil;
+      box(it.x, it.y, it.w + 14, it.h + 6, 28, '#8d6e63');                                  // piano d'appoggio
+      const b = box(it.x, it.y - 3, it.w, it.h - 10, 36, '#2d3436', { z0: 28 });
+      onFace(b, 'left', (W, H) => {
+        ctx.fillStyle = '#111'; ctx.fillRect(3, 3, W - 6, H * 0.28);
+        ctx.fillStyle = brewing ? '#fdcb6e' : '#55efc4'; ctx.fillRect(5, 5, (W - 10) * (brewing ? 0.9 : 0.4), 3);
+        ctx.fillStyle = '#b2bec3'; [0.25, 0.5, 0.75].forEach(u => { ctx.beginPath(); ctx.arc(W * u, H * 0.42, 2.2, 0, 6.3); ctx.fill(); });
+        ctx.fillStyle = '#636e72'; ctx.fillRect(W * 0.38, H * 0.52, W * 0.24, H * 0.1);
+        ctx.fillStyle = '#1e272e'; ctx.fillRect(3, H * 0.86, W - 6, H * 0.1);
+      });
+      const fy = it.y - 3 + (it.h - 10) / 2 + 3;
+      box(it.x, fy, 9, 9, 7, '#ecf0f1', { z0: 28, edge: 'rgba(0,0,0,0.25)' });                // tazzina
+      if (brewing) {
+        const p = isoProject(it.x, fy, 40), s = isoScale();
+        for (let i = 0; i < 3; i++) {
+          const ph = (t * 0.8 + i / 3) % 1;
+          ctx.fillStyle = `rgba(255,255,255,${0.55 * (1 - ph)})`;
+          ctx.beginPath(); ctx.arc(p.x + Math.sin(ph * 6 + i) * 3 * s, p.y - ph * 24 * s, (2.5 + ph * 4) * s, 0, 6.3); ctx.fill();
+        }
+      }
+    }
+
     // ---------------------------------------------------------------- AVVISI (fame, sonno, igiene, salute)
     // Titolo della scheda sempre aggiornato; notifiche del browser (se attivate col 🔔) anche quando la scheda è in background.
     const BASE_TITLE = document.title;
@@ -2763,6 +2803,11 @@
               btnMain.innerText = "🍳 Fornello (Serve Cibo)";
               btnSub.classList.add('hidden');
             }
+          } else if (found === 'coffee') {
+            const left = coffeeLeftMs();
+            btnMain.innerText = left > 0 ? `☕ Macchina in pausa (${Math.ceil(left / 60000)} min)` : `☕ Prepara un caffè (+${COFFEE_SLEEP}% sonno, −${COFFEE_HEALTH}% salute)`;
+            btnMain.classList.toggle('btn-pop-locked', left > 0);
+            btnSub.classList.add('hidden');
           } else {
             btnMain.innerText = `✋ ${item.name}`;
             btnSub.classList.add('hidden');
@@ -2899,6 +2944,8 @@
         if (activeTargetProp === 'fridge') {
           fridgeIsOpen = !fridgeIsOpen;
           if (!fridgeIsOpen) hasFoodInInventory = false;
+        } else if (activeTargetProp === 'coffee') {
+          useCoffee();
         } else if (activeTargetProp === 'stove') {
           if (hasFoodInInventory && !foodIsCooked) {
             foodIsCooked = true;
@@ -3193,7 +3240,7 @@
     // ---------------------------------------------------------------- MINI-GIOCHI DEL LAVORO
     // Stessa dinamica per tutti i lavori: nell'ambiente ci sono oggetti sparsi; il giocatore li raccoglie e li porta, in ordine,
     // ai punti indicati (cerchio giallo) per completare i compiti. La prestazione (0-100%) dà solo un piccolo bonus:
-    // <70% ×1 (paga base, mai ridotta) · 70-89% ×1,1 · 90%+ ×1,2.  (SKILL_PAY = false per togliere il bonus)
+    // <70% ×1 (paga base, mai ridotta) · 70-89% ×1,2 · 90%+ ×1,4.  (SKILL_PAY = false per togliere il bonus)
     const SKILL_PAY = true;
     const MG = { active: false, job: '', score: 0, target: 6, cfg: null, task: null, stepIdx: 0, map: {}, carry: null, lastTask: -1, el: null };
     const WORK_JOBS = {
@@ -3254,7 +3301,7 @@
       const s = document.getElementById('mg-score'); if (s) s.textContent = `⭐ ${Math.round(Math.min(1, MG.score / MG.target) * 100)}%`;
     }
     function mgRating() { return Math.max(0, Math.min(1, MG.score / MG.target)); }
-    function mgMultiplier(r) { return !SKILL_PAY ? 1 : r < 0.7 ? 1 : r < 0.9 ? 1.1 : 1.2; }
+    function mgMultiplier(r) { return !SKILL_PAY ? 1 : r < 0.7 ? 1 : r < 0.9 ? 1.2 : 1.4; }
 
     function mgHud() {
       const el = MG.el; if (!el || !MG.active) return;
@@ -4282,7 +4329,7 @@
 
     const FURNITURE_DRAW = {
       bed: drawBed, wardrobe: drawWardrobe, desk: drawDesk, nightstand: drawNightstand, lamp: drawLamp,
-      sofa: drawSofa, tv: drawTV, plant: drawPlant, safe: drawSafe, stove: drawStove, fridge: drawFridge,
+      sofa: drawSofa, tv: drawTV, plant: drawPlant, safe: drawSafe, stove: drawStove, fridge: drawFridge, coffee: drawCoffeeMachine,
       toilet: drawToilet, sink: drawSink, shower: drawShower, shopCounter: drawCounter
     };
     function drawFurnitureByKind(kind, it, t, lights) {
