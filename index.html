@@ -175,7 +175,7 @@
       <div class="bar-bg"><div id="happiness-bar-fill" class="bar-fill" style="width: 50%;"></div></div>
     </div>
     <div class="need-row">
-      <div class="need-info"><span>💰 Soldi</span><span id="money-text">0 €</span></div>
+      <div class="need-info"><span>🔐 Cassaforte</span><span id="money-text">0 €</span></div>
       <div class="bar-bg"><div id="money-bar-fill" class="bar-fill" style="width: 0%;"></div></div>
     </div>
     <div id="mission-text" onclick="openMissions()" title="Apri le missioni">📋 Missioni</div>
@@ -398,7 +398,27 @@
     let hungerLevel = 50;
     let hygieneLevel = 50;
     let happinessLevel = 50;
-    let moneyLevel = 0;
+    // ---- Conto unico: i soldi esistono solo nella cassaforte ----
+    // `moneyLevel` non è più una variabile a sé: legge e scrive il saldo della cassaforte personale.
+    let vaultCache = 0, legacyPocketMoney = 0, vaultSynced = false, lastNoRoomToastAt = 0;
+    Object.defineProperty(window, 'moneyLevel', {
+      configurable: true,
+      get() { return Math.max(0, Math.round(vaultCache)); },
+      set(v) {
+        const target = Math.max(0, Math.round(Number(v) || 0));
+        const delta = target - Math.max(0, Math.round(vaultCache));
+        if (!delta) return;
+        if (!hasRoom()) {
+          if (delta > 0 && Date.now() - lastNoRoomToastAt > 8000) {
+            lastNoRoomToastAt = Date.now();
+            toast('🏠 Senza una stanza non hai una cassaforte: non puoi tenere soldi.', 4500);
+          }
+          return;
+        }
+        vaultCache = Math.max(0, vaultCache + delta);
+        db.ref(`sims_rooms_state/${myAssignedRoomIdx}/vaultMoney`).transaction(v => Math.max(0, (v || 0) + delta));
+      }
+    });
     let hasSetSafePin = false;
     let safePinCode = "";
 
@@ -537,17 +557,25 @@
     let movingPropKey = null;
     let activeTargetProp = null;
 
-    let roomsState = [
-      { id: 1, owner: null, ownerId: null, pin: null, vaultMoney: 0 },
-      { id: 2, owner: null, ownerId: null, pin: null, vaultMoney: 0 },
-      { id: 3, owner: null, ownerId: null, pin: null, vaultMoney: 0 },
-      { id: 4, owner: null, ownerId: null, pin: null, vaultMoney: 0 },
-      { id: 5, owner: null, ownerId: null, pin: null, vaultMoney: 0 },
-      { id: 6, owner: null, ownerId: null, pin: null, vaultMoney: 0 },
-      { id: 7, owner: null, ownerId: null, pin: null, vaultMoney: 0 },
-      { id: 8, owner: null, ownerId: null, pin: null, vaultMoney: 0 }
-    ];
+    // Condominio: 4 appartamenti da 8 stanze (32 giocatori), collegati da un cortile
+    const APT_COUNT = 4, ROOMS_PER_APT = 8, TOTAL_ROOMS = APT_COUNT * ROOMS_PER_APT;
+    const APT_ENVS = ['SALOON', 'KITCHEN', 'BATHROOM']; // ambienti che esistono in ogni appartamento
+    let currentApt = 0;
+    const aptOfRoom = idx => Math.floor(idx / ROOMS_PER_APT);
+    const gRoomIdx = item => currentApt * ROOMS_PER_APT + item.roomIdx; // numero globale della stanza (0-31)
+    const saloonTitle = () => `Salone · Appartamento ${currentApt + 1}`;
+    const blankRoom = i => ({ id: i + 1, owner: null, ownerId: null, pin: null, vaultMoney: 0 });
+    let roomsState = Array.from({ length: TOTAL_ROOMS }, (_, i) => blankRoom(i));
     let myAssignedRoomIdx = null;
+    function freeRoomsInApt(a) {
+      let n = 0;
+      for (let i = a * ROOMS_PER_APT; i < (a + 1) * ROOMS_PER_APT; i++) if (!(roomsState[i] && roomsState[i].owner)) n++;
+      return n;
+    }
+    function aptLabel(a) {
+      const mine = myAssignedRoomIdx !== null && myAssignedRoomIdx >= 0 && aptOfRoom(myAssignedRoomIdx) === a;
+      return `${mine ? '🏠 Il tuo appartamento ' : 'Appartamento '}${a + 1} · ${freeRoomsInApt(a)} stanze libere`;
+    }
 
     let joystickTouchId = null, joystickOrigin = { x: 0, y: 0 };
     let myData = { nick: '' };
@@ -639,7 +667,7 @@
       { text: 'Prendi cibo dal frigo, cucinalo e mangia 🍳', reward: 15, check: () => stats.meals > 0 },
       { text: 'Completa un turno di lavoro 💼', reward: 20, check: () => stats.shifts > 0 },
       { text: 'Proteggi la cassaforte con un PIN 🔐', reward: 10, check: () => hasSetSafePin, skip: () => !hasRoom() },
-      { text: 'Deposita dei soldi in cassaforte 💰', reward: 10, check: () => stats.deposits > 0, skip: () => !hasRoom() },
+      { text: 'Deposita dei soldi in cassaforte 💰', reward: 10, check: () => stats.deposits > 0, skip: () => true },
       { text: 'Compra un mobile al negozio 🛋️', reward: 25, check: () => Object.keys(ownedFurniture).length > 0 },
       { text: 'Compra un vestito al Negozio di Vestiti o dal PC 👕', reward: 20, check: () => Object.keys(ownedItems).length > 0 },
       { text: 'Cambia look dall\'armadio della tua stanza 🚪', reward: 10, check: () => (stats.outfits || 0) > 0 },
@@ -648,12 +676,11 @@
       { text: 'Dormi finché il sonno arriva all\'80% 😴', reward: 15, check: () => isSleeping && sleepLevel >= 80 },
       { text: 'Compra un mobile di lusso ✨', reward: 50, check: () => Object.keys(ownedFurniture).some(id => (furnitureCatalog.find(f => f.id === id) || {}).isLuxury) },
       { text: 'Completa 10 turni di lavoro 💪', reward: 100, check: () => stats.shifts >= 10 },
-      { text: 'Accumula 500 € tra tasca e cassaforte 🤑', reward: 100, check: () => getWealth() >= 500 }
+      { text: 'Accumula 500 € in cassaforte 🤑', reward: 100, check: () => getWealth() >= 500 }
     ];
 
     function getWealth() {
-      const room = hasRoom() ? roomsState[myAssignedRoomIdx] : null;
-      return moneyLevel + (room && room.ownerId === myPlayerId ? (room.vaultMoney || 0) : 0);
+      return moneyLevel;
     }
 
     function updateMissionHud() {
@@ -701,7 +728,7 @@
       const myPos = list.findIndex(p => p.id === myPlayerId);
       let text = list.slice(0, 10).map((p, i) => `${medals[i] || (i + 1) + '.'} ${p.name}${p.id === myPlayerId ? ' (tu)' : ''} — ${p.wealth} €`).join('\n') || 'Ancora nessun giocatore in classifica.';
       if (myPos >= 10) text += `\n…\n${myPos + 1}. ${list[myPos].name} (tu) — ${list[myPos].wealth} €`;
-      openDialog({ title: '🏆 Classifica dei più ricchi', text: text + '\n\nConta i soldi in tasca più quelli in cassaforte.', buttons: [{ label: 'Chiudi', value: null }] });
+      openDialog({ title: '🏆 Classifica dei più ricchi', text: text + '\n\nConta i soldi in cassaforte.', buttons: [{ label: 'Chiudi', value: null }] });
     }
 
     function toast(msg, ms = 2600, sound = null) {
@@ -729,6 +756,26 @@
       return myAssignedRoomIdx !== null && myAssignedRoomIdx >= 0;
     }
 
+    function syncVaultFromServer() {
+      if (!hasRoom()) return;
+      const room = roomsState[myAssignedRoomIdx];
+      if (!room || room.ownerId !== myPlayerId) return;
+      vaultCache = Math.max(0, room.vaultMoney || 0);
+      if (!vaultSynced) {
+        vaultSynced = true;
+        pinPromptMoneyThreshold = vaultCache;
+        lastCloudMoney = vaultCache;
+        lastMoneyForSound = vaultCache;
+      }
+      if (legacyPocketMoney > 0) {
+        const amount = legacyPocketMoney;
+        legacyPocketMoney = 0;
+        moneyLevel += amount;
+        toast(`💰 I ${amount} € che avevi in tasca sono stati spostati in cassaforte.`, 5000);
+        saveGame(true);
+      }
+    }
+
     function isMyRoomNow() {
       return activeEnvironment === 'PLAYER_ROOM' && hasRoom() && currentRoomIdx === myAssignedRoomIdx;
     }
@@ -745,7 +792,7 @@
       return {
         v: GAME_VERSION, savedAt: Date.now(), nick: myData.nick,
         healthLevel: r1(healthLevel), sleepLevel: r1(sleepLevel), hungerLevel: r1(hungerLevel),
-        hygieneLevel: r1(hygieneLevel), happinessLevel: r1(happinessLevel), moneyLevel,
+        hygieneLevel: r1(hygieneLevel), happinessLevel: r1(happinessLevel), moneyLevel: legacyPocketMoney, vaultOnly: legacyPocketMoney <= 0,
         ownedItems, ownedFurniture, equipped, activeJobKey, jobExperience,
         furniturePos, gameMinutes: Math.round(gameMinutes), stats, missionIndex
       };
@@ -758,7 +805,8 @@
       hungerLevel = num(s.hungerLevel, hungerLevel);
       hygieneLevel = num(s.hygieneLevel, hygieneLevel);
       happinessLevel = num(s.happinessLevel, happinessLevel);
-      moneyLevel = num(s.moneyLevel, moneyLevel);
+      // Vecchi salvataggi: i soldi in tasca verranno spostati in cassaforte
+      if (!s.vaultOnly) legacyPocketMoney = Math.max(0, num(s.moneyLevel, 0));
       gameMinutes = num(s.gameMinutes, gameMinutes);
       stats = Object.assign(stats, s.stats || {});
       missionIndex = num(s.missionIndex, 0);
@@ -850,9 +898,9 @@
 
     function normalizeRooms(val) {
       let rooms = [];
-      for (let i = 0; i < 8; i++) {
+      for (let i = 0; i < TOTAL_ROOMS; i++) {
         let r = (val && val[i]) ? val[i] : {};
-        rooms.push(Object.assign({ id: i + 1, owner: null, ownerId: null, pin: null, vaultMoney: 0 }, r));
+        rooms.push(Object.assign(blankRoom(i), r));
       }
       return rooms;
     }
@@ -878,8 +926,8 @@
       } catch (e) { console.warn('Assegnazione stanza fallita', e); }
 
       myAssignedRoomIdx = claimed;
-      if (claimed === -1) toast('🏠 La casa è piena: per ora giochi come ospite senza stanza.', 5000);
-      else toast(`🏠 La tua stanza è la n° ${claimed + 1}`);
+      if (claimed === -1) toast('🏠 Il condominio è pieno (32 stanze): per ora giochi come ospite senza stanza.', 5000);
+      else toast(`🏠 La tua stanza è la n° ${claimed + 1} (Appartamento ${aptOfRoom(claimed) + 1})`);
     }
 
     function syncMyPinFromRoom() {
@@ -906,6 +954,8 @@
           x: Math.round(playerPos.x),
           y: Math.round(playerPos.y),
           env: activeEnvironment,
+          roomIdx: activeEnvironment === 'PLAYER_ROOM' ? currentRoomIdx : null,
+          apt: APT_ENVS.includes(activeEnvironment) ? currentApt : null,
           outfit: resolveLook(equipped).top.color,
           look: lookString(),
           say: mySay,
@@ -1001,7 +1051,7 @@
       const res = await openDialog({
         title: `👤 ${myData.nick}`,
         text: `Il tuo codice personaggio è:\n${myPlayerId}\n\nSegnatelo! Serve per ritrovare i tuoi progressi su un altro telefono o computer.` +
-              (hasRoom() ? `\n\nLa tua stanza: n° ${myAssignedRoomIdx + 1}` : '') +
+              (hasRoom() ? `\n\nLa tua stanza: n° ${myAssignedRoomIdx + 1} (Appartamento ${aptOfRoom(myAssignedRoomIdx) + 1})` : '') +
               (OFFLINE ? '\n\n🧪 Sei in modalità prova: niente viene salvato sul server.' : ''),
         input: { placeholder: 'Codice di un altro dispositivo…', maxLength: 30 },
         buttons: [{ label: 'Chiudi', value: null, color: '#57606f' }, { label: 'Usa codice', value: 'switch', color: '#e67e22' }]
@@ -1087,6 +1137,7 @@
 
     let saloonDoors = {
       exitHouse: { x: 0, y: 180, w: 70, h: 15, z: 110, name: "Uscita di Casa 🚪" },
+      courtyard: { x: 0, y: -180, w: 50, h: 10, z: 110, name: "Vai al Cortile 🌳", targetEnv: 'CORTILE', title: "Cortile Condominiale" },
       kitchen: { x: -180, y: -100, w: 10, h: 60, z: 110, name: "Entra in Cucina 🍳", targetEnv: 'KITCHEN', title: "Cucina" },
       bathroom: { x: 180, y: -100, w: 10, h: 60, z: 110, name: "Entra in Bagno 🚽", targetEnv: 'BATHROOM', title: "Bagno" },
       room1: { x: -180, y: 0, w: 10, h: 50, z: 110, name: "Stanza 1", targetEnv: 'PLAYER_ROOM', roomIdx: 0 },
@@ -1097,6 +1148,14 @@
       room6: { x: 100, y: -180, w: 50, h: 10, z: 110, name: "Stanza 6", targetEnv: 'PLAYER_ROOM', roomIdx: 5 },
       room7: { x: -100, y: 180, w: 50, h: 10, z: 110, name: "Stanza 7", targetEnv: 'PLAYER_ROOM', roomIdx: 6 },
       room8: { x: 100, y: 180, w: 50, h: 10, z: 110, name: "Stanza 8", targetEnv: 'PLAYER_ROOM', roomIdx: 7 }
+    };
+
+    // Cortile condominiale: una porta per ognuno dei 4 appartamenti
+    let courtyardDoors = {
+      doorApt0: { x: -135, y: -170, w: 56, h: 10, z: 110, name: "Appartamento 1", aptIdx: 0 },
+      doorApt1: { x: -45, y: -170, w: 56, h: 10, z: 110, name: "Appartamento 2", aptIdx: 1 },
+      doorApt2: { x: 45, y: -170, w: 56, h: 10, z: 110, name: "Appartamento 3", aptIdx: 2 },
+      doorApt3: { x: 135, y: -170, w: 56, h: 10, z: 110, name: "Appartamento 4", aptIdx: 3 }
     };
 
     window.addEventListener('load', () => {
@@ -1152,9 +1211,12 @@
       watchGameVersion();
       await loadGame();
       await claimRoom();
+      currentApt = hasRoom() ? aptOfRoom(myAssignedRoomIdx) : 0;
+      currentRoomTitle = saloonTitle();
 
       db.ref('sims_rooms_state').on('value', (snapshot) => {
         roomsState = normalizeRooms(snapshot.val());
+        syncVaultFromServer();
         syncMyPinFromRoom();
       });
 
@@ -1278,6 +1340,25 @@
       } else {
         toast("❌ Combinazione non valida (3 cifre da 1 a 5). Te la richiederò al prossimo guadagno.");
       }
+    }
+
+    // Il proprietario può cambiare la combinazione della propria cassaforte quando vuole
+    async function changeSafePin() {
+      if (!hasRoom() || !isMyRoomNow()) return;
+      const room = roomsState[myAssignedRoomIdx];
+      if (!room || room.ownerId !== myPlayerId) return;
+      const res = await openDialog({
+        title: hasSetSafePin ? '🔑 Cambia combinazione' : '🔑 Imposta combinazione',
+        text: 'Scegli la nuova combinazione segreta della cassaforte: 3 cifre da 1 a 5 (es. 135).',
+        input: { placeholder: '135', numeric: true, maxLength: 3 },
+        buttons: [{ label: 'Annulla', value: null, color: '#57606f' }, { label: 'Salva', value: 'ok', color: '#2ed573' }]
+      });
+      if (res.action !== 'ok') return;
+      if (!/^[1-5]{3}$/.test(res.value)) { toast('❌ Combinazione non valida: servono 3 cifre da 1 a 5.'); return; }
+      safePinCode = hashPin(res.value, room.id);
+      hasSetSafePin = true;
+      db.ref(`sims_rooms_state/${myAssignedRoomIdx}/pin`).set(safePinCode);
+      toast('✅ Nuova combinazione salvata!');
     }
 
     function setupControls() {
@@ -1424,6 +1505,7 @@
       if (activeEnvironment === 'KITCHEN') return kitchenFurniture;
       if (activeEnvironment === 'BATHROOM') return bathroomFurniture;
       if (activeEnvironment === 'SALOON') return saloonDoors;
+      if (activeEnvironment === 'CORTILE') return courtyardDoors;
       if (activeEnvironment === 'negozio_mobili') return storeFloorFurniture;
       if (activeEnvironment === 'negozio_vestiti') return clothesStoreFurniture;
       return {};
@@ -1484,7 +1566,7 @@
             }
           } else if (item.roomIdx !== undefined) {
             isOutsideMenuOpen = false;
-            let room = roomsState[item.roomIdx];
+            let room = roomsState[gRoomIdx(item)];
             if (!room || !room.owner) {
               btnMain.innerText = `🔒 Stanza Vuota (Chiusa)`;
               btnMain.classList.add('btn-pop-locked');
@@ -1534,12 +1616,22 @@
             btnMain.innerText = `🚪 Torna Fuori`;
             btnSub.classList.add('hidden');
           }
+        } else if (activeEnvironment === 'CORTILE') {
+          const mine = hasRoom() && aptOfRoom(myAssignedRoomIdx) === item.aptIdx;
+          btnMain.innerText = mine ? '🚪 Entra nel tuo appartamento 🏠' : `🚪 Entra nell'Appartamento ${item.aptIdx + 1} (${freeRoomsInApt(item.aptIdx)} stanze libere)`;
+          btnMain.classList.remove('btn-pop-locked');
+          btnSub.classList.add('hidden');
         } else if (activeEnvironment === 'PLAYER_ROOM') {
           if (found === 'safe') {
             let isMyRoom = isMyRoomNow();
-            btnMain.innerText = isMyRoom ? "🔐 Deposita/Preleva Soldi" : "🕵️ Prova a Rubare (Tentativo PIN)";
+            btnMain.innerText = isMyRoom ? "🔐 Apri la Cassaforte" : "🕵️ Prova a Rubare (Tentativo PIN)";
             btnMain.classList.remove('btn-pop-locked');
-            btnSub.classList.add('hidden');
+            if (isMyRoom) {
+              btnSub.innerText = hasSetSafePin ? "🔑 Cambia combinazione" : "🔑 Imposta combinazione";
+              btnSub.classList.remove('hidden');
+            } else {
+              btnSub.classList.add('hidden');
+            }
           } else if (found === 'bed') {
             btnMain.innerText = isSleeping ? "⏰ Svegliati" : "😴 Coricati a Letto";
             btnMain.classList.remove('btn-pop-locked');
@@ -1638,13 +1730,14 @@
             btnWork.classList.add('hidden');
           }
         } else if (item.targetEnv === 'PLAYER_ROOM') {
-          let room = roomsState[item.roomIdx];
+          const gi = gRoomIdx(item);
+          let room = roomsState[gi];
           if (!room || !room.owner) {
             toast("🔒 Questa stanza è vuota.");
             return;
           }
-          currentRoomTitle = item.roomIdx === myAssignedRoomIdx ? `La tua stanza 🏠` : `Stanza di ${room.owner}`;
-          currentRoomIdx = item.roomIdx;
+          currentRoomTitle = gi === myAssignedRoomIdx ? `La tua stanza 🏠` : `Stanza di ${room.owner}`;
+          currentRoomIdx = gi;
           activeEnvironment = 'PLAYER_ROOM';
           playerPos = { x: 0, y: 120 };
         } else {
@@ -1652,10 +1745,17 @@
           activeEnvironment = item.targetEnv;
           playerPos = { x: 0, y: 120 };
         }
+      } else if (activeEnvironment === 'CORTILE') {
+        if (item && item.aptIdx !== undefined) {
+          currentApt = item.aptIdx;
+          activeEnvironment = 'SALOON';
+          currentRoomTitle = saloonTitle();
+          playerPos = { x: 0, y: -90 };
+        }
       } else if (activeEnvironment === 'negozio_vestiti') {
         if (activeTargetProp === 'doorExit') {
           activeEnvironment = 'SALOON';
-          currentRoomTitle = "Salone Principale";
+          currentRoomTitle = saloonTitle();
           playerPos = { x: 0, y: 0 };
         } else {
           openClothesShop(item.slot || 'top', false);
@@ -1665,7 +1765,7 @@
           openFurnitureShopModal();
         } else if (activeTargetProp === 'doorExit') {
           activeEnvironment = 'SALOON';
-          currentRoomTitle = "Salone Principale";
+          currentRoomTitle = saloonTitle();
           playerPos = { x: 0, y: 0 };
         } else if (item.category) {
           let stdItem = furnitureCatalog.find(f => f.category === item.category && !f.isLuxury);
@@ -1709,7 +1809,7 @@
           }
         } else if (activeTargetProp === 'doorExit') {
           activeEnvironment = 'SALOON';
-          currentRoomTitle = "Salone Principale";
+          currentRoomTitle = saloonTitle();
           playerPos = { x: 0, y: 0 };
         }
       } else if (activeEnvironment === 'BATHROOM') {
@@ -1725,13 +1825,13 @@
           toast("Che sollievo! 🚽 (Felicità +5%)");
         } else if (activeTargetProp === 'doorExit') {
           activeEnvironment = 'SALOON';
-          currentRoomTitle = "Salone Principale";
+          currentRoomTitle = saloonTitle();
           playerPos = { x: 0, y: 0 };
         }
       } else {
         if (activeTargetProp === 'doorExit') {
           activeEnvironment = 'SALOON';
-          currentRoomTitle = "Salone Principale";
+          currentRoomTitle = saloonTitle();
           playerPos = { x: 0, y: 0 };
         } else if (activeTargetProp === 'bed') {
           isSleeping = !isSleeping;
@@ -1755,31 +1855,14 @@
       const vaultRef = db.ref(`sims_rooms_state/${currentRoomIdx}/vaultMoney`);
 
       if (isMyRoomNow()) {
+        const buttons = [{ label: 'Chiudi', value: null, color: '#57606f' }];
+        buttons.push({ label: hasSetSafePin ? '🔑 Cambia combinazione' : '🔑 Imposta combinazione', value: 'pin', color: '#2ed573' });
         const res = await openDialog({
           title: '🔐 Cassaforte personale',
-          text: `In tasca: ${moneyLevel} €\nIn cassaforte: ${room.vaultMoney || 0} €\n\nI soldi in cassaforte sono al sicuro sul server… a meno che qualcuno indovini il PIN!`,
-          input: { placeholder: 'Importo in €', numeric: true, maxLength: 7 },
-          buttons: [{ label: 'Chiudi', value: null, color: '#57606f' }, { label: '⬆️ Preleva', value: 'pre', color: '#2e86de' }, { label: '⬇️ Deposita', value: 'dep', color: '#2ed573' }]
+          text: `In cassaforte: ${moneyLevel} €\n\nTutti i tuoi soldi sono qui, al sicuro sul server… a meno che qualcuno indovini il PIN!` + (hasSetSafePin ? '' : '\n\n⚠️ La cassaforte non ha ancora un PIN.'),
+          buttons
         });
-        if (!res.action) return;
-        const amount = parseInt(res.value, 10);
-        if (!(amount > 0)) { toast('❌ Inserisci un importo valido.'); return; }
-        if (res.action === 'dep') {
-          if (amount > moneyLevel) { toast('❌ Non hai abbastanza soldi in tasca.'); return; }
-          moneyLevel -= amount;
-          await vaultRef.transaction(v => (v || 0) + amount);
-          stats.deposits++;
-          toast(`✅ Depositati ${amount} € in cassaforte.`);
-        } else {
-          const r = await vaultRef.transaction(v => ((v || 0) >= amount ? (v || 0) - amount : undefined));
-          if (r && r.committed) {
-            moneyLevel += amount;
-            toast(`✅ Prelevati ${amount} €.`);
-          } else {
-            toast('❌ Fondi insufficienti in cassaforte.');
-          }
-        }
-        saveGame(true);
+        if (res.action === 'pin') changeSafePin();
         return;
       }
 
@@ -2200,13 +2283,15 @@
     }
 
     function returnHomeFromActivity() {
+      if (hasRoom()) currentApt = aptOfRoom(myAssignedRoomIdx);
       activeEnvironment = 'SALOON';
-      currentRoomTitle = "Salone Principale";
+      currentRoomTitle = saloonTitle();
       playerPos = { x: 0, y: 150 };
       document.getElementById('btn-return-home').classList.add('hidden');
     }
 
     function handleSubAction() {
+      if (activeEnvironment === 'PLAYER_ROOM' && activeTargetProp === 'safe' && isMyRoomNow()) { changeSafePin(); return; }
       if (activeEnvironment === 'KITCHEN' && activeTargetProp === 'fridge' && fridgeIsOpen) {
         if (moneyLevel < 5) {
           toast("Non hai abbastanza soldi per prendere il cibo! Ti servono 5 €.");
@@ -2745,10 +2830,12 @@
       const thinX = it.w < it.h;
       let doorC = '#8d5a3b', sign = '';
       if (it.roomIdx !== undefined) {
-        const room = roomsState[it.roomIdx];
-        doorC = room && room.owner ? (it.roomIdx === myAssignedRoomIdx ? '#2e86de' : '#27ae60') : '#7f8c8d';
-        sign = String(it.roomIdx + 1);
-      } else if (key === 'kitchen') sign = '🍳';
+        const gi = gRoomIdx(it);
+        const room = roomsState[gi];
+        doorC = room && room.owner ? (gi === myAssignedRoomIdx ? '#2e86de' : '#27ae60') : '#7f8c8d';
+        sign = String(gi + 1);
+      } else if (key === 'courtyard') sign = '🌳';
+      else if (key === 'kitchen') sign = '🍳';
       else if (key === 'bathroom') sign = '🚿';
       const b = box(it.x, it.y, thinX ? 8 : it.w, thinX ? it.h : 8, 96, '#ecf0f1');
       onFace(b, thinX ? 'right' : 'left', (W, H) => {
@@ -2761,6 +2848,26 @@
           ctx.fillStyle = 'rgba(255,255,255,0.92)'; ctx.fillRect(W / 2 - 8, 15, 16, 12);
           ctx.fillStyle = '#2d3436'; ctx.font = 'bold 9px sans-serif'; ctx.textAlign = 'center'; ctx.fillText(sign, W / 2, 24.5);
         }
+      });
+    }
+
+    // Ingresso di un appartamento visto dal cortile: facciata con finestre e porta
+    function drawCourtyardDoor(key, it) {
+      const mine = hasRoom() && aptOfRoom(myAssignedRoomIdx) === it.aptIdx;
+      const full = freeRoomsInApt(it.aptIdx) === 0;
+      const doorC = mine ? '#2e86de' : (full ? '#7f8c8d' : '#27ae60');
+      const b = box(it.x, it.y, 64, 10, 118, '#cdbfa8');
+      onFace(b, 'left', (W, H) => {
+        ctx.fillStyle = '#6d4c41'; ctx.fillRect(0, 0, W, 5);
+        ctx.fillStyle = 'rgba(135,206,235,0.9)';
+        ctx.fillRect(W * 0.1, H * 0.14, W * 0.2, H * 0.2); ctx.fillRect(W * 0.7, H * 0.14, W * 0.2, H * 0.2);
+        ctx.fillStyle = doorC; ctx.fillRect(W * 0.3, H * 0.42, W * 0.4, H * 0.58);
+        ctx.strokeStyle = 'rgba(0,0,0,0.28)'; ctx.lineWidth = 1;
+        ctx.strokeRect(W * 0.34, H * 0.47, W * 0.32, H * 0.2); ctx.strokeRect(W * 0.34, H * 0.72, W * 0.32, H * 0.22);
+        ctx.fillStyle = '#f1c40f'; ctx.beginPath(); ctx.arc(W * 0.64, H * 0.75, 1.8, 0, 6.3); ctx.fill();
+        ctx.fillStyle = 'rgba(255,255,255,0.95)'; ctx.fillRect(W / 2 - 9, H * 0.3, 18, 11);
+        ctx.fillStyle = '#2d3436'; ctx.font = 'bold 8px sans-serif'; ctx.textAlign = 'center';
+        ctx.fillText('A' + (it.aptIdx + 1), W / 2, H * 0.3 + 8.5);
       });
     }
 
@@ -2869,6 +2976,7 @@
         resetPlane();
       }
       if (k === 'doorExit' || k === 'exitHouse') return drawExitMat(item, k === 'exitHouse' ? 'ESCI DI CASA' : 'USCITA');
+      if (activeEnvironment === 'CORTILE') return drawCourtyardDoor(k, item);
       if (activeEnvironment === 'SALOON') return drawSaloonDoor(k, item);
       if (activeEnvironment === 'negozio_vestiti') { softShadow(item.x, item.y, item.w, item.h); return drawBoutiqueItem(k, item, t); }
       if (k.startsWith('shelf')) return drawShelf(item, t);
@@ -3342,10 +3450,22 @@
 
     // Arredi decorativi delle stanze di casa (non interattivi)
     const ENV_DECOR = {
+      CORTILE: [
+        { kind: 'flowers', x: -70, y: -125, w: 56, h: 30, solid: false, flat: true },
+        { kind: 'flowers', x: 70, y: -125, w: 56, h: 30, solid: false, flat: true },
+        { kind: 'tree', x: -155, y: -70, w: 18, h: 18, size: 1.1, z: 90 },
+        { kind: 'tree', x: 155, y: -70, w: 18, h: 18, size: 1.05, z: 90 },
+        { kind: 'tree', x: -155, y: 95, w: 16, h: 16, size: 0.9, z: 80 },
+        { kind: 'tree', x: 155, y: 95, w: 16, h: 16, size: 0.9, z: 80 },
+        { kind: 'fountain', x: 0, y: 0, w: 70, h: 70, label: 'Fontana ⛲', z: 60 },
+        { kind: 'bench', x: -95, y: 55, w: 50, h: 16 },
+        { kind: 'bench', x: 95, y: 55, w: 50, h: 16 },
+        { kind: 'streetlamp', x: -75, y: -65, w: 8, h: 8 },
+        { kind: 'streetlamp', x: 75, y: -65, w: 8, h: 8 }
+      ],
       SALOON: [
         { kind: 'plant', x: -168, y: -160, w: 26, h: 26, z: 60 },
-        { kind: 'plant', x: 168, y: -160, w: 26, h: 26, z: 60 },
-        { kind: 'console', x: 0, y: -162, w: 64, h: 18 }
+        { kind: 'plant', x: 168, y: -160, w: 26, h: 26, z: 60 }
       ],
       KITCHEN: [
         { kind: 'table', x: 35, y: 30, w: 56, h: 40 },
@@ -3373,7 +3493,7 @@
       SALOON: {
         floor: 'parquet', floorColor: '#a0714f', wall: '#d9cbb8', wallStyle: 'wainscot', trim: '#6d4c41',
         rug: { u: 110, v: 105, w: 180, h: 150, color: '#8e2c2c', border: '#d4ac0d' },
-        decor: { back: [{ t: 'clock', u: 40 }, { t: 'painting', u: 200, w: 70, h: 46, seed: 3 }, { t: 'window', u: 360, w: 40, h: 50 }], left: [{ t: 'window', u: 130, w: 32, h: 50 }, { t: 'painting', u: 230, w: 30, h: 40, seed: 8 }] },
+        decor: { back: [{ t: 'clock', u: 40 }, { t: 'window', u: 360, w: 40, h: 50 }], left: [{ t: 'window', u: 130, w: 32, h: 50 }, { t: 'painting', u: 230, w: 30, h: 40, seed: 8 }] },
         lights: [{ x: 0, y: 0, z: 0, r: 280, color: '255,210,150' }]
       },
       KITCHEN: {
@@ -3409,6 +3529,7 @@
         lights: [{ x: 0, y: -100, z: 0, r: 200, color: '255,120,190' }, { x: -100, y: 40, z: 0, r: 130, color: '255,200,120' }, { x: 100, y: 50, z: 0, r: 130, color: '255,200,120' }]
       },
       viaggio: { floor: 'beach', floorColor: '#f0d9a0', outdoor: true },
+      CORTILE: { floor: 'concrete', floorColor: '#b9b3a8', outdoor: true },
       passeggiata: { floor: 'grass', floorColor: '#5fa84a', outdoor: true },
       lavoro_cantiere: { floor: 'dirt', floorColor: '#9a7b5a', outdoor: true, wallStyle: 'hoarding', wall: '#c9a66b', wallH: 60, trim: '#2d3436', decor: { back: [{ t: 'poster', u: 200, text: 'LAVORI IN CORSO', color: '#f39c12' }], left: [] }, fence: true },
       lavoro_ospedale: {
@@ -4185,7 +4306,7 @@
       return obstacles.some(o => x > o.x - o.w/2 - r && x < o.x + o.w/2 + r && y > o.y - o.h/2 - r && y < o.y + o.h/2 + r);
     }
 
-    const OUTDOOR_ENVS = ['passeggiata', 'viaggio', 'lavoro_cantiere'];
+    const OUTDOOR_ENVS = ['passeggiata', 'viaggio', 'lavoro_cantiere', 'CORTILE'];
     const BOT_LINES = ["Ciao! 👋", "Che bella giornata ☀️", "Qualcuno ha visto il mio gatto?", "Oggi si lavora 💪", "Mi piace questo posto!", "Ho una fame… 🍕", "Hai già arredato la stanza?"];
 
     function renderEnvironment(delta, animTime) {
@@ -4248,9 +4369,11 @@
           const item = map[k];
           let label = item.name;
           if (activeEnvironment === 'SALOON' && item.roomIdx !== undefined) {
-            const room = roomsState[item.roomIdx];
-            label = room && room.owner ? (item.roomIdx === myAssignedRoomIdx ? '🏠 La tua stanza' : `🚪 Stanza di ${room.owner}`) : '🔒 Stanza Vuota';
+            const gi = gRoomIdx(item);
+            const room = roomsState[gi];
+            label = room && room.owner ? (gi === myAssignedRoomIdx ? '🏠 La tua stanza' : `🚪 Stanza di ${room.owner}`) : '🔒 Stanza Vuota';
           }
+          if (activeEnvironment === 'CORTILE' && item.aptIdx !== undefined) label = aptLabel(item.aptIdx);
           const flat = k === 'doorExit' || k === 'exitHouse';
           addThing(item.x, item.y, item.w, item.h, flat ? 12 : (item.z || 60), label, () => drawMapItem(k, item, animTime, lights), flat ? -1e5 : 0);
         });
@@ -4285,6 +4408,10 @@
         let op = onlinePlayers[id];
         // Ignora giocatori senza battito recente (fantasmi rimasti nel DB)
         if (!op || op.env !== activeEnvironment || !op.t || now - op.t > 30000) return;
+        // Ogni stanza privata è separata: vedi solo chi è nella tua stessa stanza
+        if (activeEnvironment === 'PLAYER_ROOM' && op.roomIdx !== currentRoomIdx) return;
+        // Salone, cucina e bagno esistono in ogni appartamento: vedi solo chi è nel tuo
+        if (APT_ENVS.includes(activeEnvironment) && (op.apt || 0) !== currentApt) return;
         let s = remoteSmooth[id] || (remoteSmooth[id] = { x: op.x, y: op.y, sayT: op.sayT, sayShownAt: 0 });
         // Il fumetto parte quando riceviamo un messaggio nuovo (evita problemi di orologi diversi)
         if (op.sayT && op.sayT !== s.sayT) { s.sayT = op.sayT; s.sayShownAt = now; }
