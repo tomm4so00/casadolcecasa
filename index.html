@@ -1025,7 +1025,22 @@
       hasSetSafePin = true;
     }
 
+    // Chi è ancora connesso? Non ci si può fidare dell'orologio degli altri dispositivi (può essere sfasato).
+    // Si usa l'orologio del server (Firebase) e, in più, il fatto di averli visti aggiornarsi di recente.
+    let serverOffset = 0;
+    const presenceTrack = {};
+    function presenceAlive(id, op, now) {
+      if (!op || !op.t) return false;
+      const tr = presenceTrack[id] || (presenceTrack[id] = { t: op.t, at: now, changes: 1 });
+      if (tr.t !== op.t) { tr.t = op.t; tr.at = now; tr.changes++; }
+      const seenRecently = now - tr.at < 30000;
+      if (OFFLINE) return seenRecently;
+      const serverFresh = (now + serverOffset) - op.t < 30000;
+      return serverFresh || (tr.changes >= 2 && seenRecently);
+    }
+
     function startPresence() {
+      try { db.ref('.info/serverTimeOffset').on('value', s => { serverOffset = Number(s.val()) || 0; }); } catch (e) {}
       const playerRef = db.ref('sims_online_players/' + myPlayerId);
       // Rimuove il giocatore dal DB quando chiude la pagina (niente fantasmi)
       playerRef.onDisconnect().remove();
@@ -1049,7 +1064,7 @@
         const key = JSON.stringify(payload);
         const now = Date.now();
         if (key !== lastSentKey || now - lastSentAt > 5000) {
-          payload.t = now;
+          payload.t = now + serverOffset;
           playerRef.set(payload);
           lastSentKey = key;
           lastSentAt = now;
@@ -4695,7 +4710,7 @@
         if (id === myPlayerId) return;
         let op = onlinePlayers[id];
         // Ignora giocatori senza battito recente (fantasmi rimasti nel DB)
-        if (!op || op.env !== activeEnvironment || !op.t || now - op.t > 30000) return;
+        if (!op || op.env !== activeEnvironment || !presenceAlive(id, op, now)) return;
         // Ogni stanza privata è separata: vedi solo chi è nella tua stessa stanza
         if (activeEnvironment === 'PLAYER_ROOM' && op.roomIdx !== currentRoomIdx) return;
         // Salone, cucina e bagno esistono in ogni appartamento: vedi solo chi è nel tuo
