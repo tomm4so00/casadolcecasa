@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Sims Apartment - Job Flow Update</title>
+  <title>Casa dolce casa</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
     body, html { width: 100%; height: 100%; overflow: hidden; background: #0b0b10; color: white; touch-action: none; }
@@ -42,6 +42,13 @@
     input[type="text"], input[type="number"] { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #444; background: #1a1a22; color: white; font-size: 1rem; }
     .btn-primary { width: 100%; padding: 14px; border: none; border-radius: 10px; background: #ff4757; color: white; font-weight: bold; font-size: 1rem; cursor: pointer; margin-top: 10px; box-shadow: 0 4px 15px rgba(255,71,87,0.4); }
     .btn-primary:active { background: #ff6b81; }
+
+    /* Interazioni tra giocatori */
+    #social-panel { position: absolute; bottom: 14px; left: 50%; transform: translateX(-50%); z-index: 55; display: flex; flex-direction: column; align-items: center; gap: 6px; max-width: 94vw; pointer-events: auto; }
+    #social-panel .soc-title { background: rgba(0,0,0,0.65); color: #fff; padding: 4px 12px; border-radius: 12px; font-size: 0.8rem; font-weight: bold; }
+    #social-panel .soc-row { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
+    #social-panel button { border: none; border-radius: 10px; padding: 9px 12px; font-size: 0.8rem; font-weight: bold; color: #fff; cursor: pointer; box-shadow: 0 3px 10px rgba(0,0,0,0.5); }
+    #social-panel button:active { filter: brightness(1.2); }
 
     /* Interazione Popups */
     .popup-interact { position: absolute; top: 22%; left: 50%; transform: translate(-50%, -50%); display: flex; flex-direction: column; gap: 6px; z-index: 50; pointer-events: auto; max-width: 90vw; }
@@ -90,6 +97,22 @@
     #shift-hud { position: absolute; bottom: 92px; left: 50%; transform: translateX(-50%); width: min(320px, 80vw); background: rgba(15,15,25,0.9); border: 1px solid rgba(255,255,255,0.15); border-radius: 10px; padding: 8px 12px; z-index: 45; font-size: 0.8rem; font-weight: bold; text-align: center; }
     #shift-hud .bar-bg { height: 8px; margin-top: 6px; border-radius: 4px; }
     #shift-fill { background: #feca57; width: 0%; transition: none; }
+    #minigame { position: absolute; bottom: 150px; left: 50%; transform: translateX(-50%); width: min(400px, 94vw); background: rgba(15,15,25,0.93); border: 1px solid rgba(255,255,255,0.18); border-radius: 14px; padding: 8px 12px 9px; z-index: 46; color: #fff; text-align: center; user-select: none; -webkit-user-select: none; pointer-events: none; }
+    #minigame .mg-step { font-size: 1.02rem; font-weight: bold; margin: 2px 0 4px; }
+    #minigame .mg-head { display: flex; justify-content: space-between; font-size: 0.78rem; font-weight: bold; margin-bottom: 8px; }
+    #minigame .mg-big { font-size: 2.2rem; line-height: 1.1; min-height: 2.6rem; }
+    #minigame .mg-sub { font-size: 0.85rem; opacity: 0.85; min-height: 1.2rem; margin-bottom: 6px; }
+    #minigame .mg-btns { display: grid; gap: 6px; }
+    #minigame .mg-btn { background: #2d3a55; border: 1px solid rgba(255,255,255,0.2); color: #fff; border-radius: 10px; padding: 8px 4px; font-size: 1.5rem; cursor: pointer; touch-action: manipulation; }
+    #minigame .mg-btn small { display: block; font-size: 0.6rem; opacity: 0.8; }
+    #minigame .mg-btn:active { background: #3f5280; }
+    #minigame .mg-track { position: relative; height: 26px; background: #2d3436; border-radius: 13px; margin: 6px 0 10px; overflow: hidden; }
+    #minigame .mg-zone { position: absolute; top: 0; bottom: 0; background: rgba(46,213,115,0.55); border-left: 2px solid #2ed573; border-right: 2px solid #2ed573; }
+    #minigame .mg-mark { position: absolute; top: 2px; bottom: 2px; width: 6px; margin-left: -3px; background: #feca57; border-radius: 3px; }
+    #minigame .mg-flash-ok { animation: mgok .25s; } #minigame .mg-flash-ko { animation: mgko .25s; }
+    @keyframes mgok { from { box-shadow: 0 0 0 3px #2ed573; } to { box-shadow: 0 0 0 0 transparent; } }
+    @keyframes mgko { from { box-shadow: 0 0 0 3px #ff4757; } to { box-shadow: 0 0 0 0 transparent; } }
+
 
     #update-banner { position: fixed; inset: 0; z-index: 3000; background: rgba(0,0,0,0.9); display: flex; align-items: center; justify-content: center; }
     .btn-link { background: none; border: none; color: #54a0ff; font-size: 0.85rem; margin-top: 14px; cursor: pointer; text-decoration: underline; }
@@ -186,6 +209,10 @@
       <div class="need-info"><span>🙂 Felicità</span><span id="happiness-text">50%</span></div>
       <div class="bar-bg"><div id="happiness-bar-fill" class="bar-fill" style="width: 50%;"></div></div>
     </div>
+    <div class="need-row hidden" id="drug-row">
+      <div class="need-info"><span>💊 Dipendenza</span><span id="drug-text">0%</span></div>
+      <div class="bar-bg"><div id="drug-bar-fill" class="bar-fill" style="width: 0%; background:#a29bfe;"></div></div>
+    </div>
     <div class="need-row">
       <div class="need-info"><span>🔐 Cassaforte</span><span id="money-text">0 €</span></div>
       <div class="bar-bg"><div id="money-bar-fill" class="bar-fill" style="width: 0%;"></div></div>
@@ -198,6 +225,9 @@
 
   <div id="hud-actions" class="hud-controls hidden">
     <button class="btn-hud" id="btn-sound" onclick="toggleSound()" title="Suoni on/off">🔊</button>
+    <button class="btn-hud" id="btn-music" onclick="toggleMusic()" title="Musica on/off">🎵</button>
+    <button class="btn-hud" id="btn-help" onclick="showIntro(true)" title="Guida: come non morire">❓</button>
+    <button class="btn-hud" id="btn-notify" onclick="toggleNotify()" title="Avvisi quando il personaggio sta male">🔕</button>
     <button class="btn-hud" id="btn-leaderboard" onclick="openLeaderboard()" title="Classifica">🏆</button>
     <button class="btn-hud" id="btn-profile" onclick="openProfile()" title="Profilo e codice personaggio">👤</button>
     <button class="btn-hud" id="btn-chat" onclick="openChat()" title="Scrivi un messaggio">💬</button>
@@ -205,22 +235,27 @@
   </div>
 
   <!-- POPUP DINAMICO DI INTERAZIONE -->
+  <div id="social-panel" class="hidden"><div class="soc-title" id="soc-title"></div><div class="soc-row" id="soc-row"></div></div>
   <div id="pop-interaction" class="popup-interact hidden">
     <button class="btn-pop" id="btn-act-main" onclick="handleObjectInteract()">✋ Interagisci</button>
     <button class="btn-pop btn-pop-action hidden" id="btn-act-sub" onclick="handleSubAction()">🍎 Prendi Cibo (-5 €)</button>
 
-    <button class="btn-pop btn-pop-exit hidden" id="btn-act-walk" onclick="doActivity('walk')">🚶 Passeggiata (+10% Felicità, +5% Salute)</button>
+    <button class="btn-pop btn-pop-exit hidden" id="btn-act-walk" onclick="doActivity('walk')">🚶 Passeggiata (+10% Felicità, +5% Salute, -5% Sonno)</button>
     <button class="btn-pop btn-pop-exit hidden" id="btn-act-bar" onclick="doActivity('bar')">☕ Bar (-10 €, +15% Felicità, +15% Fame)</button>
     <button class="btn-pop btn-pop-exit hidden" id="btn-act-trip" onclick="doActivity('trip')">✈️ Viaggio (+70% Felicità, -20% Soldi)</button>
     <button class="btn-pop btn-pop-furniture hidden" id="btn-act-furnitureshop" onclick="doActivity('furnitureshop')">🛋️ Negozio di Mobili</button>
     <button class="btn-pop btn-pop-furniture hidden" id="btn-act-clothesshop" style="background:#e84393;" onclick="doActivity('clothesshop')">👗 Negozio di Vestiti</button>
     <button class="btn-pop btn-pop-exit hidden" id="btn-act-work" onclick="handleJobMenuAction()">💼 Lavoro (Gestisci Carriera)</button>
+    <button class="btn-pop btn-pop-exit hidden" id="btn-act-cemetery" style="background:#636e72;" onclick="doActivity('cemetery')">🪦 Cimitero</button>
+    <button class="btn-pop btn-pop-exit hidden" id="btn-act-disco" style="background:#8e44ad;" onclick="doActivity('disco')">🪩 Discoteca (-20 €, +50% Felicità, -15% Sonno)</button>
 
     <button class="btn-pop btn-pop-alt hidden" id="btn-act-move" onclick="startMovingFurniture()">🖐️ Sposta Mobile</button>
   </div>
 
   <button id="btn-place-furniture" class="btn-pop hidden" style="position:absolute; bottom:30px; left:50%; transform:translateX(-50%); z-index:60;" onclick="placeFurniture()">📌 Lascia Mobile</button>
   <button id="btn-return-home" class="hidden" onclick="returnHomeFromActivity()">🏡 Torna a Casa</button>
+
+  <div id="minigame" class="hidden"></div>
 
   <div id="shift-hud" class="hidden">
     <div id="shift-text">💼 Turno in corso</div>
@@ -248,7 +283,7 @@
 
   <div id="ui-setup-screen">
     <div class="card">
-      <h2>Sims Apartment 3D</h2>
+      <h2>🏠 Casa dolce casa</h2>
       <div class="input-group">
         <label>Nome Giocatore</label>
         <input type="text" id="nickname" value="" placeholder="Inserisci il tuo nome..." maxlength="20">
@@ -364,7 +399,7 @@
 
     // Aumenta questo numero ogni volta che pubblichi una versione nuova:
     // chi ha ancora aperta una versione vecchia vedrà "Aggiorna ora".
-    const GAME_VERSION = 3;
+    const GAME_VERSION = 8;
 
     // Modalità prova: apri il gioco con ?offline=1 per giocare senza toccare il database vero
     const OFFLINE = new URLSearchParams(location.search).has('offline');
@@ -394,6 +429,7 @@
         on(ev, cb) { listeners.push({ path, cb }); setTimeout(() => cb(snap(path))); },
         set(v) { setAt(path, v); notify(); return Promise.resolve(); },
         remove() { setAt(path, null); notify(); return Promise.resolve(); },
+        update(v) { Object.keys(v || {}).forEach(k => setAt(path + '/' + k, v[k])); notify(); return Promise.resolve(); },
         transaction(fn) {
           const nv = fn(clone(get(path)));
           if (nv !== undefined) setAt(path, nv);
@@ -457,14 +493,18 @@
     let jobExperience = { cantiere: 0, ospedale: 0, ristorante: 0, ufficio: 0 };
 
     let isSleeping = false;
+    let showerAnim = null, sleepK = 0, showerFog = 0, frameShowerActors = [];
     let isOutsideMenuOpen = false;
     let fridgeIsOpen = false;
 
     let sleepGainedSinceLastHealthBoost = 0;
-    const SLEEP_DEPLETION_SEC = 900;          
-    const HUNGER_AWAKE_DEPLETION_SEC = 300;   
-    const HYGIENE_DEPLETION_SEC = 1800;      
-    const HEALTH_DAMAGE_SEC = 120;
+    // Tempi realistici (secondi reali): il personaggio vive in tempo reale, come un Tamagotchi
+    const SLEEP_DEPLETION_SEC = 86400;        // sonno: da 100% a 0% in 24 ore da sveglio
+    const SLEEP_RECOVERY_SEC = 28800;         // dormire: da 0% a 100% in 8 ore
+    const HUNGER_AWAKE_DEPLETION_SEC = 86400; // fame: 24 ore (2 pasti da +50% al giorno)
+    const HUNGER_SLEEP_DEPLETION_SEC = 172800; // mentre dorme la fame cala la metà
+    const HYGIENE_DEPLETION_SEC = 86400;    // igiene: 24 ore (≈ 2 docce al giorno)
+    const HEALTH_DAMAGE_SEC = 172800;    // salute: con un bisogno a zero scende in 48 ore (bisogni a zero dopo 24 h → morte dopo 72 h di abbandono)
 
     let hasFoodInInventory = false;
     let foodIsCooked = false;
@@ -669,12 +709,12 @@
     let gameStarted = false;
     let currentRoomIdx = null;
     let gameMinutes = 8 * 60;
-    const GAME_MINUTES_PER_SEC = 1; // 1 secondo reale = 1 minuto di gioco (un giorno dura 24 minuti)
+    const GAME_MINUTES_PER_SEC = 1 / 60; // orologio di gioco in tempo reale (prima 1 s reale = 1 min di gioco)
     let activeShift = null;
     const SHIFT_SECONDS = 25;
     let mySay = '', mySayT = 0;
     let dialogResolve = null;
-    const HAPPINESS_DEPLETION_SEC = 1500;
+    const HAPPINESS_DEPLETION_SEC = 172800; // felicità: 48 ore
     let lastMoneyForSound = null, lastEnvForSound = null;
     let relaxCooldownUntil = 0;
     let stats = { showers: 0, meals: 0, shifts: 0, deposits: 0, chats: 0, relax: 0 };
@@ -700,7 +740,20 @@
           o.start(t0 + start);
           o.stop(t0 + start + dur + 0.02);
         };
+        const noise = (start, dur, vol, freq) => {
+          const n = Math.floor(audioCtx.sampleRate * dur), buf = audioCtx.createBuffer(1, n, audioCtx.sampleRate), d = buf.getChannelData(0);
+          for (let i = 0; i < n; i++) d[i] = Math.random() * 2 - 1;
+          const src = audioCtx.createBufferSource(); src.buffer = buf;
+          const f = audioCtx.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = freq;
+          const g = audioCtx.createGain();
+          g.gain.setValueAtTime(0.001, t0 + start); g.gain.linearRampToValueAtTime(vol, t0 + start + 0.25);
+          g.gain.setValueAtTime(vol, t0 + start + dur - 0.5); g.gain.linearRampToValueAtTime(0.001, t0 + start + dur);
+          src.connect(f); f.connect(g); g.connect(audioCtx.destination); src.start(t0 + start);
+        };
         const sounds = {
+          shower: () => noise(0, 3.6, 0.06, 3200),
+          sleep: () => [523, 440, 349].forEach((fr, i) => tone(fr, i * 0.22, 0.4, 'sine', 0.06)),
+          wake: () => [349, 440, 523].forEach((fr, i) => tone(fr, i * 0.12, 0.25, 'triangle', 0.06)),
           coin: () => { tone(988, 0, 0.08, 'square', 0.05); tone(1319, 0.08, 0.25, 'square', 0.05); },
           success: () => { tone(523, 0, 0.12); tone(659, 0.1, 0.12); tone(784, 0.2, 0.25); },
           error: () => { tone(220, 0, 0.15, 'sawtooth', 0.06); tone(160, 0.15, 0.2, 'sawtooth', 0.06); },
@@ -713,8 +766,175 @@
       } catch (e) {}
     }
 
+    // ---------- Colonna sonora 8 bit (generata al volo con Web Audio, nessun file) ----------
+    // Ogni ambiente ha il suo brano: casa, parco, bar, discoteca, cimitero, lavoro. Canali: melodia (onda pulsata), arpeggio, basso (triangolare), batteria (rumore).
+    let musicOn = localStorage.getItem(LS_PREFIX + 'sims_music') !== 'off';
+    const MUSIC = { cur: null, step: 0, next: 0, gain: null, vol: -1, noise: null, waves: {}, ctxRef: null };
+    const NOTE_IX = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
+    const midiOf = (n) => { const m = /^([A-G])([b#]?)(\d)$/.exec(n); return 12 * (Number(m[3]) + 1) + NOTE_IX[m[1]] + (m[2] === '#' ? 1 : m[2] === 'b' ? -1 : 0); };
+    const midiHz = (m) => 440 * Math.pow(2, (m - 69) / 12);
+    function chordNotes(name) {
+      const m = /^([A-G])([b#]?)(m|o)?$/.exec(name);
+      let r = NOTE_IX[m[1]] + (m[2] === '#' ? 1 : m[2] === 'b' ? -1 : 0);
+      if (r > 4) r -= 12;
+      r += 48;
+      return [r, m[3] ? r + 3 : r + 4, m[3] === 'o' ? r + 6 : r + 7];
+    }
+    const MUSIC_TRACKS = {
+      home: {   // casa: allegro e tranquillo
+        bpm: 104, lead: 'p25', chords: 'C Am F G C Am Dm G',
+        melody: ['E5 . G5 E5 C5 . E5 .', 'A4 . C5 E5 A5 . G5 .', 'A5 . F5 . A4 C5 F5 .', 'G5 . D5 . B4 . D5 .', 'E5 . G5 E5 C6 . G5 .', 'A5 . G5 E5 C5 . A4 .', 'F5 . A5 F5 D5 . F5 A5', 'G5 . F5 D5 B4 . G4 .'],
+        bass: 'R . F . R . F .', drums: 'k . h . s . h .'
+      },
+      outdoor: {   // parco e viaggi: saltellante
+        bpm: 124, lead: 'square', chords: 'G Em C D G Em Am D',
+        melody: ['B5 . D6 B5 G5 . B5 .', 'E5 . G5 B5 E6 . D6 .', 'C6 . B5 G5 E5 . G5 .', 'A5 . F#5 A5 D6 . . .', 'D6 . B5 G5 B5 . D6 .', 'E6 . D6 B5 G5 . E5 .', 'C6 . A5 E5 A5 . C6 E6', 'D6 . C6 A5 F#5 A5 D6 .'],
+        bass: 'R . R F R . R F', drums: 'k h s h k h s h'
+      },
+      bar: {   // bar: un po' blues
+        bpm: 92, lead: 'p25', chords: 'Am Dm E Am F Dm E Am',
+        melody: ['E5 . C5 A4 C5 . E5 .', 'D5 . F5 A5 F5 . D5 .', 'E5 . G#5 B5 G#5 . E5 .', 'A5 . . E5 C5 . A4 .', 'C5 . F5 A5 F5 . C5 .', 'D5 . F5 D5 A4 . D5 .', 'G#4 . B4 E5 G#5 . B5 .', 'A5 . E5 . A4 . . .'],
+        bass: 'R . . R . F . R', drums: 'k . h . s . h h'
+      },
+      disco: {   // discoteca: cassa dritta
+        bpm: 128, lead: 'square', chords: 'Am F C G Am F Dm E',
+        melody: ['A5 C6 E6 C6 A5 C6 E6 C6', 'A5 C6 F6 C6 A5 C6 F6 C6', 'G5 C6 E6 C6 G5 C6 E6 G6', 'G5 B5 D6 B5 G5 B5 D6 B5', 'E6 . E6 D6 C6 . A5 .', 'F6 . F6 E6 C6 . A5 .', 'D6 . F6 A6 F6 . D6 .', 'E6 . G#5 B5 E6 . . .'],
+        bass: 'R r R r R r R r', drums: 'kh h k sh kh h k sh', arp: [0, 1, 2, 1, 0, 1, 2, 1]
+      },
+      grave: {   // cimitero: lento e malinconico
+        bpm: 64, lead: 'p25', chords: 'Dm Bb Gm A Dm Bb Gm A',
+        melody: ['D5 . . . F5 . A5 .', 'Bb5 . . . A5 . F5 .', 'G5 . . . Bb5 . . .', 'A5 . . . C#6 . E6 .', 'D6 . . . A5 . F5 .', 'D5 . . . F5 . . .', 'G5 . Bb5 . D6 . . .', 'C#6 . . . . . . .'],
+        bass: 'R . . . . . . .', drums: '. . . . . . . .', arp: [0, null, 1, null, 2, null, 1, null]
+      },
+      work: {   // lavoro: ritmo sostenuto
+        bpm: 132, lead: 'square', chords: 'Em C G D Em C G D',
+        melody: ['B5 . B5 G5 E5 . G5 .', 'C6 . C6 G5 E5 . G5 .', 'D6 . D6 B5 G5 . B5 .', 'A5 . A5 F#5 D5 . F#5 .', 'E6 . D6 B5 G5 . B5 .', 'E6 . D6 C6 G5 . E5 .', 'D6 . B5 G5 B5 . D6 .', 'F#6 . E6 D6 A5 . . .'],
+        bass: 'R R F R R R F R', drums: 'k h s h k k s h'
+      }
+    };
+    function musicParse(tr) {
+      if (tr.L) return tr;
+      tr.L = tr.melody.join(' ').split(' ');
+      tr.C = tr.chords.split(' ').map(chordNotes);
+      tr.B = tr.bass.split(' ');
+      tr.D = tr.drums.split(' ');
+      tr.arpPat = tr.arp || [0, 1, 2, 1, 0, 1, 2, 1];
+      return tr;
+    }
+    function musicFor(env) {
+      if (env === 'bar') return 'bar';
+      if (env === 'discoteca') return 'disco';
+      if (env === 'CIMITERO') return 'grave';
+      if (env === 'passeggiata' || env === 'viaggio') return 'outdoor';
+      if (typeof env === 'string' && env.indexOf('lavoro_') === 0) return 'work';
+      return 'home';
+    }
+    function musicWave(kind) {   // onda pulsata con ciclo di lavoro 12,5% / 25%
+      if (MUSIC.waves[kind] && MUSIC.ctxRef === audioCtx) return MUSIC.waves[kind];
+      if (MUSIC.ctxRef !== audioCtx) { MUSIC.waves = {}; MUSIC.ctxRef = audioCtx; MUSIC.gain = null; MUSIC.noise = null; MUSIC.vol = -1; }
+      const duty = kind === 'p125' ? 0.125 : 0.25, N = 32, re = new Float32Array(N + 1), im = new Float32Array(N + 1);
+      for (let n = 1; n <= N; n++) re[n] = (2 / (n * Math.PI)) * Math.sin(n * Math.PI * duty);
+      return (MUSIC.waves[kind] = audioCtx.createPeriodicWave(re, im));
+    }
+    function musicBus() {
+      musicWave('p25');   // controlla che il contesto audio sia lo stesso
+      if (!MUSIC.gain) { MUSIC.gain = audioCtx.createGain(); MUSIC.gain.gain.value = 0; MUSIC.gain.connect(audioCtx.destination); MUSIC.vol = 0; }
+      return MUSIC.gain;
+    }
+    function mNote(freq, t, dur, vol, wave) {
+      const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+      if (wave === 'triangle' || wave === 'square') o.type = wave; else o.setPeriodicWave(musicWave(wave));
+      o.frequency.setValueAtTime(freq, t);
+      g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(vol, t + 0.01);
+      g.gain.setValueAtTime(vol * 0.75, t + Math.max(0.02, dur * 0.6)); g.gain.linearRampToValueAtTime(0.0001, t + dur);
+      o.connect(g); g.connect(musicBus()); o.start(t); o.stop(t + dur + 0.02);
+    }
+    function mDrum(kind, t) {
+      const bus = musicBus();
+      if (kind === 'k') {
+        const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+        o.frequency.setValueAtTime(150, t); o.frequency.exponentialRampToValueAtTime(42, t + 0.12);
+        g.gain.setValueAtTime(0.32, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
+        o.connect(g); g.connect(bus); o.start(t); o.stop(t + 0.17);
+        return;
+      }
+      if (!MUSIC.noise) { const n = audioCtx.sampleRate | 0, b = audioCtx.createBuffer(1, n, audioCtx.sampleRate), d = b.getChannelData(0); for (let i = 0; i < n; i++) d[i] = Math.random() * 2 - 1; MUSIC.noise = b; }
+      const src = audioCtx.createBufferSource(); src.buffer = MUSIC.noise;
+      const f = audioCtx.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = kind === 's' ? 1400 : 7000;
+      const g = audioCtx.createGain(), dur = kind === 's' ? 0.13 : 0.04, vol = kind === 's' ? 0.16 : 0.06;
+      g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+      src.connect(f); f.connect(g); g.connect(bus); src.start(t); src.stop(t + dur + 0.02);
+    }
+    function musicStep(tr, s, t, d) {
+      const bar = Math.floor(s / 8) % tr.C.length, pos = s % 8, ch = tr.C[bar], N = tr.L.length;
+      const tok = tr.L[s];
+      if (tok && tok !== '.') {
+        let n = 1; while (tr.L[(s + n) % N] === '.' && n < 16) n++;
+        mNote(midiHz(midiOf(tok)), t, d * n * 0.92, 0.075, tr.lead);
+      }
+      const ai = tr.arpPat[pos];
+      if (ai !== null && ai !== undefined) mNote(midiHz(ch[ai] + 12), t, d * 0.8, 0.03, 'p125');
+      const bt = tr.B[pos];
+      if (bt && bt !== '.') {
+        let n = 1; while (pos + n < 8 && tr.B[pos + n] === '.') n++;
+        const m = bt === 'F' ? ch[2] - 12 : bt === 'r' ? ch[0] : ch[0] - 12;
+        mNote(midiHz(m), t, d * n * 0.9, 0.11, 'triangle');
+      }
+      const dr = tr.D[pos] || '.';
+      if (dr.indexOf('k') >= 0) mDrum('k', t);
+      if (dr.indexOf('s') >= 0) mDrum('s', t);
+      if (dr.indexOf('h') >= 0) mDrum('h', t);
+    }
+    function musicWant() {
+      if (!musicOn || isDead) return null;
+      return musicFor(activeEnvironment);
+    }
+    function musicTick() {
+      try {
+        if (!audioCtx || audioCtx.state !== 'running') return;
+        const want = musicWant(), bus = musicBus(), now = audioCtx.currentTime;
+        const target = want ? (isSleeping ? 0.18 : 0.55) : 0;
+        if (MUSIC.vol !== target) { bus.gain.cancelScheduledValues(now); bus.gain.setTargetAtTime(target, now, 0.15); MUSIC.vol = target; }
+        if (want !== MUSIC.cur) { MUSIC.cur = want; MUSIC.step = 0; MUSIC.next = now + 0.08; }
+        if (!want) return;
+        const tr = musicParse(MUSIC_TRACKS[want]), d = 60 / tr.bpm / 2;
+        if (MUSIC.next < now - 0.2) MUSIC.next = now + 0.05;      // dopo una pausa non recuperare le note perse
+        while (MUSIC.next < now + 0.3) {
+          musicStep(tr, MUSIC.step, MUSIC.next, d);
+          MUSIC.next += d; MUSIC.step = (MUSIC.step + 1) % (tr.C.length * 8);
+        }
+      } catch (e) {}
+    }
+    function musicUnlock() {
+      if (!musicOn) return;
+      try {
+        audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+      } catch (e) {}
+    }
+    function updateMusicButton() {
+      const b = document.getElementById('btn-music'); if (!b) return;
+      b.style.opacity = musicOn ? '1' : '0.4';
+      b.title = musicOn ? 'Musica: accesa (tocca per spegnerla)' : 'Musica: spenta (tocca per accenderla)';
+    }
+    function toggleMusic() {
+      musicOn = !musicOn;
+      try { localStorage.setItem(LS_PREFIX + 'sims_music', musicOn ? 'on' : 'off'); } catch (e) {}
+      updateMusicButton();
+      if (musicOn) musicUnlock();
+    }
+    ['pointerdown', 'keydown', 'touchstart'].forEach(ev => window.addEventListener(ev, musicUnlock, { passive: true }));
+    document.addEventListener('visibilitychange', () => {
+      try {
+        if (!audioCtx) return;
+        if (document.hidden) audioCtx.suspend(); else if (musicOn || soundOn) audioCtx.resume();
+      } catch (e) {}
+    });
+    setInterval(musicTick, 60);
+
     function updateSoundButton() {
       document.getElementById('btn-sound').textContent = soundOn ? '🔊' : '🔇';
+      updateMusicButton();
     }
 
     function toggleSound() {
@@ -742,22 +962,8 @@
     }
 
     // ---------- Missioni ----------
-    const MISSIONS = [
-      { text: 'Fai una doccia in bagno 🚿', reward: 10, check: () => stats.showers > 0 },
-      { text: 'Prendi cibo dal frigo, cucinalo e mangia 🍳', reward: 15, check: () => stats.meals > 0 },
-      { text: 'Completa un turno di lavoro 💼', reward: 20, check: () => stats.shifts > 0 },
-      { text: 'Proteggi la cassaforte con un PIN 🔐', reward: 10, check: () => hasSetSafePin, skip: () => !hasRoom() },
-      { text: 'Deposita dei soldi in cassaforte 💰', reward: 10, check: () => stats.deposits > 0, skip: () => true },
-      { text: 'Compra un mobile al negozio 🛋️', reward: 25, check: () => Object.keys(ownedFurniture).length > 0 },
-      { text: 'Compra un vestito al Negozio di Vestiti o dal PC 👕', reward: 20, check: () => Object.keys(ownedItems).length > 0 },
-      { text: 'Cambia look dall\'armadio della tua stanza 🚪', reward: 10, check: () => (stats.outfits || 0) > 0 },
-      { text: 'Scrivi un messaggio in chat 💬', reward: 5, check: () => stats.chats > 0 },
-      { text: 'Guarda la TV o rilassati sul divano 📺', reward: 15, check: () => stats.relax > 0 },
-      { text: 'Dormi finché il sonno arriva all\'80% 😴', reward: 15, check: () => isSleeping && sleepLevel >= 80 },
-      { text: 'Compra un mobile di lusso ✨', reward: 50, check: () => Object.keys(ownedFurniture).some(id => (furnitureCatalog.find(f => f.id === id) || {}).isLuxury) },
-      { text: 'Completa 10 turni di lavoro 💪', reward: 100, check: () => stats.shifts >= 10 },
-      { text: 'Accumula 500 € in cassaforte 🤑', reward: 100, check: () => getWealth() >= 500 }
-    ];
+    // Missioni: tutte eliminate, in attesa di quelle nuove (struttura: { text, reward, check, skip? })
+    const MISSIONS = [];
 
     function getWealth() {
       return moneyLevel;
@@ -765,7 +971,9 @@
 
     function updateMissionHud() {
       const m = MISSIONS[missionIndex];
-      document.getElementById('mission-text').textContent = m ? `📋 ${m.text} (+${m.reward} €)` : '🏆 Tutte le missioni completate!';
+      const el = document.getElementById('mission-text');
+      el.style.display = MISSIONS.length ? '' : 'none';   // senza missioni il riquadro sparisce
+      el.textContent = m ? `📋 ${m.text} (+${m.reward} €)` : '🏆 Tutte le missioni completate!';
     }
 
     function checkMissions() {
@@ -795,20 +1003,47 @@
     }
 
     // ---------- Classifica ----------
-    async function openLeaderboard() {
+    function fmtDuration(ms) {
+      const m = Math.max(0, Math.floor(ms / 60000)), h = Math.floor(m / 60), d = Math.floor(h / 24);
+      if (d >= 2) return `${d} g ${h % 24} h`;
+      if (h >= 1) return `${h} h ${m % 60} min`;
+      return `${m} min`;
+    }
+
+    async function openLeaderboard(mode = 'wealth') {
       saveGame(true);
-      let list = [];
+      let lb = {}, gy = {};
       try {
         const snap = await withTimeout(db.ref('sims_leaderboard').once('value'), 5000);
-        const val = (snap && snap.val()) || {};
-        list = Object.keys(val).map(id => Object.assign({ id }, val[id])).filter(p => typeof p.wealth === 'number');
+        lb = (snap && snap.val()) || {};
       } catch (e) {}
-      list.sort((a, b) => b.wealth - a.wealth);
+      if (mode === 'lived') {
+        try { gy = ((await withTimeout(db.ref('sims_graveyard').once('value'), 5000)) || { val: () => ({}) }).val() || {}; } catch (e) {}
+      }
       const medals = ['🥇', '🥈', '🥉'];
-      const myPos = list.findIndex(p => p.id === myPlayerId);
-      let text = list.slice(0, 10).map((p, i) => `${medals[i] || (i + 1) + '.'} ${p.name}${p.id === myPlayerId ? ' (tu)' : ''} — ${p.wealth} €`).join('\n') || 'Ancora nessun giocatore in classifica.';
-      if (myPos >= 10) text += `\n…\n${myPos + 1}. ${list[myPos].name} (tu) — ${list[myPos].wealth} €`;
-      openDialog({ title: '🏆 Classifica dei più ricchi', text: text + '\n\nConta i soldi in cassaforte.', buttons: [{ label: 'Chiudi', value: null }] });
+      let list, text, title;
+      if (mode === 'lived') {
+        const now = Date.now();
+        list = Object.keys(lb).filter(id => lb[id].bornAt).map(id => ({ id, name: lb[id].name, ms: now - lb[id].bornAt, dead: false }))
+          .concat(Object.keys(gy).filter(id => typeof gy[id].lived === 'number').map(id => ({ id, name: gy[id].name, ms: gy[id].lived, dead: true })));
+        list.sort((a, b) => b.ms - a.ms);
+        const line = (p, i) => `${medals[i] || (i + 1) + '.'} ${p.name}${p.id === myPlayerId ? ' (tu)' : ''} — ${fmtDuration(p.ms)}${p.dead ? ' 🪦' : ''}`;
+        text = list.slice(0, 10).map(line).join('\n') || 'Ancora nessuno in classifica.';
+        const myPos = list.findIndex(p => p.id === myPlayerId);
+        if (myPos >= 10) text += `\n…\n${myPos + 1}. ${list[myPos].name} (tu) — ${fmtDuration(list[myPos].ms)}`;
+        text += '\n\nTempo di vita del personaggio. I vivi crescono ogni ora, 🪦 = morto.';
+        title = '⏳ Classifica dei più longevi';
+      } else {
+        list = Object.keys(lb).map(id => Object.assign({ id }, lb[id])).filter(p => typeof p.wealth === 'number');
+        list.sort((a, b) => b.wealth - a.wealth);
+        const myPos = list.findIndex(p => p.id === myPlayerId);
+        text = list.slice(0, 10).map((p, i) => `${medals[i] || (i + 1) + '.'} ${p.name}${p.id === myPlayerId ? ' (tu)' : ''} — ${p.wealth} €`).join('\n') || 'Ancora nessun giocatore in classifica.';
+        if (myPos >= 10) text += `\n…\n${myPos + 1}. ${list[myPos].name} (tu) — ${list[myPos].wealth} €`;
+        text += '\n\nConta i soldi in cassaforte.';
+        title = '🏆 Classifica dei più ricchi';
+      }
+      const res = await openDialog({ title, text, buttons: [{ label: 'Chiudi', value: null }, { label: mode === 'lived' ? '💰 Più ricchi' : '⏳ Più longevi', value: 'toggle', color: '#e67e22' }] });
+      if (res.action === 'toggle') openLeaderboard(mode === 'lived' ? 'wealth' : 'lived');
     }
 
     function toast(msg, ms = 2600, sound = null) {
@@ -877,6 +1112,13 @@
         furniturePos, gameMinutes: Math.round(gameMinutes), stats, missionIndex
       };
       if (bodyChosen) data.body = bodyString(currentBody());
+      data.missionSet = 3;
+      data.sleeping = !!isSleeping;
+      if (drugStock > 0) data.drugStock = drugStock;
+      if (drug.active) data.drug = { doses: drug.doses, lastDose: drug.lastDose, endAt: drug.endAt, dAtDose: Math.round(drug.dAtDose * 10) / 10, crisisAt: drug.crisisAt || 0 };
+      if (bornAt) data.bornAt = bornAt;
+      if (epitaph) data.epitaph = epitaph;
+      if (isDead) { data.dead = true; data.deadAt = deadAt; }
       return data;
     }
 
@@ -890,10 +1132,15 @@
       // Vecchi salvataggi: i soldi in tasca verranno spostati in cassaforte
       if (!s.vaultOnly) legacyPocketMoney = Math.max(0, num(s.moneyLevel, 0));
       gameMinutes = num(s.gameMinutes, gameMinutes);
+      bornAt = num(s.bornAt, 0);
+      drugStock = Math.max(0, Math.floor(num(s.drugStock, 0)));
+      drug = (s.drug && num(s.drug.endAt, 0) > 0) ? { active: true, doses: num(s.drug.doses, 1), lastDose: num(s.drug.lastDose, 0), endAt: num(s.drug.endAt, 0), dAtDose: num(s.drug.dAtDose, 0), crisisAt: num(s.drug.crisisAt, 0) } : { active: false, doses: 0, lastDose: 0, endAt: 0, dAtDose: 0, crisisAt: 0 };
+      epitaph = typeof s.epitaph === 'string' ? s.epitaph.slice(0, 60) : '';
       const sb = parseBody(s.body);
       if (sb) { myBody = sb; bodyChosen = true; }
       stats = Object.assign(stats, s.stats || {});
       missionIndex = num(s.missionIndex, 0);
+      if ((s.missionSet || 1) < 3) missionIndex = 0; // missioni eliminate: i progressi vecchi non valgono per le nuove
       ownedItems = s.ownedItems || {};
       ownedFurniture = s.ownedFurniture || {};
       if (s.equipped) {
@@ -918,7 +1165,7 @@
     // Salvataggio: ogni 3 s sul dispositivo, ogni 15 s (o subito se cambiano i soldi) sul server
     let lastCloudSaveAt = 0, lastCloudMoney = null;
     function saveGame(forceCloud = false) {
-      if (!saveReady) return;
+      if (!saveReady || isDead) return;
       const data = buildSaveData();
       try { localStorage.setItem(SAVE_KEY, JSON.stringify(data)); } catch (e) {}
       const now = Date.now();
@@ -926,9 +1173,44 @@
         lastCloudSaveAt = now;
         lastCloudMoney = moneyLevel;
         db.ref('sims_saves/' + myPlayerId).set(data);
-        db.ref('sims_leaderboard/' + myPlayerId).set({ name: myData.nick, wealth: getWealth(), shifts: stats.shifts || 0, t: now });
+        db.ref('sims_leaderboard/' + myPlayerId).set({ name: myData.nick, wealth: getWealth(), shifts: stats.shifts || 0, t: now, bornAt: bornAt || null });
       }
       publishRoomLayout();
+    }
+
+    // Il tempo scorre anche a gioco chiuso (nessun limite di ore): ricalcolo i bisogni per il tempo di assenza.
+    // Se il gioco era stato chiuso mentre il personaggio dormiva, continua a dormire finché il sonno non arriva a 100%.
+    function catchUpOffline(s) {
+      const away = (Date.now() - (s.savedAt || 0)) / 1000;
+      if (!s.savedAt || !isFinite(away) || away < 60) return;
+      const before = { sleep: sleepLevel, hunger: hungerLevel, hygiene: hygieneLevel, happy: happinessLevel, health: healthLevel };
+      const plantFactor = ownedFurniture.plant_lux ? 0.3 : ownedFurniture.plant_std ? 0.5 : 1;
+      const bedBoost = ownedFurniture.bed_lux ? 1.5 : 1;
+      let asleep = !!s.sleeping, left = away, fainted = false, vt = s.savedAt;
+      const STEP = 120;
+      while (left > 0 && !fainted) {
+        const d = Math.min(STEP, left); left -= d; vt += d * 1000;
+        if (asleep) {
+          sleepLevel = Math.min(100, sleepLevel + (d / SLEEP_RECOVERY_SEC) * 100 * bedBoost);
+          hungerLevel = Math.max(0, hungerLevel - (d / HUNGER_SLEEP_DEPLETION_SEC) * 100);
+          if (sleepLevel >= 100) asleep = false;
+        } else {
+          sleepLevel = Math.max(0, sleepLevel - (d / SLEEP_DEPLETION_SEC) * 100);
+          hungerLevel = Math.max(0, hungerLevel - (d / HUNGER_AWAKE_DEPLETION_SEC) * 100);
+        }
+        hygieneLevel = Math.max(0, hygieneLevel - (d / HYGIENE_DEPLETION_SEC) * 100 * (asleep ? 0.5 : 1));
+        happinessLevel = Math.max(0, happinessLevel - (d / HAPPINESS_DEPLETION_SEC) * 100 * plantFactor);
+        if (hungerLevel <= 0 || hygieneLevel <= 0 || sleepLevel <= 0) {
+          healthLevel = Math.max(0, healthLevel - (d / HEALTH_DAMAGE_SEC) * 100);
+          if (healthLevel <= 0) fainted = true;   // lo svenimento lo gestisce updateNeeds subito dopo
+        }
+        drugApply(vt, d);                           // dipendenza: la salute continua a calare anche a gioco chiuso
+        if (healthLevel <= 0) fainted = true;
+      }
+      gameMinutes += away * GAME_MINUTES_PER_SEC;
+      const h = away / 3600;
+      const txt = h >= 48 ? Math.floor(h / 24) + ' giorni' : h >= 1 ? (Math.round(h * 10) / 10) + ' ore' : Math.round(away / 60) + ' minuti';
+      if (!fainted) setTimeout(() => toast(`⏳ Sei stato via ${txt}: il tempo è passato anche per il tuo personaggio` + (s.sleeping ? ' (dormiva)' : ''), 6000), 2500);
     }
 
     async function loadGame() {
@@ -941,7 +1223,10 @@
 
       let best = local;
       if (cloud && (!best || (cloud.savedAt || 0) > (best.savedAt || 0))) best = cloud;
-      if (best) applySave(best);
+      const deadSave = [local, cloud].find(x => x && x.dead);
+      if (deadSave) { isDead = true; deadAt = deadSave.deadAt || 0; applySave(deadSave); }
+      else if (best) { applySave(best); catchUpOffline(best); }
+      if (!bornAt && !isDead) bornAt = Date.now();   // nascita del personaggio (salvataggi vecchi: da ora)
 
       // Arrivo da un altro dispositivo con il codice: riprendo anche il nome
       if (localStorage.getItem(LS_PREFIX + 'sims_adopt_nick') && cloud && cloud.nick) {
@@ -1058,6 +1343,7 @@
           outfit: resolveLook(equipped).top.color,
           look: lookString(),
           body: bodyString(currentBody()),
+          act: showerAnim ? 'shower' : (isSleeping ? 'sleep' : ''),
           say: mySay,
           sayT: mySayT
         };
@@ -1074,6 +1360,7 @@
       db.ref('sims_online_players').on('value', (snapshot) => {
         onlinePlayers = snapshot.val() || {};
       });
+      startInbox();
     }
 
     function watchGameVersion() {
@@ -1147,6 +1434,30 @@
       }
     }
 
+    // ---------------------------------------------------------------- GUIDA INIZIALE (come non morire)
+    const INTRO_PAGES = [
+      { title: '🏠 Benvenuto in Casa dolce casa', text: 'Il tuo personaggio vive in tempo reale, come un Tamagotchi: fame, sonno, igiene e felicità calano col passare delle ore, anche quando il gioco è chiuso.\n\nTieni d\'occhio le barre in alto a sinistra.' },
+      { title: '☠️ Come non morire', text: 'Se Fame, Sonno o Igiene arrivano a 0%, la Salute inizia a scendere. Se la Salute arriva a 0% il personaggio muore per sempre e non può più giocare.\n\nSe lo abbandoni del tutto, dopo circa 3 giorni è finita. Prenditene cura ogni giorno!\n\n⚠️ Al bar c\'è chi vende droga: crea dipendenza e fa crollare la salute. Meglio starne alla larga.\n\n👥 Vicino a un altro giocatore compaiono i tasti per dialogare, fare complimenti, insultare, picchiare, dare cibo cucinato, soldi o droga.' },
+      { title: '🛠️ Cosa fare ogni giorno', text: '🍽️ Fame: in cucina prendi il cibo dal frigo (5 €), cucinalo sul fornello e mangia (+50%). Circa 2 pasti al giorno.\n\n😴 Sonno: nella tua stanza coricati sul letto. Per riposare bene servono circa 8 ore: puoi lasciarlo a letto di notte.\n\n🚿 Igiene: fai la doccia in bagno, circa 2 volte al giorno (il lavandino dà solo +20%).\n\n😊 Felicità: guarda la TV, riposa sul divano, fai una passeggiata o vai al bar o balla in discoteca (ma ti toglie sonno).' },
+      { title: '💼 Soldi e consigli', text: 'Per guadagnare vai al lavoro: nel salone esci di casa e apri "Lavoro". Porta gli oggetti ai punti giusti per fare bene il turno.\n\nI soldi stanno nella cassaforte della tua stanza: proteggila con un PIN.\n\n🔔 Attiva le notifiche (pulsante a destra) per essere avvisato quando il personaggio sta male.\n\n❓ Puoi rileggere questa guida in ogni momento dal pulsante a destra.' }
+    ];
+    async function showIntro(force = false) {
+      const KEY = LS_PREFIX + 'sims_intro_v2';
+      try { if (!force && localStorage.getItem(KEY) === 'seen') return; } catch (e) {}
+      let i = 0;
+      while (i < INTRO_PAGES.length) {
+        const pg = INTRO_PAGES[i], last = i === INTRO_PAGES.length - 1;
+        const res = await openDialog({
+          title: `${pg.title} (${i + 1}/${INTRO_PAGES.length})`, text: pg.text,
+          buttons: last ? [{ label: 'Ho capito, si parte! ✅', value: 'done', color: '#2ed573' }]
+                        : [{ label: 'Salta', value: 'skip', color: '#57606f' }, { label: 'Avanti ▶', value: 'next', color: '#3498db' }]
+        });
+        if (res.action === 'skip' || res.action === null) break;
+        i++;
+      }
+      try { localStorage.setItem(KEY, 'seen'); } catch (e) {}
+    }
+
     async function openProfile() {
       const res = await openDialog({
         title: `👤 ${myData.nick}`,
@@ -1154,9 +1465,10 @@
               (hasRoom() ? `\n\nLa tua stanza: n° ${myAssignedRoomIdx + 1} (Appartamento ${aptOfRoom(myAssignedRoomIdx) + 1})` : '') +
               (OFFLINE ? '\n\n🧪 Sei in modalità prova: niente viene salvato sul server.' : ''),
         input: { placeholder: 'Codice di un altro dispositivo…', maxLength: 30 },
-        buttons: [{ label: 'Chiudi', value: null, color: '#57606f' }, { label: '🎨 Aspetto', value: 'look', color: '#8e44ad' }, { label: 'Usa codice', value: 'switch', color: '#e67e22' }]
+        buttons: [{ label: 'Chiudi', value: null, color: '#57606f' }, { label: '🎨 Aspetto', value: 'look', color: '#8e44ad' }, { label: '🪦 Epitaffio', value: 'epitaph', color: '#636e72' }, { label: 'Usa codice', value: 'switch', color: '#e67e22' }]
       });
       if (res.action === 'look') openCharacterCreator(false);
+      if (res.action === 'epitaph') openEpitaph();
       if (res.action === 'switch') switchToCode(res.value);
     }
 
@@ -1188,6 +1500,13 @@
       { name: "Bot_Anna", env: "passeggiata", x: -80, y: 50, vx: 30, vy: 15 },
       { name: "Bot_Luca", env: "passeggiata", x: 60, y: -40, vx: -25, vy: 20 },
       { name: "Bot_Sara", env: "bar", x: -50, y: -20, vx: 20, vy: -10 },
+      { name: "Spacciatore 🕴️", env: "bar", x: 140, y: -35, vx: 0, vy: 0, dealer: true },
+      { name: "DJ Max 🎧", env: "discoteca", x: 0, y: -165, vx: 0, vy: 0 },
+      { name: "Bot_Luca", env: "discoteca", x: -60, y: 20, vx: 25, vy: 18 },
+      { name: "Bot_Giada", env: "discoteca", x: 40, y: 50, vx: -22, vy: 15 },
+      { name: "Bot_Marco", env: "discoteca", x: 70, y: -30, vx: 18, vy: -24 },
+      { name: "Bot_Elena", env: "discoteca", x: -20, y: -50, vx: -15, vy: 22 },
+      { name: "Spacciatore 🕴️", env: "discoteca", x: 140, y: 70, vx: 0, vy: 0, dealer: true },
       { name: "Bot_Paolo", env: "viaggio", x: 20, y: 30, vx: -15, vy: -15 },
       { name: "Bot_Giulia", env: "lavoro_ufficio", x: -30, y: -30, vx: 25, vy: 15 }
     ];
@@ -1311,8 +1630,14 @@
 
       watchGameVersion();
       await loadGame();
+      if (isDead || healthLevel <= 0) {            // morto in una sessione precedente, oppure durante l'assenza
+        if (!isDead) await die(); else writeGrave();
+        showDeathScreen();
+        return;
+      }
       if (!bodyChosen) await openCharacterCreator(true);
       await claimRoom();
+      reapAbsentPlayers();
       currentApt = hasRoom() ? aptOfRoom(myAssignedRoomIdx) : 0;
       currentRoomTitle = saloonTitle();
 
@@ -1322,11 +1647,14 @@
         syncMyPinFromRoom();
       });
 
+      db.ref('sims_graveyard').on('value', snap => rebuildGraveyard(snap.val()));
       startPresence();
       updateSoundButton();
+      updateNotifyButton();
       checkMissions();
       setInterval(checkMissions, 1000);
 
+      showIntro();   // guida iniziale (solo la prima volta; sempre rileggibile dal ❓)
       setInterval(() => saveGame(false), 3000);
       setInterval(() => {
         if (hasRoom()) db.ref(`sims_rooms_state/${myAssignedRoomIdx}/lastSeen`).set(Date.now());
@@ -1334,6 +1662,101 @@
       window.addEventListener('beforeunload', () => saveGame(true));
       document.addEventListener('visibilitychange', () => { if (document.hidden) saveGame(true); });
     }
+
+    // ---------------------------------------------------------------- MORTE (definitiva)
+    let isDead = false, deadAt = 0, bornAt = 0, epitaph = '';
+    function writeGrave() {
+      const g = { name: myData.nick, deadAt: deadAt || Date.now(), days: Math.floor(gameMinutes / 1440) + 1 };
+      if (bornAt) g.lived = Math.max(0, g.deadAt - bornAt);
+      if (epitaph) g.epitaph = epitaph;
+      try { db.ref('sims_graveyard/' + myPlayerId).update(g); } catch (e) {}     // update: conserva i fiori già lasciati
+    }
+    // Giocatori assenti da troppo tempo: da pieni di energia si muore dopo 72 ore (24 h per azzerare i bisogni + 48 h di salute).
+    // Anche partendo addormentati si resiste al massimo ~76 ore: oltre 80 ore di assenza il personaggio è certamente morto.
+    const ABSENT_DEATH_MS = 80 * 3600 * 1000, ABSENT_DEATH_ESTIMATE_MS = 72 * 3600 * 1000;
+    async function reapAbsentPlayers() {
+      let reaped = [];
+      try {
+        await withTimeout(db.ref('sims_rooms_state').transaction(cur => {
+          const rooms = normalizeRooms(cur), now = Date.now();
+          reaped = [];
+          rooms.forEach((r, i) => {
+            if (r.ownerId && r.ownerId !== myPlayerId && r.lastSeen && now - r.lastSeen > ABSENT_DEATH_MS) {
+              reaped.push({ id: r.ownerId, name: r.owner || 'Sconosciuto', lastSeen: r.lastSeen });
+              rooms[i] = { id: r.id, vaultMoney: 0 };     // stanza libera e cassaforte azzerata
+            }
+          });
+          return rooms;
+        }), 8000);
+      } catch (e) { console.warn('Controllo assenti fallito', e); return; }
+      for (const g of reaped) {
+        try {
+          const sv = (await db.ref('sims_saves/' + g.id).once('value')).val() || {};
+          const gm = sv.gameMinutes;
+          const deadAt = g.lastSeen + ABSENT_DEATH_ESTIMATE_MS;
+          await db.ref('sims_saves/' + g.id + '/dead').set(true);
+          await db.ref('sims_saves/' + g.id + '/deadAt').set(deadAt);
+          const grave = { name: g.name, deadAt, days: Math.floor((Number(gm) || 0) / 1440) + 1 };
+          if (sv.bornAt) grave.lived = Math.max(0, deadAt - sv.bornAt);
+          if (sv.epitaph) grave.epitaph = String(sv.epitaph).slice(0, 60);
+          await db.ref('sims_graveyard/' + g.id).update(grave);
+          await db.ref('sims_leaderboard/' + g.id).remove();
+          await db.ref('sims_online_players/' + g.id).remove();
+        } catch (e) { console.warn('Registrazione morte fallita', g.id, e); }
+      }
+    }
+
+    async function die() {
+      if (isDead) return;
+      isDead = true; deadAt = Date.now();
+      isSleeping = false; activeShift = null; showerAnim = null; mgStop();
+      const data = buildSaveData();               // contiene dead:true
+      try { localStorage.setItem(SAVE_KEY, JSON.stringify(data)); } catch (e) {}
+      try { db.ref('sims_saves/' + myPlayerId).set(data); } catch (e) {}
+      try { db.ref('sims_leaderboard/' + myPlayerId).remove(); } catch (e) {}
+      try { db.ref('sims_online_players/' + myPlayerId).remove(); } catch (e) {}
+      writeGrave();
+      // La stanza torna libera per un altro giocatore (cassaforte, PIN e arredi si perdono con il personaggio)
+      try {
+        await withTimeout(db.ref('sims_rooms_state').transaction(cur => {
+          const rooms = normalizeRooms(cur);
+          const i = rooms.findIndex(r => r.ownerId === myPlayerId);
+          if (i !== -1) rooms[i] = { id: rooms[i].id, vaultMoney: 0 };
+          return rooms;
+        }), 8000);
+      } catch (e) { console.warn('Liberazione stanza fallita', e); }
+      myAssignedRoomIdx = -1;
+      showDeathScreen();
+    }
+
+    function showDeathScreen() {
+      document.getElementById('needs-hud').classList.add('hidden');
+      document.getElementById('hud-actions').classList.add('hidden');
+      ['dialog-modal', 'creator-modal'].forEach(id => { const el = document.getElementById(id); if (el) el.classList.add('hidden'); });
+      let ov = document.getElementById('death-screen');
+      if (!ov) {
+        ov = document.createElement('div');
+        ov.id = 'death-screen';
+        ov.style.cssText = 'position:fixed;inset:0;z-index:9999;background:#0b0b10;color:#eee;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px;font-family:inherit';
+        document.body.appendChild(ov);
+      }
+      const days = Math.floor(gameMinutes / 1440) + 1;
+      const when = deadAt ? new Date(deadAt).toLocaleString('it-IT', { dateStyle: 'long', timeStyle: 'short' }) : '';
+      ov.innerHTML = '<div style="font-size:64px">🕯️</div>'
+        + '<h1 style="margin:12px 0 6px;font-size:28px">' + escapeHtmlSafe(myData.nick) + ' è morto</h1>'
+        + '<p style="max-width:380px;line-height:1.5;opacity:.85">La salute è arrivata a zero: il personaggio non ce l\'ha fatta. Ha vissuto fino al giorno ' + days + '.'
+        + (when ? '<br>' + when : '') + '</p>'
+        + '<p style="opacity:.6;font-size:13px">Questo personaggio non può più giocare.</p>'
+        + (OFFLINE ? '<button id="death-restart" style="margin-top:18px;padding:10px 18px;border-radius:10px;border:0;background:#e74c3c;color:#fff;font-size:15px;cursor:pointer">🧪 Ricomincia (solo modalità prova)</button>' : '');
+      const b = document.getElementById('death-restart');
+      if (b) b.onclick = () => {
+        try { localStorage.removeItem(SAVE_KEY); } catch (e) {}
+        try { db.ref('sims_saves/' + myPlayerId).set(null); } catch (e) {}
+        try { db.ref('sims_graveyard/' + myPlayerId).set(null); } catch (e) {}
+        location.reload();
+      };
+    }
+    function escapeHtmlSafe(t) { return String(t).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
 
     function faint() {
       const fee = Math.min(moneyLevel, 30);
@@ -1355,12 +1778,299 @@
       });
     }
 
+    // I bisogni seguono l'orologio reale (non i frame): continuano anche con la scheda in background,
+    // così un personaggio lasciato a dormire di notte si riposa davvero.
+    let lastNeedsWall = Date.now(), lastDangerToast = 0;
+    function tickNeeds() {
+      const n = Date.now();
+      let d = (n - lastNeedsWall) / 1000;
+      lastNeedsWall = n;
+      if (!isFinite(d) || d < 0) d = 0;
+      updateNeeds(Math.min(d, 12 * 3600));
+    }
+    setInterval(tickNeeds, 1000);
+
+    // ---------------------------------------------------------------- DIPENDENZA (spacciatore del bar)
+    // Comprare droga alza la dipendenza (+35% a dose). Finché l'indicatore c'è, la salute scende più in fretta anche a barra minima.
+    // A 100% inizia una crisi: forte perdita di salute per qualche ora, poi sempre meno. Dopo 1-5 giorni dall'ultima dose
+    // (tanti giorni quante dosi, massimo 5) l'indicatore sparisce.
+    const DRUG_PRICE = 30, DRUG_DOSE = 35, DRUG_EUPHORIA = 20;
+    const DRUG_BASE = 0.35;        // salute persa all'ora finché c'è dipendenza
+    const DRUG_PEAK = 2.5;         // extra all'ora durante la crisi
+    const DRUG_HIGH_H = 6, DRUG_TAPER_H = 18;   // ore di crisi piena, poi ore in cui l'extra cala fino a zero
+    let drug = { active: false, doses: 0, lastDose: 0, endAt: 0, dAtDose: 0, crisisAt: 0 };
+    const drugWindowMs = () => Math.min(5, Math.max(1, drug.doses)) * 24 * 3600 * 1000;
+    function drugLevel(t = Date.now()) {
+      if (!drug.active) return 0;
+      const decayMs = drugWindowMs() * 0.7;                     // la barra arriva al minimo al 70% del periodo
+      return Math.max(0, drug.dAtDose * (1 - (t - drug.lastDose) / decayMs));
+    }
+    function drugRate(t) {                                       // % di salute persa all'ora
+      let r = DRUG_BASE;
+      if (drug.crisisAt && t >= drug.crisisAt) {
+        const e = (t - drug.crisisAt) / 3600000;
+        if (e < DRUG_HIGH_H) r += DRUG_PEAK;
+        else if (e < DRUG_HIGH_H + DRUG_TAPER_H) r += DRUG_PEAK * (1 - (e - DRUG_HIGH_H) / DRUG_TAPER_H);
+      }
+      return r;
+    }
+    function drugApply(tNowMs, dtSec) {
+      if (!drug.active || dtSec <= 0) return;
+      let left = dtSec, t = tNowMs - dtSec * 1000;
+      while (left > 0 && drug.active) {
+        const d = Math.min(300, left);
+        const mid = t + d * 500;
+        if (mid >= drug.endAt) { drug = { active: false, doses: 0, lastDose: 0, endAt: 0, dAtDose: 0, crisisAt: 0 }; break; }
+        healthLevel = Math.max(0, healthLevel - drugRate(mid) * d / 3600);
+        t += d * 1000; left -= d;
+      }
+    }
+    function updateDrugHud() {
+      const row = document.getElementById('drug-row'); if (!row) return;
+      row.classList.toggle('hidden', !drug.active);
+      if (!drug.active) return;
+      const v = drugLevel(), crisis = drug.crisisAt && Date.now() >= drug.crisisAt && (Date.now() - drug.crisisAt) / 3600000 < DRUG_HIGH_H;
+      document.getElementById('drug-bar-fill').style.width = Math.round(v) + '%';
+      document.getElementById('drug-bar-fill').style.background = crisis ? '#ff4757' : '#a29bfe';
+      document.getElementById('drug-text').innerText = crisis ? Math.round(v) + '% ⚠️ crisi' : (v < 1 ? 'astinenza' : Math.round(v) + '%');
+    }
+    async function openDealer() {
+      const v = drugLevel();
+      const res = await openDialog({
+        title: '🕴️ Lo spacciatore',
+        text: `«Psst… hai l'aria di uno che vuole dimenticare i problemi.»\n\nUna dose costa ${DRUG_PRICE} €. Dà euforia subito (+${DRUG_EUPHORIA}% felicità), ma crea dipendenza: la salute scende più in fretta per giorni e, se la dipendenza arriva a 100%, è molto peggio. Più dosi compri, più dura.`
+          + (drug.active ? `\n\nDipendenza attuale: ${Math.round(v)}%.` : '') + (drugStock ? `\nDosi che hai con te: ${drugStock}.` : ''),
+        buttons: [{ label: 'Vai via', value: null, color: '#57606f' }, { label: `Compra da portare via (${DRUG_PRICE} €)`, value: 'stock', color: '#6c5ce7' }, { label: `Compra e assumi (${DRUG_PRICE} €)`, value: 'buy', color: '#8e44ad' }]
+      });
+      if (res.action !== 'buy' && res.action !== 'stock') return;
+      if (moneyLevel < DRUG_PRICE) { toast(`Non hai abbastanza soldi: servono ${DRUG_PRICE} € in cassaforte.`); return; }
+      moneyLevel -= DRUG_PRICE;
+      if (res.action === 'stock') { drugStock++; toast(`💊 Hai comprato una dose da portare via (ne hai ${drugStock}). Puoi regalarla a un altro giocatore.`, 4500); return; }
+      drugTake();
+    }
+    function drugTake() {
+      const now = Date.now();
+      const d = Math.min(100, drugLevel(now) + DRUG_DOSE);
+      drug.doses = (drug.active ? drug.doses : 0) + 1;
+      drug.active = true; drug.lastDose = now; drug.dAtDose = d; drug.endAt = now + drugWindowMs();
+      if (d >= 100) drug.crisisAt = now;                       // dipendenza a 100%: parte la crisi
+      happinessLevel = Math.min(100, happinessLevel + DRUG_EUPHORIA);
+      toast(d >= 100 ? '☠️ Dipendenza al 100%: la tua salute sta crollando!' : `💊 Hai assunto una dose… dipendenza ${Math.round(d)}%`, 4500);
+      updateDrugHud();
+    }
+    const discoMap = { dealer: { x: 140, y: 70, w: 20, h: 20, name: 'Spacciatore' } };
+    const barMap = { dealer: { x: 140, y: -35, w: 20, h: 20, name: 'Spacciatore' } };
+    const DISCO_LINES = ['Che musica! 🎶', 'Balliamo! 💃', 'Alza il volume! 🔊', 'Offri un drink? 🍸', 'Questa canzone è un mito!'];
+    const DEALER_LINES = ['Psst… vuoi qualcosa?', 'Prima dose, prezzo speciale…', 'Ho quello che ti serve.', 'Niente domande 🤫'];
+
+    // ---------------------------------------------------------------- INTERAZIONI TRA GIOCATORI
+    // Avvicinandoti a un altro giocatore compaiono dei tasti. Gli effetti sul destinatario viaggiano nel DB
+    // (sims_interactions/{idDestinatario}/{chiave}) e vengono applicati quando lui è in gioco.
+    let drugStock = 0;                                  // dosi comprate da portare via (per regalarle)
+    const SOC_RANGE = 70, SOC_CD_MS = 20000;
+    const SOC_MSG_TTL = 6 * 3600 * 1000;                // chiacchiere/insulti troppo vecchi non contano più
+    const socCd = {};
+    let frameNear = [], socKey = '', socTarget = null;
+    const SOC_ACTIONS = [
+      { id: 'talk',   label: '💬 Dialoga',      color: '#2e86de' },
+      { id: 'praise', label: '😍 Complimenti',  color: '#e84393' },
+      { id: 'insult', label: '🤬 Insulta',      color: '#6c5ce7' },
+      { id: 'punch',  label: '👊 Mena',         color: '#d63031' },
+      { id: 'food',   label: '🍽️ Dai cibo',     color: '#e67e22', show: () => foodIsCooked },
+      { id: 'money',  label: '💶 Regala soldi', color: '#27ae60', show: () => hasRoom() },
+      { id: 'drug',   label: () => `💊 Regala droga (${drugStock})`, color: '#8e44ad', show: () => drugStock > 0 }
+    ];
+    const socBusy = () => isDead || isSleeping || !!showerAnim || !!activeShift || MG.active || !saveReady;
+    function updateSocialPanel() {
+      const panel = document.getElementById('social-panel'); if (!panel) return;
+      frameNear.sort((a, b) => a.d - b.d);
+      const t = (!socBusy() && frameNear.length) ? frameNear[0] : null;
+      socTarget = t;
+      const acts = t ? SOC_ACTIONS.filter(a => !a.show || a.show()) : [];
+      const key = t ? t.id + '|' + acts.map(a => a.id).join(',') + '|' + drugStock : '';
+      if (key === socKey) return;
+      socKey = key;
+      panel.classList.toggle('hidden', !t);
+      if (!t) return;
+      document.getElementById('soc-title').textContent = '👥 ' + t.name;
+      const row = document.getElementById('soc-row'); row.innerHTML = '';
+      acts.forEach(a => {
+        const b = document.createElement('button'); b.type = 'button'; b.style.background = a.color;
+        b.textContent = typeof a.label === 'function' ? a.label() : a.label;
+        b.onclick = () => socDo(a.id);
+        row.appendChild(b);
+      });
+    }
+    function sendSocial(tid, msg) {
+      const key = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+      msg.from = myPlayerId; msg.fromName = myData.nick; msg.t = Date.now();
+      return db.ref(`sims_interactions/${tid}/${key}`).set(msg);
+    }
+    function saySocial(txt) { mySay = txt; mySayT = Date.now(); }
+    const pick = arr => arr[Math.floor(Math.random() * arr.length)];
+    async function socDo(act) {
+      const t = socTarget; if (!t || socBusy()) return;
+      if (['talk', 'praise', 'insult', 'punch'].includes(act)) {
+        const k = t.id + '|' + act, left = (socCd[k] || 0) + SOC_CD_MS - Date.now();
+        if (left > 0) { toast(`⏳ Aspetta ancora ${Math.ceil(left / 1000)} s`); return; }
+        socCd[k] = Date.now();
+      }
+      if (act === 'talk') {
+        happinessLevel = Math.min(100, happinessLevel + 4); healthLevel = Math.min(100, healthLevel + 2); sleepLevel = Math.max(0, sleepLevel - 3);
+        saySocial(pick(['Come va oggi? 😊', 'Ti racconto una cosa…', 'Che bella giornata!', 'Hai sentito le novità?']));
+        sendSocial(t.id, { type: 'talk' }); toast(`💬 Hai chiacchierato con ${t.name} (+felicità, +salute, −sonno)`);
+      } else if (act === 'praise') {
+        saySocial(pick(['Stai benissimo! 😍', 'Sei un grande!', 'Che stile! ✨']));
+        sendSocial(t.id, { type: 'praise' }); toast(`😍 Hai fatto un complimento a ${t.name}`);
+      } else if (act === 'insult') {
+        saySocial(pick(['Sei proprio un tipo… 🤬', 'Che vergogna!', 'Ma levati! 😠']));
+        sendSocial(t.id, { type: 'insult' }); toast(`🤬 Hai insultato ${t.name}`);
+      } else if (act === 'punch') {
+        happinessLevel = Math.max(0, happinessLevel - 2);
+        saySocial('Prendi questo! 👊');
+        sendSocial(t.id, { type: 'punch' }); toast(`👊 Hai picchiato ${t.name}`);
+      } else if (act === 'food') {
+        if (!foodIsCooked) return;
+        foodIsCooked = false; hasFoodInInventory = false; fridgeIsOpen = false;
+        sendSocial(t.id, { type: 'food' }); toast(`🍽️ Hai dato il tuo piatto a ${t.name}`);
+        socKey = '';
+      } else if (act === 'money') {
+        if (!roomsState.some(r => r && r.ownerId === t.id)) { toast(`${t.name} non ha una stanza: non può ricevere soldi.`, 3500); return; }
+        const res = await openDialog({ title: `💶 Regala soldi a ${t.name}`, text: `Disponibili in cassaforte: ${moneyLevel} €`, input: { placeholder: 'Importo', numeric: true, maxLength: 6 },
+          buttons: [{ label: 'Annulla', value: null, color: '#57606f' }, { label: 'Regala', value: 'ok', color: '#27ae60' }] });
+        if (res.action !== 'ok') return;
+        const amt = Math.floor(Number(res.value));
+        if (!(amt >= 1)) { toast('Importo non valido.'); return; }
+        if (amt > moneyLevel) { toast('Non hai abbastanza soldi in cassaforte.'); return; }
+        moneyLevel -= amt;
+        sendSocial(t.id, { type: 'money', amt }); toast(`💶 Hai regalato ${amt} € a ${t.name}`);
+      } else if (act === 'drug') {
+        if (drugStock < 1) return;
+        drugStock--;
+        sendSocial(t.id, { type: 'drug' }); toast(`💊 Hai offerto una dose a ${t.name}`);
+      }
+      socKey = '';
+    }
+    const socDone = {}; let socPending = false;
+    function drainInbox(v) {
+      v = v || {};
+      const keys = Object.keys(v);
+      socPending = keys.some(k => !socDone[k]);
+      if (!saveReady || isDead) return;
+      keys.forEach(k => {
+        if (socDone[k]) return; socDone[k] = 1;
+        try { db.ref(`sims_interactions/${myPlayerId}/${k}`).remove(); } catch (e) {}
+        try { handleSocial(v[k]); } catch (e) { console.error(e); }
+      });
+      socPending = false;
+    }
+    function startInbox() {
+      db.ref('sims_interactions/' + myPlayerId).on('value', s => drainInbox(s.val()));
+      setInterval(() => { if (socPending) db.ref('sims_interactions/' + myPlayerId).once('value', s => drainInbox(s.val())); }, 3000);
+    }
+    async function handleSocial(m) {
+      if (!m || !m.type) return;
+      const who = m.fromName || 'Qualcuno';
+      const old = Date.now() - (m.t || 0) > SOC_MSG_TTL;
+      if (m.type === 'talk' && !old) {
+        happinessLevel = Math.min(100, happinessLevel + 4); healthLevel = Math.min(100, healthLevel + 2); sleepLevel = Math.max(0, sleepLevel - 3);
+        toast(`💬 ${who} ha chiacchierato con te (+felicità, +salute, −sonno)`, 3500);
+      } else if (m.type === 'praise' && !old) {
+        happinessLevel = Math.min(100, happinessLevel + 6); healthLevel = Math.min(100, healthLevel + 2);
+        toast(`😍 ${who} ti ha fatto un complimento! (+felicità, +salute)`, 3500);
+      } else if (m.type === 'insult' && !old) {
+        happinessLevel = Math.max(0, happinessLevel - 6);
+        toast(`🤬 ${who} ti ha insultato! (−felicità)`, 3500);
+      } else if (m.type === 'punch' && !old) {
+        happinessLevel = Math.max(0, happinessLevel - 8);
+        if (healthLevel > 5) healthLevel = Math.max(5, healthLevel - 8);   // le botte non uccidono mai da sole
+        toast(`👊 ${who} ti ha picchiato! (−felicità, −salute)`, 4000);
+      } else if (m.type === 'food') {
+        hungerLevel = Math.min(100, hungerLevel + 50);
+        toast(`🍽️ ${who} ti ha dato da mangiare! (+50% fame)`, 4000);
+      } else if (m.type === 'money') {
+        const amt = Math.max(0, Math.floor(Number(m.amt) || 0));
+        if (amt > 0) { moneyLevel += amt; toast(`💶 ${who} ti ha regalato ${amt} €!`, 4000); }
+      } else if (m.type === 'drugReturn') {
+        drugStock++;
+        toast(`${who} ha rifiutato la dose: ti è tornata.`, 3500);
+      } else if (m.type === 'drug') {
+        while (dialogResolve) await new Promise(r => setTimeout(r, 1500));
+        const res = await openDialog({ title: '💊 Una dose in regalo', text: `${who} vuole regalarti una dose di droga.\n\nCrea dipendenza e fa calare la salute per giorni. Accetti?`,
+          buttons: [{ label: 'Rifiuta', value: 'no', color: '#57606f' }, { label: 'Accetta', value: 'yes', color: '#8e44ad' }] });
+        if (res.action === 'yes') drugTake();
+        else sendSocial(m.from, { type: 'drugReturn' });
+      }
+    }
+
+    // ---------------------------------------------------------------- AVVISI (fame, sonno, igiene, salute)
+    // Titolo della scheda sempre aggiornato; notifiche del browser (se attivate col 🔔) anche quando la scheda è in background.
+    const BASE_TITLE = document.title;
+    let notifyOn = false;
+    try { notifyOn = localStorage.getItem(LS_PREFIX + 'sims_notify') === 'on' && typeof Notification !== 'undefined' && Notification.permission === 'granted'; } catch (e) {}
+    function updateNotifyButton() { const b = document.getElementById('btn-notify'); if (b) b.textContent = notifyOn ? '🔔' : '🔕'; }
+    function sendNotify(title, body, tag) {
+      if (!notifyOn || typeof Notification === 'undefined') return;
+      try { new Notification(title, { body, tag, renotify: true }); } catch (e) { /* alcuni telefoni richiedono un service worker: restano titolo e avvisi in gioco */ }
+    }
+    async function toggleNotify() {
+      if (notifyOn) {
+        notifyOn = false;
+        try { localStorage.setItem(LS_PREFIX + 'sims_notify', 'off'); } catch (e) {}
+        updateNotifyButton(); toast('🔕 Notifiche disattivate'); return;
+      }
+      if (typeof Notification === 'undefined') { toast("Questo browser non supporta le notifiche. Resta l'avviso nel titolo della scheda.", 4500); return; }
+      let perm = Notification.permission;
+      if (perm === 'default') { try { perm = await Notification.requestPermission(); } catch (e) {} }
+      if (perm !== 'granted') { toast('🔕 Notifiche bloccate: abilitale dalle impostazioni del sito nel browser.', 5000); return; }
+      notifyOn = true;
+      try { localStorage.setItem(LS_PREFIX + 'sims_notify', 'on'); } catch (e) {}
+      updateNotifyButton();
+      toast('🔔 Notifiche attive: ti avviso quando il personaggio ha fame, sonno, sporco o salute bassa. La scheda deve restare aperta.', 5500);
+      sendNotify('Casa dolce casa', 'Notifiche attive ✅', 'sims-test');
+    }
+    const ALERT_DEFS = [
+      { key: 'hunger',  get: () => hungerLevel,  low: 30, crit: 10, emoji: '🍽️', label: 'ha fame',                  name: 'Fame' },
+      { key: 'sleep',   get: () => sleepLevel,   low: 30, crit: 10, emoji: '😴', label: 'ha sonno',                 name: 'Sonno' },
+      { key: 'hygiene', get: () => hygieneLevel, low: 30, crit: 10, emoji: '🚿', label: 'ha bisogno di una doccia', name: 'Igiene' },
+      { key: 'health',  get: () => healthLevel,  low: 50, crit: 25, emoji: '❤️', label: 'sta male',                 name: 'Salute' }
+    ];
+    const alertLevel = {};   // 0 ok, 1 basso, 2 critico
+    let wakeAlertSent = false;
+    function checkAlerts() {
+      if (!saveReady) return;
+      let worst = null;
+      ALERT_DEFS.forEach(a => {
+        const v = a.get();
+        const lvl = v < a.crit ? 2 : v < a.low ? 1 : 0;
+        const prev = alertLevel[a.key] || 0;
+        if (lvl > prev) {
+          const msg = `${a.emoji} ${myData.nick} ${a.label} (${a.name} ${Math.round(v)}%)` + (lvl === 2 ? ' – è critico!' : '');
+          if (document.hidden) sendNotify(lvl === 2 ? '⚠️ Casa dolce casa: urgente' : 'Casa dolce casa', msg, 'sims-' + a.key);
+          else toast(msg, 4000);
+          alertLevel[a.key] = lvl;
+        } else if (lvl < prev && (lvl === 0 ? v > a.low + 8 : true)) alertLevel[a.key] = lvl;
+        if (lvl > 0 && (!worst || v / a.low < worst.v / worst.a.low)) worst = { a, v };
+      });
+      // sonno completato: il personaggio può svegliarsi
+      if (isSleeping && sleepLevel >= 100) {
+        if (!wakeAlertSent) {
+          wakeAlertSent = true;
+          if (document.hidden) sendNotify('Casa dolce casa', `😴 ${myData.nick} ha dormito abbastanza: può svegliarsi!`, 'sims-wake');
+          else toast('😴 Hai dormito abbastanza: puoi svegliarti', 3500);
+        }
+      } else wakeAlertSent = false;
+      const t = worst ? `${worst.a.emoji} ${worst.a.name} ${Math.round(worst.v)}% · ${BASE_TITLE}` : BASE_TITLE;
+      if (document.title !== t) document.title = t;
+    }
+
     function updateNeeds(delta) {
+      if (isDead) return;
       if (isSleeping) {
         const bedBoost = ownedFurniture.bed_lux ? 1.5 : 1; // il letto di lusso fa riposare più in fretta
-        sleepLevel = Math.min(100, sleepLevel + (delta / SLEEP_DEPLETION_SEC) * 100 * bedBoost);
-        hungerLevel = Math.max(0, hungerLevel - (delta / 43200) * 100);
-        sleepGainedSinceLastHealthBoost += (delta / SLEEP_DEPLETION_SEC) * 100 * bedBoost;
+        sleepLevel = Math.min(100, sleepLevel + (delta / SLEEP_RECOVERY_SEC) * 100 * bedBoost);
+        hungerLevel = Math.max(0, hungerLevel - (delta / HUNGER_SLEEP_DEPLETION_SEC) * 100);
+        sleepGainedSinceLastHealthBoost += (delta / SLEEP_RECOVERY_SEC) * 100 * bedBoost;
         if (sleepGainedSinceLastHealthBoost >= 20) {
           healthLevel = Math.min(100, healthLevel + 5);
           sleepGainedSinceLastHealthBoost = 0;
@@ -1370,7 +2080,7 @@
         hungerLevel = Math.max(0, hungerLevel - (delta / HUNGER_AWAKE_DEPLETION_SEC) * 100);
       }
 
-      hygieneLevel = Math.max(0, hygieneLevel - (delta / HYGIENE_DEPLETION_SEC) * 100);
+      hygieneLevel = Math.max(0, hygieneLevel - (delta / HYGIENE_DEPLETION_SEC) * 100 * (isSleeping ? 0.5 : 1));
       // La felicità cala piano; le piante in stanza la fanno calare ancora più piano
       const plantFactor = ownedFurniture.plant_lux ? 0.3 : ownedFurniture.plant_std ? 0.5 : 1;
       happinessLevel = Math.max(0, happinessLevel - (delta / HAPPINESS_DEPLETION_SEC) * 100 * plantFactor);
@@ -1384,7 +2094,12 @@
       if (hungerLevel <= 0 || hygieneLevel <= 0 || sleepLevel <= 0) {
         healthLevel = Math.max(0, healthLevel - (delta / HEALTH_DAMAGE_SEC) * 100);
       }
-      if (healthLevel <= 0) faint();
+      drugApply(Date.now(), delta);
+      if (healthLevel <= 0) { die(); return; }
+      if (healthLevel < 25 && (hungerLevel <= 0 || hygieneLevel <= 0 || sleepLevel <= 0) && Date.now() - lastDangerToast > 60000) {
+        lastDangerToast = Date.now();
+        toast('☠️ Salute critica! Mangia, dormi o lavati prima che sia troppo tardi!', 5000);
+      }
 
       gameMinutes += delta * GAME_MINUTES_PER_SEC;
       const totalMin = Math.floor(gameMinutes);
@@ -1394,7 +2109,8 @@
       document.getElementById('clock-text').innerText = `${hour >= 20 || hour < 6 ? '🌙' : '☀️'} ${hh}:${mm}`;
       document.getElementById('day-text').innerText = `Giorno ${Math.floor(totalMin / 1440) + 1}`;
 
-      updateShift(delta);
+      updateShift(Math.min(delta, 0.1));
+      checkAlerts();
 
       document.getElementById('health-bar-fill').style.width = Math.round(healthLevel) + '%';
       document.getElementById('health-text').innerText = Math.round(healthLevel) + '%';
@@ -1410,6 +2126,7 @@
       
       document.getElementById('happiness-bar-fill').style.width = Math.round(happinessLevel) + '%';
       document.getElementById('happiness-text').innerText = Math.round(happinessLevel) + '%';
+      updateDrugHud();
       
       let moneyBarWidth = Math.min(100, (moneyLevel / 1000) * 100);
       document.getElementById('money-bar-fill').style.width = moneyBarWidth + '%';
@@ -1610,6 +2327,10 @@
       if (activeEnvironment === 'CORTILE') return courtyardDoors;
       if (activeEnvironment === 'negozio_mobili') return storeFloorFurniture;
       if (activeEnvironment === 'negozio_vestiti') return clothesStoreFurniture;
+      if (activeEnvironment === 'CIMITERO') return graveMap;
+      if (MG.active && activeEnvironment === 'lavoro_' + MG.job) return MG.map;
+      if (activeEnvironment === 'bar') return barMap;
+      if (activeEnvironment === 'discoteca') return discoMap;
       return {};
     }
 
@@ -1636,6 +2357,7 @@
       const btnFurnitureShop = document.getElementById('btn-act-furnitureshop');
       const btnClothesShop = document.getElementById('btn-act-clothesshop');
       const btnWork = document.getElementById('btn-act-work');
+      const btnCem = document.getElementById('btn-act-cemetery'); const btnDisco = document.getElementById('btn-act-disco');
 
       if (!isOutsideMenuOpen) {
         btnWalk.classList.add('hidden');
@@ -1644,6 +2366,7 @@
         btnFurnitureShop.classList.add('hidden');
         btnClothesShop.classList.add('hidden');
         btnWork.classList.add('hidden');
+        btnCem.classList.add('hidden'); btnDisco.classList.add('hidden');
       }
 
       if (found) {
@@ -1665,6 +2388,7 @@
               btnFurnitureShop.classList.remove('hidden');
               btnClothesShop.classList.remove('hidden');
               btnWork.classList.remove('hidden');
+              btnCem.classList.remove('hidden'); btnDisco.classList.remove('hidden');
             }
           } else if (item.roomIdx !== undefined) {
             isOutsideMenuOpen = false;
@@ -1718,6 +2442,18 @@
             btnMain.innerText = `🚪 Torna Fuori`;
             btnSub.classList.add('hidden');
           }
+        } else if (activeEnvironment === 'bar' || activeEnvironment === 'discoteca') {
+          btnMain.innerText = '🕴️ Parla con lo spacciatore';
+          btnMain.classList.remove('btn-pop-locked');
+          btnSub.classList.add('hidden');
+        } else if (MG.active && activeEnvironment === 'lavoro_' + MG.job) {
+          btnMain.innerText = mgButtonText(item);
+          btnMain.classList.toggle('btn-pop-locked', item.kind === 'target' && !MG.carry);
+          btnSub.classList.add('hidden');
+        } else if (activeEnvironment === 'CIMITERO') {
+          btnMain.innerText = item.kind === 'memorial' ? '📜 Leggi il registro dei defunti' : `🪦 Leggi la lapide di ${item.who}`;
+          btnMain.classList.remove('btn-pop-locked');
+          btnSub.classList.add('hidden');
         } else if (activeEnvironment === 'CORTILE') {
           const mine = hasRoom() && aptOfRoom(myAssignedRoomIdx) === item.aptIdx;
           btnMain.innerText = mine ? '🚪 Entra nel tuo appartamento 🏠' : `🚪 Entra nell'Appartamento ${item.aptIdx + 1} (${freeRoomsInApt(item.aptIdx)} stanze libere)`;
@@ -1782,6 +2518,11 @@
           btnSub.classList.add('hidden');
         }
 
+        if (activeEnvironment === 'BATHROOM' && found === 'shower') {
+          btnMain.innerText = showerAnim ? '🚿 Doccia in corso…' : '🚿 Fai la doccia';
+          btnMain.classList.toggle('btn-pop-locked', !!showerAnim);
+        }
+
         if (item.moveable && isMyRoomNow()) {
           if (found === 'bed' && isSleeping) {
             btnMove.classList.add('hidden');
@@ -1801,8 +2542,12 @@
 
     function handleObjectInteract() {
       if (!activeTargetProp) return;
+      if (showerAnim) return;
       let map = getCurrentFurnitureMap();
       let item = map[activeTargetProp];
+      if (activeEnvironment === 'CIMITERO') { if (item) showGraveInfo(item); return; }
+      if (MG.active && activeEnvironment === 'lavoro_' + MG.job) { if (item) mgInteract(item, activeTargetProp); return; }
+      if (activeEnvironment === 'bar' || activeEnvironment === 'discoteca') { if (item) openDealer(); return; }
 
       if (activeEnvironment === 'SALOON') {
         if (activeTargetProp === 'exitHouse') {
@@ -1813,6 +2558,7 @@
           const btnFurnitureShop = document.getElementById('btn-act-furnitureshop');
           const btnClothesShop = document.getElementById('btn-act-clothesshop');
           const btnWork = document.getElementById('btn-act-work');
+          const btnCem = document.getElementById('btn-act-cemetery'); const btnDisco = document.getElementById('btn-act-disco');
 
           if (isOutsideMenuOpen) {
             document.getElementById('btn-act-main').innerText = "🚪 Chiudi Menu Uscita";
@@ -1822,6 +2568,7 @@
             btnFurnitureShop.classList.remove('hidden');
             btnClothesShop.classList.remove('hidden');
             btnWork.classList.remove('hidden');
+            btnCem.classList.remove('hidden'); btnDisco.classList.remove('hidden');
           } else {
             document.getElementById('btn-act-main').innerText = "🚪 Esci di Casa";
             btnWalk.classList.add('hidden');
@@ -1830,6 +2577,7 @@
             btnFurnitureShop.classList.add('hidden');
             btnClothesShop.classList.add('hidden');
             btnWork.classList.add('hidden');
+            btnCem.classList.add('hidden'); btnDisco.classList.add('hidden');
           }
         } else if (item.targetEnv === 'PLAYER_ROOM') {
           const gi = gRoomIdx(item);
@@ -1916,9 +2664,7 @@
         }
       } else if (activeEnvironment === 'BATHROOM') {
         if (activeTargetProp === 'shower') {
-          hygieneLevel = 100;
-          stats.showers++;
-          toast("Doccia completata! 🚿");
+          startShower();
         } else if (activeTargetProp === 'sink') {
           hygieneLevel = Math.min(100, hygieneLevel + 20);
           toast("Ti sei lavato mani e viso 🚰 (Igiene +20%)");
@@ -1937,6 +2683,7 @@
           playerPos = { x: 0, y: 0 };
         } else if (activeTargetProp === 'bed') {
           isSleeping = !isSleeping;
+          sfx(isSleeping ? 'sleep' : 'wake');
           toast(isSleeping ? "Ti sei coricato a letto 🛏️" : "Ti sei svegliato.");
         } else if (activeTargetProp === 'wardrobe') {
           if (isMyRoomNow()) openWardrobe();
@@ -2012,6 +2759,7 @@
       if (type === 'walk') {
         happinessLevel = Math.min(100, happinessLevel + 10);
         healthLevel = Math.min(100, healthLevel + 5);
+        sleepLevel = Math.max(0, sleepLevel - 5);   // la passeggiata stanca un po'
         activeEnvironment = 'passeggiata';
         currentRoomTitle = "Passeggiata nel Parco 🌳";
       } else if (type === 'bar') {
@@ -2025,6 +2773,22 @@
         hungerLevel = Math.min(100, hungerLevel + 15);
         activeEnvironment = 'bar';
         currentRoomTitle = "Bar all'Aperto ☕";
+      } else if (type === 'disco') {
+        if (moneyLevel < DISCO_PRICE) {
+          toast(`Non hai abbastanza soldi! L'ingresso costa ${DISCO_PRICE} €.`);
+          returnHomeFromActivity();
+          return;
+        }
+        moneyLevel -= DISCO_PRICE;
+        happinessLevel = Math.min(100, happinessLevel + DISCO_HAPPY);
+        sleepLevel = Math.max(0, sleepLevel - DISCO_SLEEP);
+        activeEnvironment = 'discoteca';
+        currentRoomTitle = "Discoteca 🪩";
+        toast(`🪩 Si balla! Felicità +${DISCO_HAPPY}%, sonno −${DISCO_SLEEP}%`, 3500);
+      } else if (type === 'cemetery') {
+        activeEnvironment = 'CIMITERO';
+        currentRoomTitle = `Cimitero 🪦 (${graveList.length} ${graveList.length === 1 ? 'lapide' : 'lapidi'})`;
+        playerPos = { x: 0, y: 140 };
       } else if (type === 'trip') {
         let cost = Math.floor(moneyLevel * 0.2);
         moneyLevel -= cost;
@@ -2157,9 +2921,6 @@
       activeJobKey = jobKey;
       let turns = (jobExperience[jobKey] || 0) + 1;
       let pay = turns >= 60 ? 120 : turns >= 30 ? 80 : 50;
-      let moodNote = '';
-      if (happinessLevel < 30) { pay = Math.round(pay * 0.8); moodNote = ' (umore basso: -20%)'; }
-      else if (happinessLevel > 80) { pay = Math.round(pay * 1.2); moodNote = ' (di buon umore: +20%)'; }
       activeShift = { jobKey, title: jobTitleName, pay, remaining: SHIFT_SECONDS };
 
       isOutsideMenuOpen = false;
@@ -2170,20 +2931,206 @@
       activeEnvironment = 'lavoro_' + jobKey;
       currentRoomTitle = jobTitleName;
       playerPos = { x: 0, y: 60 };
+      mgStart(jobKey);
 
-      toast(`💼 Turno iniziato: resta qui ${SHIFT_SECONDS} secondi per guadagnare ${pay} €${moodNote}`, 4000);
+      toast(`💼 Turno iniziato: hai ${SHIFT_SECONDS} secondi! Se lavori bene ottieni un bonus (base ${pay} €)`, 3500);
+    }
+
+    // ---------------------------------------------------------------- MINI-GIOCHI DEL LAVORO
+    // Stessa dinamica per tutti i lavori: nell'ambiente ci sono oggetti sparsi; il giocatore li raccoglie e li porta, in ordine,
+    // ai punti indicati (cerchio giallo) per completare i compiti. La prestazione (0-100%) dà solo un piccolo bonus:
+    // <70% ×1 (paga base, mai ridotta) · 70-89% ×1,1 · 90%+ ×1,2.  (SKILL_PAY = false per togliere il bonus)
+    const SKILL_PAY = true;
+    const MG = { active: false, job: '', score: 0, target: 6, cfg: null, task: null, stepIdx: 0, map: {}, carry: null, lastTask: -1, el: null };
+    const WORK_JOBS = {
+      cantiere: {
+        title: '🏗️ Cantiere',
+        targets: [
+          { id: 'trave', label: 'Trave di legno', x: 45, y: -95, w: 72, h: 16, z: 30, draw: 'beam' },
+          { id: 'pannello', label: 'Pannello', x: -5, y: 112, w: 48, h: 10, z: 44, draw: 'panel' },
+          { id: 'betoniera', label: 'Betoniera', x: -95, y: 75, w: 40, h: 40 }
+        ],
+        pool: { chiodo: ['📌', 'Chiodo'], martello: ['🔨', 'Martello'], vite: ['🔩', 'Vite'], chiave: ['🔧', 'Chiave inglese'], mattone: ['🧱', 'Mattone'], piccone: ['⛏️', 'Piccone'] },
+        tasks: [
+          { title: 'Fissa la trave', steps: [{ item: 'chiodo', target: 'trave', text: 'Porta un 📌 chiodo alla trave' }, { item: 'martello', target: 'trave', text: 'Porta il 🔨 martello alla trave per piantarlo' }] },
+          { title: 'Avvita il pannello', steps: [{ item: 'vite', target: 'pannello', text: 'Porta una 🔩 vite al pannello' }, { item: 'chiave', target: 'pannello', text: 'Porta la 🔧 chiave inglese per stringerla' }] },
+          { title: 'Prepara il cemento', steps: [{ item: 'mattone', target: 'betoniera', text: 'Porta un 🧱 mattone alla betoniera' }, { item: 'piccone', target: 'betoniera', text: 'Porta il ⛏️ piccone per spezzare il blocco' }] }
+        ]
+      },
+      ospedale: {
+        title: '🏥 Ospedale',
+        targets: [{ id: 'paziente', label: 'Paziente', x: -105, y: -95, w: 56, h: 96 }],
+        pool: { termometro: ['🌡️', 'Termometro'], pastiglia: ['💊', 'Pastiglia'], disinfettante: ['🧴', 'Disinfettante'], cerotto: ['🩹', 'Cerotto'], stetoscopio: ['🩺', 'Stetoscopio'], siringa: ['💉', 'Siringa'], forbici: ['✂️', 'Forbici'] },
+        tasks: [
+          { title: 'Paziente con la febbre', steps: [{ item: 'termometro', target: 'paziente', text: 'Misura la febbre al paziente' }, { item: 'pastiglia', target: 'paziente', text: 'Dagli la medicina per abbassarla' }] },
+          { title: 'Paziente ferito', steps: [{ item: 'disinfettante', target: 'paziente', text: 'Disinfetta la ferita' }, { item: 'cerotto', target: 'paziente', text: 'Poi proteggila' }] },
+          { title: 'Controllo al cuore', steps: [{ item: 'stetoscopio', target: 'paziente', text: 'Ascolta il battito del cuore' }, { item: 'siringa', target: 'paziente', text: 'Fai l\'iniezione prescritta' }] }
+        ]
+      },
+      ristorante: {
+        title: '🍳 Ristorante',
+        targets: [{ id: 'cucina', label: 'Cucina', x: -135, y: 25, w: 50, h: 60 }, { id: 'tavolo', label: 'Tavolo clienti', x: 65, y: 10, w: 48, h: 48 }],
+        pool: { pomodoro: ['🍅', 'Pomodoro'], formaggio: ['🧀', 'Formaggio'], piatto: ['🍽️', 'Piatto'], bicchiere: ['🍷', 'Bicchiere'], pane: ['🥖', 'Pane'], sale: ['🧂', 'Sale'] },
+        tasks: [
+          { title: 'Prepara la pizza', steps: [{ item: 'pomodoro', target: 'cucina', text: 'Porta il 🍅 pomodoro in cucina' }, { item: 'formaggio', target: 'cucina', text: 'Aggiungi il 🧀 formaggio' }] },
+          { title: 'Apparecchia il tavolo', steps: [{ item: 'piatto', target: 'tavolo', text: 'Porta il 🍽️ piatto al tavolo' }, { item: 'bicchiere', target: 'tavolo', text: 'Servi da bere: porta il 🍷 bicchiere' }] },
+          { title: 'Il pane e il sale', steps: [{ item: 'pane', target: 'tavolo', text: 'Porta il 🥖 pane al tavolo' }, { item: 'sale', target: 'tavolo', text: 'Porta anche il 🧂 sale' }] }
+        ]
+      },
+      ufficio: {
+        title: '💻 Ufficio',
+        targets: [{ id: 'scrivania', label: 'Scrivania', x: -100, y: -70, w: 70, h: 46 }, { id: 'archivio', label: 'Archivio', x: 145, y: 40, w: 36, h: 50 }],
+        pool: { documento: ['📄', 'Documento'], penna: ['🖊️', 'Penna'], cartella: ['📁', 'Cartella'], etichetta: ['🏷️', 'Etichetta'], busta: ['✉️', 'Busta'], graffette: ['📎', 'Graffette'] },
+        tasks: [
+          { title: 'Firma il contratto', steps: [{ item: 'documento', target: 'scrivania', text: 'Porta il 📄 documento alla scrivania' }, { item: 'penna', target: 'scrivania', text: 'Porta la 🖊️ penna per firmarlo' }] },
+          { title: 'Archivia la pratica', steps: [{ item: 'cartella', target: 'archivio', text: 'Metti la 📁 cartella in archivio' }, { item: 'etichetta', target: 'archivio', text: 'Applica l\'🏷️ etichetta' }] },
+          { title: 'Spedisci la posta', steps: [{ item: 'busta', target: 'scrivania', text: 'Porta la ✉️ busta alla scrivania' }, { item: 'graffette', target: 'scrivania', text: 'Porta le 📎 graffette per chiuderla' }] }
+        ]
+      }
+    };
+
+    function mgFlash(ok) {
+      if (!MG.el) return;
+      MG.el.classList.remove('mg-flash-ok', 'mg-flash-ko'); void MG.el.offsetWidth;
+      MG.el.classList.add(ok ? 'mg-flash-ok' : 'mg-flash-ko');
+    }
+    function mgScore(delta) {
+      MG.score = Math.max(0, MG.score + delta);
+      mgFlash(delta > 0);
+      const s = document.getElementById('mg-score'); if (s) s.textContent = `⭐ ${Math.round(Math.min(1, MG.score / MG.target) * 100)}%`;
+    }
+    function mgRating() { return Math.max(0, Math.min(1, MG.score / MG.target)); }
+    function mgMultiplier(r) { return !SKILL_PAY ? 1 : r < 0.7 ? 1 : r < 0.9 ? 1.1 : 1.2; }
+
+    function mgHud() {
+      const el = MG.el; if (!el || !MG.active) return;
+      const st = MG.task.steps[MG.stepIdx];
+      el.innerHTML = `<div class="mg-head"><span>${MG.cfg.title} · ${MG.task.title}</span><span id="mg-score">⭐ ${Math.round(mgRating() * 100)}%</span></div>`
+        + `<div class="mg-step">👉 ${st.text}</div>`
+        + `<div class="mg-sub">Passo ${MG.stepIdx + 1}/${MG.task.steps.length} · ${MG.carry ? '🤲 Porti: ' + MG.carry.e + ' ' + MG.carry.label : 'Raccogli un oggetto e portalo al cerchio giallo'}</div>`;
+    }
+
+    function mgSpawnTask() {
+      const cfg = MG.cfg;
+      let ti; do { ti = Math.floor(Math.random() * cfg.tasks.length); } while (ti === MG.lastTask && cfg.tasks.length > 1);
+      MG.lastTask = ti; MG.task = cfg.tasks[ti]; MG.stepIdx = 0; MG.carry = null;
+      const need = MG.task.steps.map(s => s.item);
+      const decoys = Object.keys(cfg.pool).filter(k => !need.includes(k)).sort(() => Math.random() - 0.5).slice(0, 3);
+      const obstacles = getSolidObstacles();
+      const placed = [];
+      MG.map = {};
+      cfg.targets.forEach(t => { MG.map['tg_' + t.id] = { kind: 'target', id: t.id, label: t.label, name: t.label, x: t.x, y: t.y, w: t.w, h: t.h }; });
+      need.concat(decoys).sort(() => Math.random() - 0.5).forEach((id, i) => {
+        let x = 0, y = 0, ok = false;
+        for (let n = 0; n < 300 && !ok; n++) {
+          x = -150 + Math.random() * 300; y = -105 + Math.random() * 230;
+          ok = !collidesAt(x, y, obstacles) && Math.hypot(x - playerPos.x, y - playerPos.y) > 45
+            && placed.every(p => Math.hypot(x - p.x, y - p.y) > 55) && cfg.targets.every(t => Math.hypot(x - t.x, y - t.y) > 75);
+        }
+        const def = cfg.pool[id], o = { kind: 'pickup', x, y, w: 16, h: 16, name: def[1], item: { id, e: def[0], label: def[1] } };
+        placed.push(o); MG.map['it' + i] = o;
+      });
+      mgHud();
+    }
+
+    function mgStart(jobKey) {
+      mgStop();
+      if (!WORK_JOBS[jobKey]) return;
+      MG.el = document.getElementById('minigame');
+      MG.active = true; MG.job = jobKey; MG.cfg = WORK_JOBS[jobKey]; MG.score = 0; MG.lastTask = -1;
+      MG.el.classList.remove('hidden');
+      mgSpawnTask();
+      toast('📦 Raccogli gli oggetti sparsi e portali al cerchio giallo, nell\'ordine richiesto', 5000);
+    }
+    function mgStop() {
+      MG.active = false; MG.map = {}; MG.carry = null;
+      const el = document.getElementById('minigame'); if (el) { el.classList.add('hidden'); el.innerHTML = ''; }
+    }
+    function mgTick() { /* il gioco è tutto nell'ambiente: nessun aggiornamento a tempo */ }
+
+    function mgButtonText(item) {
+      if (item.kind === 'pickup') return MG.carry ? `🔁 Scambia con ${item.item.e} ${item.item.label}` : `✋ Raccogli ${item.item.e} ${item.item.label}`;
+      return MG.carry ? `⬇️ Consegna ${MG.carry.e} ${MG.carry.label} → ${item.label}` : `🎯 ${item.label} (prima prendi un oggetto)`;
+    }
+    function mgInteract(item, key) {
+      if (!MG.active) return;
+      if (item.kind === 'pickup') {
+        if (MG.carry) {                                  // scambio: l'oggetto in mano resta a terra
+          const dropped = MG.carry; MG.carry = item.item; item.item = dropped; item.name = dropped.label;
+          toast(`🔁 Hai preso ${MG.carry.e} ${MG.carry.label}`, 1800);
+        } else {
+          MG.carry = item.item; delete MG.map[key];
+          toast(`✋ Hai preso ${MG.carry.e} ${MG.carry.label}`, 1800);
+        }
+        sfx('door'); mgHud(); return;
+      }
+      if (!MG.carry) { toast('🤚 Prima raccogli un oggetto da portare qui', 2200); return; }
+      const st = MG.task.steps[MG.stepIdx];
+      if (MG.carry.id === st.item && item.id === st.target) {
+        mgScore(1); sfx('coin');
+        toast(`✅ ${MG.carry.e} ${MG.carry.label} consegnato!`, 1800);
+        MG.carry = null; MG.stepIdx++;
+        if (MG.stepIdx >= MG.task.steps.length) { toast(`🎉 Compito completato: ${MG.task.title}`, 2500); mgSpawnTask(); } else mgHud();
+      } else {
+        mgScore(-0.5);
+        toast(MG.carry.id !== st.item ? '❌ Non è l\'oggetto giusto per questo passo' : '❌ Oggetto giusto, ma nel posto sbagliato', 2200);
+      }
+    }
+
+    // --- disegno nell'ambiente
+    function drawWorkItem(o, t) {
+      const s = isoScale(), bob = Math.sin(t * 3 + o.x * 0.05) * 1.8;
+      ellipseShadow(o.x, o.y, 11, 6, 0.28);
+      const p = isoProject(o.x, o.y, 14 + bob);
+      ctx.fillStyle = 'rgba(255,255,255,0.82)'; ctx.strokeStyle = 'rgba(0,0,0,0.25)'; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.arc(p.x, p.y, 17 * s, 0, 6.3); ctx.fill(); ctx.stroke();
+      ctx.font = `${Math.round(26 * s)}px serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#000';
+      ctx.fillText(o.item.e, p.x, p.y + 1); ctx.textBaseline = 'alphabetic';
+    }
+    function drawWorkTarget(tg) {
+      if (tg.draw === 'beam') { box(tg.x, tg.y, tg.w, tg.h, 12, '#8d5a2b'); box(tg.x, tg.y, tg.w - 6, 5, 2, '#a9743a', { z0: 12 }); }
+      else if (tg.draw === 'panel') box(tg.x, tg.y, tg.w, tg.h, 38, '#95a5a6', { top: '#bdc3c7' });
+    }
+    function drawTargetRing(tg, t) {
+      const s = isoScale(), pulse = 1 + Math.sin(t * 4) * 0.08, c = isoProject(tg.x, tg.y, 0);
+      const rx = (Math.max(tg.w, 36) * 0.5 + 18) * s * pulse * 0.87, ry = rx * 0.5;
+      ctx.save();
+      ctx.lineWidth = 3 * s; ctx.strokeStyle = 'rgba(254,202,87,0.95)'; ctx.fillStyle = 'rgba(254,202,87,0.18)';
+      ctx.beginPath(); ctx.ellipse(c.x, c.y, rx, ry, 0, 0, 6.3); ctx.fill(); ctx.stroke();
+      ctx.restore();
+    }
+    function mgAddDrawables(addThing, drawables, t) {
+      const st = MG.task.steps[MG.stepIdx];
+      MG.cfg.targets.forEach(tg => {
+        if (tg.draw) addThing(tg.x, tg.y, tg.w, tg.h, tg.z || 30, tg.label, () => drawWorkTarget(tg));
+        if (st && tg.id === st.target) drawables.push({ depth: -1e5 + 2, draw: () => drawTargetRing(tg, t) });
+      });
+      Object.keys(MG.map).forEach(k => {
+        const o = MG.map[k];
+        if (o.kind === 'pickup') addThing(o.x, o.y, 16, 16, 34, o.item.label, () => drawWorkItem(o, t));
+      });
+      if (MG.carry) {
+        const px = playerPos.x, py = playerPos.y, e = MG.carry.e;
+        drawables.push({ depth: px + py + 0.3, draw: () => {
+          const s = isoScale(), p = isoProject(px, py, 74);
+          ctx.fillStyle = 'rgba(255,255,255,0.88)'; ctx.beginPath(); ctx.arc(p.x + 18 * s, p.y, 14 * s, 0, 6.3); ctx.fill();
+          ctx.font = `${Math.round(20 * s)}px serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#000';
+          ctx.fillText(e, p.x + 18 * s, p.y + 1); ctx.textBaseline = 'alphabetic';
+        } });
+      }
     }
 
     function updateShift(delta) {
       const hud = document.getElementById('shift-hud');
-      if (!activeShift) { hud.classList.add('hidden'); return; }
+      if (!activeShift) { hud.classList.add('hidden'); if (MG.active) mgStop(); return; }
       if (activeEnvironment !== 'lavoro_' + activeShift.jobKey) {
         toast('🚪 Hai lasciato il lavoro prima della fine: turno non pagato.');
         activeShift = null;
-        hud.classList.add('hidden');
+        hud.classList.add('hidden'); mgStop();
         return;
       }
       activeShift.remaining -= delta;
+      mgTick(delta);
       hud.classList.remove('hidden');
       const pct = Math.min(100, (1 - activeShift.remaining / SHIFT_SECONDS) * 100);
       document.getElementById('shift-fill').style.width = pct + '%';
@@ -2192,13 +3139,17 @@
         const s = activeShift;
         activeShift = null;
         hud.classList.add('hidden');
+        const rating = mgRating(), mult = mgMultiplier(rating);
+        mgStop();
+        s.pay = Math.round(s.pay * mult);
+        s.rating = rating; s.mult = mult;
         jobExperience[s.jobKey] = (jobExperience[s.jobKey] || 0) + 1;
         moneyLevel += s.pay;
         stats.shifts++;
-        happinessLevel = Math.max(0, happinessLevel - 10);
-        sleepLevel = Math.max(0, sleepLevel - 5);
+        happinessLevel = Math.max(0, happinessLevel - 5);
+        sleepLevel = Math.max(0, sleepLevel - 3);
         currentRoomTitle = `${s.title} ✅`;
-        toast(`✅ Turno completato! +${s.pay} € (turni: ${jobExperience[s.jobKey]}/60)`, 4000);
+        toast(`✅ Turno completato! Prestazione ${Math.round(s.rating * 100)}%${s.mult !== 1 ? ' (×' + String(s.mult).replace('.', ',') + ')' : ''} · +${s.pay} € (turni: ${jobExperience[s.jobKey]}/60)`, 5000);
       }
     }
 
@@ -2880,17 +3831,32 @@
     }
 
     function drawShower(it, t) {
+      const sc = isoScale();
       box(it.x, it.y, it.w, it.h, 6, '#dfe6e9');
       const H = it.z;
       box(it.x - it.w / 2 + 6, it.y - it.h / 2 + 6, 3, 3, H - 12, '#b2bec3', { z0: 6 });
       box(it.x - it.w / 2 + 14, it.y - it.h / 2 + 8, 16, 8, 3, '#b2bec3', { z0: H - 12 });
+      const occ = frameShowerActors;
+      if (occ.length) {
+        occ.forEach(a => { ctx.save(); ctx.translate(0, -6 * sc); drawPlayerAvatar(a.x, a.y, '', t, a.look, false, ''); ctx.restore(); });
+        drawShowerWater(it, t, occ);
+      }
       const glass = box(it.x, it.y, it.w, it.h, H - 6, '#81ecec', {
         z0: 6, top: 'rgba(255,255,255,0.06)', left: 'rgba(129,236,236,0.22)', right: 'rgba(129,236,236,0.15)', edge: 'rgba(255,255,255,0.65)'
       });
       ['left', 'right'].forEach(f => onFace(glass, f, (W, Hh) => {
+        if (showerFog > 0.01) { ctx.fillStyle = 'rgba(235,245,250,' + (0.5 * showerFog) + ')'; ctx.fillRect(0, 0, W, Hh); }
         ctx.strokeStyle = 'rgba(255,255,255,0.45)'; ctx.lineWidth = 2;
         ctx.beginPath(); ctx.moveTo(W * 0.15, Hh * 0.25); ctx.lineTo(W * 0.4, Hh * 0.08); ctx.moveTo(W * 0.2, Hh * 0.45); ctx.lineTo(W * 0.55, Hh * 0.18); ctx.stroke();
       }));
+      if (showerFog > 0.01) { // vapore che sale sopra il box
+        for (let i = 0; i < 6; i++) {
+          const ph = (t * 0.25 + i / 6) % 1;
+          const p = isoProject(it.x + Math.sin(t * 0.7 + i * 2) * 14, it.y + Math.cos(t * 0.6 + i * 1.7) * 10, 40 + ph * 110);
+          ctx.fillStyle = 'rgba(245,250,255,' + (showerFog * 0.4 * Math.sin(Math.PI * ph)) + ')';
+          ctx.beginPath(); ctx.arc(p.x, p.y, (9 + ph * 16) * sc, 0, 6.3); ctx.fill();
+        }
+      }
     }
 
     function drawCounter(it) {
@@ -3476,16 +4442,147 @@
       onFace(b, 'top', (W, H) => { ctx.fillStyle = 'rgba(255,255,255,0.35)'; for (let u = 3; u < W; u += 6) ctx.fillRect(u, 2, 2, H - 4); });
     }
 
+    // ---- Discoteca
+    const discoRGB = (h) => { const f = n => { const k = (n + h / 60) % 6; return Math.round(255 * (0.5 - 0.5 * Math.max(-1, Math.min(k, 4 - k, 1)))) ; }; return `${f(5)},${f(3)},${f(1)}`; };
+    function drawDjBoothProp(it, t) {
+      const b = box(it.x, it.y, it.w, it.h, 34, '#1e1e2f', { edge: 'rgba(255,255,255,0.15)' });
+      onFace(b, 'left', (W, H) => {
+        for (let i = 0; i < 10; i++) { ctx.fillStyle = `hsl(${(t * 120 + i * 36) % 360},90%,${40 + 30 * Math.abs(Math.sin(t * 6 + i))}%)`; ctx.fillRect(4 + i * (W - 8) / 10, H * 0.3, (W - 8) / 10 - 2, H * 0.4); }
+      });
+      const top = box(it.x, it.y, it.w - 6, it.h - 6, 4, '#2d2d44', { z0: 34 });
+      onFace(top, 'top', (W, H) => {
+        [W * 0.28, W * 0.72].forEach((cx, k) => {
+          const r = Math.min(H * 0.42, W * 0.18);
+          ctx.fillStyle = '#111'; ctx.beginPath(); ctx.arc(cx, H / 2, r, 0, 6.3); ctx.fill();
+          ctx.strokeStyle = `hsl(${(t * 90 + k * 120) % 360},90%,60%)`; ctx.lineWidth = 1; const a = t * 5 + k;
+          ctx.beginPath(); ctx.moveTo(cx, H / 2); ctx.lineTo(cx + Math.cos(a) * r, H / 2 + Math.sin(a) * r); ctx.stroke();
+        });
+        ctx.fillStyle = '#e84393'; ctx.fillRect(W / 2 - 3, 3, 6, H - 6);
+      });
+    }
+    function drawSpeakerProp(it, t) {
+      const b = box(it.x, it.y, it.w, it.h, it.z || 70, '#1a1a1a', { edge: 'rgba(255,255,255,0.1)' });
+      onFace(b, 'left', (W, H) => {
+        const k = 1 + 0.1 * Math.sin(t * 9 + it.x);
+        [[H * 0.3, W * 0.28], [H * 0.68, W * 0.4]].forEach(([cy, r]) => {
+          ctx.fillStyle = '#3a3a3a'; ctx.beginPath(); ctx.arc(W / 2, cy, r * k, 0, 6.3); ctx.fill();
+          ctx.fillStyle = '#0a0a0a'; ctx.beginPath(); ctx.arc(W / 2, cy, r * 0.45 * k, 0, 6.3); ctx.fill();
+        });
+      });
+    }
+    function drawDiscoBallProp(it, t) {
+      const top = isoProject(it.x, it.y, 230), p = isoProject(it.x, it.y, it.z || 115), r = 15 * isoScale();
+      ctx.strokeStyle = '#999'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(top.x, top.y); ctx.lineTo(p.x, p.y - r); ctx.stroke();
+      const g = ctx.createRadialGradient(p.x - r * 0.3, p.y - r * 0.3, r * 0.1, p.x, p.y, r);
+      g.addColorStop(0, '#ffffff'); g.addColorStop(1, '#7f8fa6');
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, 6.3); ctx.fill();
+      for (let i = 0; i < 16; i++) {
+        const a = i * 2.4 + t * 1.5, d = r * (0.2 + 0.7 * ((i * 37) % 10) / 10);
+        ctx.fillStyle = `hsl(${(t * 200 + i * 40) % 360},100%,${65 + 25 * Math.sin(t * 8 + i)}%)`;
+        ctx.fillRect(p.x + Math.cos(a) * d - 1.5, p.y + Math.sin(a) * d * 0.9 - 1.5, 3, 3);
+      }
+    }
+    const DISCO_PRICE = 20, DISCO_HAPPY = 50, DISCO_SLEEP = 15;
+
+    // ---- Cimitero: lapidi dei giocatori deceduti
+    function drawGraveProp(it) {
+      const flowers = isoScale();
+      box(it.x, it.y + 9, 18, 14, 3, '#6b4f3a', { edge: 'rgba(0,0,0,0.2)' });
+      const FL = ['#ff6b81', '#feca57', '#ffffff', '#a29bfe', '#ff9ff3'];   // un fiore per ogni persona che l'ha visitata
+      for (let i = 0, n = Math.min(10, it.visitors || 0); i < n; i++) {
+        const q = isoProject(it.x - 7 + (i % 5) * 3.5, it.y + 9 + (i < 5 ? 3 : 8), 6);
+        ctx.fillStyle = '#2e7d32'; ctx.fillRect(q.x - 0.5, q.y, 1, 3 * flowers);
+        ctx.fillStyle = FL[i % FL.length]; ctx.beginPath(); ctx.arc(q.x, q.y, 2 * flowers, 0, 6.3); ctx.fill();
+      }
+      box(it.x, it.y, 22, 6, 4, '#7f8c8d');
+      if (it.style === 1) {                      // croce
+        box(it.x, it.y, 5, 4, 34, '#b2bec3', { z0: 4 });
+        box(it.x, it.y, 18, 4, 5, '#b2bec3', { z0: 20 });
+      } else {
+        const wide = it.style === 2;
+        const st = box(it.x, it.y, wide ? 20 : 16, 5, wide ? 22 : 28, '#b2bec3', { z0: 4 });
+        box(it.x, it.y, wide ? 18 : 14, 5, 3, '#cfd8dc', { z0: wide ? 26 : 32 });
+        onFace(st, 'left', (W, H) => {
+          ctx.fillStyle = '#4b5558'; ctx.textAlign = 'center';
+          ctx.font = 'bold 5px serif'; ctx.fillText('R.I.P', W / 2, H * 0.34);
+          ctx.fillRect(W / 2 - 0.6, H * 0.5, 1.2, H * 0.3); ctx.fillRect(W / 2 - 2, H * 0.58, 4, 1.1);
+        });
+      }
+    }
+    function drawMemorialProp(it) {
+      box(it.x, it.y, 46, 16, 5, '#636e72');
+      const st = box(it.x, it.y, 38, 12, 44, '#2d3436', { z0: 5, top: '#4b5558' });
+      onFace(st, 'left', (W, H) => {
+        ctx.fillStyle = '#dfe6e9'; ctx.textAlign = 'center';
+        ctx.font = 'bold 6px serif'; ctx.fillText('IN MEMORIA', W / 2, H * 0.3);
+        ctx.font = '5px serif'; ctx.fillText('di chi non ce l\'ha fatta', W / 2, H * 0.48);
+        ctx.fillRect(W / 2 - 0.7, H * 0.58, 1.4, H * 0.28); ctx.fillRect(W / 2 - 3, H * 0.66, 6, 1.3);
+      });
+    }
+
     const PROP_DRAW = {
+      grave: drawGraveProp, memorial: drawMemorialProp,
       tree: drawTreeProp, fountain: drawFountainProp, bench: drawBenchProp, streetlamp: drawStreetLampProp, flowers: drawFlowersProp,
       palm: drawPalmProp, umbrella: drawUmbrellaProp, sunbed: drawSunbedProp, sandcastle: drawSandcastleProp, ball: drawBallProp,
       crane: drawCraneProp, bricks: drawBricksProp, mixer: drawMixerProp, cone: drawConeProp,
       hospitalBed: drawHospitalBedProp, ivStand: drawIvStandProp, heartMonitor: drawHeartMonitorProp, medCabinet: drawMedCabinetProp, waitingChairs: drawWaitingChairsProp,
       restCounter: drawRestCounterProp, chefStove: drawChefStoveProp, dinnerTable: drawDinnerTableProp,
       officeDesk: drawOfficeDeskProp, archive: drawArchiveProp, cooler: drawCoolerProp,
-      barCounter: drawBarCounterProp, stool: drawStoolProp, roundTable: drawRoundTableProp, jukebox: drawJukeboxProp,
+      djBooth: drawDjBoothProp, speaker: drawSpeakerProp, discoBall: drawDiscoBallProp, barCounter: drawBarCounterProp, stool: drawStoolProp, roundTable: drawRoundTableProp, jukebox: drawJukeboxProp,
       plant: (it, t) => drawPlant(Object.assign({ name: '' }, it), t), table: drawTableProp, mannequin: drawMannequinProp, console: drawConsoleProp, bathmat: drawBathmatProp
     };
+
+    // Cimitero: le lapidi arrivano da sims_graveyard (le 30 più recenti, le altre restano nel registro)
+    let graveList = [], graveMap = {};
+    function rebuildGraveyard(val) {
+      graveList = Object.keys(val || {}).map(id => Object.assign({ id }, val[id])).filter(g => g && g.name)
+        .sort((a, b) => (b.deadAt || 0) - (a.deadAt || 0));
+      const cols = [-150, -110, -70, 70, 110, 150], rows = [40, 0, -40, -80, -120];
+      const props = [
+        { kind: 'memorial', x: 0, y: -138, w: 46, h: 16, z: 62, label: '📜 Registro dei defunti', who: 'registro', name: 'Registro' },
+        { kind: 'tree', x: -168, y: -146, w: 16, h: 16, size: 1.1, z: 90 }, { kind: 'tree', x: 168, y: -146, w: 16, h: 16, size: 1, z: 85 },
+        { kind: 'streetlamp', x: -35, y: 105, w: 8, h: 8 }, { kind: 'streetlamp', x: 35, y: 105, w: 8, h: 8 },
+        { kind: 'bench', x: -110, y: 108, w: 50, h: 16 }, { kind: 'bench', x: 110, y: 108, w: 50, h: 16 }
+      ];
+      graveMap = { memorial: props[0] };
+      graveList.slice(0, cols.length * rows.length).forEach((g, i) => {
+        const d = g.deadAt ? new Date(g.deadAt).toLocaleDateString('it-IT') : '';
+        const o = { kind: 'grave', x: cols[i % cols.length], y: rows[Math.floor(i / cols.length)], w: 22, h: 8, z: 40,
+          style: nameHash(g.id || g.name) % 3, label: '🪦 ' + g.name, who: g.name, name: g.name, days: g.days, deadAt: g.deadAt, date: d,
+          id: g.id, lived: g.lived, epitaph: g.epitaph || '', visitors: Object.keys(g.visitors || {}).length, hasVisited: !!(g.visitors && g.visitors[myPlayerId]) };
+        props.push(o); graveMap['grave_' + i] = o;
+      });
+      ENV_PROPS.CIMITERO = props;
+      if (activeEnvironment === 'CIMITERO') currentRoomTitle = `Cimitero 🪦 (${graveList.length} ${graveList.length === 1 ? 'lapide' : 'lapidi'})`;
+    }
+    async function showGraveInfo(item) {
+      if (item.kind === 'memorial') {
+        const lines = graveList.slice(0, 40).map(g => `🪦 ${g.name} — ${typeof g.lived === 'number' ? fmtDuration(g.lived) : 'giorno ' + (g.days || '?')}${g.deadAt ? ' · ' + new Date(g.deadAt).toLocaleDateString('it-IT') : ''}`);
+        openDialog({ title: `📜 Registro dei defunti (${graveList.length})`, text: lines.join('\n') || 'Nessuno è ancora morto. Prenditi cura del tuo personaggio!', buttons: [{ label: 'Chiudi', value: null, color: '#57606f' }] });
+        return;
+      }
+      const lived = typeof item.lived === 'number' ? `Ha vissuto ${fmtDuration(item.lived)}.` : `Ha vissuto fino al giorno ${item.days || '?'}.`;
+      const text = (item.epitaph ? `« ${item.epitaph} »\n\n` : 'Riposa in pace.\n\n') + lived + (item.date ? `\nÈ morto il ${item.date}.` : '')
+        + (item.visitors ? `\n\n💐 ${item.visitors} ${item.visitors === 1 ? 'persona ha lasciato' : 'persone hanno lasciato'} dei fiori.` : '');
+      const buttons = [{ label: 'Chiudi', value: null, color: '#57606f' }];
+      if (!item.hasVisited) buttons.push({ label: '💐 Lascia dei fiori (5 €)', value: 'flowers', color: '#e84393' });
+      const res = await openDialog({ title: `🪦 ${item.who}`, text, buttons });
+      if (res.action === 'flowers') {
+        if (moneyLevel < 5) { toast('Non hai abbastanza soldi: servono 5 € in cassaforte.'); return; }
+        moneyLevel -= 5;
+        try { db.ref(`sims_graveyard/${item.id}/visitors/${myPlayerId}`).set(myData.nick); } catch (e) {}
+        toast(`💐 Hai lasciato dei fiori per ${item.who}`);
+      }
+    }
+    async function openEpitaph() {
+      const res = await openDialog({
+        title: '🪦 Il tuo epitaffio',
+        text: 'Cosa vuoi che sia scritto sulla tua lapide, quando morirai? Gli altri giocatori potranno leggerlo.' + (epitaph ? `\n\nAttuale: « ${epitaph} »` : ''),
+        input: { placeholder: 'Es. «Ho sempre avuto fame»', maxLength: 60 },
+        buttons: [{ label: 'Annulla', value: null, color: '#57606f' }, { label: 'Salva', value: 'ok', color: '#2ed573' }]
+      });
+      if (res.action === 'ok') { epitaph = res.value.slice(0, 60); saveGame(true); toast(epitaph ? '🪦 Epitaffio salvato' : '🪦 Epitaffio rimosso'); }
+    }
 
     // Oggetti degli ambienti esterni e dei lavori (solo decorativi, ma solidi)
     const ENV_PROPS = {
@@ -3510,6 +4607,14 @@
         { kind: 'roundTable', x: 100, y: 50, w: 36, h: 36, z: 40 },
         { kind: 'jukebox', x: 165, y: -110, w: 26, h: 22, z: 62, label: 'Jukebox 🎵' },
         { kind: 'plant', x: -165, y: -150, w: 24, h: 24, z: 55 }
+      ],
+      discoteca: [
+        { kind: 'djBooth', x: 0, y: -140, w: 110, h: 34, z: 34, label: 'Console DJ 🎧' },
+        { kind: 'speaker', x: -150, y: -135, w: 26, h: 26, z: 70 },
+        { kind: 'speaker', x: 150, y: -135, w: 26, h: 26, z: 70 },
+        { kind: 'roundTable', x: -135, y: 10, w: 34, h: 34, label: 'Tavolino 🍸', z: 40 },
+        { kind: 'roundTable', x: -135, y: 95, w: 34, h: 34, z: 40 },
+        { kind: 'discoBall', x: 0, y: 0, w: 10, h: 10, z: 115, solid: false }
       ],
       viaggio: [
         { kind: 'ball', x: -10, y: 135, w: 12, h: 12, solid: false },
@@ -3592,6 +4697,7 @@
 
     // ---------------------------------------------------------------- STILI DEGLI AMBIENTI
     const ROOM_WALLS = ['#b39ddb', '#90caf9', '#a5d6a7', '#ffcc80', '#f48fb1', '#80cbc4', '#ce93d8', '#ffab91'];
+    rebuildGraveyard(null);
     const ENV_STYLE = {
       SALOON: {
         floor: 'parquet', floorColor: '#a0714f', wall: '#d9cbb8', wallStyle: 'wainscot', trim: '#6d4c41',
@@ -3631,9 +4737,15 @@
         decor: { back: [{ t: 'bottles', u: 70, w: 100 }, { t: 'neon', u: 200, text: 'BAR', color: '255,79,163' }, { t: 'bottles', u: 330, w: 90 }], left: [{ t: 'painting', u: 120, w: 50, h: 36, seed: 11 }, { t: 'window', u: 250, w: 40, h: 46 }] },
         lights: [{ x: 0, y: -100, z: 0, r: 200, color: '255,120,190' }, { x: -100, y: 40, z: 0, r: 130, color: '255,200,120' }, { x: 100, y: 50, z: 0, r: 130, color: '255,200,120' }]
       },
+      discoteca: {
+        floor: 'dance', floorColor: '#1b1030', wall: '#2b1748', wallStyle: 'plain', trim: '#e84393',
+        decor: { back: [{ t: 'neon', u: 200, text: 'DISCO', color: '180,80,255' }], left: [{ t: 'neon', u: 200, text: '🪩', color: '80,200,255' }] },
+        lights: [{ x: -100, y: -60, z: 0, r: 190, color: '255,0,200' }, { x: 100, y: -60, z: 0, r: 190, color: '0,200,255' }, { x: 0, y: 70, z: 0, r: 220, color: '255,230,0' }]
+      },
       viaggio: { floor: 'beach', floorColor: '#f0d9a0', outdoor: true },
       CORTILE: { floor: 'concrete', floorColor: '#b9b3a8', outdoor: true },
       passeggiata: { floor: 'grass', floorColor: '#5fa84a', outdoor: true },
+      CIMITERO: { floor: 'grass', floorColor: '#4d7c46', outdoor: true },
       lavoro_cantiere: { floor: 'dirt', floorColor: '#9a7b5a', outdoor: true, wallStyle: 'hoarding', wall: '#c9a66b', wallH: 60, trim: '#2d3436', decor: { back: [{ t: 'poster', u: 200, text: 'LAVORI IN CORSO', color: '#f39c12' }], left: [] }, fence: true },
       lavoro_ospedale: {
         floor: 'hospital', floorColor: '#f4f7f6', wall: '#eef5f3', wallStyle: 'bandGreen', trim: '#16a085',
@@ -3728,6 +4840,13 @@
               u += len; i++;
             }
           }
+          break;
+        }
+        case 'dance': {
+          ctx.fillStyle = base; ctx.fillRect(0, 0, W, H);
+          ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+          for (let u = 0; u <= W; u += 40) { ctx.beginPath(); ctx.moveTo(u, 0); ctx.lineTo(u, H); ctx.stroke(); }
+          for (let v = 0; v <= H; v += 40) { ctx.beginPath(); ctx.moveTo(0, v); ctx.lineTo(W, v); ctx.stroke(); }
           break;
         }
         case 'checker':
@@ -4076,6 +5195,16 @@
     }
 
     function drawDynamicFloor(st, t) {
+      if (st.floor === 'dance') {
+        setPlane([X0, Y0, 0], [1, 0, 0], [0, 1, 0]);
+        for (let u = 0, i = 0; u < 400; u += 40) for (let v = 0; v < 360; v += 40, i++) {
+          const a = 0.28 + 0.3 * Math.sin(t * 4 + i * 1.7);
+          ctx.fillStyle = `hsla(${(u * 0.5 + v * 0.7 + t * 90) % 360},95%,55%,${a})`;
+          ctx.fillRect(u + 1, v + 1, 38, 38);
+        }
+        resetPlane();
+        return;
+      }
       if (st.floor !== 'beach') return;
       setPlane([X0, Y0, 0], [1, 0, 0], [0, 1, 0]);
       ctx.strokeStyle = 'rgba(255,255,255,0.35)'; ctx.lineWidth = 1.5;
@@ -4429,7 +5558,147 @@
       if (done) done(!!ok);
     }
 
-    function drawPlayerAvatar(x, y, name, animTime, look, moving = false, say = '') {
+    // ---------- Animazioni: doccia e sonno ----------
+    function startShower() {
+      if (showerAnim) return;
+      showerAnim = { t0: animClock, fromX: playerPos.x, fromY: playerPos.y, hy0: hygieneLevel };
+      sfx('shower');
+    }
+
+    // Entra nel box, resta sotto l'acqua per qualche secondo (l'igiene sale piano piano) e poi esce
+    function updateShower(now) {
+      const sh = bathroomFurniture.shower, a = showerAnim, e = now - a.t0;
+      const inX = sh.x, inY = sh.y + 4;
+      const ease = k => k * k * (3 - 2 * k);
+      const T1 = 0.8, T2 = 3.8, T3 = 4.6;
+      if (e < T1) {
+        const k = ease(e / T1);
+        playerPos.x = a.fromX + (inX - a.fromX) * k; playerPos.y = a.fromY + (inY - a.fromY) * k; isWalking = true;
+      } else if (e < T2) {
+        playerPos.x = inX; playerPos.y = inY;
+        hygieneLevel = Math.max(hygieneLevel, a.hy0 + (100 - a.hy0) * ((e - T1) / (T2 - T1)));
+      } else if (e < T3) {
+        const k = ease((e - T2) / (T3 - T2));
+        playerPos.x = inX + (a.fromX - inX) * k; playerPos.y = inY + (a.fromY - inY) * k; isWalking = true; hygieneLevel = 100;
+      } else {
+        hygieneLevel = 100; stats.showers++;
+        playerPos.x = a.fromX; playerPos.y = a.fromY;
+        showerAnim = null;
+        toast("Doccia completata! 🚿");
+      }
+    }
+
+    function pillTag(cx, ny, name) {
+      if (!name) return;
+      ctx.font = "bold 10px sans-serif"; ctx.textAlign = "center";
+      const nw = Math.min(90, ctx.measureText(name).width + 14);
+      ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
+      ctx.beginPath();
+      ctx.roundRect ? ctx.roundRect(cx - nw / 2, ny, nw, 16, 8) : ctx.rect(cx - nw / 2, ny, nw, 16);
+      ctx.fill();
+      ctx.fillStyle = "#fff";
+      ctx.fillText(name, cx, ny + 11.5, nw - 8);
+    }
+
+    function speechBubble(cx, by, text) {
+      if (!text) return;
+      ctx.font = "12px sans-serif"; ctx.textAlign = "center";
+      const bw = Math.min(180, ctx.measureText(text).width) + 16;
+      ctx.fillStyle = "#fff";
+      ctx.beginPath();
+      ctx.roundRect ? ctx.roundRect(cx - bw / 2, by, bw, 22, 10) : ctx.rect(cx - bw / 2, by, bw, 22);
+      ctx.fill();
+      ctx.beginPath(); ctx.moveTo(cx - 5, by + 22); ctx.lineTo(cx + 5, by + 22); ctx.lineTo(cx, by + 29); ctx.fill();
+      ctx.fillStyle = "#111";
+      ctx.fillText(text, cx, by + 15, 180);
+    }
+
+    function drawNameTagWorld(x, y, z, name) {
+      const p = isoProject(x, y, z);
+      pillTag(p.x, p.y - 8, name);
+    }
+
+    // Persona coricata sul letto: k va da 0 (in piedi accanto al letto) a 1 (sdraiato sotto la coperta)
+    function drawAvatarSleeping(px, py, name, animTime, look, say, k, bed) {
+      const s = isoScale(), e = k * k * (3 - 2 * k);
+      const footY = bed.y + bed.h * 0.21;
+      const tx = px + (bed.x - px) * e, ty = py + (footY - py) * e;
+      const lift = 24 * e + Math.sin(Math.PI * k) * 12;
+      const rot = (Math.PI / 3) * e;
+      const pv = isoProject(tx, ty, 0);
+      ctx.save();
+      ctx.translate(pv.x, pv.y - lift * s);
+      ctx.rotate(rot);
+      ctx.translate(-pv.x, -pv.y);
+      drawPlayerAvatar(tx, ty, '', animTime, look, false, '', { noShadow: e > 0.05 });
+      ctx.restore();
+      if (e > 0.05 && e < 1) { // ombra a terra mentre salta sul letto
+        const g = isoProject(tx, ty, 0); ctx.fillStyle = 'rgba(0,0,0,' + (0.3 * (1 - e)) + ')';
+        ctx.beginPath(); ctx.ellipse(g.x, g.y, 13 * s, 6.5 * s, 0, 0, 6.3); ctx.fill();
+      }
+      if (e > 0.9) { // la coperta copre le gambe
+        const col = bed.color || '#5f27cd';
+        ctx.globalAlpha = Math.min(1, (e - 0.9) / 0.1);
+        const bl = box(bed.x, bed.y + bed.h * 0.22, bed.w - 8, bed.h * 0.5, 8, col, { z0: 23, top: bed.topColor || lighten(col, 0.15) });
+        onFace(bl, 'top', (W, H) => { ctx.fillStyle = 'rgba(255,255,255,0.13)'; for (let i = 4; i < W; i += 14) ctx.fillRect(i, 0, 5, H); ctx.fillStyle = 'rgba(255,255,255,0.55)'; ctx.fillRect(0, 0, W, 6); });
+        ctx.globalAlpha = 1;
+      }
+      const hs = { x: pv.x + Math.sin(rot) * 58 * s, y: pv.y - lift * s - Math.cos(rot) * 58 * s };
+      if (k > 0.95) { // Z che salgono dalla testa
+        ctx.textAlign = 'center';
+        for (let i = 0; i < 3; i++) {
+          const ph = (animTime * 0.45 + i / 3) % 1;
+          ctx.globalAlpha = Math.sin(Math.PI * ph) * 0.9;
+          ctx.fillStyle = '#cfe3ff'; ctx.font = 'bold ' + ((10 + ph * 10) * s) + 'px sans-serif';
+          ctx.fillText('Z', hs.x + 12 * s + ph * 18 * s + Math.sin(animTime * 2 + i) * 3, hs.y - 8 * s - ph * 34 * s);
+        }
+        ctx.globalAlpha = 1;
+      }
+      pillTag(hs.x, hs.y - 30 * s, name);
+      speechBubble(hs.x, hs.y - 62 * s, say);
+    }
+
+    function drawActor(x, y, name, animTime, look, moving, say, sleepProgress, bed) {
+      if (sleepProgress > 0.001 && bed) return drawAvatarSleeping(x, y, name, animTime, look, say, sleepProgress, bed);
+      return drawPlayerAvatar(x, y, name, animTime, look, moving, say);
+    }
+
+    // Acqua, bolle di sapone e vapore dentro il box doccia
+    function drawShowerWater(it, t, occ) {
+      const s = isoScale();
+      const hx = it.x - it.w / 2 + 22, hy = it.y - it.h / 2 + 12, hz = it.z - 12;
+      ctx.lineCap = 'round';
+      occ.forEach(a => {
+        for (let i = 0; i < 44; i++) {
+          const ph = (t * 1.5 + i * 0.381) % 1;
+          const ang = i * 2.399, rr = 3 + (i % 7) * 1.9;
+          const tx = a.x + Math.cos(ang) * rr, ty = a.y + Math.sin(ang) * rr;
+          const pt = p => {
+            const b = Math.min(1, p / 0.3);                       // il getto parte dal soffione e poi cade sulla persona
+            return isoProject(hx + (tx - hx) * b, hy + (ty - hy) * b, 6 + (hz - 6) * (1 - Math.pow(p, 1.4)));
+          };
+          const A = pt(ph), B = pt(Math.max(0, ph - 0.09));
+          ctx.strokeStyle = 'rgba(41,128,200,' + (0.55 + 0.4 * (1 - ph)) + ')'; ctx.lineWidth = 1.7 * s;
+          ctx.beginPath(); ctx.moveTo(B.x, B.y); ctx.lineTo(A.x, A.y); ctx.stroke();
+          if (ph > 0.9) {
+            const g = isoProject(tx, ty, 6);
+            ctx.strokeStyle = 'rgba(41,128,200,0.7)'; ctx.lineWidth = 0.9 * s;
+            ctx.beginPath(); ctx.ellipse(g.x, g.y, (3 + (ph - 0.9) * 40) * s, (1.5 + (ph - 0.9) * 20) * s, 0, 0, 6.3); ctx.stroke();
+          }
+        }
+        for (let i = 0; i < 7; i++) {
+          const ph = (t * 0.35 + i * 0.143) % 1;
+          const p = isoProject(a.x + Math.sin(t * 1.3 + i * 2.1) * 13, a.y + Math.cos(t * 1.1 + i * 1.3) * 9, 14 + ph * 60);
+          const r = (2 + (i % 3)) * s;
+          ctx.fillStyle = 'rgba(190,230,250,' + (0.45 * (1 - ph)) + ')'; ctx.strokeStyle = 'rgba(70,160,220,' + (0.9 * (1 - ph)) + ')'; ctx.lineWidth = 0.9 * s;
+          ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, 6.3); ctx.fill(); ctx.stroke();
+          ctx.fillStyle = 'rgba(255,255,255,' + (1 * (1 - ph)) + ')'; ctx.beginPath(); ctx.arc(p.x - r * 0.35, p.y - r * 0.35, r * 0.25, 0, 6.3); ctx.fill();
+        }
+      });
+      ctx.lineCap = 'butt';
+    }
+
+    function drawPlayerAvatar(x, y, name, animTime, look, moving = false, say = '', opts = null) {
       look = look || resolveLook({});
       const s = isoScale();
       const hsh = nameHash(name);
@@ -4439,7 +5708,7 @@
       const hair = BODY_PARTS.hairColor.opts[bd.hairColor].c;
       const top = look.top, pants = look.pants, shoes = look.shoes;
       const g0 = isoProject(x, y, 0);
-      ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.beginPath(); ctx.ellipse(g0.x, g0.y, 13 * s, 6.5 * s, 0, 0, 6.3); ctx.fill();
+      if (!(opts && opts.noShadow)) { ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.beginPath(); ctx.ellipse(g0.x, g0.y, 13 * s, 6.5 * s, 0, 0, 6.3); ctx.fill(); }
 
       const phase = animTime * 11 + (hsh % 10);
       const swing = moving ? Math.sin(phase) : 0;
@@ -4609,7 +5878,7 @@
       return obstacles.some(o => x > o.x - o.w/2 - r && x < o.x + o.w/2 + r && y > o.y - o.h/2 - r && y < o.y + o.h/2 + r);
     }
 
-    const OUTDOOR_ENVS = ['passeggiata', 'viaggio', 'lavoro_cantiere', 'CORTILE'];
+    const OUTDOOR_ENVS = ['passeggiata', 'viaggio', 'lavoro_cantiere', 'CORTILE', 'CIMITERO'];
     const BOT_LINES = ["Ciao! 👋", "Che bella giornata ☀️", "Qualcuno ha visto il mio gatto?", "Oggi si lavora 💪", "Mi piace questo posto!", "Ho una fame… 🍕", "Hai già arredato la stanza?"];
 
     function renderEnvironment(delta, animTime) {
@@ -4623,7 +5892,13 @@
       }
 
       isWalking = false;
-      if (!isSleeping && !isMovingFurnitureMode && (moveRight !== 0 || moveForward !== 0)) {
+      // ---- animazioni: sonno e doccia
+      const sleepTarget = (isSleeping && activeEnvironment === 'PLAYER_ROOM' && map.bed) ? 1 : 0;
+      if (activeEnvironment !== 'PLAYER_ROOM' || !map.bed) sleepK = 0;
+      else sleepK = Math.max(0, Math.min(1, sleepK + Math.max(-delta / 0.9, Math.min(delta / 0.9, sleepTarget - sleepK))));
+      if (showerAnim && activeEnvironment !== 'BATHROOM') showerAnim = null;
+      if (showerAnim) updateShower(animTime);
+      if (!isSleeping && sleepK < 0.01 && !showerAnim && !isMovingFurnitureMode && (moveRight !== 0 || moveForward !== 0)) {
         const obstacles = getSolidObstacles();
         const stuck = collidesAt(playerPos.x, playerPos.y, obstacles);
         let nx = Math.max(-170, Math.min(170, playerPos.x + moveRight * speed * delta));
@@ -4651,6 +5926,7 @@
 
       // Tutto ciò che sta sul pavimento viene ordinato per profondità (chi è davanti copre chi è dietro)
       const lights = (st.lights || []).map(l => Object.assign({}, l));
+      if (activeEnvironment === 'discoteca') lights.forEach((l, i) => { l.color = discoRGB((animTime * 70 + i * 120) % 360); l.x += Math.sin(animTime * 1.3 + i * 2) * 50; l.y += Math.cos(animTime * 1.1 + i) * 30; });
       let drawables = [];
       let labels = [];
       const addThing = (x, y, w, h, z, label, draw, depthBias = 0) => {
@@ -4667,6 +5943,8 @@
         }, p.flat ? -1e5 : 0);
       });
 
+      if (MG.active && activeEnvironment === 'lavoro_' + MG.job) mgAddDrawables(addThing, drawables, animTime);
+
       if (!ENV_PROPS[activeEnvironment]) {
         Object.keys(map).forEach(k => {
           const item = map[k];
@@ -4682,21 +5960,25 @@
         });
       }
 
-      drawables.push({ depth: playerPos.x + playerPos.y, draw: () => {
-        drawPlayerAvatar(playerPos.x, playerPos.y, myData.nick, animTime, myLook(), isWalking, (mySay && Date.now() - mySayT < 6000) ? mySay : '');
-        if (isSleeping) {
-          let p = isoProject(playerPos.x, playerPos.y, 90);
-          ctx.fillStyle = "#cfe3ff";
-          ctx.font = "bold 14px sans-serif";
-          ctx.textAlign = "center";
-          ctx.fillText("Z z z", p.x + 14 + Math.sin(animTime * 2) * 4, p.y - 6 - (animTime * 8) % 10);
-        }
-      } });
+      const mySayNow = (mySay && Date.now() - mySayT < 6000) ? mySay : '';
+      frameShowerActors = [];
+      const showerProp = map.shower;
+      const inCabin = (x, y) => showerProp && Math.abs(x - showerProp.x) < showerProp.w / 2 - 8 && Math.abs(y - showerProp.y) < showerProp.h / 2 - 8;
+      if (showerAnim && inCabin(playerPos.x, playerPos.y)) {
+        const px = playerPos.x, py = playerPos.y;
+        frameShowerActors.push({ x: px, y: py, look: myLook() });
+        labels.push(() => drawNameTagWorld(px, py, 92, myData.nick));
+      } else {
+        const ease = sleepK * sleepK * (3 - 2 * sleepK);
+        const depth = (playerPos.x + playerPos.y) + ((map.bed ? map.bed.x + map.bed.y + 0.5 : playerPos.x + playerPos.y) - (playerPos.x + playerPos.y)) * ease;
+        drawables.push({ depth, draw: () => drawActor(playerPos.x, playerPos.y, myData.nick, animTime, myLook(), isWalking, mySayNow, sleepK, map.bed) });
+      }
 
       simulationBots.forEach(bot => {
         if (bot.env === activeEnvironment) {
           if (!bot.nextSayAt || animTime > bot.nextSayAt) {
-            bot.say = BOT_LINES[Math.floor(Math.random() * BOT_LINES.length)];
+            const L = bot.dealer ? DEALER_LINES : (bot.env === 'discoteca' ? DISCO_LINES : BOT_LINES);
+            bot.say = L[Math.floor(Math.random() * L.length)];
             bot.sayUntil = animTime + 4;
             bot.nextSayAt = animTime + 10 + Math.random() * 15;
           }
@@ -4706,6 +5988,7 @@
       });
 
       const now = Date.now();
+      frameNear = [];
       Object.keys(onlinePlayers).forEach(id => {
         if (id === myPlayerId) return;
         let op = onlinePlayers[id];
@@ -4722,12 +6005,26 @@
         let k = Math.min(1, delta * 10);
         let dx = op.x - s.x, dy = op.y - s.y;
         s.x += dx * k; s.y += dy * k;
+        { const dd = Math.hypot(playerPos.x - s.x, playerPos.y - s.y); if (dd < SOC_RANGE) frameNear.push({ id, name: op.name || 'Giocatore', d: dd }); }
         let moving = Math.hypot(dx, dy) > 1;
         const lk = (op.look || op.outfit + op.acc) + '|' + (op.body || '');
         if (s.lookKey !== lk) { s.lookKey = lk; s.look = op.look ? resolveLook(parseLook(op.look)) : legacyLook(op); const pb = parseBody(op.body); if (pb) s.look.body = pb; }
-        drawables.push({ depth: s.x + s.y, draw: () => drawPlayerAvatar(s.x, s.y, op.name, animTime, s.look, moving, say) });
+        const act = op.act || '';
+        const sTarget = (act === 'sleep' && map.bed) ? 1 : 0;
+        s.sleepK = Math.max(0, Math.min(1, (s.sleepK || 0) + Math.max(-delta / 0.9, Math.min(delta / 0.9, sTarget - (s.sleepK || 0)))));
+        if (act === 'shower' && inCabin(s.x, s.y)) {
+          const rx = s.x, ry = s.y;
+          frameShowerActors.push({ x: rx, y: ry, look: s.look });
+          labels.push(() => drawNameTagWorld(rx, ry, 92, op.name));
+          return;
+        }
+        const sk = s.sleepK;
+        const rd = (s.x + s.y) + ((map.bed ? map.bed.x + map.bed.y + 0.5 : s.x + s.y) - (s.x + s.y)) * (sk * sk * (3 - 2 * sk));
+        drawables.push({ depth: rd, draw: () => drawActor(s.x, s.y, op.name, animTime, s.look, moving, say, sk, map.bed) });
       });
 
+      updateSocialPanel();
+      showerFog += ((frameShowerActors.length ? 1 : 0) - showerFog) * Math.min(1, delta * 1.5);
       drawables.sort((a, b) => a.depth - b.depth).forEach(d => d.draw());
 
       // Giorno e notte: le luci (lampade, lampioni, lampadari) illuminano il buio
@@ -4736,6 +6033,7 @@
       else if (hour >= 18) dark = (hour - 18) / 2 * 0.55;
       else if (hour < 8) dark = (8 - hour) / 2 * 0.55;
       if (!OUTDOOR_ENVS.includes(activeEnvironment)) dark *= 0.8;
+      if (activeEnvironment === 'discoteca') dark = 0.6;
       applyLighting(dark, lights, st);
 
       labels.forEach(l => l());
@@ -4767,7 +6065,7 @@
         if (isNaN(delta) || delta > 0.1) delta = 0.016;
         animClock += delta;
 
-        updateNeeds(delta);
+        tickNeeds();
 
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         renderEnvironment(delta, animClock);
