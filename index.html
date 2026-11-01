@@ -230,7 +230,8 @@
     <button class="btn-hud" id="btn-notify" onclick="toggleNotify()" title="Avvisi quando il personaggio sta male">🔕</button>
     <button class="btn-hud" id="btn-leaderboard" onclick="openLeaderboard()" title="Classifica">🏆</button>
     <button class="btn-hud" id="btn-profile" onclick="openProfile()" title="Profilo e codice personaggio">👤</button>
-    <button class="btn-hud" id="btn-chat" onclick="openChat()" title="Scrivi un messaggio">💬</button>
+    <button class="btn-hud" id="btn-chat" onclick="openChat()" title="Scrivi un messaggio sopra la testa">💬</button>
+    <button class="btn-hud" id="btn-gchat" onclick="openGlobalChat()" title="Chat di tutti i giocatori" style="position:relative;">🗨️<span id="gchat-badge" class="hidden" style="position:absolute;top:-4px;right:-4px;background:#ff4757;color:#fff;border-radius:10px;font-size:0.65rem;min-width:16px;height:16px;line-height:16px;text-align:center;padding:0 3px;">0</span></button>
     <button class="btn-hud" id="btn-sprint" onclick="toggleSprint()" title="Corri">🏃</button>
   </div>
 
@@ -320,12 +321,62 @@
     </div>
   </div>
 
+  <!-- IL MIO PC: tre siti finti -->
+  <div id="pc-modal" class="fullscreen-modal hidden" style="z-index:490;">
+    <div class="browser-window">
+      <div class="browser-header">
+        <div class="browser-dot"></div><div class="browser-dot"></div><div class="browser-dot"></div>
+        <div class="browser-url">🖥️ Il mio PC — Siti preferiti</div>
+      </div>
+      <div class="browser-body">
+        <h3 style="text-align:center;">🖥️ Dove vuoi andare?</h3>
+        <button type="button" class="shop-item-card" style="cursor:pointer;text-align:left;color:inherit;" onclick="openClothesShop('top', true)"><div class="shop-item-info"><h4>👗 modaonline.it</h4><p>Vestiti e accessori per il tuo personaggio</p></div><span>›</span></button>
+        <button type="button" class="shop-item-card" style="cursor:pointer;text-align:left;color:inherit;" onclick="openFurnitureShopModal()"><div class="shop-item-info"><h4>🛋️ arredocasa.it</h4><p>Catalogo di mobili standard e di lusso</p></div><span>›</span></button>
+        <button type="button" class="shop-item-card" style="cursor:pointer;text-align:left;color:inherit;" onclick="openBizSite()"><div class="shop-item-info"><h4>📈 bizlancio.it</h4><p>Avvia un business online e fai crescere i tuoi soldi</p></div><span>›</span></button>
+        <button class="btn-primary" style="margin-top:auto;" onclick="closeModal('pc-modal')">Spegni il PC</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SITO BUSINESS ONLINE -->
+  <div id="biz-modal" class="fullscreen-modal hidden">
+    <div class="browser-window">
+      <div class="browser-header">
+        <div class="browser-dot"></div><div class="browser-dot"></div><div class="browser-dot"></div>
+        <div class="browser-url">🌐 https://www.bizlancio.it/investi</div>
+      </div>
+      <div class="browser-body">
+        <h3 style="color:#2ed573; text-align:center;">📈 Bizlancio — il tuo business online</h3>
+        <p style="text-align:center; font-size:0.8rem; color:#aaa;">Metti i tuoi soldi in un business: il valore oscilla nel tempo, anche quando il gioco è chiuso.</p>
+        <div id="biz-sum" style="background:rgba(0,0,0,0.3);border-radius:8px;padding:10px;font-size:0.85rem;text-align:center;"></div>
+        <div id="biz-list" style="display:flex; flex-direction:column; gap:10px;"></div>
+        <button class="btn-primary" style="margin-top:auto;" onclick="closeModal('biz-modal')">Chiudi sito</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- CHAT GLOBALE -->
+  <div id="gchat-modal" class="fullscreen-modal hidden">
+    <div class="browser-window" style="max-height:640px;">
+      <div class="browser-header">
+        <div class="browser-dot"></div><div class="browser-dot"></div><div class="browser-dot"></div>
+        <div class="browser-url">🗨️ Chat di tutti i giocatori</div>
+      </div>
+      <div id="gchat-list" style="flex-grow:1; overflow-y:auto; padding:12px; display:flex; flex-direction:column; gap:8px;"></div>
+      <div style="display:flex; gap:8px; padding:10px; border-top:1px solid #333; background:#111119;">
+        <input id="gchat-input" type="text" maxlength="200" placeholder="Scrivi a tutti…" autocomplete="off" style="flex:1; min-width:0;">
+        <button class="btn-buy" style="background:#2e86de;" onclick="sendChat()">Invia</button>
+        <button class="btn-buy" style="background:#57606f;" onclick="closeGlobalChat()">✕</button>
+      </div>
+    </div>
+  </div>
+
   <!-- MODALE NEGOZIO MOBILI -->
   <div id="furniture-shop-modal" class="fullscreen-modal hidden">
     <div class="browser-window">
       <div class="browser-header">
         <div class="browser-dot"></div><div class="browser-dot"></div><div class="browser-dot"></div>
-        <div class="browser-url">🌐 https://www.simsfurniture.it/catalogo</div>
+        <div class="browser-url">🌐 https://www.arredocasa.it/catalogo</div>
       </div>
       <div class="browser-body">
         <h3 style="color: #e67e22; text-align:center;">🛋️ Showroom Negozio di Mobili</h3>
@@ -374,7 +425,7 @@
   <!-- MODALE BOUTIQUE / NEGOZIO ONLINE -->
   <div id="clothes-modal" class="fullscreen-modal hidden">
     <div class="shop-panel">
-      <div class="shop-head"><h3 id="clothes-title">👗 Sims Boutique</h3><span class="shop-money" id="clothes-money"></span></div>
+      <div class="shop-head"><h3 id="clothes-title">👗 Boutique Dolce Casa</h3><span class="shop-money" id="clothes-money"></span></div>
       <div class="shop-main">
         <canvas id="clothes-preview" width="320" height="400"></canvas>
         <div class="shop-right">
@@ -966,7 +1017,7 @@
     const MISSIONS = [];
 
     function getWealth() {
-      return moneyLevel;
+      return moneyLevel + Math.round(typeof investedTotal === 'function' ? investedTotal() : 0);
     }
 
     function updateMissionHud() {
@@ -1115,6 +1166,7 @@
       data.missionSet = 3;
       data.sleeping = !!isSleeping;
       if (drugStock > 0) data.drugStock = drugStock;
+      if (Object.keys(invest).length) { data.invest = {}; Object.keys(invest).forEach(k => { data.invest[k] = { units: Math.round(invest[k].units * 1e6) / 1e6, cost: Math.round(invest[k].cost * 100) / 100 }; }); }
       if (drug.active) data.drug = { doses: drug.doses, lastDose: drug.lastDose, endAt: drug.endAt, dAtDose: Math.round(drug.dAtDose * 10) / 10, crisisAt: drug.crisisAt || 0 };
       if (bornAt) data.bornAt = bornAt;
       if (epitaph) data.epitaph = epitaph;
@@ -1134,6 +1186,7 @@
       gameMinutes = num(s.gameMinutes, gameMinutes);
       bornAt = num(s.bornAt, 0);
       drugStock = Math.max(0, Math.floor(num(s.drugStock, 0)));
+      invest = {}; BIZ.forEach(b => { const v = s.invest && s.invest[b.id]; if (v && num(v.units, 0) > 0) invest[b.id] = { units: num(v.units, 0), cost: num(v.cost, 0) }; });
       drug = (s.drug && num(s.drug.endAt, 0) > 0) ? { active: true, doses: num(s.drug.doses, 1), lastDose: num(s.drug.lastDose, 0), endAt: num(s.drug.endAt, 0), dAtDose: num(s.drug.dAtDose, 0), crisisAt: num(s.drug.crisisAt, 0) } : { active: false, doses: 0, lastDose: 0, endAt: 0, dAtDose: 0, crisisAt: 0 };
       epitaph = typeof s.epitaph === 'string' ? s.epitaph.slice(0, 60) : '';
       const sb = parseBody(s.body);
@@ -1361,6 +1414,7 @@
         onlinePlayers = snapshot.val() || {};
       });
       startInbox();
+      startChat();
     }
 
     function watchGameVersion() {
@@ -1437,8 +1491,8 @@
     // ---------------------------------------------------------------- GUIDA INIZIALE (come non morire)
     const INTRO_PAGES = [
       { title: '🏠 Benvenuto in Casa dolce casa', text: 'Il tuo personaggio vive in tempo reale, come un Tamagotchi: fame, sonno, igiene e felicità calano col passare delle ore, anche quando il gioco è chiuso.\n\nTieni d\'occhio le barre in alto a sinistra.' },
-      { title: '☠️ Come non morire', text: 'Se Fame, Sonno o Igiene arrivano a 0%, la Salute inizia a scendere. Se la Salute arriva a 0% il personaggio muore per sempre e non può più giocare.\n\nSe lo abbandoni del tutto, dopo circa 3 giorni è finita. Prenditene cura ogni giorno!\n\n⚠️ Al bar c\'è chi vende droga: crea dipendenza e fa crollare la salute. Meglio starne alla larga.\n\n👥 Vicino a un altro giocatore compaiono i tasti per dialogare, fare complimenti, insultare, picchiare, dare cibo cucinato, soldi o droga.' },
-      { title: '🛠️ Cosa fare ogni giorno', text: '🍽️ Fame: in cucina prendi il cibo dal frigo (5 €), cucinalo sul fornello e mangia (+50%). Circa 2 pasti al giorno.\n\n😴 Sonno: nella tua stanza coricati sul letto. Per riposare bene servono circa 8 ore: puoi lasciarlo a letto di notte.\n\n🚿 Igiene: fai la doccia in bagno, circa 2 volte al giorno (il lavandino dà solo +20%).\n\n😊 Felicità: guarda la TV, riposa sul divano, fai una passeggiata o vai al bar o balla in discoteca (ma ti toglie sonno).' },
+      { title: '☠️ Come non morire', text: 'Se Fame, Sonno o Igiene arrivano a 0%, la Salute inizia a scendere. Se la Salute arriva a 0% il personaggio muore per sempre e non può più giocare.\n\nSe lo abbandoni del tutto, dopo circa 3 giorni è finita. Prenditene cura ogni giorno!\n\n⚠️ Al bar c\'è chi vende droga: crea dipendenza e fa crollare la salute. Meglio starne alla larga.\n\n👥 Vicino a un altro giocatore compaiono i tasti per dialogare, fare complimenti, insultare, picchiare, dare cibo cucinato, soldi o droga.\n\n🗨️ La chat globale (pulsante 🗨️ a destra) è visibile a tutti i giocatori e resta salvata nel tempo.' },
+      { title: '🛠️ Cosa fare ogni giorno', text: '🍽️ Fame: in cucina prendi il cibo dal frigo (5 €), cucinalo sul fornello e mangia (+50%). Circa 2 pasti al giorno.\n\n😴 Sonno: nella tua stanza coricati sul letto. Per riposare bene servono circa 8 ore: puoi lasciarlo a letto di notte.\n\n🚿 Igiene: fai la doccia in bagno, circa 2 volte al giorno (il lavandino dà solo +20%).\n\n😊 Felicità: guarda la TV, riposa sul divano, fai una passeggiata o vai al bar o balla in discoteca (ma ti toglie sonno).\n\n💻 Dal PC della tua stanza puoi comprare vestiti e mobili online e avviare un business: investi i tuoi soldi e il loro valore sale e scende nel tempo.' },
       { title: '💼 Soldi e consigli', text: 'Per guadagnare vai al lavoro: nel salone esci di casa e apri "Lavoro". Porta gli oggetti ai punti giusti per fare bene il turno.\n\nI soldi stanno nella cassaforte della tua stanza: proteggila con un PIN.\n\n🔔 Attiva le notifiche (pulsante a destra) per essere avvisato quando il personaggio sta male.\n\n❓ Puoi rileggere questa guida in ogni momento dal pulsante a destra.' }
     ];
     async function showIntro(force = false) {
@@ -2002,6 +2056,206 @@
         else sendSocial(m.from, { type: 'drugReturn' });
       }
     }
+
+    // ---------------------------------------------------------------- BIZLANCIO: business online (dal PC)
+    // Mercato simulato e uguale per tutti i giocatori: ogni business ha un indice che oscilla (rumore deterministico + ritorno alla media)
+    // con un leggero trend positivo. Il valore del tuo investimento segue l'indice, anche a gioco chiuso.
+    const BIZ = [
+      { id: 'shop',   name: 'Mini-shop online',  emoji: '🛒', color: '#27ae60', risk: 'Rischio basso',  desc: 'Vendi prodotti su internet: guadagni piccoli ma regolari.', seed: 101, theta: 0.0008, sigma: 0.0008, daily: 0.004 },
+      { id: 'app',    name: 'Startup di app',     emoji: '📱', color: '#2e86de', risk: 'Rischio medio',  desc: "Un'app che può decollare oppure ristagnare.",               seed: 202, theta: 0.0006, sigma: 0.0025, daily: 0.008 },
+      { id: 'crypto', name: 'Cripto-meme coin',   emoji: '🪙', color: '#e67e22', risk: 'Rischio alto',   desc: 'Sale e scende come un ottovolante: puoi vincere o perdere molto.', seed: 303, theta: 0.0004, sigma: 0.0055, daily: 0.012 }
+    ];
+    const MKT_EPOCH = Date.UTC(2026, 9, 1);
+    const mktCache = {};
+    function hash01(a, b) {
+      let h = Math.imul(a ^ 0x9e3779b9, 0x85ebca6b) ^ Math.imul(b + 0x7f4a7c15, 0xc2b2ae35);
+      h ^= h >>> 15; h = Math.imul(h, 0x2c1b3c6d); h ^= h >>> 12; h = Math.imul(h, 0x297a2d39); h ^= h >>> 15;
+      return (h >>> 0) / 4294967296;
+    }
+    const mktZ = (seed, k) => (hash01(seed, k * 4) + hash01(seed, k * 4 + 1) + hash01(seed, k * 4 + 2) + hash01(seed, k * 4 + 3) - 2) * Math.sqrt(3);
+    function mktLog(b, k) {
+      const m = mktCache[b.id] || (mktCache[b.id] = { x: [0], n: 0 });
+      k = Math.max(0, k);
+      while (m.n < k) { m.n++; m.x.push(m.x[m.n - 1] * (1 - b.theta) + b.sigma * mktZ(b.seed, m.n)); }
+      return m.x[k] + k * Math.log(1 + b.daily) / 1440;
+    }
+    function mktPrice(b, t = Date.now()) {
+      const s = Math.max(0, (t - MKT_EPOCH) / 60000), k = Math.floor(s), f = s - k;
+      const a = mktLog(b, k), c = mktLog(b, k + 1);
+      return Math.exp(a + (c - a) * f) * 100;
+    }
+    let invest = {};                                   // idBusiness -> { units, cost }
+    const bizById = id => BIZ.find(b => b.id === id);
+    const bizValue = id => { const v = invest[id]; return v ? v.units * mktPrice(bizById(id)) : 0; };
+    const investedTotal = () => BIZ.reduce((n, b) => n + bizValue(b.id), 0);
+    const fmtEur = n => (Math.round(n * 100) / 100).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+    const fmtPct = p => (p >= 0 ? '+' : '') + (Math.round(p * 10) / 10).toFixed(1).replace('.', ',') + '%';
+    let bizBuilt = false;
+    function bizSpark(cv, b) {
+      const W = cv.width, H = cv.height, ctx2 = cv.getContext('2d'), now = Date.now(), N = 96, pts = [];
+      for (let i = 0; i <= N; i++) pts.push(mktPrice(b, now - (N - i) * 15 * 60000));
+      const mn = Math.min(...pts), mx = Math.max(...pts), up = pts[N] >= pts[0];
+      ctx2.clearRect(0, 0, W, H);
+      ctx2.strokeStyle = up ? '#2ed573' : '#ff4757'; ctx2.lineWidth = 2; ctx2.beginPath();
+      pts.forEach((p, i) => { const x = i / N * (W - 4) + 2, y = H - 4 - (p - mn) / ((mx - mn) || 1) * (H - 8); i ? ctx2.lineTo(x, y) : ctx2.moveTo(x, y); });
+      ctx2.stroke();
+    }
+    function bizBuild() {
+      const box = document.getElementById('biz-list'); box.innerHTML = '';
+      BIZ.forEach(b => {
+        const c = document.createElement('div');
+        c.style.cssText = 'background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.12);border-left:4px solid ' + b.color + ';border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:6px;';
+        c.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;"><b>${b.emoji} ${b.name}</b><span style="font-size:0.7rem;color:#aaa;">${b.risk}</span></div>
+          <div style="font-size:0.75rem;color:#aaa;">${b.desc}</div>
+          <div style="display:flex;justify-content:space-between;align-items:baseline;"><span>Quotazione: <b id="biz-p-${b.id}"></b></span><span id="biz-d-${b.id}" style="font-weight:bold;"></span></div>
+          <canvas id="biz-c-${b.id}" width="320" height="56" style="width:100%;height:56px;background:rgba(0,0,0,0.25);border-radius:6px;"></canvas>
+          <div id="biz-m-${b.id}" style="font-size:0.8rem;"></div>
+          <div style="display:flex;gap:8px;"><button type="button" class="btn-buy" style="background:#2ed573;flex:1;" onclick="bizInvest('${b.id}')">💶 Investi</button><button type="button" class="btn-buy" id="biz-w-${b.id}" style="background:#e74c3c;flex:1;" onclick="bizWithdraw('${b.id}')">💰 Ritira</button></div>`;
+        box.appendChild(c);
+      });
+      bizBuilt = true;
+    }
+    function bizUpdate() {
+      const now = Date.now();
+      let tot = 0, cost = 0;
+      BIZ.forEach(b => {
+        const p = mktPrice(b), p24 = mktPrice(b, now - 24 * 3600000), v = invest[b.id], val = v ? v.units * p : 0;
+        tot += val; cost += v ? v.cost : 0;
+        document.getElementById('biz-p-' + b.id).textContent = p.toFixed(2).replace('.', ',');
+        const d = document.getElementById('biz-d-' + b.id), ch = (p / p24 - 1) * 100;
+        d.textContent = fmtPct(ch) + ' (24 h)'; d.style.color = ch >= 0 ? '#2ed573' : '#ff4757';
+        const m = document.getElementById('biz-m-' + b.id);
+        if (v) { const pl = val - v.cost; m.innerHTML = `Il tuo investimento: <b>${fmtEur(val)}</b> <span style="color:${pl >= 0 ? '#2ed573' : '#ff4757'}">(${pl >= 0 ? '+' : ''}${fmtEur(pl)} · ${fmtPct(v.cost ? pl / v.cost * 100 : 0)})</span>`; }
+        else m.innerHTML = '<span style="color:#888;">Non hai investito in questo business.</span>';
+        document.getElementById('biz-w-' + b.id).style.opacity = v ? '1' : '0.4';
+        bizSpark(document.getElementById('biz-c-' + b.id), b);
+      });
+      const pl = tot - cost;
+      document.getElementById('biz-sum').innerHTML = `Cassaforte: <b>${moneyLevel} €</b> · Investito ora: <b>${fmtEur(tot)}</b> <span style="color:${pl >= 0 ? '#2ed573' : '#ff4757'}">(${pl >= 0 ? '+' : ''}${fmtEur(pl)})</span>`;
+    }
+    function openBizSite() {
+      if (!bizBuilt) bizBuild();
+      document.getElementById('biz-modal').classList.remove('hidden');
+      bizUpdate();
+    }
+    setInterval(() => { try { const m = document.getElementById('biz-modal'); if (m && !m.classList.contains('hidden')) bizUpdate(); } catch (e) {} }, 3000);
+    async function bizInvest(id) {
+      const b = bizById(id);
+      const res = await openDialog({ title: `${b.emoji} Investi in ${b.name}`, text: `Disponibili in cassaforte: ${moneyLevel} €\n${b.risk}. Il valore sale e scende nel tempo: puoi anche perdere soldi.`, input: { placeholder: 'Importo in €', numeric: true, maxLength: 6 },
+        buttons: [{ label: 'Annulla', value: null, color: '#57606f' }, { label: 'Investi', value: 'ok', color: '#27ae60' }] });
+      if (res.action !== 'ok') return;
+      const amt = Math.floor(Number(res.value));
+      if (!(amt >= 1)) { toast('❌ Importo non valido.'); return; }
+      if (amt > moneyLevel) { toast('❌ Non hai abbastanza soldi in cassaforte.'); return; }
+      moneyLevel -= amt;
+      const v = invest[id] || (invest[id] = { units: 0, cost: 0 });
+      v.units += amt / mktPrice(b); v.cost += amt;
+      toast(`✅ Hai investito ${amt} € in ${b.name}`);
+      saveGame(true); bizUpdate();
+    }
+    async function bizWithdraw(id) {
+      const b = bizById(id), v = invest[id], val = bizValue(id);
+      if (!v || val < 1) { toast('Non hai niente da ritirare qui.'); return; }
+      if (!hasRoom()) { toast('🏠 Senza una stanza non hai una cassaforte dove versare i soldi.', 4000); return; }
+      const res = await openDialog({ title: `${b.emoji} Ritira da ${b.name}`, text: `Valore attuale: ${fmtEur(val)}`, input: { placeholder: 'Importo in €', numeric: true, maxLength: 7 },
+        buttons: [{ label: 'Annulla', value: null, color: '#57606f' }, { label: 'Ritira tutto', value: 'all', color: '#e67e22' }, { label: 'Ritira', value: 'ok', color: '#27ae60' }] });
+      if (res.action !== 'ok' && res.action !== 'all') return;
+      const now = bizValue(id);                       // il prezzo può essere cambiato mentre decidevi
+      let amt = res.action === 'all' ? Math.floor(now) : Math.floor(Number(res.value));
+      if (!(amt >= 1)) { toast('❌ Importo non valido.'); return; }
+      amt = Math.min(amt, Math.floor(now));
+      const f = amt / now;
+      v.units *= (1 - f); v.cost *= (1 - f);
+      if (v.units * mktPrice(b) < 1) delete invest[id];
+      moneyLevel += amt;
+      toast(`💰 Hai ritirato ${amt} € da ${b.name}`);
+      saveGame(true); bizUpdate();
+    }
+
+    // ---------------------------------------------------------------- CHAT GLOBALE (tutti i giocatori, resta salvata)
+    // Messaggi in sims_chat/{chiave ordinabile}. Si mantengono gli ultimi CHAT_KEEP messaggi; i più vecchi vengono tolti da chi scrive.
+    const CHAT_KEEP = 500, CHAT_SHOW = 150, CHAT_MAX_LEN = 200;
+    let chatMsgs = [], chatInit = false, chatSeen = {}, chatLastSend = 0, chatReadT = Number(localStorage.getItem(LS_PREFIX + 'sims_chat_read') || 0) || 0, chatHadRead = localStorage.getItem(LS_PREFIX + 'sims_chat_read') !== null;
+    const chatOpen = () => !document.getElementById('gchat-modal').classList.contains('hidden');
+    function chatColor(name) { let h = 0; for (const c of String(name)) h = (h * 31 + c.charCodeAt(0)) % 360; return `hsl(${h},70%,68%)`; }
+    function chatUnread() { return chatMsgs.filter(m => m.id !== myPlayerId && (m.t || 0) > chatReadT).length; }
+    function updateChatBadge() {
+      const b = document.getElementById('gchat-badge'); if (!b) return;
+      const n = chatUnread();
+      b.textContent = n > 99 ? '99+' : String(n); b.classList.toggle('hidden', n === 0);
+    }
+    function markChatRead() {
+      const last = chatMsgs.length ? Math.max(...chatMsgs.map(m => m.t || 0)) : 0;
+      chatReadT = Math.max(chatReadT, last);
+      try { localStorage.setItem(LS_PREFIX + 'sims_chat_read', String(chatReadT)); } catch (e) {}
+      updateChatBadge();
+    }
+    function renderChat() {
+      const box = document.getElementById('gchat-list');
+      const stick = box.scrollHeight - box.scrollTop - box.clientHeight < 80;
+      box.innerHTML = '';
+      if (!chatMsgs.length) { const p = document.createElement('div'); p.style.cssText = 'color:#888;text-align:center;font-size:0.85rem;margin:auto;'; p.textContent = 'Nessun messaggio ancora: scrivi tu il primo! 👋'; box.appendChild(p); return; }
+      let lastDay = '';
+      chatMsgs.forEach(m => {
+        const d = new Date(m.t || 0), day = d.toLocaleDateString('it-IT', { day: 'numeric', month: 'long' });
+        if (day !== lastDay) { lastDay = day; const s = document.createElement('div'); s.style.cssText = 'text-align:center;font-size:0.7rem;color:#777;margin:4px 0;'; s.textContent = day === new Date().toLocaleDateString('it-IT', { day: 'numeric', month: 'long' }) ? 'Oggi' : day; box.appendChild(s); }
+        const mine = m.id === myPlayerId, row = document.createElement('div');
+        row.style.cssText = `align-self:${mine ? 'flex-end' : 'flex-start'};max-width:85%;background:${mine ? '#2e86de' : 'rgba(255,255,255,0.08)'};border-radius:12px;padding:6px 10px;`;
+        const hd = document.createElement('div'); hd.style.cssText = 'font-size:0.7rem;display:flex;gap:8px;justify-content:space-between;';
+        const nm = document.createElement('b'); nm.textContent = mine ? 'Tu' : (m.name || 'Giocatore'); nm.style.color = mine ? '#dff' : chatColor(m.name);
+        const tm = document.createElement('span'); tm.style.color = mine ? '#cde' : '#888'; tm.textContent = d.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+        hd.appendChild(nm); hd.appendChild(tm);
+        const tx = document.createElement('div'); tx.style.cssText = 'font-size:0.9rem;word-break:break-word;white-space:pre-wrap;'; tx.textContent = m.text;
+        row.appendChild(hd); row.appendChild(tx); box.appendChild(row);
+      });
+      if (stick) box.scrollTop = box.scrollHeight;
+    }
+    function openGlobalChat() {
+      document.getElementById('gchat-modal').classList.remove('hidden');
+      renderChat();
+      const box = document.getElementById('gchat-list'); box.scrollTop = box.scrollHeight;
+      markChatRead();
+      setTimeout(() => { try { document.getElementById('gchat-input').focus(); } catch (e) {} }, 60);
+    }
+    function closeGlobalChat() { closeModal('gchat-modal'); }
+    async function sendChat() {
+      const inp = document.getElementById('gchat-input');
+      const text = inp.value.trim().slice(0, CHAT_MAX_LEN);
+      if (!text) return;
+      if (isDead) { toast('🪦 Un fantasma non può scrivere in chat.'); return; }
+      const now = Date.now();
+      if (now - chatLastSend < 1500) { toast('⏳ Piano, un messaggio alla volta!'); return; }
+      chatLastSend = now; inp.value = '';
+      const t = now + (typeof serverOffset === 'number' ? serverOffset : 0);
+      const key = t.toString(36).padStart(9, '0') + '_' + Math.random().toString(36).slice(2, 6);
+      try { await db.ref('sims_chat/' + key).set({ id: myPlayerId, name: myData.nick, text, t }); } catch (e) { toast('❌ Messaggio non inviato.'); return; }
+      stats.chats = (stats.chats || 0) + 1;
+      if (Math.random() < 0.1) {                         // ogni tanto elimina i messaggi più vecchi
+        db.ref('sims_chat').once('value', s => {
+          const ks = Object.keys(s.val() || {}).sort();
+          if (ks.length > CHAT_KEEP) { const upd = {}; ks.slice(0, ks.length - CHAT_KEEP + 100).forEach(k => { upd[k] = null; }); db.ref('sims_chat').update(upd); }
+        });
+      }
+    }
+    function startChat() {
+      if (OFFLINE) { try { const saved = JSON.parse(localStorage.getItem(LS_PREFIX + 'sims_chat_offline') || 'null'); if (saved) db.ref('sims_chat').set(saved); } catch (e) {} }
+      let q = db.ref('sims_chat');
+      if (typeof q.limitToLast === 'function') q = q.limitToLast(CHAT_SHOW);
+      q.on('value', snap => {
+        const v = snap.val() || {};
+        const list = Object.keys(v).sort().map(k => Object.assign({ k }, v[k])).filter(m => m && typeof m.text === 'string');
+        const fresh = chatInit ? list.filter(m => !chatSeen[m.k]) : [];
+        list.forEach(m => { chatSeen[m.k] = 1; });
+        chatMsgs = list;
+        if (!chatInit && !chatHadRead) { chatHadRead = true; markChatRead(); }   // primo avvio: i vecchi messaggi non contano come "non letti"
+        chatInit = true;
+        if (OFFLINE) { try { localStorage.setItem(LS_PREFIX + 'sims_chat_offline', JSON.stringify(v)); } catch (e) {} }
+        if (chatOpen()) { renderChat(); markChatRead(); }
+        else fresh.filter(m => m.id !== myPlayerId).slice(-2).forEach(m => toast(`🗨️ ${m.name}: ${String(m.text).slice(0, 60)}`, 3500));
+        updateChatBadge();
+      });
+    }
+    document.addEventListener('DOMContentLoaded', () => { const i = document.getElementById('gchat-input'); if (i) i.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); sendChat(); } else if (e.key === 'Escape') closeGlobalChat(); }); });
 
     // ---------------------------------------------------------------- AVVISI (fame, sonno, igiene, salute)
     // Titolo della scheda sempre aggiornato; notifiche del browser (se attivate col 🔔) anche quando la scheda è in background.
@@ -2798,7 +3052,7 @@
         currentRoomTitle = "Viaggio ✈️";
       } else if (type === 'clothesshop') {
         activeEnvironment = 'negozio_vestiti';
-        currentRoomTitle = "Sims Boutique 👗";
+        currentRoomTitle = "Boutique Dolce Casa 👗";
         document.getElementById('btn-return-home').classList.add('hidden');
         playerPos = { x: 0, y: 110 };
         return;
@@ -3154,7 +3408,7 @@
     }
 
     function openComputerShopModal() {
-      openClothesShop('top', true);
+      document.getElementById('pc-modal').classList.remove('hidden');
     }
 
     // ---------- Anteprima del personaggio (canvas piccolo dentro le finestre) ----------
@@ -3214,7 +3468,7 @@
 
     function openClothesShop(slot = 'top', online = false) {
       shopState = { slot: slot || 'top', tryOn: null, online };
-      document.getElementById('clothes-title').textContent = online ? '🌐 simsshop-online.it' : '👗 Sims Boutique';
+      document.getElementById('clothes-title').textContent = online ? '🌐 modaonline.it' : '👗 Boutique Dolce Casa';
       renderClothesShop();
       document.getElementById('clothes-modal').classList.remove('hidden');
       startPreviewLoop();
@@ -4723,13 +4977,13 @@
       },
       negozio_mobili: {
         floor: 'concrete', floorColor: '#b8b0a4', wall: '#f5f5f5', wallStyle: 'plain', trim: '#d35400',
-        decor: { back: [{ t: 'poster', u: 70, text: 'SALDI -30%', color: '#e74c3c' }, { t: 'window', u: 200, w: 120, h: 60 }, { t: 'poster', u: 335, text: 'NOVITÀ', color: '#27ae60' }], left: [{ t: 'logo', u: 180, text: 'SIMS FURNITURE' }] },
+        decor: { back: [{ t: 'poster', u: 70, text: 'SALDI -30%', color: '#e74c3c' }, { t: 'window', u: 200, w: 120, h: 60 }, { t: 'poster', u: 335, text: 'NOVITÀ', color: '#27ae60' }], left: [{ t: 'logo', u: 180, text: 'ARREDO CASA' }] },
         lights: [{ x: -60, y: 0, z: 0, r: 200, color: '255,245,220' }, { x: 80, y: 40, z: 0, r: 200, color: '255,245,220' }]
       },
       negozio_vestiti: {
         floor: 'parquet', floorColor: '#e6d2b0', wall: '#fbe4ec', wallStyle: 'stripes', trim: '#e84393',
         rug: { u: 160, v: 140, w: 80, h: 80, color: '#fd79a8', border: '#ffffff' },
-        decor: { back: [{ t: 'poster', u: 70, text: 'NUOVA COLLEZIONE', color: '#e84393' }, { t: 'window', u: 200, w: 100, h: 56 }, { t: 'mirror', u: 335, w: 40, h: 72 }], left: [{ t: 'logo', u: 180, text: 'SIMS BOUTIQUE', sub: 'moda dal 2026', color: '#e84393' }] },
+        decor: { back: [{ t: 'poster', u: 70, text: 'NUOVA COLLEZIONE', color: '#e84393' }, { t: 'window', u: 200, w: 100, h: 56 }, { t: 'mirror', u: 335, w: 40, h: 72 }], left: [{ t: 'logo', u: 180, text: 'LA BOUTIQUE', sub: 'moda dal 2026', color: '#e84393' }] },
         lights: [{ x: -100, y: 0, z: 0, r: 200, color: '255,220,235' }, { x: 100, y: 0, z: 0, r: 200, color: '255,220,235' }, { x: 0, y: -110, z: 0, r: 160, color: '255,240,220' }]
       },
       bar: {
