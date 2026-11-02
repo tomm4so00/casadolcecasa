@@ -11,6 +11,8 @@ import {
   addPersonalityPoints,
   emptyPersonality,
   leadingPersonality,
+  socialLine,
+  type SocialAct,
 } from './personality-rules.js';
 
 /** Registra un'azione che fa crescere una personalità; alla soglia mostra il messaggio. */
@@ -44,4 +46,9 @@ export function bedtimeThought(): void {
   // lo stesso fumetto che usano le chiacchiere: lo vedono anche gli altri giocatori vicini
   game.mySay = '💭 ' + thoughts[Math.floor(Math.random() * thoughts.length)];
   game.mySayT = Date.now();
+}
+
+/** Frase da dire in un'azione sociale, con il tono della personalità che si sta diventando. */
+export function myLine(act: SocialAct): string {
+  return socialLine(act, leadingPersonality(game.player.personality ?? emptyPersonality()));
 }

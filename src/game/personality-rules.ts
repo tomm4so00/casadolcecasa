@@ -162,3 +162,96 @@ export function leadingPersonality(state: PersonalityState, minPoints = 3): Pers
       best = id;
   return best;
 }
+
+export type SocialAct = 'talk' | 'praise' | 'insult' | 'punch' | 'food';
+
+/**
+ * Frasi delle azioni sociali: un gruppo condiviso da tutti e uno per ogni personalità,
+ * così chi ha un carattere si riconosce anche da come parla.
+ */
+export const SOCIAL_LINES: Record<'shared' | PersonalityId, Record<SocialAct, string[]>> = {
+  shared: {
+    talk: [
+      'Come va oggi? 😊',
+      'Ti racconto una cosa…',
+      'Che bella giornata!',
+      'Hai sentito le novità?',
+      'Tutto bene a casa?',
+      'Che si dice in giro?',
+    ],
+    praise: [
+      'Stai benissimo! 😍',
+      'Sei un grande!',
+      'Che stile! ✨',
+      'Hai un sorriso bellissimo!',
+      'Mi piace come ti vesti!',
+    ],
+    insult: [
+      'Sei proprio un tipo… 🤬',
+      'Che vergogna!',
+      'Ma levati! 😠',
+      'Non ti sopporto proprio!',
+      "Va' a fare un giro! 😤",
+    ],
+    punch: ['Prendi questo! 👊', 'Te la sei cercata!', 'Beccati questo! 💥'],
+    food: ['Ho cucinato per te! 🍽️', 'Assaggia, è ancora caldo!'],
+  },
+  artist: {
+    talk: [
+      'Oggi la luce è perfetta per dipingere 🎨',
+      'Sto lavorando a un nuovo quadro…',
+      "Ti piace l'arte?",
+    ],
+    praise: ['Saresti un ritratto perfetto! 🖼️', 'Hai dei colori stupendi addosso!'],
+    insult: ['Hai il gusto di un muro grigio!', 'Sei più storto di un quadro appeso male!'],
+    punch: ['Una pennellata in faccia! 🎨👊'],
+    food: ["Un piatto è un'opera d'arte, assaggia!"],
+  },
+  business: {
+    talk: [
+      'Hai visto come va il mercato? 📈',
+      'Sto pensando di investire ancora…',
+      'Il tempo è denaro!',
+    ],
+    praise: ['Hai la stoffa del manager! 💼', "Con te farei affari d'oro!"],
+    insult: ["Vali meno di un'azione in crisi! 📉", 'Non ti assumerei neanche gratis!'],
+    punch: ['Questo è un taglio dei costi! 👊💼'],
+    food: ['Pranzo di lavoro offerto da me!'],
+  },
+  criminal: {
+    talk: [
+      'Hai visto qualcosa di strano stanotte? 😏',
+      "Io? Non c'ero…",
+      'Ti ricordi a memoria il codice della tua cassaforte?',
+    ],
+    praise: ["Hai l'aria di uno che sa tenere un segreto 😎", 'Mi piaci, sei uno sveglio!'],
+    insult: ['Guardati le spalle… 😈', 'Occhio a dove metti i piedi!'],
+    punch: ['Questo è un avvertimento! 😈👊', 'Non hai visto niente, chiaro?'],
+    food: ["Tieni, e non chiedermi dove l'ho preso 😏"],
+  },
+  romantic: {
+    talk: ['Che bello vederti! 💕', 'Ti va di fare due passi insieme?', 'Mi racconti di te?'],
+    praise: [
+      'Sei la persona più bella del condominio! 💖',
+      'Quando sorridi si illumina tutto! ✨',
+      'Hai degli occhi stupendi 😍',
+    ],
+    insult: ['Mi hai spezzato il cuore… 💔', 'Non mi parlare più! 😢'],
+    punch: ['Scusa… è stato un attimo! 💔👊'],
+    food: ["L'ho cucinato con amore! ❤️"],
+  },
+};
+
+/** Quante volte su dieci chi ha una personalità usa le sue frasi invece di quelle di tutti. */
+export const OWN_LINE_CHANCE = 0.6;
+
+/** Frase per un'azione sociale: a volte quella della propria personalità, altrimenti una di tutti. */
+export function socialLine(
+  act: SocialAct,
+  personality: PersonalityId | null,
+  roll: () => number = Math.random,
+): string {
+  const own = personality ? SOCIAL_LINES[personality][act] : [];
+  const pool = own.length && roll() < OWN_LINE_CHANCE ? own : SOCIAL_LINES.shared[act];
+  return pool[Math.floor(roll() * pool.length)];
+}

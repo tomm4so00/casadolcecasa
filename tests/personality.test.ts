@@ -10,6 +10,10 @@ import {
   decodePersonality,
   emptyPersonality,
   leadingPersonality,
+  OWN_LINE_CHANCE,
+  SOCIAL_LINES,
+  type SocialAct,
+  socialLine,
 } from '../src/game/personality-rules.js';
 
 const day = (d: number) => new Date(2026, 10, d, 12, 0);
@@ -76,5 +80,34 @@ describe('personalità', () => {
       todayPoints: { artist: 8 },
     });
     expect(decodePersonality(null)).toEqual(emptyPersonality());
+  });
+});
+
+describe('frasi delle azioni sociali', () => {
+  const acts: SocialAct[] = ['talk', 'praise', 'insult', 'punch', 'food'];
+  const ids: PersonalityId[] = ['artist', 'business', 'criminal', 'romantic'];
+
+  it('ogni personalità ha le sue frasi per ogni azione', () => {
+    for (const id of ids)
+      for (const a of acts) expect(SOCIAL_LINES[id][a].length).toBeGreaterThan(0);
+  });
+
+  it('senza personalità si usano solo le frasi di tutti', () => {
+    for (const a of acts)
+      for (let i = 0; i < 20; i++) expect(SOCIAL_LINES.shared[a]).toContain(socialLine(a, null));
+  });
+
+  it('con una personalità escono a volte le sue frasi, a volte quelle di tutti', () => {
+    // primo numero: decide il gruppo; secondo: la frase dentro il gruppo
+    const seq =
+      (...n: number[]) =>
+      () =>
+        n.shift() ?? 0;
+    expect(SOCIAL_LINES.romantic.praise).toContain(
+      socialLine('praise', 'romantic', seq(OWN_LINE_CHANCE - 0.01, 0.5)),
+    );
+    expect(SOCIAL_LINES.shared.praise).toContain(
+      socialLine('praise', 'romantic', seq(OWN_LINE_CHANCE + 0.01, 0.5)),
+    );
   });
 });
