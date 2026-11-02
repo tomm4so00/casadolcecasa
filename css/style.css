@@ -802,6 +802,38 @@ input[type='number'] {
 #minigame .mg-flash-ko {
   animation: mgko 0.25s;
 }
+
+/* Telefono: testi del lavoro più piccoli, così non coprono la scena */
+@media (max-width: 760px), (pointer: coarse) and (max-height: 520px) {
+  #minigame {
+    bottom: 120px;
+    width: min(340px, 90vw);
+    padding: 6px 10px 7px;
+  }
+  #minigame .mg-step {
+    font-size: 0.82rem;
+  }
+  #minigame .mg-head {
+    font-size: 0.66rem;
+    margin-bottom: 4px;
+  }
+  #minigame .mg-sub {
+    font-size: 0.7rem;
+    margin-bottom: 4px;
+  }
+  #minigame .mg-big {
+    font-size: 1.6rem;
+    min-height: 1.9rem;
+  }
+  #minigame .mg-btn {
+    font-size: 1.15rem;
+  }
+  #shift-hud {
+    bottom: 84px;
+    font-size: 0.7rem;
+    padding: 6px 10px;
+  }
+}
 @keyframes mgok {
   from {
     box-shadow: 0 0 0 3px #2ed573;

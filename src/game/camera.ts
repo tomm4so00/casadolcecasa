@@ -49,20 +49,30 @@ export function cameraRange(s = cameraScale()): { u0: number; u1: number; v0: nu
   return { u0, u1, v0, v1 };
 }
 
-/** Muove la telecamera verso il giocatore; al cambio di ambiente salta subito su di lui. */
-export function updateCamera(delta: number): void {
+/**
+ * Muove la telecamera verso il giocatore; al cambio di ambiente salta subito su di lui.
+ * `bed`: mentre si corica (k da 0 a 1) l'inquadratura scivola sul letto insieme al personaggio.
+ */
+export function updateCamera(
+  delta: number,
+  bed?: { x: number; y: number; k: number } | null,
+): void {
   const cam: CameraState = (game.cam ||= { u: 0, v: 0, env: null });
   const s = cameraScale();
   const w = game.view.canvas.width / s,
     h = game.view.canvas.height / s;
-  const p = game.playerPos || { x: 0, y: 0 };
+  let p = game.playerPos || { x: 0, y: 0 };
+  if (bed && bed.k > 0) {
+    const e = bed.k * bed.k * (3 - 2 * bed.k); // stessa curva dell'animazione del personaggio
+    p = { x: p.x + (bed.x - p.x) * e, y: p.y + (bed.y - p.y) * e };
+  }
   const pu = (p.x - p.y) * 0.866;
   const pv = (p.x + p.y) * 0.5 - BODY_Z + OFFSET_Y / s; // riferito al centro dello schermo
   const snap = cam.env !== game.view.activeEnvironment;
   cam.env = game.view.activeEnvironment;
   let tu = cam.u,
     tv = cam.v;
-  if (snap) {
+  if (snap || (bed && bed.k > 0)) {
     tu = pu;
     tv = pv;
   } else {

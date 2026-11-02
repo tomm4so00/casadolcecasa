@@ -434,7 +434,11 @@ export function startLoop(..._args: GameValue[]): GameValue {
     tickNeeds();
     game.view.ctx.clearRect(0, 0, game.view.canvas.width, game.view.canvas.height);
     applyRoomBounds(game.view.activeEnvironment);
-    updateCamera(delta);
+    const bed: GameValue =
+      game.sleepK > 0 && game.view.activeEnvironment === 'PLAYER_ROOM'
+        ? getCurrentFurnitureMap().bed
+        : null;
+    updateCamera(delta, bed ? { x: bed.x, y: bed.y, k: game.sleepK } : null);
     renderEnvironment(delta, game.animClock);
   }
   lifetime.requestAnimationFrame(animate);
