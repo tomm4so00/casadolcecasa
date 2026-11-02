@@ -1,4 +1,7 @@
 import type { GameValue } from './context.js';
+import { decodeChatMessage } from './network-model.js';
+import { isRecord } from './save-model.js';
+import type { ChatMessage } from './models.js';
 import { game } from './context.js';
 import { lifetime, dom } from './runtime.js';
 import { closeModal } from './render/primitives.js';
@@ -11,7 +14,7 @@ export function chatColor(name?: GameValue): GameValue {
 
 export function chatUnread(..._args: GameValue[]): GameValue {
   return game.chatMsgs.filter(
-    (m?: GameValue): GameValue => m.id !== game.myPlayerId && (m.t || 0) > game.chatReadT,
+    (m?: GameValue): GameValue => m.id !== game.session.myPlayerId && (m.t || 0) > game.chatReadT,
   ).length;
 }
 
@@ -29,7 +32,7 @@ export function markChatRead(..._args: GameValue[]): GameValue {
     : 0;
   game.chatReadT = Math.max(game.chatReadT, last);
   try {
-    localStorage.setItem(game.LS_PREFIX + 'sims_chat_read', String(game.chatReadT));
+    localStorage.setItem(game.session.LS_PREFIX + 'sims_chat_read', String(game.chatReadT));
   } catch (e: GameValue) {}
   updateChatBadge();
 }
@@ -59,7 +62,7 @@ export function renderChat(..._args: GameValue[]): GameValue {
           : day;
       box.appendChild(s);
     }
-    const mine: GameValue = m.id === game.myPlayerId,
+    const mine: GameValue = m.id === game.session.myPlayerId,
       row: GameValue = document.createElement('div');
     row.style.cssText = `align-self:${mine ? 'flex-end' : 'flex-start'};max-width:85%;background:${mine ? '#2e86de' : 'rgba(255,255,255,0.08)'};border-radius:12px;padding:6px 10px;`;
     const hd: GameValue = document.createElement('div');
@@ -103,7 +106,7 @@ export async function sendChat(..._args: GameValue[]): Promise<GameValue> {
   const inp: GameValue = dom('gchat-input');
   const text: GameValue = inp.value.trim().slice(0, game.CHAT_MAX_LEN);
   if (!text) return;
-  if (game.isDead) {
+  if (game.player.isDead) {
     toast('🪦 Un fantasma non può scrivere in chat.');
     return;
   }
@@ -114,55 +117,45 @@ export async function sendChat(..._args: GameValue[]): Promise<GameValue> {
   }
   game.chatLastSend = now;
   inp.value = '';
-  const t: GameValue = now + (typeof game.serverOffset === 'number' ? game.serverOffset : 0);
+  const t: GameValue =
+    now + (typeof game.session.serverOffset === 'number' ? game.session.serverOffset : 0);
   const key: GameValue =
     t.toString(36).padStart(9, '0') + '_' + Math.random().toString(36).slice(2, 6);
   try {
-    await game.db
+    await game.session.db
       .ref('sims_chat/' + key)
-      .set({ id: game.myPlayerId, name: game.myData.nick, text, t });
+      .set({ id: game.session.myPlayerId, name: game.player.myData.nick, text, t });
   } catch (e: GameValue) {
     toast('❌ Messaggio non inviato.');
     return;
   }
-  game.stats.chats = (game.stats.chats || 0) + 1;
-  if (Math.random() < 0.1) {
-    // ogni tanto elimina i messaggi più vecchi
-    game.db.ref('sims_chat').once('value', (s?: GameValue): GameValue => {
-      const ks: GameValue = Object.keys(s.val() || {}).sort();
-      if (ks.length > game.CHAT_KEEP) {
-        const upd: GameValue = {};
-        ks.slice(0, ks.length - game.CHAT_KEEP + 100).forEach((k?: GameValue): GameValue => {
-          upd[k] = null;
-        });
-        game.db.ref('sims_chat').update(upd);
-      }
-    });
-  }
+  game.player.stats.chats = (game.player.stats.chats || 0) + 1;
 }
 
 export function startChat(..._args: GameValue[]): GameValue {
-  if (game.OFFLINE) {
+  if (game.session.OFFLINE) {
     try {
       const saved: GameValue = JSON.parse(
-        localStorage.getItem(game.LS_PREFIX + 'sims_chat_offline') || 'null',
+        localStorage.getItem(game.session.LS_PREFIX + 'sims_chat_offline') || 'null',
       );
-      if (saved) game.db.ref('sims_chat').set(saved);
+      if (saved) game.session.db.ref('sims_chat').set(saved);
     } catch (e: GameValue) {}
   }
-  let q: GameValue = game.db.ref('sims_chat');
+  let q = game.session.db.ref('sims_chat');
   if (typeof q.limitToLast === 'function') q = q.limitToLast(game.CHAT_SHOW);
-  q.on('value', (snap?: GameValue): GameValue => {
-    const v: GameValue = snap.val() || {};
-    const list: GameValue = Object.keys(v)
+  q.on('value', (snap): void => {
+    const value: unknown = snap.val();
+    const v = isRecord(value) ? value : {};
+    const list = Object.keys(v)
       .sort()
-      .map((k?: GameValue): GameValue => Object.assign({ k }, v[k]))
-      .filter((m?: GameValue): GameValue => m && typeof m.text === 'string');
-    const fresh: GameValue = game.chatInit
-      ? list.filter((m?: GameValue): GameValue => !game.chatSeen[m.k])
-      : [];
-    list.forEach((m?: GameValue): GameValue => {
-      game.chatSeen[m.k] = 1;
+      .map((k) => {
+        const message = decodeChatMessage(v[k]);
+        return message ? { ...message, k } : null;
+      })
+      .filter((message): message is ChatMessage & { k: string } => message !== null);
+    const fresh = game.chatInit ? list.filter((m) => !game.chatSeen[m.k]) : [];
+    list.forEach((m) => {
+      game.chatSeen[m.k] = true;
     });
     game.chatMsgs = list;
     if (!game.chatInit && !game.chatHadRead) {
@@ -170,9 +163,9 @@ export function startChat(..._args: GameValue[]): GameValue {
       markChatRead();
     } // primo avvio: i vecchi messaggi non contano come "non letti"
     game.chatInit = true;
-    if (game.OFFLINE) {
+    if (game.session.OFFLINE) {
       try {
-        localStorage.setItem(game.LS_PREFIX + 'sims_chat_offline', JSON.stringify(v));
+        localStorage.setItem(game.session.LS_PREFIX + 'sims_chat_offline', JSON.stringify(v));
       } catch (e: GameValue) {}
     }
     if (game.chatOpen()) {
@@ -180,7 +173,7 @@ export function startChat(..._args: GameValue[]): GameValue {
       markChatRead();
     } else
       fresh
-        .filter((m?: GameValue): GameValue => m.id !== game.myPlayerId)
+        .filter((m?: GameValue): GameValue => m.id !== game.session.myPlayerId)
         .slice(-2)
         .forEach(
           (m?: GameValue): GameValue => toast(`🗨️ ${m.name}: ${String(m.text).slice(0, 60)}`, 3500),

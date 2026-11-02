@@ -24,6 +24,9 @@ export interface SaveV8 {
   missionIndex: number;
   missionSet?: number;
   sleeping?: boolean;
+  sleepGainedSinceLastHealthBoost?: number;
+  currentOutfitColor?: string;
+  equippedAcc?: Record<string, boolean>;
   body?: string;
   drugStock?: number;
   coffeeAt?: number;
@@ -36,68 +39,136 @@ export interface SaveV8 {
   inventory?: { hasFood: boolean; foodCooked: boolean };
 }
 
-const object = (value: unknown): value is Record<string, unknown> =>
+export const isRecord = (value: unknown): value is Record<string, unknown> =>
   value !== null && typeof value === 'object' && !Array.isArray(value);
+const object = isRecord;
 const finite = (value: unknown): value is number =>
   typeof value === 'number' && Number.isFinite(value);
+const nonnegative = (value: unknown): value is number =>
+  finite(value) && value >= 0 && value <= Number.MAX_SAFE_INTEGER;
+const safeKey = (key: string) =>
+  key.length <= 100 && !['__proto__', 'constructor', 'prototype'].includes(key);
+function recordOf(value: unknown, validate: (entry: unknown) => boolean): boolean {
+  return (
+    object(value) &&
+    Object.keys(value).length <= 5000 &&
+    Object.entries(value).every(([key, entry]) => safeKey(key) && validate(entry))
+  );
+}
+const optionalFields = (
+  value: Record<string, unknown>,
+  fields: string[],
+  validate: (entry: unknown) => boolean,
+) => fields.every((key) => value[key] === undefined || validate(value[key]));
+export type ValidatedSave = Partial<SaveV8> & { savedAt: number };
 
-// Preserva le estensioni della v8; rifiuta valori che farebbero fallire il caricamento.
-export function decodeSaveV8(value: unknown): (Partial<SaveV8> & { savedAt: number }) | null {
+/** Validate untrusted JSON before allowing it into typed character state. Keep v8 extensions. */
+export function decodeSaveV8(value: unknown): ValidatedSave | null {
   if (
     !object(value) ||
-    !finite(value.savedAt) ||
-    value.savedAt < 0 ||
-    (value.v !== undefined && (!finite(value.v) || value.v > 8))
+    !nonnegative(value.savedAt) ||
+    (value.v !== undefined &&
+      (!Number.isInteger(value.v) || (value.v as number) < 1 || (value.v as number) > 8))
   )
     return null;
-  for (const key of [
-    'healthLevel',
-    'sleepLevel',
-    'hungerLevel',
-    'hygieneLevel',
-    'happinessLevel',
-  ]) {
-    if (value[key] !== undefined && (!finite(value[key]) || value[key] < 0 || value[key] > 100))
-      return null;
-  }
-  for (const key of [
-    'ownedItems',
-    'ownedFurniture',
-    'equipped',
-    'jobExperience',
-    'furniturePos',
-    'stats',
-    'invest',
-    'drug',
-    'inventory',
-  ]) {
-    if (value[key] !== undefined && !object(value[key])) return null;
-  }
-  if (value.nick !== undefined && (typeof value.nick !== 'string' || value.nick.length > 100))
+  if (
+    !optionalFields(
+      value,
+      ['healthLevel', 'sleepLevel', 'hungerLevel', 'hygieneLevel', 'happinessLevel'],
+      (entry) => finite(entry) && entry >= 0 && entry <= 100,
+    )
+  )
     return null;
-  if (object(value.furniturePos))
-    for (const position of Object.values(value.furniturePos)) {
-      if (
-        !object(position) ||
-        !finite(position.x) ||
-        !finite(position.y) ||
-        Math.abs(position.x) > 1000 ||
-        Math.abs(position.y) > 1000
-      )
-        return null;
-    }
-  if (object(value.invest))
-    for (const investment of Object.values(value.invest)) {
-      if (
-        !object(investment) ||
-        !finite(investment.units) ||
-        !finite(investment.cost) ||
-        investment.units < 0 ||
-        investment.cost < 0
-      )
-        return null;
-    }
-  return value as Partial<SaveV8> & { savedAt: number };
+  if (
+    !optionalFields(
+      value,
+      [
+        'moneyLevel',
+        'gameMinutes',
+        'missionIndex',
+        'missionSet',
+        'drugStock',
+        'coffeeAt',
+        'bornAt',
+        'deadAt',
+        'sleepGainedSinceLastHealthBoost',
+      ],
+      nonnegative,
+    )
+  )
+    return null;
+  if (
+    !optionalFields(value, ['vaultOnly', 'sleeping', 'dead'], (entry) => typeof entry === 'boolean')
+  )
+    return null;
+  if (
+    !optionalFields(
+      value,
+      ['nick', 'body', 'epitaph', 'currentOutfitColor'],
+      (entry) => typeof entry === 'string' && entry.length <= 200,
+    )
+  )
+    return null;
+  if (
+    value.activeJobKey !== undefined &&
+    value.activeJobKey !== null &&
+    (typeof value.activeJobKey !== 'string' || value.activeJobKey.length > 100)
+  )
+    return null;
+  for (const key of ['ownedItems', 'ownedFurniture', 'equippedAcc'])
+    if (value[key] !== undefined && !recordOf(value[key], (entry) => typeof entry === 'boolean'))
+      return null;
+  for (const key of ['jobExperience', 'stats'])
+    if (value[key] !== undefined && !recordOf(value[key], nonnegative)) return null;
+  if (
+    value.equipped !== undefined &&
+    !recordOf(
+      value.equipped,
+      (entry) => entry === null || (typeof entry === 'string' && entry.length <= 100),
+    )
+  )
+    return null;
+  if (
+    value.furniturePos !== undefined &&
+    !recordOf(
+      value.furniturePos,
+      (position) =>
+        object(position) &&
+        finite(position.x) &&
+        finite(position.y) &&
+        Math.abs(position.x) <= 1000 &&
+        Math.abs(position.y) <= 1000,
+    )
+  )
+    return null;
+  if (
+    value.invest !== undefined &&
+    !recordOf(
+      value.invest,
+      (investment) =>
+        object(investment) && nonnegative(investment.units) && nonnegative(investment.cost),
+    )
+  )
+    return null;
+  if (
+    value.inventory !== undefined &&
+    (!object(value.inventory) ||
+      !optionalFields(
+        value.inventory,
+        ['hasFood', 'foodCooked'],
+        (entry) => typeof entry === 'boolean',
+      ))
+  )
+    return null;
+  if (
+    value.drug !== undefined &&
+    (!object(value.drug) ||
+      !['doses', 'lastDose', 'endAt', 'dAtDose', 'crisisAt'].every((key) =>
+        nonnegative(value.drug && (value.drug as Record<string, unknown>)[key]),
+      ))
+  )
+    return null;
+  return value as ValidatedSave;
 }
 
 // Importa il formato della precedente ristrutturazione solo se non esiste già un salvataggio v8.
@@ -136,6 +207,7 @@ export function importRefactoredSave(storage: Storage, prefix: string): boolean 
       sleeping: source.isSleeping === true,
       inventory: object(source.inventory) ? source.inventory : undefined,
     };
+    if (!decodeSaveV8(save)) return false;
     storage.setItem(target, JSON.stringify(save));
     storage.setItem(prefix + 'sims_player_nick', save.nick);
     return true;

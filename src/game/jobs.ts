@@ -1,3 +1,4 @@
+import { creditMoney } from './economy.js';
 import type { GameValue } from './context.js';
 import { game } from './context.js';
 import { dom } from './runtime.js';
@@ -188,19 +189,19 @@ export function drawWorkItem(o?: GameValue, t?: GameValue): GameValue {
     bob: GameValue = Math.sin(t * 3 + o.x * 0.05) * 1.8;
   ellipseShadow(o.x, o.y, 11, 6, 0.28);
   const p: GameValue = isoProject(o.x, o.y, 14 + bob);
-  game.ctx.fillStyle = 'rgba(255,255,255,0.82)';
-  game.ctx.strokeStyle = 'rgba(0,0,0,0.25)';
-  game.ctx.lineWidth = 1.5;
-  game.ctx.beginPath();
-  game.ctx.arc(p.x, p.y, 17 * s, 0, 6.3);
-  game.ctx.fill();
-  game.ctx.stroke();
-  game.ctx.font = `${Math.round(26 * s)}px serif`;
-  game.ctx.textAlign = 'center';
-  game.ctx.textBaseline = 'middle';
-  game.ctx.fillStyle = '#000';
-  game.ctx.fillText(o.item.e, p.x, p.y + 1);
-  game.ctx.textBaseline = 'alphabetic';
+  game.view.ctx.fillStyle = 'rgba(255,255,255,0.82)';
+  game.view.ctx.strokeStyle = 'rgba(0,0,0,0.25)';
+  game.view.ctx.lineWidth = 1.5;
+  game.view.ctx.beginPath();
+  game.view.ctx.arc(p.x, p.y, 17 * s, 0, 6.3);
+  game.view.ctx.fill();
+  game.view.ctx.stroke();
+  game.view.ctx.font = `${Math.round(26 * s)}px serif`;
+  game.view.ctx.textAlign = 'center';
+  game.view.ctx.textBaseline = 'middle';
+  game.view.ctx.fillStyle = '#000';
+  game.view.ctx.fillText(o.item.e, p.x, p.y + 1);
+  game.view.ctx.textBaseline = 'alphabetic';
 }
 
 export function drawWorkTarget(tg?: GameValue): GameValue {
@@ -216,15 +217,15 @@ export function drawTargetRing(tg?: GameValue, t?: GameValue): GameValue {
     c: GameValue = isoProject(tg.x, tg.y, 0);
   const rx: GameValue = (Math.max(tg.w, 36) * 0.5 + 18) * s * pulse * 0.87,
     ry: GameValue = rx * 0.5;
-  game.ctx.save();
-  game.ctx.lineWidth = 3 * s;
-  game.ctx.strokeStyle = 'rgba(254,202,87,0.95)';
-  game.ctx.fillStyle = 'rgba(254,202,87,0.18)';
-  game.ctx.beginPath();
-  game.ctx.ellipse(c.x, c.y, rx, ry, 0, 0, 6.3);
-  game.ctx.fill();
-  game.ctx.stroke();
-  game.ctx.restore();
+  game.view.ctx.save();
+  game.view.ctx.lineWidth = 3 * s;
+  game.view.ctx.strokeStyle = 'rgba(254,202,87,0.95)';
+  game.view.ctx.fillStyle = 'rgba(254,202,87,0.18)';
+  game.view.ctx.beginPath();
+  game.view.ctx.ellipse(c.x, c.y, rx, ry, 0, 0, 6.3);
+  game.view.ctx.fill();
+  game.view.ctx.stroke();
+  game.view.ctx.restore();
 }
 
 export function mgAddDrawables(
@@ -253,29 +254,29 @@ export function mgAddDrawables(
       draw: (): GameValue => {
         const s: GameValue = isoScale(),
           p: GameValue = isoProject(px, py, 74);
-        game.ctx.fillStyle = 'rgba(255,255,255,0.88)';
-        game.ctx.beginPath();
-        game.ctx.arc(p.x + 18 * s, p.y, 14 * s, 0, 6.3);
-        game.ctx.fill();
-        game.ctx.font = `${Math.round(20 * s)}px serif`;
-        game.ctx.textAlign = 'center';
-        game.ctx.textBaseline = 'middle';
-        game.ctx.fillStyle = '#000';
-        game.ctx.fillText(e, p.x + 18 * s, p.y + 1);
-        game.ctx.textBaseline = 'alphabetic';
+        game.view.ctx.fillStyle = 'rgba(255,255,255,0.88)';
+        game.view.ctx.beginPath();
+        game.view.ctx.arc(p.x + 18 * s, p.y, 14 * s, 0, 6.3);
+        game.view.ctx.fill();
+        game.view.ctx.font = `${Math.round(20 * s)}px serif`;
+        game.view.ctx.textAlign = 'center';
+        game.view.ctx.textBaseline = 'middle';
+        game.view.ctx.fillStyle = '#000';
+        game.view.ctx.fillText(e, p.x + 18 * s, p.y + 1);
+        game.view.ctx.textBaseline = 'alphabetic';
       },
     });
   }
 }
 
-export function updateShift(delta?: GameValue): GameValue {
+export async function updateShift(delta: number): Promise<void> {
   const hud: GameValue = dom('shift-hud');
   if (!game.activeShift) {
     hud.classList.add('hidden');
     if (game.MG.active) mgStop();
     return;
   }
-  if (game.activeEnvironment !== 'lavoro_' + game.activeShift.jobKey) {
+  if (game.view.activeEnvironment !== 'lavoro_' + game.activeShift.jobKey) {
     toast('🚪 Hai lasciato il lavoro prima della fine: turno non pagato.');
     game.activeShift = null;
     hud.classList.add('hidden');
@@ -299,14 +300,18 @@ export function updateShift(delta?: GameValue): GameValue {
     s.pay = Math.round(s.pay * mult);
     s.rating = rating;
     s.mult = mult;
-    game.jobExperience[s.jobKey] = (game.jobExperience[s.jobKey] || 0) + 1;
-    game.moneyLevel += s.pay;
-    game.stats.shifts++;
-    game.happinessLevel = Math.max(0, game.happinessLevel - 5);
-    game.sleepLevel = Math.max(0, game.sleepLevel - 3);
-    game.currentRoomTitle = `${s.title} ✅`;
+    game.player.jobExperience[s.jobKey] = (game.player.jobExperience[s.jobKey] || 0) + 1;
+    const paid = await creditMoney(s.pay);
+    if (!paid) {
+      toast('Pagamento del turno non confermato.');
+      return;
+    }
+    game.player.stats.shifts++;
+    game.player.happinessLevel = Math.max(0, game.player.happinessLevel - 5);
+    game.player.sleepLevel = Math.max(0, game.player.sleepLevel - 3);
+    game.view.currentRoomTitle = `${s.title} ✅`;
     toast(
-      `✅ Turno completato! Prestazione ${Math.round(s.rating * 100)}%${s.mult !== 1 ? ' (×' + String(s.mult).replace('.', ',') + ')' : ''} · +${s.pay} € (turni: ${game.jobExperience[s.jobKey]}/60)`,
+      `✅ Turno completato! Prestazione ${Math.round(s.rating * 100)}%${s.mult !== 1 ? ' (×' + String(s.mult).replace('.', ',') + ')' : ''} · +${s.pay} € (turni: ${game.player.jobExperience[s.jobKey]}/60)`,
       5000,
     );
   }

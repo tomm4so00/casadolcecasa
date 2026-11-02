@@ -54,24 +54,15 @@ pubblica soltanto il frontend; il processo del mercato ha un workflow separato.
    Chi non ha accesso alle impostazioni deve far completare il passaggio al
    proprietario. Per un progetto diverso impostare anche le variabili
    `VITE_FIREBASE_PROJECT_ID` e `VITE_FIREBASE_DATABASE_URL` già usate dal frontend.
-3. Copiare le regole attuali di Realtime Database in un file esterno alla
-   repository e conservarne una copia originale. Preparare una proposta:
-
-   ```sh
-   npm ci
-   npm ci --prefix server
-   npm run build:server
-   node server/lib/server/src/prepare-market-rules.js existing.rules.json proposed.rules.json
-   ```
-
-4. Esaminare la proposta e pubblicarla da Realtime Database → Regole. Il processo
-   centrale usa un'identità amministrativa con override `market-publisher`;
-   `sims_market` consente lettura pubblica e scrittura solo a tale identità.
-   Lo script conserva i permessi precedenti delle tabelle legacy, spostando
-   l'eventuale permesso di scrittura dalla radice. Se tale condizione dipende da
-   `data` o `newData`, si ferma e richiede una revisione manuale: spostarla
-   automaticamente cambierebbe il suo significato. Un `.write: false` sul figlio
-   non revoca un permesso concesso dalla radice.
+3. Conservare una copia delle regole e dei dati attuali. La proposta completa
+   per la versione con accesso Google è in `firebase/database.rules.proposed.json`.
+   Va esaminata e pubblicata nel passaggio al nuovo frontend: i vecchi client
+   con ingresso senza account non sono compatibili con i salvataggi privati.
+4. Seguire [firebase-authentication.md](firebase-authentication.md) per identità,
+   richieste di collegamento dei vecchi Sim e permessi. Il processo centrale usa
+   l'identità amministrativa `market-publisher`, autorizzata anche alla
+   manutenzione degli assenti e della chat. I giocatori non scrivono quotazioni
+   o metadati della versione.
 5. Pubblicare il codice nella repository principale. In Actions selezionare
    **Update shared stock market**. Impostare la variabile di repository
    `MARKET_ENABLED=true`, poi avviare **Run workflow** sul branch `main`.

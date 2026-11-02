@@ -1,56 +1,45 @@
-import type { GameDatabase } from './database.js';
+import type { Business } from '../../shared/market.js';
+import type { SHOP_CATALOG, FURNITURE_CATALOG } from './data/catalogues.js';
+import type {
+  CharacterState,
+  ViewState,
+  SessionState,
+  RoomState,
+  ChatMessage,
+  DialogResult,
+} from './models.js';
 
 /** Dynamic values at the boundary with the v8 save format and scene catalogues. */
 export type GameValue = any;
 
 export interface GameContext {
+  view: ViewState;
+  player: CharacterState;
+  session: SessionState;
   firebaseConfig: GameValue;
   GAME_VERSION: number;
-  OFFLINE: GameValue;
-  LS_PREFIX: GameValue;
-  db: GameDatabase;
-  myPlayerId: GameValue;
   onlinePlayers: GameValue;
-  activeEnvironment: string;
-  currentRoomTitle: string;
-  canvas: GameValue;
-  ctx: GameValue;
-  healthLevel: number;
-  sleepLevel: number;
-  hungerLevel: number;
-  hygieneLevel: number;
-  happinessLevel: number;
   vaultCache: number;
   legacyPocketMoney: number;
   vaultSynced: boolean;
   lastNoRoomToastAt: number;
   hasSetSafePin: boolean;
   safePinCode: string;
-  activeJobKey: GameValue;
-  jobExperience: GameValue;
-  isSleeping: boolean;
   showerAnim: GameValue;
   sleepK: number;
   showerFog: number;
   frameShowerActors: GameValue;
-  isOutsideMenuOpen: boolean;
-  fridgeIsOpen: boolean;
-  sleepGainedSinceLastHealthBoost: number;
   SLEEP_DEPLETION_SEC: number;
   SLEEP_RECOVERY_SEC: number;
   HUNGER_AWAKE_DEPLETION_SEC: number;
   HUNGER_SLEEP_DEPLETION_SEC: number;
   HYGIENE_DEPLETION_SEC: number;
   HEALTH_DAMAGE_SEC: number;
-  hasFoodInInventory: boolean;
-  foodIsCooked: boolean;
-  shopCatalog: GameValue;
+  shopCatalog: Array<(typeof SHOP_CATALOG)[number]>;
   SLOTS: GameValue;
   SLOT_INFO: GameValue;
   OPTIONAL_SLOTS: GameValue;
   DEFAULT_LOOK: GameValue;
-  ownedItems: GameValue;
-  equipped: GameValue;
   botLooks: GameValue;
   BODY_PARTS: GameValue;
   BODY_KEYS: GameValue;
@@ -60,8 +49,7 @@ export interface GameContext {
   OLD_HAIR_IDX: GameValue;
   myBody: GameValue;
   bodyChosen: boolean;
-  furnitureCatalog: GameValue;
-  ownedFurniture: GameValue;
+  furnitureCatalog: Array<(typeof FURNITURE_CATALOG)[number]>;
   playerPos: { x: number; y: number };
   moveForward: number;
   moveRight: number;
@@ -80,32 +68,25 @@ export interface GameContext {
   gRoomIdx: GameValue;
   saloonTitle: GameValue;
   blankRoom: GameValue;
-  roomsState: GameValue;
-  myAssignedRoomIdx: GameValue;
+  roomsState: RoomState[];
+  myAssignedRoomIdx: number | null;
   joystickTouchId: GameValue;
   joystickOrigin: GameValue;
-  myData: GameValue;
   pinPromptMoneyThreshold: number;
   theftAttempts: GameValue;
   isWalking: boolean;
   remoteSmooth: GameValue;
-  SAVE_KEY: GameValue;
-  saveReady: boolean;
-  gameStarted: boolean;
-  currentRoomIdx: GameValue;
-  gameMinutes: GameValue;
+  currentRoomIdx: number | null;
   GAME_MINUTES_PER_SEC: GameValue;
   activeShift: GameValue;
   SHIFT_SECONDS: number;
   mySay: string;
   mySayT: number;
-  dialogResolve: GameValue;
+  dialogResolve: ((result: DialogResult) => void) | null;
   HAPPINESS_DEPLETION_SEC: number;
   lastMoneyForSound: GameValue;
   lastEnvForSound: GameValue;
   relaxCooldownUntil: number;
-  stats: GameValue;
-  missionIndex: number;
   audioCtx: GameValue;
   soundOn: GameValue;
   musicOn: GameValue;
@@ -118,7 +99,6 @@ export interface GameContext {
   lastCloudSaveAt: number;
   lastCloudMoney: GameValue;
   lastLayoutKey: string;
-  serverOffset: number;
   presenceTrack: GameValue;
   INTRO_PAGES: GameValue;
   simulationBots: GameValue;
@@ -129,10 +109,6 @@ export interface GameContext {
   storeFloorFurniture: GameValue;
   saloonDoors: GameValue;
   courtyardDoors: GameValue;
-  isDead: boolean;
-  deadAt: number;
-  bornAt: number;
-  epitaph: string;
   ABSENT_DEATH_MS: GameValue;
   ABSENT_DEATH_ESTIMATE_MS: GameValue;
   lastNeedsWall: GameValue;
@@ -144,13 +120,11 @@ export interface GameContext {
   DRUG_PEAK: number;
   DRUG_HIGH_H: number;
   DRUG_TAPER_H: number;
-  drug: GameValue;
   drugWindowMs: GameValue;
   discoMap: GameValue;
   barMap: GameValue;
   DISCO_LINES: GameValue;
   DEALER_LINES: GameValue;
-  drugStock: number;
   SOC_RANGE: number;
   SOC_CD_MS: number;
   SOC_MSG_TTL: GameValue;
@@ -163,32 +137,27 @@ export interface GameContext {
   pick: GameValue;
   socDone: GameValue;
   socPending: boolean;
-  BIZ: GameValue;
-  MKT_EPOCH: GameValue;
-  mktCache: GameValue;
-  mktZ: GameValue;
-  invest: GameValue;
-  bizById: GameValue;
-  bizValue: GameValue;
-  investedTotal: GameValue;
-  fmtEur: GameValue;
-  fmtPct: GameValue;
+  BIZ: readonly Business[];
+  bizById: (id: string) => Business | undefined;
+  bizValue: (id: string) => number;
+  investedTotal: () => number;
+  fmtEur: (amount: number) => string;
+  fmtPct: (amount: number) => string;
   bizBuilt: boolean;
   CHAT_KEEP: number;
   CHAT_SHOW: number;
   CHAT_MAX_LEN: number;
-  chatMsgs: GameValue;
+  chatMsgs: ChatMessage[];
   chatInit: boolean;
-  chatSeen: GameValue;
+  chatSeen: Record<string, boolean>;
   chatLastSend: number;
-  chatReadT: GameValue;
-  chatHadRead: GameValue;
-  chatOpen: GameValue;
+  chatReadT: number;
+  chatHadRead: boolean;
+  chatOpen: () => boolean;
   COFFEE_SLEEP: number;
   COFFEE_HEALTH: number;
   COFFEE_CD_MS: GameValue;
   COFFEE_MIN_HEALTH: number;
-  coffeeAt: number;
   coffeeBrewUntil: number;
   BASE_TITLE: GameValue;
   notifyOn: boolean;
@@ -236,9 +205,10 @@ export interface GameContext {
   BOT_LINES: GameValue;
   lastTime: GameValue;
   animClock: number;
-  moneyLevel: GameValue;
+  readonly moneyLevel: number;
   lastSavePromise: Promise<boolean>;
   lastSaveContent: string | null;
+  lastCloudSaveContent: string | null;
 }
 
 export const game = {} as GameContext;

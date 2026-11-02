@@ -1,19 +1,26 @@
 import template from './view.html?raw';
 import { initializeGame } from './initialize.js';
 import { game } from './context.js';
-import { gameActions } from './public-api.js';
-import { browser, lifetime, resetLifetime } from './runtime.js';
+import { bindUiActions } from './ui-bindings.js';
+import { startGame } from './interface.js';
+import { saveGame } from './saves.js';
+import { toast } from './missions.js';
+import { lifetime, resetLifetime } from './runtime.js';
 import { importRefactoredSave } from './save-model.js';
 import { loginWithGoogle, releasePlayerSession } from './accounts.js';
+import { firebaseClient } from './runtime.js';
 export function mountLatestGame() {
   resetLifetime();
   const root = document.getElementById('app');
   if (!root) throw new Error('Contenitore del gioco mancante');
   root.innerHTML = template;
-  Object.assign(browser, gameActions);
+  bindUiActions(root);
   initializeGame();
-  importRefactoredSave(localStorage, game.LS_PREFIX);
-  if (!game.OFFLINE) {
+  importRefactoredSave(localStorage, game.session.LS_PREFIX);
+  if (!game.session.OFFLINE) {
+    root.querySelector('#start-game-btn')?.classList.add('hidden');
+    const restore = root.querySelector('[data-action="restoreFromCode"]');
+    if (restore) restore.textContent = 'Collega un Sim già esistente';
     const setup = root.querySelector('#ui-setup-screen .card');
     const login = document.createElement('button');
     login.id = 'cloud-game-btn';
@@ -21,18 +28,30 @@ export function mountLatestGame() {
     login.textContent = 'Accedi con Google e gioca';
     login.style.marginTop = '10px';
     setup?.append(login);
+    const changeAccount = document.createElement('button');
+    changeAccount.type = 'button';
+    changeAccount.className = 'btn-link';
+    changeAccount.textContent = 'Cambia account Google';
+    setup?.append(changeAccount);
+    lifetime.listen(changeAccount, 'click', () => {
+      void firebaseClient
+        .auth()
+        .signOut()
+        .then(() => {
+          game.session.authUid = null;
+          toast('Ora puoi scegliere un altro account Google.');
+        });
+    });
     lifetime.listen(login, 'click', () => {
       login.disabled = true;
       void loginWithGoogle()
         .then((name) => {
           const input = root.querySelector<HTMLInputElement>('#nickname');
           const nick = input?.value.trim() || name;
-          localStorage.setItem(game.LS_PREFIX + 'sims_player_nick', nick.slice(0, 20));
-          return gameActions.startGame();
+          localStorage.setItem(game.session.LS_PREFIX + 'sims_player_nick', nick.slice(0, 20));
+          return startGame();
         })
-        .catch((error) =>
-          gameActions.toast('Accesso Google non disponibile: ' + String(error), 6000),
-        )
+        .catch((error) => toast('Accesso Google non disponibile: ' + String(error), 6000))
         .finally(() => {
           login.disabled = false;
         });
@@ -46,7 +65,7 @@ export function mountLatestGame() {
   const status = document.createElement('span');
   status.id = 'save-status';
   status.className = 'save-status';
-  status.textContent = game.OFFLINE ? 'Modalità locale' : 'Modalità online';
+  status.textContent = game.session.OFFLINE ? 'Modalità locale' : 'Modalità online';
   root.append(status);
   lifetime.listen(exit, 'click', () => {
     void (async () => {
@@ -54,7 +73,7 @@ export function mountLatestGame() {
       const scope = lifetime;
       let timer: ReturnType<typeof setTimeout> | undefined;
       const saved = await Promise.race([
-        gameActions.saveGame(true),
+        saveGame(true),
         new Promise<boolean>((resolve) => {
           timer = scope.setTimeout(() => resolve(false), 8000);
         }),
@@ -62,7 +81,7 @@ export function mountLatestGame() {
       if (timer !== undefined) scope.clearTimeout(timer);
       if (!saved) {
         exit.disabled = false;
-        gameActions.toast('Il cloud non ha ancora confermato: riprova quando sei connesso.', 5000);
+        toast('Il cloud non ha ancora confermato: riprova quando sei connesso.', 5000);
         return;
       }
       await releasePlayerSession();
@@ -70,7 +89,7 @@ export function mountLatestGame() {
       mountLatestGame();
     })().catch((error) => {
       exit.disabled = false;
-      gameActions.toast(String(error), 5000);
+      toast(String(error), 5000);
     });
   });
   return disposeLatestGame;
@@ -79,7 +98,9 @@ export function mountLatestGame() {
 export async function disposeLatestGame() {
   if (!lifetime.active) return;
   const reference =
-    game.db && game.myPlayerId ? game.db.ref('sims_online_players/' + game.myPlayerId) : null;
+    game.session.db && game.session.myPlayerId && (game.session.OFFLINE || game.session.authUid)
+      ? game.session.db.ref('sims_online_players/' + game.session.myPlayerId)
+      : null;
   for (const key of ['audioCtx', 'musicCtx']) {
     const context = game[key as keyof typeof game];
     if (context?.close) void context.close();

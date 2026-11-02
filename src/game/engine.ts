@@ -27,11 +27,11 @@ import {
 import { presenceAlive } from './saves.js';
 import { tickNeeds, updateSocialPanel } from './needs.js';
 export function getSolidObstacles(..._args: GameValue[]): GameValue {
-  const extra: GameValue = (game.ENV_PROPS[game.activeEnvironment] || [])
-    .concat(game.ENV_DECOR[game.activeEnvironment] || [])
+  const extra: GameValue = (game.ENV_PROPS[game.view.activeEnvironment] || [])
+    .concat(game.ENV_DECOR[game.view.activeEnvironment] || [])
     .filter((p?: GameValue): GameValue => p.solid !== false);
-  if (game.ENV_PROPS[game.activeEnvironment]) return extra;
-  if (game.activeEnvironment === 'SALOON') return extra;
+  if (game.ENV_PROPS[game.view.activeEnvironment]) return extra;
+  if (game.view.activeEnvironment === 'SALOON') return extra;
   let map: GameValue = getCurrentFurnitureMap();
   return Object.keys(map)
     .filter((k?: GameValue): GameValue => !k.startsWith('door') && k !== game.movingPropKey)
@@ -55,7 +55,7 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
     game.moveForward = game.moveRight = 0;
     delta = 0;
   }
-  const speed: GameValue = (game.isSprinting ? 220 : 130) * (game.sleepLevel < 20 ? 0.6 : 1); // stanco = più lento
+  const speed: GameValue = (game.isSprinting ? 220 : 130) * (game.player.sleepLevel < 20 ? 0.6 : 1); // stanco = più lento
   let map: GameValue = getCurrentFurnitureMap();
   // In modalità "Sposta Mobile" WASD/frecce/joystick muovono il mobile invece del personaggio
   if (
@@ -75,8 +75,8 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
   game.isWalking = false;
   // ---- animazioni: sonno e doccia
   const sleepTarget: GameValue =
-    game.isSleeping && game.activeEnvironment === 'PLAYER_ROOM' && map.bed ? 1 : 0;
-  if (game.activeEnvironment !== 'PLAYER_ROOM' || !map.bed) game.sleepK = 0;
+    game.player.isSleeping && game.view.activeEnvironment === 'PLAYER_ROOM' && map.bed ? 1 : 0;
+  if (game.view.activeEnvironment !== 'PLAYER_ROOM' || !map.bed) game.sleepK = 0;
   else
     game.sleepK = Math.max(
       0,
@@ -85,10 +85,10 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
         game.sleepK + Math.max(-delta / 0.9, Math.min(delta / 0.9, sleepTarget - game.sleepK)),
       ),
     );
-  if (game.showerAnim && game.activeEnvironment !== 'BATHROOM') game.showerAnim = null;
+  if (game.showerAnim && game.view.activeEnvironment !== 'BATHROOM') game.showerAnim = null;
   if (game.showerAnim) updateShower(animTime);
   if (
-    !game.isSleeping &&
+    !game.player.isSleeping &&
     game.sleepK < 0.01 &&
     !game.showerAnim &&
     !game.isMovingFurnitureMode &&
@@ -109,7 +109,7 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
     game.isWalking = true;
   }
   game.simulationBots.forEach((bot?: GameValue): GameValue => {
-    if (bot.env === game.activeEnvironment) {
+    if (bot.env === game.view.activeEnvironment) {
       bot.x += bot.vx * delta;
       bot.y += bot.vy * delta;
       if (bot.x > 120 || bot.x < -120) bot.vx *= -1;
@@ -117,7 +117,7 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
     }
   });
   const st: GameValue = getEnvStyle();
-  const hour: GameValue = (game.gameMinutes / 60) % 24;
+  const hour: GameValue = (game.player.gameMinutes / 60) % 24;
   if (st.outdoor) drawSky(hour, animTime);
   drawStaticScene(st, hour);
   drawDynamicFloor(st, animTime);
@@ -126,7 +126,7 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
   const lights: GameValue = (st.lights || []).map(
     (l?: GameValue): GameValue => Object.assign({}, l),
   );
-  if (game.activeEnvironment === 'discoteca')
+  if (game.view.activeEnvironment === 'discoteca')
     lights.forEach((l?: GameValue, i?: GameValue): GameValue => {
       l.color = game.discoRGB((animTime * 70 + i * 120) % 360);
       l.x += Math.sin(animTime * 1.3 + i * 2) * 50;
@@ -147,8 +147,8 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
     drawables.push({ depth: x + y + depthBias, draw });
     if (label) labels.push((): GameValue => drawLabel(label, x, y, w, h, z));
   };
-  (game.ENV_PROPS[game.activeEnvironment] || [])
-    .concat(game.ENV_DECOR[game.activeEnvironment] || [])
+  (game.ENV_PROPS[game.view.activeEnvironment] || [])
+    .concat(game.ENV_DECOR[game.view.activeEnvironment] || [])
     .forEach((p?: GameValue): GameValue => {
       const fn: GameValue = game.PROP_DRAW[p.kind];
       addThing(
@@ -170,13 +170,13 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
         p.flat ? -1e5 : 0,
       );
     });
-  if (game.MG.active && game.activeEnvironment === 'lavoro_' + game.MG.job)
+  if (game.MG.active && game.view.activeEnvironment === 'lavoro_' + game.MG.job)
     mgAddDrawables(addThing, drawables, animTime);
-  if (!game.ENV_PROPS[game.activeEnvironment]) {
+  if (!game.ENV_PROPS[game.view.activeEnvironment]) {
     Object.keys(map).forEach((k?: GameValue): GameValue => {
       const item: GameValue = map[k];
       let label: GameValue = item.name;
-      if (game.activeEnvironment === 'SALOON' && item.roomIdx !== undefined) {
+      if (game.view.activeEnvironment === 'SALOON' && item.roomIdx !== undefined) {
         const gi: GameValue = game.gRoomIdx(item);
         const room: GameValue = game.roomsState[gi];
         label =
@@ -186,7 +186,7 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
               : `🚪 Stanza di ${room.owner}`
             : '🔒 Stanza Vuota';
       }
-      if (game.activeEnvironment === 'CORTILE' && item.aptIdx !== undefined)
+      if (game.view.activeEnvironment === 'CORTILE' && item.aptIdx !== undefined)
         label = aptLabel(item.aptIdx);
       const flat: GameValue = k === 'doorExit' || k === 'exitHouse';
       addThing(
@@ -212,7 +212,7 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
     const px: GameValue = game.playerPos.x,
       py: GameValue = game.playerPos.y;
     game.frameShowerActors.push({ x: px, y: py, look: myLook() });
-    labels.push((): GameValue => drawNameTagWorld(px, py, 92, game.myData.nick));
+    labels.push((): GameValue => drawNameTagWorld(px, py, 92, game.player.myData.nick));
   } else {
     const ease: GameValue = game.sleepK * game.sleepK * (3 - 2 * game.sleepK);
     const depth: GameValue =
@@ -227,7 +227,7 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
         drawActor(
           game.playerPos.x,
           game.playerPos.y,
-          game.myData.nick,
+          game.player.myData.nick,
           animTime,
           myLook(),
           game.isWalking,
@@ -238,7 +238,7 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
     });
   }
   game.simulationBots.forEach((bot?: GameValue): GameValue => {
-    if (bot.env === game.activeEnvironment) {
+    if (bot.env === game.view.activeEnvironment) {
       if (!bot.nextSayAt || animTime > bot.nextSayAt) {
         const L: GameValue = bot.dealer
           ? game.DEALER_LINES
@@ -260,14 +260,15 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
   const now: GameValue = Date.now();
   game.frameNear = [];
   Object.keys(game.onlinePlayers).forEach((id?: GameValue): GameValue => {
-    if (id === game.myPlayerId) return;
+    if (id === game.session.myPlayerId) return;
     let op: GameValue = game.onlinePlayers[id];
     // Ignora giocatori senza battito recente (fantasmi rimasti nel DB)
-    if (!op || op.env !== game.activeEnvironment || !presenceAlive(id, op, now)) return;
+    if (!op || op.env !== game.view.activeEnvironment || !presenceAlive(id, op, now)) return;
     // Ogni stanza privata è separata: vedi solo chi è nella tua stessa stanza
-    if (game.activeEnvironment === 'PLAYER_ROOM' && op.roomIdx !== game.currentRoomIdx) return;
+    if (game.view.activeEnvironment === 'PLAYER_ROOM' && op.roomIdx !== game.currentRoomIdx) return;
     // Salone, cucina e bagno esistono in ogni appartamento: vedi solo chi è nel tuo
-    if (game.APT_ENVS.includes(game.activeEnvironment) && (op.apt || 0) !== game.currentApt) return;
+    if (game.APT_ENVS.includes(game.view.activeEnvironment) && (op.apt || 0) !== game.currentApt)
+      return;
     let s: GameValue =
       game.remoteSmooth[id] ||
       (game.remoteSmooth[id] = { x: op.x, y: op.y, sayT: op.sayT, sayShownAt: 0 });
@@ -333,24 +334,24 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
   if (hour >= 20 || hour < 6) dark = 0.55;
   else if (hour >= 18) dark = ((hour - 18) / 2) * 0.55;
   else if (hour < 8) dark = ((8 - hour) / 2) * 0.55;
-  if (!game.OUTDOOR_ENVS.includes(game.activeEnvironment)) dark *= 0.8;
-  if (game.activeEnvironment === 'discoteca') dark = 0.6;
+  if (!game.OUTDOOR_ENVS.includes(game.view.activeEnvironment)) dark *= 0.8;
+  if (game.view.activeEnvironment === 'discoteca') dark = 0.6;
   applyLighting(dark, lights, st);
   labels.forEach((l?: GameValue): GameValue => l());
   // Titolo stanza
-  game.ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
-  game.ctx.beginPath();
-  game.ctx.roundRect
-    ? game.ctx.roundRect(game.canvas.width / 2 - 120, 16, 240, 30, 15)
-    : game.ctx.rect(game.canvas.width / 2 - 120, 16, 240, 30);
-  game.ctx.fill();
-  game.ctx.fillStyle = '#fff';
-  game.ctx.font = 'bold 14px sans-serif';
-  game.ctx.textAlign = 'center';
-  game.ctx.shadowColor = 'rgba(0,0,0,0.7)';
-  game.ctx.shadowBlur = 6;
-  game.ctx.fillText(game.currentRoomTitle, game.canvas.width / 2, 36);
-  game.ctx.shadowBlur = 0;
+  game.view.ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
+  game.view.ctx.beginPath();
+  game.view.ctx.roundRect
+    ? game.view.ctx.roundRect(game.view.canvas.width / 2 - 120, 16, 240, 30, 15)
+    : game.view.ctx.rect(game.view.canvas.width / 2 - 120, 16, 240, 30);
+  game.view.ctx.fill();
+  game.view.ctx.fillStyle = '#fff';
+  game.view.ctx.font = 'bold 14px sans-serif';
+  game.view.ctx.textAlign = 'center';
+  game.view.ctx.shadowColor = 'rgba(0,0,0,0.7)';
+  game.view.ctx.shadowBlur = 6;
+  game.view.ctx.fillText(game.view.currentRoomTitle, game.view.canvas.width / 2, 36);
+  game.view.ctx.shadowBlur = 0;
   checkProximity();
 }
 
@@ -362,7 +363,7 @@ export function startLoop(..._args: GameValue[]): GameValue {
     if (isNaN(delta) || delta > 0.1) delta = 0.016;
     game.animClock += delta;
     tickNeeds();
-    game.ctx.clearRect(0, 0, game.canvas.width, game.canvas.height);
+    game.view.ctx.clearRect(0, 0, game.view.canvas.width, game.view.canvas.height);
     renderEnvironment(delta, game.animClock);
   }
   lifetime.requestAnimationFrame(animate);

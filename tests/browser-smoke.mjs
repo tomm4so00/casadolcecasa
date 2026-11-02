@@ -23,14 +23,15 @@ try {
     const { game } = await import('/src/game/context.ts');
     return (
       game.myAssignedRoomIdx !== null &&
-      game.roomsState[game.myAssignedRoomIdx]?.ownerId === game.myPlayerId
+      game.roomsState[game.myAssignedRoomIdx]?.ownerId === game.session.myPlayerId
     );
   });
   await page.locator('#dialog-buttons').getByRole('button', { name: 'Salta', exact: true }).click();
   const catalog = await page.evaluate(async () => {
     const { game } = await import('/src/game/context.ts');
     game.pinPromptMoneyThreshold = 1e9;
-    game.moneyLevel = 10000;
+    const { creditMoney } = await import('/src/game/economy.ts');
+    await creditMoney(10000);
     return {
       rooms: game.roomsState.length,
       clothes: game.shopCatalog.length,
@@ -49,46 +50,56 @@ try {
       catalog.jobs === 4 &&
       catalog.business === 3,
   );
-  await page.evaluate(() => window.openClothesShop('top'));
+  await page.evaluate(async () => (await import('/src/game/character.ts')).openClothesShop('top'));
   await page.locator('#clothes-modal').waitFor({ state: 'visible' });
-  await page.evaluate(() => window.buyClothing('item_hoodie'));
-  await page.evaluate(() => window.closeModal('clothes-modal'));
+  await page.evaluate(async () =>
+    (await import('/src/game/character.ts')).buyClothing('item_hoodie'),
+  );
+  await page.evaluate(async () =>
+    (await import('/src/game/render/primitives.ts')).closeModal('clothes-modal'),
+  );
   await page.evaluate(async () => {
     const { game } = await import('/src/game/context.ts');
     const item = game.furnitureCatalog.find((f) => f.id === 'bed_lux');
-    window.buyFurnitureItem(item.id, item.price);
+    await (await import('/src/game/world.ts')).buyFurnitureItem(item.id);
   });
   await page.locator('#furniture-shop-modal').waitFor({ state: 'visible' });
-  await page.evaluate(() => window.closeModal('furniture-shop-modal'));
-  await page.evaluate(() => window.openBizSite());
+  await page.evaluate(async () =>
+    (await import('/src/game/render/primitives.ts')).closeModal('furniture-shop-modal'),
+  );
+  await page.evaluate(async () => (await import('/src/game/business.ts')).openBizSite());
   await page.locator('#biz-modal').waitFor({ state: 'visible' });
-  await page.evaluate(() => {
-    void window.bizInvest('shop');
+  await page.evaluate(async () => {
+    void (await import('/src/game/business.ts')).bizInvest('shop');
   });
   await page.locator('#dialog-input').fill('100');
   await page
     .locator('#dialog-buttons')
     .getByRole('button', { name: 'Investi', exact: true })
     .click();
-  await page.evaluate(() => window.closeModal('biz-modal'));
-  await page.evaluate(() => window.chooseOrGoToJob('ufficio', 'Ufficio'));
+  await page.evaluate(async () =>
+    (await import('/src/game/render/primitives.ts')).closeModal('biz-modal'),
+  );
+  await page.evaluate(async () =>
+    (await import('/src/game/world.ts')).chooseOrGoToJob('ufficio', 'Ufficio'),
+  );
   const shift = await page.evaluate(async () => {
     const { game } = await import('/src/game/context.ts');
     game.activeShift.remaining = 0.1;
-    window.updateShift(1);
+    await (await import('/src/game/jobs.ts')).updateShift(1);
     return {
-      turns: game.jobExperience.ufficio,
-      owned: game.ownedItems.item_hoodie,
-      bed: game.ownedFurniture.bed_lux,
-      invest: game.invest.shop.cost,
+      turns: game.player.jobExperience.ufficio,
+      owned: game.player.ownedItems.item_hoodie,
+      bed: game.player.ownedFurniture.bed_lux,
+      invest: game.player.invest.shop.cost,
     };
   });
   assert.deepEqual(shift, { turns: 1, owned: true, bed: true, invest: 100 });
-  await page.evaluate(() => window.openGlobalChat());
+  await page.evaluate(async () => (await import('/src/game/chat.ts')).openGlobalChat());
   await page.locator('#gchat-input').fill('Messaggio di prova offline');
-  await page.evaluate(() => window.sendChat());
+  await page.evaluate(async () => (await import('/src/game/chat.ts')).sendChat());
   await page.getByText('Messaggio di prova offline', { exact: true }).waitFor();
-  await page.evaluate(() => window.closeGlobalChat());
+  await page.evaluate(async () => (await import('/src/game/chat.ts')).closeGlobalChat());
   await page.evaluate(async () => {
     const { game } = await import('/src/game/context.ts');
     for (const env of [
@@ -109,14 +120,14 @@ try {
       'lavoro_ristorante',
       'lavoro_ufficio',
     ]) {
-      game.activeEnvironment = env;
+      game.view.activeEnvironment = env;
       game.currentRoomIdx = game.myAssignedRoomIdx;
-      window.renderEnvironment(0, game.animClock);
+      (await import('/src/game/engine.ts')).renderEnvironment(0, game.animClock);
     }
-    game.activeEnvironment = 'PLAYER_ROOM';
-    window.saveGame(true);
+    game.view.activeEnvironment = 'PLAYER_ROOM';
+    await (await import('/src/game/saves.ts')).saveGame(true);
   });
-  const before = await page.evaluate(() =>
+  const before = await page.evaluate(async () =>
     JSON.parse(localStorage.getItem('offline_sims_save_v1')),
   );
   assert.equal(before.ownedItems.item_hoodie, true);
@@ -130,9 +141,9 @@ try {
   await page.waitForFunction(async () => {
     const { game } = await import('/src/game/context.ts');
     return (
-      game.ownedItems.item_hoodie &&
-      game.jobExperience.ufficio === 1 &&
-      game.invest.shop?.cost === 100
+      game.player.ownedItems.item_hoodie &&
+      game.player.jobExperience.ufficio === 1 &&
+      game.player.invest.shop?.cost === 100
     );
   });
   await page.reload();
@@ -140,8 +151,37 @@ try {
   await page.locator('#ui-setup-screen').waitFor({ state: 'hidden' });
   await page.waitForFunction(async () => {
     const { game } = await import('/src/game/context.ts');
-    return game.ownedFurniture.bed_lux && game.ownedItems.item_hoodie;
+    return game.player.ownedFurniture.bed_lux && game.player.ownedItems.item_hoodie;
   });
+  await page.evaluate(async () => {
+    const { game } = await import('/src/game/context.ts');
+    const { lifetime } = await import('/src/game/runtime.ts');
+    const { buildSaveData } = await import('/src/game/saves.ts');
+    game.player.healthLevel = 50;
+    game.player.sleepLevel = 50;
+    game.player.hungerLevel = 80;
+    game.player.hygieneLevel = 80;
+    game.player.isSleeping = true;
+    game.player.sleepGainedSinceLastHealthBoost = 0;
+    const save = buildSaveData();
+    save.savedAt = Date.now() - 2 * 3600000;
+    lifetime.dispose();
+    await game.session.db.ref('sims_saves/' + game.session.myPlayerId).set(save);
+    localStorage.setItem(game.session.SAVE_KEY, JSON.stringify(save));
+  });
+  await page.reload();
+  await page.locator('#start-game-btn').click();
+  await page.waitForFunction(async () => {
+    const { game } = await import('/src/game/context.ts');
+    return (
+      game.player.isSleeping &&
+      game.player.sleepLevel >= 86 &&
+      game.player.sleepLevel <= 89 &&
+      game.player.healthLevel >= 55 &&
+      game.view.activeEnvironment === 'PLAYER_ROOM'
+    );
+  });
+  console.log('PASS: two hours of offline sleep with luxury bed, health bonus and bedroom resume.');
   console.log('CATALOG', catalog);
   console.log('ERRORS', errors);
   assert.deepEqual(errors, []);

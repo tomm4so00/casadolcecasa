@@ -37,6 +37,20 @@ describe('compatibilità salvataggi', () => {
     ])
       expect(decodeSaveV8(value)).toBeNull();
   });
+  it('rifiuta mappe e campi annidati corrotti mantenendo i formati parziali', () => {
+    for (const extension of [
+      { ownedItems: { shirt: 'yes' } },
+      { jobExperience: { ufficio: -2 } },
+      { equipped: { top: { id: 'shirt' } } },
+      { inventory: { hasFood: 'true' } },
+      { stats: { shifts: Infinity } },
+      { sleeping: 'false' },
+      { gameMinutes: -10 },
+      { drug: { doses: 1, lastDose: 0, endAt: 10, dAtDose: '100', crisisAt: 0 } },
+    ])
+      expect(decodeSaveV8({ savedAt: 123, ...extension })).toBeNull();
+    expect(decodeSaveV8(JSON.parse('{"savedAt":123,"stats":{"__proto__":1}}'))).toBeNull();
+  });
   it('importa il formato TypeScript v2 e conserva gli originali', () => {
     const storage = new MemoryStorage();
     const data = {

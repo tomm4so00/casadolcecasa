@@ -2,6 +2,7 @@ import { randomBytes } from 'node:crypto';
 import { cert, deleteApp, initializeApp } from 'firebase-admin/app';
 import { getDatabase } from 'firebase-admin/database';
 import { advanceMarket, BUSINESSES } from '../../shared/market.js';
+import { maintainGame } from './maintenance.js';
 
 async function main() {
   const projectId = process.env.FIREBASE_PROJECT_ID;
@@ -58,6 +59,10 @@ async function main() {
         advanceMarket(current, scheduledAt, (id) => samples.get(id)!) ?? undefined,
     );
     reference.off('value', listener);
+    await maintainGame(getDatabase(app), scheduledAt);
+    await getDatabase(app)
+      .ref('sims_meta/version')
+      .transaction((value: unknown) => (typeof value === 'number' && value >= 8 ? undefined : 8));
     console.log(
       result.committed ? 'Shared market updated.' : 'Market slot already published; no changes.',
     );

@@ -8,9 +8,11 @@ describe('copertura della versione originale più recente', () => {
     expect(manifest.repository).toBe('tomm4so00/casadolcecasa4');
     expect(manifest.commit).toBe('8f15c85353196c899edd41770e953900cb0d081d');
     expect(manifest.version).toBe(8);
-    expect(manifest.functions).toHaveLength(304);
+    expect(manifest.functions.length + manifest.replacements.length).toBe(304);
   });
-  it('mantiene tutte le funzioni del file originale nei moduli dedicati', () => {
+  it('mantiene le funzioni originali e documenta le sostituzioni condivise', () => {
+    for (const replacement of manifest.replacements)
+      expect(fs.existsSync(replacement.module)).toBe(true);
     for (const fn of manifest.functions) {
       const module = fn.module === 'local-database' ? 'runtime' : fn.module;
       const source = fs.readFileSync(path.join('src/game', module + '.ts'), 'utf8');

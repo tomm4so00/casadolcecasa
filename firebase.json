@@ -4,9 +4,15 @@
     "ignore": ["firebase.json", "**/.*", "**/node_modules/**"]
   },
   "emulators": {
-    "auth": { "port": 9099 },
-    "database": { "port": 9000 },
-    "ui": { "enabled": false },
+    "auth": {
+      "port": 9099
+    },
+    "database": {
+      "port": 9000
+    },
+    "ui": {
+      "enabled": false
+    },
     "singleProjectMode": true
   }
 }

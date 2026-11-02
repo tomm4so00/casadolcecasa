@@ -7,11 +7,11 @@ export function closeModal(id?: GameValue): GameValue {
 
 export function isoProject(x?: GameValue, y?: GameValue, z?: GameValue): GameValue {
   const v: GameValue = game.viewOverride;
-  const cx: GameValue = v ? v.cx : game.canvas.width / 2;
+  const cx: GameValue = v ? v.cx : game.view.canvas.width / 2;
   const scale: GameValue = v
     ? v.scale
-    : Math.min(game.canvas.width / 450, game.canvas.height / 600, 1.2);
-  const cy: GameValue = v ? v.cy : game.canvas.height / 2 + 55;
+    : Math.min(game.view.canvas.width / 450, game.view.canvas.height / 600, 1.2);
+  const cy: GameValue = v ? v.cy : game.view.canvas.height / 2 + 55;
   let isoX: GameValue = (x - y) * 0.866 * scale;
   let isoY: GameValue = ((x + y) * 0.5 - z) * scale;
   return { x: cx + isoX, y: cy + isoY };
@@ -23,7 +23,7 @@ export function isoProject(x?: GameValue, y?: GameValue, z?: GameValue): GameVal
 export function isoScale(..._args: GameValue[]): GameValue {
   return game.viewOverride
     ? game.viewOverride.scale
-    : Math.min(game.canvas.width / 450, game.canvas.height / 600, 1.2);
+    : Math.min(game.view.canvas.width / 450, game.view.canvas.height / 600, 1.2);
 }
 
 // Numero pseudo-casuale stabile (stesso input → stesso output: niente sfarfallii)
@@ -67,18 +67,18 @@ export function poly(
   stroke?: GameValue,
   lw: GameValue = 1,
 ): GameValue {
-  game.ctx.beginPath();
-  game.ctx.moveTo(pts[0].x, pts[0].y);
-  for (let i: GameValue = 1; i < pts.length; i++) game.ctx.lineTo(pts[i].x, pts[i].y);
-  game.ctx.closePath();
+  game.view.ctx.beginPath();
+  game.view.ctx.moveTo(pts[0].x, pts[0].y);
+  for (let i: GameValue = 1; i < pts.length; i++) game.view.ctx.lineTo(pts[i].x, pts[i].y);
+  game.view.ctx.closePath();
   if (fill) {
-    game.ctx.fillStyle = fill;
-    game.ctx.fill();
+    game.view.ctx.fillStyle = fill;
+    game.view.ctx.fill();
   }
   if (stroke) {
-    game.ctx.strokeStyle = stroke;
-    game.ctx.lineWidth = lw;
-    game.ctx.stroke();
+    game.view.ctx.strokeStyle = stroke;
+    game.view.ctx.lineWidth = lw;
+    game.view.ctx.stroke();
   }
 }
 
@@ -87,5 +87,5 @@ export function setPlane(o?: GameValue, u?: GameValue, v?: GameValue): GameValue
   const p0: GameValue = isoProject(o[0], o[1], o[2]);
   const pu: GameValue = isoProject(o[0] + u[0], o[1] + u[1], o[2] + u[2]);
   const pv: GameValue = isoProject(o[0] + v[0], o[1] + v[1], o[2] + v[2]);
-  game.ctx.setTransform(pu.x - p0.x, pu.y - p0.y, pv.x - p0.x, pv.y - p0.y, p0.x, p0.y);
+  game.view.ctx.setTransform(pu.x - p0.x, pu.y - p0.y, pv.x - p0.x, pv.y - p0.y, p0.x, p0.y);
 }

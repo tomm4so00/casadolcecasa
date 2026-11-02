@@ -38,33 +38,39 @@
     <div class="need-info"><span>🔐 Cassaforte</span><span id="money-text">0 €</span></div>
     <div class="bar-bg"><div id="money-bar-fill" class="bar-fill" style="width: 0%"></div></div>
   </div>
-  <div id="mission-text" onclick="openMissions()" title="Apri le missioni">📋 Missioni</div>
+  <div id="mission-text" data-action="openMissions" title="Apri le missioni">📋 Missioni</div>
 </div>
 
 <div id="left-touch-zone"></div>
 <div id="dynamic-joystick"><div id="joystick-knob"></div></div>
 
 <div id="hud-actions" class="hud-controls hidden">
-  <button class="btn-hud" id="btn-sound" onclick="toggleSound()" title="Suoni on/off">🔊</button>
-  <button class="btn-hud" id="btn-music" onclick="toggleMusic()" title="Musica on/off">🎵</button>
-  <button class="btn-hud" id="btn-help" onclick="showIntro(true)" title="Guida: come non morire">
+  <button class="btn-hud" id="btn-sound" data-action="toggleSound" title="Suoni on/off">🔊</button>
+  <button class="btn-hud" id="btn-music" data-action="toggleMusic" title="Musica on/off">🎵</button>
+  <button
+    class="btn-hud"
+    id="btn-help"
+    data-action="showIntro"
+    data-args="[true]"
+    title="Guida: come non morire"
+  >
     ❓
   </button>
   <button
     class="btn-hud"
     id="btn-notify"
-    onclick="toggleNotify()"
+    data-action="toggleNotify"
     title="Avvisi quando il personaggio sta male"
   >
     🔕
   </button>
-  <button class="btn-hud" id="btn-leaderboard" onclick="openLeaderboard()" title="Classifica">
+  <button class="btn-hud" id="btn-leaderboard" data-action="openLeaderboard" title="Classifica">
     🏆
   </button>
   <button
     class="btn-hud"
     id="btn-profile"
-    onclick="openProfile()"
+    data-action="openProfile"
     title="Profilo e codice personaggio"
   >
     👤
@@ -72,7 +78,7 @@
   <button
     class="btn-hud"
     id="btn-chat"
-    onclick="openChat()"
+    data-action="openChat"
     title="Scrivi un messaggio sopra la testa"
   >
     💬
@@ -80,7 +86,7 @@
   <button
     class="btn-hud"
     id="btn-gchat"
-    onclick="openGlobalChat()"
+    data-action="openGlobalChat"
     title="Chat di tutti i giocatori"
     style="position: relative"
   >
@@ -104,7 +110,7 @@
       >0</span
     >
   </button>
-  <button class="btn-hud" id="btn-sprint" onclick="toggleSprint()" title="Corri">🏃</button>
+  <button class="btn-hud" id="btn-sprint" data-action="toggleSprint" title="Corri">🏃</button>
 </div>
 
 <!-- POPUP DINAMICO DI INTERAZIONE -->
@@ -113,24 +119,42 @@
   <div class="soc-row" id="soc-row"></div>
 </div>
 <div id="pop-interaction" class="popup-interact hidden">
-  <button class="btn-pop" id="btn-act-main" onclick="handleObjectInteract()">✋ Interagisci</button>
-  <button class="btn-pop btn-pop-action hidden" id="btn-act-sub" onclick="handleSubAction()">
+  <button class="btn-pop" id="btn-act-main" data-action="handleObjectInteract">
+    ✋ Interagisci
+  </button>
+  <button class="btn-pop btn-pop-action hidden" id="btn-act-sub" data-action="handleSubAction">
     🍎 Prendi Cibo (-5 €)
   </button>
 
-  <button class="btn-pop btn-pop-exit hidden" id="btn-act-walk" onclick="doActivity('walk')">
+  <button
+    class="btn-pop btn-pop-exit hidden"
+    id="btn-act-walk"
+    data-action="doActivity"
+    data-args='["walk"]'
+  >
     🚶 Passeggiata (+10% Felicità, +5% Salute, -5% Sonno)
   </button>
-  <button class="btn-pop btn-pop-exit hidden" id="btn-act-bar" onclick="doActivity('bar')">
+  <button
+    class="btn-pop btn-pop-exit hidden"
+    id="btn-act-bar"
+    data-action="doActivity"
+    data-args='["bar"]'
+  >
     ☕ Bar (-10 €, +15% Felicità, +15% Fame)
   </button>
-  <button class="btn-pop btn-pop-exit hidden" id="btn-act-trip" onclick="doActivity('trip')">
+  <button
+    class="btn-pop btn-pop-exit hidden"
+    id="btn-act-trip"
+    data-action="doActivity"
+    data-args='["trip"]'
+  >
     ✈️ Viaggio (+70% Felicità, -20% Soldi)
   </button>
   <button
     class="btn-pop btn-pop-furniture hidden"
     id="btn-act-furnitureshop"
-    onclick="doActivity('furnitureshop')"
+    data-action="doActivity"
+    data-args='["furnitureshop"]'
   >
     🛋️ Negozio di Mobili
   </button>
@@ -138,18 +162,20 @@
     class="btn-pop btn-pop-furniture hidden"
     id="btn-act-clothesshop"
     style="background: #e84393"
-    onclick="doActivity('clothesshop')"
+    data-action="doActivity"
+    data-args='["clothesshop"]'
   >
     👗 Negozio di Vestiti
   </button>
-  <button class="btn-pop btn-pop-exit hidden" id="btn-act-work" onclick="handleJobMenuAction()">
+  <button class="btn-pop btn-pop-exit hidden" id="btn-act-work" data-action="handleJobMenuAction">
     💼 Lavoro (Gestisci Carriera)
   </button>
   <button
     class="btn-pop btn-pop-exit hidden"
     id="btn-act-cemetery"
     style="background: #636e72"
-    onclick="doActivity('cemetery')"
+    data-action="doActivity"
+    data-args='["cemetery"]'
   >
     🪦 Cimitero
   </button>
@@ -157,12 +183,13 @@
     class="btn-pop btn-pop-exit hidden"
     id="btn-act-disco"
     style="background: #8e44ad"
-    onclick="doActivity('disco')"
+    data-action="doActivity"
+    data-args='["disco"]'
   >
     🪩 Discoteca (-20 €, +50% Felicità, -15% Sonno)
   </button>
 
-  <button class="btn-pop btn-pop-alt hidden" id="btn-act-move" onclick="startMovingFurniture()">
+  <button class="btn-pop btn-pop-alt hidden" id="btn-act-move" data-action="startMovingFurniture">
     🖐️ Sposta Mobile
   </button>
 </div>
@@ -171,11 +198,11 @@
   id="btn-place-furniture"
   class="btn-pop hidden"
   style="position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); z-index: 60"
-  onclick="placeFurniture()"
+  data-action="placeFurniture"
 >
   📌 Lascia Mobile
 </button>
-<button id="btn-return-home" class="hidden" onclick="returnHomeFromActivity()">
+<button id="btn-return-home" class="hidden" data-action="returnHomeFromActivity">
   🏡 Torna a Casa
 </button>
 
@@ -203,7 +230,7 @@
     <p style="margin: 12px 0; color: #ccc">
       È uscito un aggiornamento del gioco. Ricarica per continuare a giocare con gli altri.
     </p>
-    <button class="btn-primary" onclick="reloadForUpdate()">Aggiorna ora</button>
+    <button class="btn-primary" data-action="reloadForUpdate">Aggiorna ora</button>
   </div>
 </div>
 
@@ -221,7 +248,7 @@
       />
     </div>
     <button class="btn-primary" id="start-game-btn" type="button">Entra nel Gioco</button>
-    <button class="btn-link" type="button" onclick="restoreFromCode()">
+    <button class="btn-link" type="button" data-action="restoreFromCode">
       🔑 Ho già un personaggio (codice)
     </button>
   </div>
@@ -247,28 +274,32 @@
         <button
           class="btn-buy"
           style="background: #e67e22; padding: 12px"
-          onclick="chooseOrGoToJob('cantiere', 'Cantiere 🏗️')"
+          data-action="chooseOrGoToJob"
+          data-args='["cantiere", "Cantiere 🏗️"]'
         >
           🏗️ Cantiere (Turni: <span id="count-cantiere">0</span>/60)
         </button>
         <button
           class="btn-buy"
           style="background: #e74c3c; padding: 12px"
-          onclick="chooseOrGoToJob('ospedale', 'Ospedale 🏥')"
+          data-action="chooseOrGoToJob"
+          data-args='["ospedale", "Ospedale 🏥"]'
         >
           🏥 Ospedale (Turni: <span id="count-ospedale">0</span>/60)
         </button>
         <button
           class="btn-buy"
           style="background: #f1c40f; color: #111; padding: 12px"
-          onclick="chooseOrGoToJob('ristorante', 'Ristorante 🍳')"
+          data-action="chooseOrGoToJob"
+          data-args='["ristorante", "Ristorante 🍳"]'
         >
           🍳 Ristorante (Turni: <span id="count-ristorante">0</span>/60)
         </button>
         <button
           class="btn-buy"
           style="background: #3498db; padding: 12px"
-          onclick="chooseOrGoToJob('ufficio', 'Ufficio 💻')"
+          data-action="chooseOrGoToJob"
+          data-args='["ufficio", "Ufficio 💻"]'
         >
           💻 Ufficio (Turni: <span id="count-ufficio">0</span>/60)
         </button>
@@ -284,20 +315,22 @@
       <button
         class="btn-primary"
         style="background: #2ed573; margin-top: 0"
-        onclick="continueCurrentJob()"
+        data-action="continueCurrentJob"
       >
         ▶️ Continua Lavoro
       </button>
       <button
         class="btn-buy"
         style="background: #e74c3c; padding: 12px"
-        onclick="showJobAgencySelection()"
+        data-action="showJobAgencySelection"
       >
         🔄 Cambia Lavoro
       </button>
     </div>
 
-    <button class="btn-primary" onclick="closeModal('job-select-modal')">Chiudi</button>
+    <button class="btn-primary" data-action="closeModal" data-args='["job-select-modal"]'>
+      Chiudi
+    </button>
   </div>
 </div>
 
@@ -316,7 +349,8 @@
         type="button"
         class="shop-item-card"
         style="cursor: pointer; text-align: left; color: inherit"
-        onclick="openClothesShop('top', true)"
+        data-action="openClothesShop"
+        data-args='["top", true]'
       >
         <div class="shop-item-info">
           <h4>👗 modaonline.it</h4>
@@ -328,7 +362,7 @@
         type="button"
         class="shop-item-card"
         style="cursor: pointer; text-align: left; color: inherit"
-        onclick="openFurnitureShopModal()"
+        data-action="openFurnitureShopModal"
       >
         <div class="shop-item-info">
           <h4>🛋️ arredocasa.it</h4>
@@ -340,7 +374,7 @@
         type="button"
         class="shop-item-card"
         style="cursor: pointer; text-align: left; color: inherit"
-        onclick="openBizSite()"
+        data-action="openBizSite"
       >
         <div class="shop-item-info">
           <h4>📈 bizlancio.it</h4>
@@ -348,7 +382,12 @@
         </div>
         <span>›</span>
       </button>
-      <button class="btn-primary" style="margin-top: auto" onclick="closeModal('pc-modal')">
+      <button
+        class="btn-primary"
+        style="margin-top: auto"
+        data-action="closeModal"
+        data-args='["pc-modal"]'
+      >
         Spegni il PC
       </button>
     </div>
@@ -380,8 +419,14 @@
           text-align: center;
         "
       ></div>
+      <p id="market-status" role="status">In attesa delle quotazioni?</p>
       <div id="biz-list" style="display: flex; flex-direction: column; gap: 10px"></div>
-      <button class="btn-primary" style="margin-top: auto" onclick="closeModal('biz-modal')">
+      <button
+        class="btn-primary"
+        style="margin-top: auto"
+        data-action="closeModal"
+        data-args='["biz-modal"]'
+      >
         Chiudi sito
       </button>
     </div>
@@ -425,8 +470,8 @@
         autocomplete="off"
         style="flex: 1; min-width: 0"
       />
-      <button class="btn-buy" style="background: #2e86de" onclick="sendChat()">Invia</button>
-      <button class="btn-buy" style="background: #57606f" onclick="closeGlobalChat()">✕</button>
+      <button class="btn-buy" style="background: #2e86de" data-action="sendChat">Invia</button>
+      <button class="btn-buy" style="background: #57606f" data-action="closeGlobalChat">✕</button>
     </div>
   </div>
 </div>
@@ -452,7 +497,8 @@
       <button
         class="btn-primary"
         style="margin-top: auto"
-        onclick="closeModal('furniture-shop-modal')"
+        data-action="closeModal"
+        data-args='["furniture-shop-modal"]'
       >
         Chiudi Showroom
       </button>
@@ -476,14 +522,20 @@
         class="btn-primary"
         style="background: #57606f"
         id="creator-cancel"
-        onclick="finishCreator(false)"
+        data-action="finishCreator"
+        data-args="[false]"
       >
         Annulla
       </button>
-      <button class="btn-primary" style="background: #8e44ad" onclick="randomizeCreator()">
+      <button class="btn-primary" style="background: #8e44ad" data-action="randomizeCreator">
         🎲 Casuale
       </button>
-      <button class="btn-primary" style="background: #2ed573" onclick="finishCreator(true)">
+      <button
+        class="btn-primary"
+        style="background: #2ed573"
+        data-action="finishCreator"
+        data-args="[true]"
+      >
         ✅ Conferma
       </button>
     </div>
@@ -509,9 +561,14 @@
       </div>
     </div>
     <div class="creator-actions">
-      <button class="btn-primary" style="background: #8e44ad" onclick="openCharacterCreator(false)">
+      <button
+        class="btn-primary"
+        style="background: #8e44ad"
+        data-action="openCharacterCreator"
+        data-args="[false]"
+      >
         🎨 Modifica aspetto</button
-      ><button class="btn-primary" onclick="closeWardrobe()">Chiudi l'armadio</button>
+      ><button class="btn-primary" data-action="closeWardrobe">Chiudi l'armadio</button>
     </div>
   </div>
 </div>
@@ -530,6 +587,8 @@
         <div id="clothes-list" class="item-grid"></div>
       </div>
     </div>
-    <button class="btn-primary" onclick="closeModal('clothes-modal')">Chiudi</button>
+    <button class="btn-primary" data-action="closeModal" data-args='["clothes-modal"]'>
+      Chiudi
+    </button>
   </div>
 </div>
