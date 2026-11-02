@@ -2069,21 +2069,12 @@ export const ENV_PROPS = {
 
 export const ENV_DECOR = {
   CORTILE: [
-    // piazzetta: fontana e due lampioni ai suoi lati (a destra e a sinistra sullo schermo)
+    // piazzetta della fontana
     { kind: 'fountain', x: 0, y: 0, w: 70, h: 70, label: 'Fontana ⛲', z: 60 },
     // due panchine sul bordo del vialetto che va all'ala sinistra, rivolte verso di lui
     // (le panchine guardano verso +y)
     { kind: 'bench', x: -180, y: -37, w: 50, h: 16 },
     { kind: 'bench', x: -300, y: -37, w: 50, h: 16 },
-    { kind: 'streetlamp', x: -85, y: 45, w: 8, h: 8 },
-    { kind: 'streetlamp', x: 85, y: -45, w: 8, h: 8 },
-    // lampioni lungo i marciapiedi, tra un portone e l'altro
-    { kind: 'streetlamp', x: -260, y: -156, w: 8, h: 8 },
-    { kind: 'streetlamp', x: -130, y: -156, w: 8, h: 8 },
-    { kind: 'streetlamp', x: 130, y: -156, w: 8, h: 8 },
-    { kind: 'streetlamp', x: 260, y: -156, w: 8, h: 8 },
-    { kind: 'streetlamp', x: -416, y: 10, w: 8, h: 8 },
-    { kind: 'streetlamp', x: -416, y: 145, w: 8, h: 8 },
     // alberi nelle aiuole tra i vialetti
     { kind: 'tree', x: -250, y: -95, w: 18, h: 18, size: 1.1, z: 90 },
     { kind: 'tree', x: -150, y: -110, w: 16, h: 16, size: 0.9, z: 80 },
@@ -2093,10 +2084,26 @@ export const ENV_DECOR = {
     { kind: 'tree', x: -150, y: 150, w: 16, h: 16, size: 0.95, z: 85 },
     { kind: 'tree', x: -350, y: 175, w: 16, h: 16, size: 0.9, z: 80 },
     { kind: 'tree', x: 150, y: 150, w: 16, h: 16, size: 0.95, z: 85 },
-    // ala destra: piazzola libera con un lampione
-    { kind: 'streetlamp', x: 420, y: 70, w: 8, h: 8 },
     { kind: 'tree', x: 440, y: -110, w: 18, h: 18, size: 1.1, z: 90 },
     { kind: 'tree', x: 440, y: 170, w: 16, h: 16, size: 0.95, z: 85 },
+    // lampioni, sempre sull'erba accanto ai vialetti:
+    // - lungo il marciapiede delle palazzine, a metà tra un portone e l'altro
+    { kind: 'streetlamp', x: -260, y: -140, w: 8, h: 8 },
+    { kind: 'streetlamp', x: -130, y: -140, w: 8, h: 8 },
+    { kind: 'streetlamp', x: 130, y: -140, w: 8, h: 8 },
+    { kind: 'streetlamp', x: 260, y: -140, w: 8, h: 8 },
+    // - ai due lati dell'incrocio davanti alle palazzine di sinistra
+    { kind: 'streetlamp', x: -400, y: -36, w: 8, h: 8 },
+    { kind: 'streetlamp', x: -400, y: 36, w: 8, h: 8 },
+    // - ai lati della fontana (a sinistra e a destra sullo schermo, così non la coprono)
+    { kind: 'streetlamp', x: -78, y: 78, w: 8, h: 8 },
+    { kind: 'streetlamp', x: 78, y: -78, w: 8, h: 8 },
+    // - all'ingresso del cortile, ai due lati del vialetto
+    { kind: 'streetlamp', x: -36, y: 196, w: 8, h: 8 },
+    { kind: 'streetlamp', x: 36, y: 196, w: 8, h: 8 },
+    // - ai lati della piazzola libera nell'ala destra
+    { kind: 'streetlamp', x: 298, y: 62, w: 8, h: 8 },
+    { kind: 'streetlamp', x: 422, y: -62, w: 8, h: 8 },
   ],
   SALOON: [
     { kind: 'plant', x: -168, y: -160, w: 26, h: 26, z: 60 },
