@@ -1,3 +1,4 @@
+import { realHour } from '../game-clock.js';
 import type { GameValue } from '../context.js';
 import { game } from '../context.js';
 import { isoProject, isoScale, mixColor, poly, rnd, setPlane } from './primitives.js';
@@ -510,8 +511,9 @@ export function wallClock(d?: GameValue): GameValue {
   game.view.ctx.beginPath();
   game.view.ctx.arc(u, t, r, 0, 6.3);
   game.view.ctx.fill();
-  const m: GameValue = game.player.gameMinutes % 60,
-    h: GameValue = (game.player.gameMinutes / 60) % 12;
+  const now = new Date();
+  const m: GameValue = now.getMinutes() + now.getSeconds() / 60,
+    h: GameValue = realHour(now) % 12;
   game.view.ctx.strokeStyle = '#2d3436';
   game.view.ctx.lineWidth = 1.6;
   game.view.ctx.beginPath();
@@ -1107,7 +1109,7 @@ export function wallVaultDoor(d?: GameValue): GameValue {
 
 // Quadro dipinto dal proprietario della stanza, appeso sulla parete di fondo.
 const paintingCache = new Map<string, HTMLCanvasElement>();
-function paintingImage(code: string): HTMLCanvasElement | null {
+export function paintingImage(code: string): HTMLCanvasElement | null {
   const cached = paintingCache.get(code);
   if (cached) return cached;
   const grid = decodePainting(code);

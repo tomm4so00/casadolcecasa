@@ -164,6 +164,9 @@ export function initializeGame() {
   game.vaultCache = 0;
   game.bankBalance = 0;
   game.kissAnim = null;
+  game.fainted = false;
+  game.pinRetiredAsked = false;
+  game.faintRiseAt = 0;
   game.kissPending = null;
   game.legacyPocketMoney = 0;
   game.vaultSynced = false;
@@ -437,7 +440,8 @@ export function initializeGame() {
     !!game.showerAnim ||
     !!game.activeShift ||
     game.MG.active ||
-    !game.session.saveReady;
+    !game.session.saveReady ||
+    game.fainted;
   game.pick = (arr?: GameValue): GameValue => arr[Math.floor(Math.random() * arr.length)];
   game.socDone = {};
   game.socPending = false;

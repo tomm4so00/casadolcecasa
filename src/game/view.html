@@ -2,52 +2,62 @@
 <div id="toast-container"></div>
 
 <!-- HUD CON 5 BARRE E 1 ETICHETTA SOLDI IN EURO -->
-<div id="needs-hud" class="needs-hud-container hidden">
-  <div class="need-info" style="font-size: 0.6rem; color: #feca57">
-    <span id="clock-text">🕐 08:00</span><span id="day-text">Giorno 1</span>
-  </div>
-  <div class="need-row">
-    <div class="need-info"><span>❤️ Salute</span><span id="health-text">50%</span></div>
-    <div class="bar-bg"><div id="health-bar-fill" class="bar-fill" style="width: 50%"></div></div>
-  </div>
-  <div class="need-row">
-    <div class="need-info"><span>😴 Sonno</span><span id="sleep-text">50%</span></div>
-    <div class="bar-bg"><div id="sleep-bar-fill" class="bar-fill" style="width: 50%"></div></div>
-  </div>
-  <div class="need-row">
-    <div class="need-info"><span>🍕 Fame</span><span id="hunger-text">50%</span></div>
-    <div class="bar-bg"><div id="hunger-bar-fill" class="bar-fill" style="width: 50%"></div></div>
-  </div>
-  <div class="need-row">
-    <div class="need-info"><span>🧼 Igiene</span><span id="hygiene-text">50%</span></div>
-    <div class="bar-bg"><div id="hygiene-bar-fill" class="bar-fill" style="width: 50%"></div></div>
-  </div>
-  <div class="need-row">
-    <div class="need-info"><span>🙂 Felicità</span><span id="happiness-text">50%</span></div>
-    <div class="bar-bg">
-      <div id="happiness-bar-fill" class="bar-fill" style="width: 50%"></div>
+<div id="hud-top-left">
+  <div
+    id="needs-hud"
+    class="needs-hud-container compact hidden"
+    title="Tocca per vedere o nascondere le barre"
+  >
+    <div class="need-info" style="font-size: 0.6rem; color: #feca57">
+      <span id="clock-text">🕐 08:00</span><span id="day-text">Giorno 1</span>
     </div>
+    <div class="need-row">
+      <div class="need-info"><span>❤️ Salute</span><span id="health-text">50%</span></div>
+      <div class="bar-bg"><div id="health-bar-fill" class="bar-fill" style="width: 50%"></div></div>
+    </div>
+    <div class="need-row">
+      <div class="need-info"><span>😴 Sonno</span><span id="sleep-text">50%</span></div>
+      <div class="bar-bg"><div id="sleep-bar-fill" class="bar-fill" style="width: 50%"></div></div>
+    </div>
+    <div class="need-row">
+      <div class="need-info"><span>🍕 Fame</span><span id="hunger-text">50%</span></div>
+      <div class="bar-bg"><div id="hunger-bar-fill" class="bar-fill" style="width: 50%"></div></div>
+    </div>
+    <div class="need-row">
+      <div class="need-info"><span>🧼 Igiene</span><span id="hygiene-text">50%</span></div>
+      <div class="bar-bg">
+        <div id="hygiene-bar-fill" class="bar-fill" style="width: 50%"></div>
+      </div>
+    </div>
+    <div class="need-row">
+      <div class="need-info"><span>🙂 Felicità</span><span id="happiness-text">50%</span></div>
+      <div class="bar-bg">
+        <div id="happiness-bar-fill" class="bar-fill" style="width: 50%"></div>
+      </div>
+    </div>
+    <div class="need-row hidden" id="drug-row">
+      <div class="need-info"><span>💊 Dipendenza</span><span id="drug-text">0%</span></div>
+      <div class="bar-bg">
+        <div id="drug-bar-fill" class="bar-fill" style="width: 0%; background: #a29bfe"></div>
+      </div>
+    </div>
+    <div class="need-row">
+      <div class="need-info">
+        <span class="money-label">💰 Soldi (cassaforte/banca)</span>
+      </div>
+      <div class="need-info money-amounts">
+        <span id="money-text" title="In cassaforte">🔐 0 €</span>
+        <span id="bank-text" title="In banca">🏦 0 €</span>
+      </div>
+      <div class="bar-bg money-split" title="Verde: cassaforte · Azzurro: banca">
+        <div id="money-bar-fill" class="bar-fill" style="width: 0%"></div>
+        <div id="bank-bar-fill" class="bar-fill" style="width: 0%"></div>
+      </div>
+    </div>
+    <div id="mission-text" data-action="openMissions" title="Apri le missioni">📋 Missioni</div>
   </div>
-  <div class="need-row hidden" id="drug-row">
-    <div class="need-info"><span>💊 Dipendenza</span><span id="drug-text">0%</span></div>
-    <div class="bar-bg">
-      <div id="drug-bar-fill" class="bar-fill" style="width: 0%; background: #a29bfe"></div>
-    </div>
-  </div>
-  <div class="need-row">
-    <div class="need-info">
-      <span>💰 Soldi (cassaforte/banca)</span>
-    </div>
-    <div class="need-info money-amounts">
-      <span id="money-text" title="In cassaforte">🔐 0 €</span>
-      <span id="bank-text" title="In banca">🏦 0 €</span>
-    </div>
-    <div class="bar-bg money-split" title="Verde: cassaforte · Azzurro: banca">
-      <div id="money-bar-fill" class="bar-fill" style="width: 0%"></div>
-      <div id="bank-bar-fill" class="bar-fill" style="width: 0%"></div>
-    </div>
-  </div>
-  <div id="mission-text" data-action="openMissions" title="Apri le missioni">📋 Missioni</div>
+  <div id="players-online" class="hidden" title="Giocatori online"></div>
+  <div id="player-card" class="hidden"></div>
 </div>
 
 <div id="left-touch-zone"></div>
@@ -250,6 +260,21 @@
   title="Ruota il mobile (tasto R)"
 >
   🔄 Ruota (R)
+</button>
+<button
+  id="btn-stand-up"
+  class="btn-pop hidden"
+  style="
+    position: absolute;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 60;
+    background: #e17055;
+  "
+  data-action="standUp"
+>
+  🧍 Rialzati
 </button>
 <button id="btn-return-home" class="hidden" data-action="returnHomeFromActivity">
   🏡 Torna a Casa
@@ -484,6 +509,18 @@
         type="button"
         class="shop-item-card"
         style="cursor: pointer; text-align: left; color: inherit"
+        data-action="openArtSite"
+      >
+        <div class="shop-item-info">
+          <h4>🖼️ quadrivendo.it</h4>
+          <p>Vendi i tuoi quadri e compra quelli degli altri giocatori</p>
+        </div>
+        <span>›</span>
+      </button>
+      <button
+        type="button"
+        class="shop-item-card"
+        style="cursor: pointer; text-align: left; color: inherit"
         data-action="openBizSite"
       >
         <div class="shop-item-info">
@@ -505,6 +542,43 @@
 </div>
 
 <!-- SITO BUSINESS ONLINE -->
+<div id="art-modal" class="fullscreen-modal hidden">
+  <div class="browser-window">
+    <div class="browser-header">
+      <div class="browser-dot"></div>
+      <div class="browser-dot"></div>
+      <div class="browser-dot"></div>
+      <div class="browser-url">🌐 https://www.quadrivendo.it/galleria</div>
+    </div>
+    <div class="browser-body">
+      <h3 style="color: #e17055; text-align: center">🖼️ QuadriVendo — la galleria dei giocatori</h3>
+      <div id="art-summary" class="art-summary"></div>
+      <div class="tabs">
+        <button
+          type="button"
+          class="tab active"
+          data-art-tab="gallery"
+          data-action="setArtTab"
+          data-args='["gallery"]'
+        >
+          🖼️ Galleria
+        </button>
+        <button
+          type="button"
+          class="tab"
+          data-art-tab="mine"
+          data-action="setArtTab"
+          data-args='["mine"]'
+        >
+          🎨 I miei quadri
+        </button>
+      </div>
+      <div id="art-list" class="art-list"></div>
+    </div>
+    <button class="btn-primary" data-action="closeModal" data-args='["art-modal"]'>Chiudi</button>
+  </div>
+</div>
+
 <div id="biz-modal" class="fullscreen-modal hidden">
   <div class="browser-window">
     <div class="browser-header">

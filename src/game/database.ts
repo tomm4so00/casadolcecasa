@@ -22,7 +22,11 @@ export interface GameReference {
   orderByChild(key: string): GameReference;
   orderByKey(): GameReference;
   limitToLast(count: number): GameReference;
-  onDisconnect(): { remove(): Promise<void>; cancel(): Promise<void> };
+  onDisconnect(): {
+    remove(): Promise<void>;
+    update(value: Record<string, GameValue>): Promise<void>;
+    cancel(): Promise<void>;
+  };
 }
 export interface GameDatabase {
   ref(path: string): GameReference;
@@ -163,7 +167,11 @@ export function localDatabase(lifetime: Lifetime, storage: Storage = localStorag
         return reference(path, order, limit);
       },
       onDisconnect() {
-        return { remove: async () => {}, cancel: async () => {} };
+        return {
+          async update() {},
+          remove: async () => {},
+          cancel: async () => {},
+        };
       },
     };
   };

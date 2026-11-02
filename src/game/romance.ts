@@ -1,3 +1,4 @@
+import { notePersonality } from './personality.js';
 import type { GameValue } from './context.js';
 import { game } from './context.js';
 import { lifetime } from './runtime.js';
@@ -61,6 +62,7 @@ export async function tryKiss(target: { id: string; name: string }): Promise<voi
   }
   game.kissPending = { id: target.id, name: target.name, until: Date.now() + 30_000 };
   await send(target.id, { type: 'kissAsk' });
+  notePersonality('kissAttempt');
   toast(`💋 Hai provato a baciare ${target.name}… aspetta la risposta!`, 4000);
 }
 
@@ -105,6 +107,7 @@ function startKiss(partnerId: string, partnerName: string): void {
   game.kissAnim = { partnerId, partnerName, start: now, until: now + KISS_DURATION_MS };
   game.player.happinessLevel = Math.min(100, game.player.happinessLevel + 10);
   game.player.stats.kisses = (game.player.stats.kisses || 0) + 1;
+  notePersonality('kissAccepted');
   sfx('kiss');
   refreshSocialPanel();
 }

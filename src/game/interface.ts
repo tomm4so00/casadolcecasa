@@ -1,3 +1,7 @@
+import { startPlayersHud } from './players-hud.js';
+import { dayNumber } from './game-clock.js';
+import { renderArtSite, startArtMarket } from './art-market.js';
+import { resumeFaintSpot } from './faint.js';
 import type { GameValue } from './context.js';
 import type { DialogOptions, DialogResult } from './models.js';
 import { acquirePlayerSession } from './accounts.js';
@@ -229,15 +233,19 @@ export async function startGame(..._args: GameValue[]): Promise<GameValue> {
     game.view.currentRoomTitle = 'La tua stanza 🏠';
     game.playerPos = { x: game.playerRoomFurniture.bed.x, y: game.playerRoomFurniture.bed.y };
   }
+  if (game.fainted) await resumeFaintSpot();
   game.session.db.ref('sims_rooms_state').on('value', (snapshot?: GameValue): GameValue => {
     game.roomsState = normalizeRooms(snapshot.val());
     syncVaultFromServer();
     syncMyPinFromRoom();
+    renderArtSite();
   });
   game.session.db
     .ref('sims_graveyard')
     .on('value', (snap?: GameValue): GameValue => rebuildGraveyard(snap.val()));
   startPresence();
+  startPlayersHud();
+  startArtMarket();
   updateSoundButton();
   updateNotifyButton();
   checkMissions();
@@ -258,7 +266,7 @@ export function writeGrave(..._args: GameValue[]): GameValue {
   const g: GameValue = {
     name: game.player.myData.nick,
     deadAt: game.player.deadAt || Date.now(),
-    days: Math.floor(game.player.gameMinutes / 1440) + 1,
+    days: dayNumber(game.player.gameMinutes, new Date(game.player.deadAt || Date.now())),
   };
   if (game.player.bornAt) g.lived = Math.max(0, g.deadAt - game.player.bornAt);
   if (game.player.epitaph) g.epitaph = game.player.epitaph;

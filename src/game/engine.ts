@@ -1,9 +1,18 @@
+import { realHour } from './game-clock.js';
 import type { GameValue } from './context.js';
 import { canPlaySession } from './accounts.js';
 import { game } from './context.js';
 import { lifetime } from './runtime.js';
 import { checkProximity, getCurrentFurnitureMap, setFurniturePosition } from './world.js';
-import { drawActor, drawNameTagWorld, drawPlayerAvatar, updateShower } from './render/avatars.js';
+import {
+  drawActor,
+  drawFaintedAvatar,
+  drawNameTagWorld,
+  drawOfflineTag,
+  drawPlayerAvatar,
+  drawSleepThoughts,
+  updateShower,
+} from './render/avatars.js';
 import {
   applyLighting,
   drawDynamicFloor,
@@ -29,6 +38,8 @@ import { tickNeeds, updateSocialPanel } from './needs.js';
 import { footprintOf } from './render/primitives.js';
 import { overlapsCorridor } from './room-layout.js';
 import { approachKissPartner, drawKissHearts, kissActive } from './romance.js';
+import { faintAmount } from './faint.js';
+import { presenceState } from './presence-rules.js';
 export function getSolidObstacles(..._args: GameValue[]): GameValue {
   const extra: GameValue = (game.ENV_PROPS[game.view.activeEnvironment] || [])
     .concat(game.ENV_DECOR[game.view.activeEnvironment] || [])
@@ -104,6 +115,7 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
     !game.showerAnim &&
     !game.isMovingFurnitureMode &&
     !kissActive() &&
+    !faintAmount() &&
     (game.moveRight !== 0 || game.moveForward !== 0)
   ) {
     const obstacles: GameValue = getSolidObstacles();
@@ -129,7 +141,8 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
     }
   });
   const st: GameValue = getEnvStyle();
-  const hour: GameValue = (game.player.gameMinutes / 60) % 24;
+  // giorno e notte seguono l'ora reale del dispositivo
+  const hour: GameValue = realHour(new Date());
   if (st.outdoor) drawSky(hour, animTime);
   drawStaticScene(st, hour);
   drawDynamicFloor(st, animTime);
@@ -235,20 +248,30 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
       ((map.bed ? map.bed.x + map.bed.y + 0.5 : game.playerPos.x + game.playerPos.y) -
         (game.playerPos.x + game.playerPos.y)) *
         ease;
+    const faintK = faintAmount();
     drawables.push({
       depth,
       draw: (): GameValue =>
-        drawActor(
-          game.playerPos.x,
-          game.playerPos.y,
-          game.player.myData.nick,
-          animTime,
-          myLook(),
-          game.isWalking,
-          mySayNow,
-          game.sleepK,
-          map.bed,
-        ),
+        faintK > 0
+          ? drawFaintedAvatar(
+              game.playerPos.x,
+              game.playerPos.y,
+              game.player.myData.nick,
+              animTime,
+              myLook(),
+              faintK,
+            )
+          : drawActor(
+              game.playerPos.x,
+              game.playerPos.y,
+              game.player.myData.nick,
+              animTime,
+              myLook(),
+              game.isWalking,
+              mySayNow,
+              game.sleepK,
+              map.bed,
+            ),
     });
     if (kissActive()) {
       const since: number = game.kissAnim.start;
@@ -280,8 +303,17 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
   Object.keys(game.onlinePlayers).forEach((id?: GameValue): GameValue => {
     if (id === game.session.myPlayerId) return;
     let op: GameValue = game.onlinePlayers[id];
-    // Ignora giocatori senza battito recente (fantasmi rimasti nel DB)
-    if (!op || op.env !== game.view.activeEnvironment || !presenceAlive(id, op, now)) return;
+    if (!op || op.env !== game.view.activeEnvironment) return;
+    // Chi ha lasciato il gioco resta visibile (offline); se non dormiva, sviene a sonno finito
+    const alive: boolean = presenceAlive(id, op, now);
+    const state = presenceState(
+      op,
+      alive,
+      now + (game.session.serverOffset || 0),
+      game.SLEEP_DEPLETION_SEC,
+    );
+    if (state === 'gone') return;
+    const isOffline: boolean = !!op.offline || !alive;
     // Ogni stanza privata è separata: vedi solo chi è nella tua stessa stanza
     if (game.view.activeEnvironment === 'PLAYER_ROOM' && op.roomIdx !== game.currentRoomIdx) return;
     // Salone, cucina e bagno esistono in ogni appartamento: vedi solo chi è nel tuo
@@ -295,7 +327,7 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
       s.sayT = op.sayT;
       s.sayShownAt = now;
     }
-    const say: GameValue = op.say && now - s.sayShownAt < 6000 ? op.say : '';
+    const say: GameValue = !isOffline && op.say && now - s.sayShownAt < 6000 ? op.say : '';
     let k: GameValue = Math.min(1, delta * 10);
     let dx: GameValue = op.x - s.x,
       dy: GameValue = op.y - s.y;
@@ -303,9 +335,16 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
     s.y += dy * k;
     {
       const dd: GameValue = Math.hypot(game.playerPos.x - s.x, game.playerPos.y - s.y);
-      if (dd < game.SOC_RANGE) game.frameNear.push({ id, name: op.name || 'Giocatore', d: dd });
+      // con chi è offline o svenuto non si può interagire
+      if (dd < game.SOC_RANGE && !isOffline && state !== 'fainted')
+        game.frameNear.push({ id, name: op.name || 'Giocatore', d: dd });
     }
-    let moving: GameValue = Math.hypot(dx, dy) > 1;
+    let moving: GameValue = !isOffline && Math.hypot(dx, dy) > 1;
+    const shownName: string = isOffline ? '' : op.name;
+    if (isOffline) {
+      const lz = state === 'fainted' ? 34 : state === 'sleeping' ? 70 : 92;
+      labels.push((): GameValue => drawOfflineTag(s.x, s.y, lz, op.name));
+    }
     const lk: GameValue = (op.look || op.outfit + op.acc) + '|' + (op.body || '');
     if (s.lookKey !== lk) {
       s.lookKey = lk;
@@ -343,7 +382,9 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
     drawables.push({
       depth: rd,
       draw: (): GameValue =>
-        drawActor(s.x, s.y, op.name, animTime, s.look, moving, say, sk, map.bed),
+        state === 'fainted'
+          ? drawFaintedAvatar(s.x, s.y, shownName, animTime, s.look, 1)
+          : drawActor(s.x, s.y, shownName, animTime, s.look, moving, say, sk, map.bed),
     });
   });
   updateSocialPanel();
@@ -361,6 +402,7 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
   if (game.view.activeEnvironment === 'discoteca') dark = 0.6;
   applyLighting(dark, lights, st);
   labels.forEach((l?: GameValue): GameValue => l());
+  drawSleepThoughts();
   // Titolo stanza
   game.view.ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
   game.view.ctx.beginPath();

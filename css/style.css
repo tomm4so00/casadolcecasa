@@ -23,10 +23,23 @@ html {
 }
 
 /* HUD Barre Fabbisogni con Etichette */
-.needs-hud-container {
+/* Angolo in alto a sinistra: parametri, icone dei giocatori online e scheda del giocatore */
+#hud-top-left {
   position: absolute;
   top: 8px;
   left: 8px;
+  z-index: 40;
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  pointer-events: none;
+}
+#hud-top-left > * {
+  pointer-events: auto;
+}
+.needs-hud-container {
+  position: relative;
+  cursor: pointer;
   background: rgba(15, 15, 25, 0.85);
   backdrop-filter: blur(8px);
   border-radius: 8px;
@@ -42,6 +55,98 @@ html {
 .need-row {
   display: flex;
   flex-direction: column;
+}
+/* Versione piccola: solo nomi e percentuali (un tocco mostra anche le barre) */
+.needs-hud-container.compact {
+  width: 112px;
+  gap: 1px;
+  padding: 5px 7px;
+}
+.needs-hud-container.compact .bar-bg,
+.needs-hud-container.compact .money-label {
+  display: none;
+}
+.needs-hud-container.compact .need-info {
+  margin-bottom: 0;
+}
+.needs-hud-container.compact .money-amounts {
+  gap: 4px;
+}
+
+/* Icone dei giocatori online */
+#players-online {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: calc(100vh - 120px);
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+.po-icon {
+  width: 34px;
+  height: 34px;
+  flex: none;
+  padding: 0;
+  border-radius: 50%;
+  border: 2px solid #2ed573;
+  background: rgba(15, 15, 25, 0.85);
+  overflow: hidden;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+}
+.po-icon canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.po-icon.sel {
+  border-color: #feca57;
+  box-shadow: 0 0 0 2px rgba(254, 202, 87, 0.45);
+}
+
+/* Scheda con i parametri del giocatore scelto */
+#player-card {
+  position: absolute;
+  width: 150px;
+  background: rgba(15, 15, 25, 0.92);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(254, 202, 87, 0.5);
+  border-radius: 8px;
+  padding: 6px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+}
+#player-card.hidden {
+  display: none;
+}
+#player-card .pc-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 4px;
+}
+#player-card .pc-name {
+  font-size: 0.7rem;
+  font-weight: bold;
+  color: #feca57;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+#player-card .pc-close {
+  background: none;
+  border: none;
+  color: #ccc;
+  font-size: 0.75rem;
+  cursor: pointer;
+  padding: 0 2px;
+}
+#player-card .pc-place {
+  font-size: 0.58rem;
+  color: #dfe6e9;
+  margin-bottom: 2px;
 }
 .need-info {
   font-size: 0.55rem;
@@ -1143,4 +1248,69 @@ input[type='number'] {
   .paint-swatch {
     max-width: 30px;
   }
+}
+
+/* quadrivendo.it: galleria dei quadri in vendita */
+.art-summary {
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 0.8rem;
+  text-align: center;
+}
+.art-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 10px;
+  max-height: 52vh;
+  overflow-y: auto;
+}
+.art-card {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.78rem;
+}
+.art-frame {
+  background: linear-gradient(135deg, #c9a227, #8d5524);
+  padding: 5px;
+  border-radius: 4px;
+}
+.art-thumb {
+  display: block;
+  width: 100%;
+  height: auto;
+  image-rendering: pixelated;
+  background: #fff;
+}
+.art-info div {
+  color: #c8d6e5;
+}
+.art-price {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 6px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: rgba(0, 0, 0, 0.3);
+  color: #fff;
+}
+.art-btn {
+  border: none;
+  border-radius: 6px;
+  padding: 7px 6px;
+  font-weight: bold;
+  font-size: 0.75rem;
+  color: #fff;
+  cursor: pointer;
+}
+.art-empty {
+  grid-column: 1 / -1;
+  color: #aaa;
+  text-align: center;
+  font-size: 0.85rem;
 }

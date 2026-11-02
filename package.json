@@ -16,7 +16,9 @@
     "test": "vitest run",
     "test:browser": "node tests/browser-smoke.mjs",
     "test:cloud": "npm run build:server && firebase emulators:exec --only auth,database --project demo-casadolcecasa \"node tests/browser-cloud.mjs\"",
-    "build:server": "npm --prefix server run build"
+    "build:server": "npm --prefix server run build",
+    "rules:check": "node firebase/rules.mjs check",
+    "rules:deploy": "node firebase/rules.mjs deploy"
   },
   "dependencies": {
     "firebase": "^12.0.0"

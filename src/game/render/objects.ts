@@ -1,3 +1,4 @@
+import { clockText } from '../game-clock.js';
 import { spendMoney } from '../economy.js';
 import type { GameValue } from '../context.js';
 import { game } from '../context.js';
@@ -247,8 +248,7 @@ export function isPremium(it?: GameValue): boolean {
 }
 
 export function gameClockText(..._args: GameValue[]): GameValue {
-  const m: GameValue = Math.floor(game.player.gameMinutes);
-  return String(Math.floor(m / 60) % 24).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0');
+  return clockText(new Date());
 }
 
 // ---------------------------------------------------------------- MOBILI DELLA STANZA

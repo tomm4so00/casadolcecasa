@@ -1,3 +1,5 @@
+import { openArtSite, setArtTab } from './art-market.js';
+import { standUp } from './faint.js';
 import {
   closeWardrobe,
   handleSubAction,
@@ -47,6 +49,9 @@ export const uiActions: Readonly<Record<string, UiAction>> = {
   startMovingFurniture: () => startMovingFurniture(),
   placeFurniture: () => placeFurniture(),
   rotateFurniture: () => rotateFurniture(),
+  standUp: () => standUp(),
+  openArtSite: () => openArtSite(),
+  setArtTab: ([tab]) => setArtTab(String(tab)),
   returnHomeFromActivity: () => returnHomeFromActivity(),
   reloadForUpdate: () => reloadForUpdate(),
   restoreFromCode: () => restoreFromCode(),

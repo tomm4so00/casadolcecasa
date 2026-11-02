@@ -1,3 +1,4 @@
+import { notePersonality } from './personality.js';
 import { marketPriceAt, type Business, type BusinessId } from '../../shared/market.js';
 import { marketSnapshot, canTradeMarket } from './market-client.js';
 import { updateEconomy } from './economy.js';
@@ -142,6 +143,7 @@ export async function bizInvest(id: BusinessId): Promise<void> {
   )
     return;
   toast(`✅ Hai investito ${amt} € in ${b.name}`);
+  notePersonality('invest');
   saveGame(true);
   bizUpdate();
 }

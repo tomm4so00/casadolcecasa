@@ -1,3 +1,4 @@
+import { publishVitals } from './players-hud-rules.js';
 import { advanceNeeds } from './simulation.js';
 import { needsRules } from './needs-rules.js';
 import { syncRoomEconomy, creditMoney, flushEconomy } from './economy.js';
@@ -13,10 +14,35 @@ import { startInbox } from './social.js';
 import { startChat } from './chat.js';
 import { bestOwnedByProp } from './furniture-tiers.js';
 import { decodeRomance } from './romance-rules.js';
+import { decodePersonality } from './personality-rules.js';
 import { pushOutOfCorridor } from './room-layout.js';
 import { footprintOf } from './render/primitives.js';
 import { PAINTING_SLOTS, paintingKey, roomPaintings } from './painting-rules.js';
 import { kissActive } from './romance.js';
+import { noteFaintOnReturn } from './faint.js';
+import { promptSetSafePin } from './needs.js';
+
+/** Segna la presenza come offline, con l'ora del server in cui il giocatore è uscito. */
+export const OFFLINE_MARK = { offline: true, offAt: { '.sv': 'timestamp' } };
+/** Combinazione della cassaforte: 3 cifre da 1 a 4 (64 combinazioni). */
+export const SAFE_PIN_RE = /^[1-4]{3}$/;
+export const SAFE_PIN_HINT = '3 cifre da 1 a 4 (es. 134)';
+
+/**
+ * Le vecchie combinazioni potevano usare anche il 5: il proprietario lo riconosce provando le poche
+ * combinazioni possibili sul PIN cifrato della sua stanza.
+ */
+export function pinUsesRetiredDigit(pin: unknown, roomId: unknown): boolean {
+  if (typeof pin !== 'string' || !pin.startsWith('h')) return false;
+  for (let a = 1; a <= 5; a++)
+    for (let b = 1; b <= 5; b++)
+      for (let c = 1; c <= 5; c++) {
+        const code = `${a}${b}${c}`;
+        if (code.includes('5') && hashPin(code, roomId) === pin) return true;
+      }
+  return false;
+}
+
 export function hashPin(pin?: GameValue, salt?: GameValue): GameValue {
   let s: GameValue = 'sims:' + salt + ':' + pin,
     h: GameValue = 5381;
@@ -118,6 +144,7 @@ export function buildSaveData(..._args: GameValue[]): SaveV8 {
   if (game.player.drugStock > 0) data.drugStock = game.player.drugStock;
   if (game.player.romance && Object.keys(game.player.romance).length)
     data.romance = game.player.romance;
+  if (game.player.personality) data.personality = game.player.personality;
   if (game.player.coffeeAt) data.coffeeAt = game.player.coffeeAt;
   if (Object.keys(game.player.invest).length) {
     data.invest = {};
@@ -170,6 +197,7 @@ export function applySave(value: unknown): void {
   game.player.bornAt = num(s.bornAt, 0);
   game.player.drugStock = Math.max(0, Math.floor(num(s.drugStock, 0)));
   game.player.romance = decodeRomance(s.romance);
+  game.player.personality = decodePersonality(s.personality);
   game.player.coffeeAt = num(s.coffeeAt, 0);
   game.player.invest = {};
   game.BIZ.forEach((b?: GameValue): GameValue => {
@@ -304,6 +332,7 @@ export function catchUpOffline(s?: GameValue): GameValue {
   if (!s.savedAt || !isFinite(away) || away <= 0) return;
 
   advanceNeeds(game.player, away, Date.now(), needsRules());
+  noteFaintOnReturn(!!s.sleeping);
   if (away < 60) return;
   const fainted = game.player.healthLevel <= 0;
   const h: GameValue = away / 3600;
@@ -472,6 +501,19 @@ export function syncMyPinFromRoom(..._args: GameValue[]): GameValue {
       .set(hashPin(room.pin, room.id));
   }
   game.hasSetSafePin = true;
+  // Combinazione scelta quando si potevano usare le cifre fino a 5: si chiede di cambiarla una volta
+  if (!game.pinRetiredAsked && pinUsesRetiredDigit(room.pin, room.id)) {
+    game.pinRetiredAsked = true;
+    lifetime.setTimeout(
+      () =>
+        void promptSetSafePin(
+          'La combinazione della cassaforte ora usa solo le cifre da 1 a 4, e la tua contiene un 5. Scegline una nuova: ' +
+            SAFE_PIN_HINT +
+            '.',
+        ),
+      3000,
+    );
+  }
 }
 
 export function presenceAlive(id?: GameValue, op?: GameValue, now?: GameValue): GameValue {
@@ -498,8 +540,8 @@ export function startPresence(..._args: GameValue[]): GameValue {
   const playerRef: GameValue = game.session.db.ref(
     'sims_online_players/' + game.session.myPlayerId,
   );
-  // Rimuove il giocatore dal DB quando chiude la pagina (niente fantasmi)
-  playerRef.onDisconnect().remove();
+  // Quando chiude la pagina il giocatore resta visibile agli altri, segnato come offline
+  playerRef.onDisconnect().update(OFFLINE_MARK);
   // Invia la posizione solo quando cambia, più un battito ogni 5 s
   let lastSentKey: GameValue = '',
     lastSentAt: GameValue = 0;
@@ -514,13 +556,26 @@ export function startPresence(..._args: GameValue[]): GameValue {
       outfit: resolveLook(game.player.equipped).top.color,
       look: lookString(),
       body: game.bodyString(currentBody()),
-      act: kissActive()
-        ? 'kiss'
-        : game.showerAnim
-          ? 'shower'
-          : game.player.isSleeping
-            ? 'sleep'
-            : '',
+      // parametri vitali e posto: li vedono gli altri cliccando la mia icona
+      ...publishVitals(
+        {
+          health: game.player.healthLevel,
+          sleep: game.player.sleepLevel,
+          hunger: game.player.hungerLevel,
+          hygiene: game.player.hygieneLevel,
+          happiness: game.player.happinessLevel,
+        },
+        game.view.currentRoomTitle,
+      ),
+      act: game.fainted
+        ? 'faint'
+        : kissActive()
+          ? 'kiss'
+          : game.showerAnim
+            ? 'shower'
+            : game.player.isSleeping
+              ? 'sleep'
+              : '',
       say: game.mySay,
       sayT: game.mySayT,
     };

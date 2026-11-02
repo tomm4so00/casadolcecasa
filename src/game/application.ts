@@ -5,6 +5,7 @@ import { bindUiActions } from './ui-bindings.js';
 import { lifetime, resetLifetime } from './runtime.js';
 import { importRefactoredSave } from './save-model.js';
 import { mountCloudSetup } from './cloud-setup.js';
+import { OFFLINE_MARK } from './saves.js';
 export function mountLatestGame() {
   resetLifetime();
   const root = document.getElementById('app');
@@ -29,7 +30,8 @@ export async function disposeLatestGame() {
   }
   lifetime.dispose();
   if (reference) {
-    await reference.remove();
+    // Chiudendo il gioco il personaggio resta visibile agli altri, segnato come offline
+    await reference.update(OFFLINE_MARK);
     await reference.onDisconnect().cancel();
   }
 }

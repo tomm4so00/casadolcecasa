@@ -1,3 +1,4 @@
+import type { PersonalityState } from './personality-rules.js';
 import type { RomanceBook } from './romance-rules.js';
 import type { GameDatabase } from './database.js';
 
@@ -83,6 +84,8 @@ export interface CharacterState {
   missionIndex: number;
   /** Relazioni romantiche con gli altri giocatori. */
   romance?: RomanceBook;
+  /** Punti delle personalità sviluppate giocando. */
+  personality?: PersonalityState;
 }
 export interface SessionState {
   authUid: string | null;

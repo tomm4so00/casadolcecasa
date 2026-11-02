@@ -1,3 +1,4 @@
+import { notePersonality } from './personality.js';
 import { creditMoney } from './economy.js';
 import type { GameValue } from './context.js';
 import { game } from './context.js';
@@ -346,6 +347,7 @@ export async function updateShift(delta: number): Promise<void> {
       return;
     }
     game.player.stats.shifts++;
+    notePersonality('workShift');
     game.player.happinessLevel = Math.max(0, game.player.happinessLevel - 5);
     game.player.sleepLevel = Math.max(0, game.player.sleepLevel - 3);
     game.view.currentRoomTitle = `${s.title} ✅`;

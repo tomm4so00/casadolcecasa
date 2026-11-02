@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import fs from 'node:fs';
-import { FURNITURE_CATALOG } from '../src/game/data/catalogues.js';
+import { FURNITURE_CATALOG, PLAYER_ROOM_FURNITURE } from '../src/game/data/catalogues.js';
 import {
   bestOwnedByProp,
   nextUpgrade,
@@ -13,23 +13,36 @@ const catalog = FURNITURE_CATALOG;
 const categories = [...new Set(catalog.map((f) => f.category))];
 
 describe('fasce dei mobili', () => {
-  it('ogni categoria ha standard, pregiato e lusso con prezzi crescenti', () => {
+  it('ogni categoria ha pregiato e lusso, e lo standard solo se la stanza non lo ha già', () => {
     for (const category of categories) {
       const list = tiersOf(catalog, category);
-      expect(list.map(tierOf), category).toEqual(['std', 'premium', 'lux']);
-      expect(list[0].price).toBeLessThan(list[1].price);
-      expect(list[1].price).toBeLessThan(list[2].price);
+      const expected: string[] =
+        category in PLAYER_ROOM_FURNITURE ? ['premium', 'lux'] : ['std', 'premium', 'lux'];
+      expect(list.map(tierOf), category).toEqual(expected);
+      for (let i = 1; i < list.length; i++) expect(list[i - 1].price).toBeLessThan(list[i].price);
       // il nome del mobile posizionato basta a riconoscerne la fascia
-      expect(list.map((f) => tierOfPlaced(f.propData))).toEqual(['std', 'premium', 'lux']);
+      expect(list.map((f) => tierOfPlaced(f.propData))).toEqual(expected);
     }
   });
 
+  it('i cataloghi non vendono i mobili che ogni stanza ha già', () => {
+    for (const id of ['bed_std', 'wardrobe_std', 'desk_std'])
+      expect(
+        catalog.some((f) => f.id === id),
+        id,
+      ).toBe(false);
+  });
+
   it('nel negozio si sale di una fascia alla volta', () => {
-    expect(nextUpgrade(catalog, {}, 'bed')?.id).toBe('bed_std');
-    expect(nextUpgrade(catalog, { bed_std: true }, 'bed')?.id).toBe('bed_pre');
-    expect(nextUpgrade(catalog, { bed_std: true, bed_pre: true }, 'bed')?.id).toBe('bed_lux');
+    // il letto standard è già nella stanza: si parte dal pregiato
+    expect(nextUpgrade(catalog, {}, 'bed')?.id).toBe('bed_pre');
+    expect(nextUpgrade(catalog, { bed_pre: true }, 'bed')?.id).toBe('bed_lux');
+    expect(nextUpgrade(catalog, { bed_lux: true }, 'bed')).toBeNull();
+    // per i mobili che la stanza non ha, si comincia dallo standard
+    expect(nextUpgrade(catalog, {}, 'sofa')?.id).toBe('sofa_std');
+    expect(nextUpgrade(catalog, { sofa_std: true }, 'sofa')?.id).toBe('sofa_pre');
     // chi aveva già il lusso non deve comprare il pregiato
-    expect(nextUpgrade(catalog, { bed_std: true, bed_lux: true }, 'bed')).toBeNull();
+    expect(nextUpgrade(catalog, { sofa_std: true, sofa_lux: true }, 'sofa')).toBeNull();
   });
 
   it('la stanza mostra sempre il mobile migliore posseduto', () => {

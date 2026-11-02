@@ -80,6 +80,13 @@ e limiti delle meccaniche condivise sono in
 La proposta va pubblicata insieme alla nuova versione; non viene distribuita
 automaticamente da `firebase.json`.
 
+Dopo un accesso con `npx firebase login`:
+
+```sh
+npm run rules:check    # le regole online sono uguali a quelle del progetto?
+npm run rules:deploy   # salva una copia di quelle online in firebase/backups/ e pubblica le nuove
+```
+
 La sessione in `sims_sessions/{playerId}` fa giocare lo stesso personaggio su un
 solo dispositivo alla volta: l'ultimo accesso prende la sessione e blocca il
 precedente. Web Locks impedisce invece due schede dello stesso browser. I vecchi client v8 non conoscono questo blocco;

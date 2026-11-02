@@ -23,6 +23,12 @@ export interface GameContext {
   vaultCache: number;
   bankBalance: number;
   kissAnim: GameValue;
+  /** true se il personaggio è svenuto a terra (sonno finito mentre era offline). */
+  fainted: boolean;
+  /** Già chiesto, in questa sessione, di cambiare un vecchio PIN con il 5. */
+  pinRetiredAsked: boolean;
+  /** Inizio dell'animazione con cui si rialza (0 = nessuna). */
+  faintRiseAt: number;
   /** Rotazione del mobile che si sta disegnando (null = nessuna). */
   furnRot: { k: number; cx: number; cy: number } | null;
   /** Parti del mobile ruotato in attesa di essere disegnate nell'ordine giusto. */

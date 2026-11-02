@@ -5,8 +5,8 @@ import { bodyFromName, currentBody, drawAvatarPreview, resolveLook } from '../ch
 import { sfx } from '../audio.js';
 import { saveGame } from '../saves.js';
 import { toast } from '../missions.js';
-import { isoProject, isoScale, rnd, rotateAround, toRgb } from './primitives.js';
-import { box, onFace } from './objects.js';
+import { isoProject, isoScale, rnd, rotateAround, rotateVector, toRgb } from './primitives.js';
+import { box, onFace, withFurnitureRotation } from './objects.js';
 import { nameHash } from './scenes.js';
 // ---------- piccoli aiuti per il disegno dei vestiti ----------
 type Pt = { x: number; y: number };
@@ -1192,8 +1192,11 @@ export function drawAvatarSleeping(
   const tx: GameValue = px + (foot.x - px) * e,
     ty: GameValue = py + (foot.y - py) * e;
   const lift: GameValue = 24 * e + Math.sin(Math.PI * k) * 12;
-  // con il letto girato di un quarto, il personaggio si sdraia dall'altra parte
-  const rot: GameValue = (Math.PI / 3) * e * (bedRot % 2 ? -1 : 1);
+  // Si sdraia con la testa verso la testiera: la direzione dipende da come è girato il letto.
+  // (letto non girato: testiera verso −y, cioè in alto a destra sullo schermo → π/3)
+  const toHead = rotateVector(0, -1, bedRot);
+  const lieAngle = Math.atan2((toHead.x - toHead.y) * 0.866, -(toHead.x + toHead.y) * 0.5);
+  const rot: GameValue = lieAngle * e;
   const pv: GameValue = isoProject(tx, ty, 0);
   game.view.ctx.save();
   game.view.ctx.translate(pv.x, pv.y - lift * s);
@@ -1213,15 +1216,18 @@ export function drawAvatarSleeping(
     // la coperta copre le gambe
     const col: GameValue = bed.color || '#5f27cd';
     game.view.ctx.globalAlpha = Math.min(1, (e - 0.9) / 0.1);
-    const bl: GameValue = box(bed.x, bed.y + bed.h * 0.22, bed.w - 8, bed.h * 0.5, 8, col, {
-      z0: 23,
-      top: bed.topColor || game.lighten(col, 0.15),
-    });
-    onFace(bl, 'top', (W?: GameValue, H?: GameValue): GameValue => {
-      game.view.ctx.fillStyle = 'rgba(255,255,255,0.13)';
-      for (let i: GameValue = 4; i < W; i += 14) game.view.ctx.fillRect(i, 0, 5, H);
-      game.view.ctx.fillStyle = 'rgba(255,255,255,0.55)';
-      game.view.ctx.fillRect(0, 0, W, 6);
+    // la coperta è girata insieme al letto
+    withFurnitureRotation(bed, () => {
+      const bl: GameValue = box(bed.x, bed.y + bed.h * 0.22, bed.w - 8, bed.h * 0.5, 8, col, {
+        z0: 23,
+        top: bed.topColor || game.lighten(col, 0.15),
+      });
+      onFace(bl, 'top', (W?: GameValue, H?: GameValue): GameValue => {
+        game.view.ctx.fillStyle = 'rgba(255,255,255,0.13)';
+        for (let i: GameValue = 4; i < W; i += 14) game.view.ctx.fillRect(i, 0, 5, H);
+        game.view.ctx.fillStyle = 'rgba(255,255,255,0.55)';
+        game.view.ctx.fillRect(0, 0, W, 6);
+      });
     });
     game.view.ctx.globalAlpha = 1;
   }
@@ -1246,7 +1252,8 @@ export function drawAvatarSleeping(
     game.view.ctx.globalAlpha = 1;
   }
   pillTag(hs.x, hs.y - 30 * s, name);
-  speechBubble(hs.x, hs.y - 62 * s, say);
+  // il pensiero di chi dorme si disegna dopo il buio della notte, di lato (vedi drawSleepThoughts)
+  if (say) sleepThoughts.push({ x: hs.x, y: hs.y, s, text: say });
 }
 
 export function drawActor(
@@ -2294,5 +2301,133 @@ function drawNeckFront(
       for (const side of [-1, 1])
         dot(neck.x + side * 5.8 * s, tyTop + tH * 0.35, 0.6 * s, '#b2bec3');
       break;
+  }
+}
+
+// Personaggio svenuto a terra: k = 1 sdraiato, 0 in piedi (si usa anche mentre si rialza).
+export function drawFaintedAvatar(
+  x: number,
+  y: number,
+  name: string,
+  animTime: number,
+  look: GameValue,
+  k = 1,
+): void {
+  const ctx: GameValue = game.view.ctx;
+  const s: GameValue = isoScale();
+  const e = k * k * (3 - 2 * k);
+  const pv: GameValue = isoProject(x, y, 0);
+  const rot = -Math.PI * 0.46 * e;
+  // ombra allungata sul pavimento
+  ctx.fillStyle = 'rgba(0,0,0,0.3)';
+  ctx.beginPath();
+  ctx.ellipse(pv.x - 22 * s * e, pv.y, (13 + 22 * e) * s, 6.5 * s, 0, 0, 6.3);
+  ctx.fill();
+  ctx.save();
+  ctx.translate(pv.x, pv.y - 4 * s * e);
+  ctx.rotate(rot);
+  ctx.translate(-pv.x, -pv.y);
+  drawPlayerAvatar(x, y, '', animTime, look, false, '', { noShadow: true });
+  ctx.restore();
+  // stelline che girano attorno alla testa
+  if (e > 0.6) {
+    const hx = pv.x + Math.sin(rot) * 58 * s,
+      hy = pv.y - 4 * s * e - Math.cos(rot) * 58 * s;
+    ctx.save();
+    ctx.globalAlpha = Math.min(1, (e - 0.6) / 0.3);
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font = `${Math.round(9 * s)}px sans-serif`;
+    for (let i = 0; i < 3; i++) {
+      const a = animTime * 3 + (i * Math.PI * 2) / 3;
+      ctx.fillText(
+        i === 1 ? '💫' : '⭐',
+        hx + Math.cos(a) * 11 * s,
+        hy - 12 * s + Math.sin(a) * 4 * s,
+      );
+    }
+    ctx.restore();
+  }
+  if (name) pillTag(pv.x - 24 * s * e, pv.y - (34 - 22 * e) * s - 24, name);
+}
+
+// Nome di un giocatore che ha lasciato il gioco, con la scritta "offline" accanto.
+export function drawOfflineTag(x: number, y: number, z: number, name: string): void {
+  const ctx: GameValue = game.view.ctx;
+  const p: GameValue = isoProject(x, y, z);
+  ctx.font = 'bold 10px sans-serif';
+  const nameW = Math.min(90, ctx.measureText(name || 'Giocatore').width + 14);
+  ctx.font = 'bold 9px sans-serif';
+  const offW = ctx.measureText('offline').width + 12;
+  const total = nameW + 4 + offW;
+  const left = p.x - total / 2,
+    top = p.y - 8;
+  const pill = (px: number, w: number, color: string) => {
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.roundRect ? ctx.roundRect(px, top, w, 16, 8) : ctx.rect(px, top, w, 16);
+    ctx.fill();
+  };
+  pill(left, nameW, 'rgba(0,0,0,0.6)');
+  pill(left + nameW + 4, offW, 'rgba(99,110,114,0.95)');
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 10px sans-serif';
+  ctx.fillText(name || 'Giocatore', left + nameW / 2, top + 11.5, nameW - 8);
+  ctx.fillStyle = '#dfe6e9';
+  ctx.font = 'bold 9px sans-serif';
+  ctx.fillText('offline', left + nameW + 4 + offW / 2, top + 11.5);
+}
+
+// Pensieri di chi dorme, raccolti mentre si disegna la scena e mostrati alla fine sopra tutto.
+const sleepThoughts: { x: number; y: number; s: number; text: string }[] = [];
+
+/** Nuvoletta di pensiero accanto alla testa: si legge anche di notte e non finisce sotto i pulsanti. */
+export function drawSleepThoughts(): void {
+  const ctx: GameValue = game.view.ctx;
+  for (const t of sleepThoughts.splice(0)) {
+    ctx.font = '12px sans-serif';
+    const w = Math.min(200, ctx.measureText(t.text).width) + 18;
+    const h = 24;
+    const maxLeft = game.view.canvas.width - w - 8;
+    const left = Math.max(8, Math.min(maxLeft, t.x + 34 * t.s));
+    let top = t.y - 46 * t.s - h;
+    // se sopra la testa c'è il pulsante "Svegliati", la nuvoletta sale sopra di lui
+    const pop = dom('pop-interaction');
+    if (pop && !pop.classList.contains('hidden')) {
+      const r = pop.getBoundingClientRect(),
+        c = game.view.canvas.getBoundingClientRect();
+      const popLeft = r.left - c.left,
+        popTop = r.top - c.top;
+      if (
+        left < popLeft + r.width &&
+        left + w > popLeft &&
+        top + h > popTop &&
+        top < popTop + r.height
+      )
+        top = Math.max(4, popTop - h - 6);
+    }
+    // pallini che salgono dalla testa
+    ctx.fillStyle = 'rgba(255,255,255,0.92)';
+    for (const [k, r] of [
+      [0.25, 2.5],
+      [0.55, 4],
+    ] as const) {
+      ctx.beginPath();
+      ctx.arc(
+        t.x + (left + 12 - t.x) * k,
+        t.y - 10 * t.s + (top + h - t.y + 10 * t.s) * k,
+        r,
+        0,
+        6.3,
+      );
+      ctx.fill();
+    }
+    ctx.beginPath();
+    ctx.roundRect ? ctx.roundRect(left, top, w, h, 12) : ctx.rect(left, top, w, h);
+    ctx.fill();
+    ctx.fillStyle = '#2d3436';
+    ctx.textAlign = 'center';
+    ctx.fillText(t.text, left + w / 2, top + 16, 200);
   }
 }

@@ -1,3 +1,4 @@
+import { notePersonality } from './personality.js';
 import type { GameValue } from './context.js';
 import { game } from './context.js';
 import { dom, lifetime } from './runtime.js';
@@ -201,10 +202,12 @@ async function finishPainting(): Promise<void> {
     return;
   }
   try {
-    await game.session.db
-      .ref(`sims_rooms_state/${game.myAssignedRoomIdx}/paintings/${slot}`)
-      .set(encodePainting(studio.grid));
+    await game.session.db.ref(`sims_rooms_state/${game.myAssignedRoomIdx}`).update({
+      [`paintings/${slot}`]: encodePainting(studio.grid),
+      [`sale/${slot}`]: null,
+    });
     game.player.stats.paintings = (game.player.stats.paintings || 0) + 1;
+    notePersonality('paint');
     sfx('success');
     toast(
       free
@@ -224,7 +227,7 @@ const SLOT_PLACE: Record<PaintingSlot, string> = {
   p3: 'quadro 3',
 };
 
-async function chooseSlotToReplace(): Promise<PaintingSlot | null> {
+export async function chooseSlotToReplace(): Promise<PaintingSlot | null> {
   const res: GameValue = await openDialog({
     title: '🖼️ Quale quadro sostituisci?',
     text: 'Le pareti sono piene. Avvicinandoti a un quadro nella stanza vedi il suo numero.',
@@ -252,9 +255,10 @@ export async function managePainting(key: string): Promise<void> {
   });
   if (res.action !== 'remove') return;
   try {
-    await game.session.db
-      .ref(`sims_rooms_state/${game.myAssignedRoomIdx}/paintings/${slot}`)
-      .remove();
+    await game.session.db.ref(`sims_rooms_state/${game.myAssignedRoomIdx}`).update({
+      [`paintings/${slot}`]: null,
+      [`sale/${slot}`]: null,
+    });
     toast('Il quadro è stato tolto dalla parete.', 3000);
   } catch (error) {
     console.warn('[painting]', error);

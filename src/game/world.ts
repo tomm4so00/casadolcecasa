@@ -1,8 +1,17 @@
+import { bedtimeThought, notePersonality } from './personality.js';
 import { purchaseItem, spendMoney, creditMoney } from './economy.js';
 import type { GameValue } from './context.js';
 import { game } from './context.js';
 import { lifetime, dom, browser } from './runtime.js';
-import { getMyRoomMap, hasRoom, hashPin, isMyRoomNow, saveGame } from './saves.js';
+import {
+  SAFE_PIN_HINT,
+  SAFE_PIN_RE,
+  getMyRoomMap,
+  hasRoom,
+  hashPin,
+  isMyRoomNow,
+  saveGame,
+} from './saves.js';
 import { openDialog } from './interface.js';
 import { relaxWith, toast } from './missions.js';
 import {
@@ -32,16 +41,16 @@ export async function changeSafePin(..._args: GameValue[]): Promise<GameValue> {
   if (!room || room.ownerId !== game.session.myPlayerId) return;
   const res: GameValue = await openDialog({
     title: game.hasSetSafePin ? '🔑 Cambia combinazione' : '🔑 Imposta combinazione',
-    text: 'Scegli la nuova combinazione segreta della cassaforte: 3 cifre da 1 a 5 (es. 135).',
-    input: { placeholder: '135', numeric: true, maxLength: 3 },
+    text: `Scegli la nuova combinazione segreta della cassaforte: ${SAFE_PIN_HINT}.`,
+    input: { placeholder: '134', numeric: true, maxLength: 3 },
     buttons: [
       { label: 'Annulla', value: null, color: '#57606f' },
       { label: 'Salva', value: 'ok', color: '#2ed573' },
     ],
   });
   if (res.action !== 'ok') return;
-  if (!/^[1-5]{3}$/.test(res.value)) {
-    toast('❌ Combinazione non valida: servono 3 cifre da 1 a 5.');
+  if (!SAFE_PIN_RE.test(res.value)) {
+    toast('❌ Combinazione non valida: servono ' + SAFE_PIN_HINT + '.');
     return;
   }
   game.safePinCode = hashPin(res.value, room.id);
@@ -261,6 +270,10 @@ export function getCurrentFurnitureMap(..._args: GameValue[]): GameValue {
 
 export function checkProximity(..._args: GameValue[]): GameValue {
   if (game.isMovingFurnitureMode) return;
+  if (game.fainted) {
+    dom('pop-interaction').classList.add('hidden');
+    return;
+  }
   let map: GameValue = getCurrentFurnitureMap();
   let found: GameValue = null;
   let bestDist: GameValue = 65;
@@ -599,6 +612,7 @@ export async function handleObjectInteract(..._args: GameValue[]): Promise<void>
         gi === game.myAssignedRoomIdx ? `La tua stanza 🏠` : `Stanza di ${room.owner}`;
       game.currentRoomIdx = gi;
       game.view.activeEnvironment = 'PLAYER_ROOM';
+      if (gi !== game.myAssignedRoomIdx) notePersonality('enterOtherRoom');
       spawnAtDoor(getCurrentFurnitureMap().doorExit);
     } else {
       game.view.currentRoomTitle = item.title;
@@ -693,6 +707,7 @@ export async function handleObjectInteract(..._args: GameValue[]): Promise<void>
     } else if (game.activeTargetProp === 'bed') {
       game.player.isSleeping = !game.player.isSleeping;
       sfx(game.player.isSleeping ? 'sleep' : 'wake');
+      if (game.player.isSleeping) bedtimeThought();
       toast(game.player.isSleeping ? 'Ti sei coricato a letto 🛏️' : 'Ti sei svegliato.');
     } else if (game.activeTargetProp === 'wardrobe') {
       if (isMyRoomNow()) openWardrobe();
@@ -752,7 +767,7 @@ export async function handleSafeInteraction(..._args: GameValue[]): Promise<Game
   }
   const res: GameValue = await openDialog({
     title: '🕵️ Tentativo di scasso',
-    text: `Inserisci la combinazione segreta di 3 cifre (da 1 a 5).\nTentativi rimasti: ${3 - tries}`,
+    text: `Inserisci la combinazione segreta di 3 cifre (da 1 a 4).\nTentativi rimasti: ${3 - tries}`,
     input: { placeholder: '???', numeric: true, maxLength: 3 },
     buttons: [
       { label: 'Lascia stare', value: null, color: '#57606f' },
@@ -760,7 +775,13 @@ export async function handleSafeInteraction(..._args: GameValue[]): Promise<Game
     ],
   });
   if (res.action !== 'try' || !res.value) return;
+  // un tentativo scritto male non conta
+  if (!SAFE_PIN_RE.test(res.value)) {
+    toast('❌ La combinazione è fatta di ' + SAFE_PIN_HINT + '.');
+    return;
+  }
   game.theftAttempts[room.id] = tries + 1;
+  notePersonality('theftAttempt');
   if (room.pin === hashPin(res.value, room.id) || room.pin === res.value) {
     let stolen: GameValue = 0;
     const r: GameValue = await vaultRef.transaction((v?: GameValue): GameValue => {
@@ -771,6 +792,7 @@ export async function handleSafeInteraction(..._args: GameValue[]): Promise<Game
       if (!(await creditMoney(stolen))) return;
       saveGame(true);
       toast(`🎉 COLPO RIUSCITO! Hai rubato ${stolen} € dalla cassaforte! 💰`, 4000);
+      notePersonality('theftSuccess');
     } else {
       toast('🚫 Qualcuno è stato più veloce di te: la cassaforte è vuota.');
     }

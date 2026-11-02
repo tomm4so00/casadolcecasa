@@ -13,3 +13,6 @@ server/lib/
 
 *service-account*.json
 *firebase-adminsdk*.json
+
+# copie delle regole Firebase fatte prima di ogni pubblicazione
+firebase/backups/

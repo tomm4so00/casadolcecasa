@@ -1,3 +1,5 @@
+import { notePersonality } from './personality.js';
+import { onArtSold } from './art-market.js';
 import { transferMoney, creditMoney } from './economy.js';
 import type { GameValue } from './context.js';
 import { game } from './context.js';
@@ -51,19 +53,23 @@ export async function socDo(act?: GameValue): Promise<GameValue> {
     );
     sendSocial(t.id, { type: 'talk' });
     toast(`💬 Hai chiacchierato con ${t.name} (+felicità, +salute, −sonno)`);
+    notePersonality('talk');
   } else if (act === 'praise') {
     saySocial(game.pick(['Stai benissimo! 😍', 'Sei un grande!', 'Che stile! ✨']));
     sendSocial(t.id, { type: 'praise' });
     toast(`😍 Hai fatto un complimento a ${t.name}`);
+    notePersonality('compliment');
   } else if (act === 'insult') {
     saySocial(game.pick(['Sei proprio un tipo… 🤬', 'Che vergogna!', 'Ma levati! 😠']));
     sendSocial(t.id, { type: 'insult' });
     toast(`🤬 Hai insultato ${t.name}`);
+    notePersonality('insult');
   } else if (act === 'punch') {
     game.player.happinessLevel = Math.max(0, game.player.happinessLevel - 2);
     saySocial('Prendi questo! 👊');
     sendSocial(t.id, { type: 'punch' });
     toast(`👊 Hai picchiato ${t.name}`);
+    notePersonality('punch');
   } else if (act === 'food') {
     if (!game.player.foodIsCooked) return;
     game.player.foodIsCooked = false;
@@ -71,6 +77,7 @@ export async function socDo(act?: GameValue): Promise<GameValue> {
     game.view.fridgeIsOpen = false;
     sendSocial(t.id, { type: 'food' });
     toast(`🍽️ Hai dato il tuo piatto a ${t.name}`);
+    notePersonality('giveFood');
     game.socKey = '';
   } else if (act === 'money') {
     if (!game.roomsState.some((r?: GameValue): GameValue => r && r.ownerId === t.id)) {
@@ -179,6 +186,8 @@ export async function handleSocial(m?: GameValue): Promise<GameValue> {
       if (!(await creditMoney(amt))) return;
       toast(`💶 ${who} ti ha regalato ${amt} €!`, 4000);
     }
+  } else if (m.type === 'artSold') {
+    onArtSold(who, Math.max(0, Math.floor(Number(m.amt) || 0)));
   } else if (m.type === 'romance') {
     onRomanceUnlocked(m.from, who);
   } else if (m.type === 'kissAsk') {

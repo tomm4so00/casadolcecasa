@@ -1,10 +1,19 @@
+import { clockText, dayNumber, isNight, realHour } from './game-clock.js';
 import { spendMoney } from './economy.js';
 import { advanceNeeds } from './simulation.js';
 import { needsRules } from './needs-rules.js';
 import type { GameValue } from './context.js';
 import { game } from './context.js';
 import { lifetime, dom, browser } from './runtime.js';
-import { buildSaveData, hasRoom, hashPin, normalizeRooms, withTimeout } from './saves.js';
+import {
+  SAFE_PIN_HINT,
+  SAFE_PIN_RE,
+  buildSaveData,
+  hasRoom,
+  hashPin,
+  normalizeRooms,
+  withTimeout,
+} from './saves.js';
 import { mgStop, updateShift } from './jobs.js';
 import { openDialog, writeGrave } from './interface.js';
 import { toast } from './missions.js';
@@ -126,7 +135,10 @@ export function showDeathScreen(..._args: GameValue[]): GameValue {
       'position:fixed;inset:0;z-index:9999;background:#0b0b10;color:#eee;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px;font-family:inherit';
     document.body.appendChild(ov);
   }
-  const days: GameValue = Math.floor(game.player.gameMinutes / 1440) + 1;
+  const days: GameValue = dayNumber(
+    game.player.gameMinutes,
+    new Date(game.player.deadAt || Date.now()),
+  );
   const when: GameValue = game.player.deadAt
     ? new Date(game.player.deadAt).toLocaleString('it-IT', {
         dateStyle: 'long',
@@ -494,12 +506,10 @@ export function updateNeeds(delta?: GameValue): GameValue {
     game.lastDangerToast = Date.now();
     toast('☠️ Salute critica! Mangia, dormi o lavati prima che sia troppo tardi!', 5000);
   }
-  const totalMin: GameValue = Math.floor(game.player.gameMinutes);
-  const hh: GameValue = String(Math.floor(totalMin / 60) % 24).padStart(2, '0');
-  const mm: GameValue = String(totalMin % 60).padStart(2, '0');
-  const hour: GameValue = Math.floor(totalMin / 60) % 24;
-  dom('clock-text').innerText = `${hour >= 20 || hour < 6 ? '🌙' : '☀️'} ${hh}:${mm}`;
-  dom('day-text').innerText = `Giorno ${Math.floor(totalMin / 1440) + 1}`;
+  // ora reale del dispositivo; il giorno conta quelli vissuti dal personaggio
+  const nowDate = new Date();
+  dom('clock-text').innerText = `${isNight(realHour(nowDate)) ? '🌙' : '☀️'} ${clockText(nowDate)}`;
+  dom('day-text').innerText = `Giorno ${dayNumber(game.player.gameMinutes, nowDate)}`;
   updateShift(Math.min(delta, 0.1));
   checkAlerts();
   dom('health-bar-fill').style.width = Math.round(game.player.healthLevel) + '%';
@@ -534,15 +544,17 @@ export function updateNeeds(delta?: GameValue): GameValue {
     !game.dialogResolve
   ) {
     game.pinPromptMoneyThreshold = game.moneyLevel;
-    lifetime.setTimeout(promptSetSafePin, 0);
+    lifetime.setTimeout(() => void promptSetSafePin(), 0);
   }
 }
 
-export async function promptSetSafePin(..._args: GameValue[]): Promise<GameValue> {
+export async function promptSetSafePin(intro?: string): Promise<GameValue> {
   const res: GameValue = await openDialog({
     title: '🔐 Proteggi la cassaforte',
-    text: 'Hai guadagnato dei soldi! Scegli una combinazione segreta per la cassaforte della tua stanza: 3 cifre da 1 a 5 (es. 135).',
-    input: { placeholder: '135', numeric: true, maxLength: 3 },
+    text:
+      intro ||
+      `Hai guadagnato dei soldi! Scegli una combinazione segreta per la cassaforte della tua stanza: ${SAFE_PIN_HINT}.`,
+    input: { placeholder: '134', numeric: true, maxLength: 3 },
     buttons: [
       { label: 'Più tardi', value: null, color: '#57606f' },
       { label: 'Salva PIN', value: 'ok', color: '#2ed573' },
@@ -552,13 +564,13 @@ export async function promptSetSafePin(..._args: GameValue[]): Promise<GameValue
     game.pinPromptMoneyThreshold = game.moneyLevel + 100; // non richiederlo a ogni moneta
     return;
   }
-  if (/^[1-5]{3}$/.test(res.value) && hasRoom()) {
+  if (SAFE_PIN_RE.test(res.value) && hasRoom()) {
     let room: GameValue = game.roomsState[game.myAssignedRoomIdx ?? -1];
     game.safePinCode = hashPin(res.value, room.id);
     game.hasSetSafePin = true;
     game.session.db.ref(`sims_rooms_state/${game.myAssignedRoomIdx}/pin`).set(game.safePinCode);
     toast('✅ Cassaforte protetta con successo!');
   } else {
-    toast('❌ Combinazione non valida (3 cifre da 1 a 5). Te la richiederò al prossimo guadagno.');
+    toast(`❌ Combinazione non valida (${SAFE_PIN_HINT}). Te la richiederò al prossimo guadagno.`);
   }
 }
