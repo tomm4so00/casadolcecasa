@@ -185,6 +185,7 @@ export function initializeGame() {
   game.player.isSleeping = false;
   game.showerAnim = null;
   game.sleepK = 0;
+  game.bedSlot = 0;
   game.showerFog = 0;
   game.frameShowerActors = [];
   game.view.isOutsideMenuOpen = false;

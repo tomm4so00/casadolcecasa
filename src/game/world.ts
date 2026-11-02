@@ -11,8 +11,10 @@ import {
   hasRoom,
   hashPin,
   isMyRoomNow,
+  presenceAlive,
   saveGame,
 } from './saves.js';
+import { presenceState } from './presence-rules.js';
 import { openDialog } from './interface.js';
 import { relaxWith, toast } from './missions.js';
 import {
@@ -547,6 +549,29 @@ function backToSaloon(): void {
   spawnAtDoor(door);
 }
 
+/** Cuscino libero nel letto di questa stanza (ci stanno al massimo due persone), o null se è pieno. */
+function freeBedSlot(): number | null {
+  const now = Date.now();
+  const taken = new Set<number>();
+  for (const [id, op] of Object.entries(game.onlinePlayers || {})) {
+    if (id === game.session.myPlayerId || !op || op.act !== 'sleep') continue;
+    if (op.env !== 'PLAYER_ROOM' || op.roomIdx !== game.currentRoomIdx) continue;
+    const alive = presenceAlive(id, op, now);
+    const state = presenceState(
+      op,
+      alive,
+      now + (game.session.serverOffset || 0),
+      game.SLEEP_DEPLETION_SEC,
+    );
+    if (state === 'gone') continue;
+    // le versioni vecchie non dicono il cuscino: dormono al centro e occupano il primo
+    taken.add(typeof op.bed === 'number' ? op.bed : taken.has(0) ? 1 : 0);
+  }
+  if (!taken.has(0)) return 0;
+  if (!taken.has(1)) return 1;
+  return null;
+}
+
 export async function handleObjectInteract(..._args: GameValue[]): Promise<void> {
   if (!game.activeTargetProp) return;
   if (game.showerAnim) return;
@@ -706,6 +731,14 @@ export async function handleObjectInteract(..._args: GameValue[]): Promise<void>
     if (game.activeTargetProp === 'doorExit') {
       backToSaloon();
     } else if (game.activeTargetProp === 'bed') {
+      if (!game.player.isSleeping) {
+        const slot = freeBedSlot();
+        if (slot === null) {
+          toast('🛏️ Il letto è pieno: ci dormono già in due.');
+          return;
+        }
+        game.bedSlot = slot;
+      }
       game.player.isSleeping = !game.player.isSleeping;
       sfx(game.player.isSleeping ? 'sleep' : 'wake');
       if (game.player.isSleeping) bedtimeThought();

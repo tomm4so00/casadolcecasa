@@ -581,6 +581,7 @@ export function startPresence(..._args: GameValue[]): GameValue {
               : '',
       say: game.mySay,
       sayT: game.mySayT,
+      ...(game.player.isSleeping ? { bed: game.bedSlot } : {}),
     };
     const key: GameValue = JSON.stringify(payload);
     const now: GameValue = Date.now();

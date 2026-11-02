@@ -12,6 +12,7 @@ import {
   drawPlayerAvatar,
   drawSleepThoughts,
   updateShower,
+  bedSpot,
 } from './render/avatars.js';
 import {
   applyLighting,
@@ -275,6 +276,8 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
               mySayNow,
               game.sleepK,
               map.bed,
+              game.bedSlot,
+              { x: game.moveRight, y: -game.moveForward },
             ),
     });
     if (kissActive()) {
@@ -298,7 +301,9 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
       drawables.push({
         depth: bot.x + bot.y,
         draw: (): GameValue =>
-          drawPlayerAvatar(bot.x, bot.y, bot.name, animTime, botLook(bot.name), true, say),
+          drawPlayerAvatar(bot.x, bot.y, bot.name, animTime, botLook(bot.name), true, say, {
+            walkDir: { x: bot.vx, y: bot.vy },
+          }),
       });
     }
   });
@@ -388,7 +393,19 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
       draw: (): GameValue =>
         state === 'fainted'
           ? drawFaintedAvatar(s.x, s.y, shownName, animTime, s.look, 1)
-          : drawActor(s.x, s.y, shownName, animTime, s.look, moving, say, sk, map.bed),
+          : drawActor(
+              s.x,
+              s.y,
+              shownName,
+              animTime,
+              s.look,
+              moving,
+              say,
+              sk,
+              map.bed,
+              typeof op.bed === 'number' ? op.bed : null,
+              { x: dx, y: dy },
+            ),
     });
   });
   updateSocialPanel();
@@ -438,7 +455,8 @@ export function startLoop(..._args: GameValue[]): GameValue {
       game.sleepK > 0 && game.view.activeEnvironment === 'PLAYER_ROOM'
         ? getCurrentFurnitureMap().bed
         : null;
-    updateCamera(delta, bed ? { x: bed.x, y: bed.y, k: game.sleepK } : null);
+    const spot = bed ? bedSpot(bed, game.bedSlot) : null;
+    updateCamera(delta, spot ? { ...spot, k: game.sleepK } : null);
     renderEnvironment(delta, game.animClock);
   }
   lifetime.requestAnimationFrame(animate);

@@ -45,6 +45,8 @@ export interface GameContext {
   safePinCode: string;
   showerAnim: GameValue;
   sleepK: number;
+  /** Cuscino su cui dorme il giocatore: 0 sinistro, 1 destro (nel letto ci stanno in due). */
+  bedSlot: number;
   showerFog: number;
   frameShowerActors: GameValue;
   SLEEP_DEPLETION_SEC: number;

@@ -1143,6 +1143,15 @@ export function drawNameTagWorld(
 }
 
 // Persona coricata sul letto: k va da 0 (in piedi accanto al letto) a 1 (sdraiato sotto la coperta)
+/**
+ * Dove si sdraia chi dorme: ai piedi del letto, sotto il cuscino `slot` (0 = sinistro, 1 = destro).
+ * `slot` null = al centro, come facevano le versioni che non pubblicano il cuscino.
+ */
+export function bedSpot(bed: GameValue, slot?: number | null): { x: number; y: number } {
+  const dx = slot === 0 ? -bed.w * 0.22 : slot === 1 ? bed.w * 0.22 : 0;
+  return rotateAround(bed.x + dx, bed.y + bed.h * 0.21, bed.x, bed.y, bed.rot || 0);
+}
+
 export function drawAvatarSleeping(
   px?: GameValue,
   py?: GameValue,
@@ -1152,12 +1161,13 @@ export function drawAvatarSleeping(
   say?: GameValue,
   k?: GameValue,
   bed?: GameValue,
+  slot?: number | null,
 ): GameValue {
   const ctx = game.view.ctx;
   const s: GameValue = isoScale(),
     e: GameValue = k * k * (3 - 2 * k);
   const bedRot: number = bed.rot || 0;
-  const foot = rotateAround(bed.x, bed.y + bed.h * 0.21, bed.x, bed.y, bedRot);
+  const foot = bedSpot(bed, slot);
   const tx: GameValue = px + (foot.x - px) * e,
     ty: GameValue = py + (foot.y - py) * e;
   const lift: GameValue = 24 * e + Math.sin(Math.PI * k) * 12;
@@ -1235,10 +1245,12 @@ export function drawActor(
   say?: GameValue,
   sleepProgress?: GameValue,
   bed?: GameValue,
+  bedSlot?: number | null,
+  walkDir?: { x: number; y: number } | null,
 ): GameValue {
   if (sleepProgress > 0.001 && bed)
-    return drawAvatarSleeping(x, y, name, animTime, look, say, sleepProgress, bed);
-  return drawPlayerAvatar(x, y, name, animTime, look, moving, say);
+    return drawAvatarSleeping(x, y, name, animTime, look, say, sleepProgress, bed, bedSlot);
+  return drawPlayerAvatar(x, y, name, animTime, look, moving, say, { walkDir });
 }
 
 // Acqua, bolle di sapone e vapore dentro il box doccia
@@ -1340,18 +1352,32 @@ export function drawPlayerAvatar(
     ctx.ellipse(g0.x, g0.y, 13 * s, 6.5 * s, 0, 0, 6.3);
     ctx.fill();
   }
-  const phase: GameValue = animTime * 11 + (hsh % 10);
+  const phase: GameValue = animTime * 12 + (hsh % 10);
   const swing: GameValue = moving ? Math.sin(phase) : 0;
   const bob: GameValue = moving
-    ? Math.abs(Math.sin(phase)) * 2
+    ? Math.abs(Math.sin(phase)) * 1.8
     : mannequin
       ? 0
       : Math.sin(animTime * 2 + hsh) * 0.5;
+  // Direzione di marcia (a terra): il passo va avanti e indietro lungo questa.
+  // Senza direzione resta il passo in diagonale di prima.
+  const wd = opts && opts.walkDir;
+  const wl = wd ? Math.hypot(wd.x, wd.y) : 0;
+  const dX: number = wl > 0.01 ? wd.x / wl : Math.SQRT1_2,
+    dY: number = wl > 0.01 ? wd.y / wl : -Math.SQRT1_2;
+  const STRIDE = 7.5;
+  // si alza il piede che sta andando avanti
+  const liftFront: number = moving ? Math.max(0, Math.cos(phase)) * 4 : 0,
+    liftBack: number = moving ? Math.max(0, -Math.cos(phase)) * 4 : 0;
+  const lean: number = moving ? 1.3 : 0;
   const P: GameValue = (dx?: GameValue, dy?: GameValue, z?: GameValue): GameValue =>
     isoProject(x + dx, y + dy, z);
   const hip: GameValue = P(0, 0, 22 + bob),
-    neck: GameValue = P(0, 0, 46 + bob),
-    head: GameValue = P(0, 0, 58 + bob);
+    neck: GameValue = P(dX * lean, dY * lean, 46 + bob),
+    head: GameValue = P(dX * lean * 1.3, dY * lean * 1.3, 58 + bob);
+  // le braccia oscillano al contrario della gamba dello stesso lato
+  const armX: number = (dX - dY) * 0.866 * s * 3.4 * swing,
+    armY: number = (dX + dY) * 0.5 * s * 3.4 * swing;
   const tw: GameValue = 9.5 * s;
   const tyTop: GameValue = neck.y - 1 * s,
     tyBot: GameValue = hip.y + 2 * s,
@@ -1624,8 +1650,16 @@ export function drawPlayerAvatar(
     }
     drawShoe(b, back);
   };
-  drawLeg(P(3, -3, 22 + bob), P(3 - swing * 5, -3 + swing * 5, 2), true);
-  drawLeg(P(-3, 3, 22 + bob), P(-3 + swing * 5, 3 - swing * 5, 2), false);
+  drawLeg(
+    P(3, -3, 22 + bob),
+    P(3 - swing * STRIDE * dX, -3 - swing * STRIDE * dY, 2 + liftBack),
+    true,
+  );
+  drawLeg(
+    P(-3, 3, 22 + bob),
+    P(-3 + swing * STRIDE * dX, 3 + swing * STRIDE * dY, 2 + liftFront),
+    false,
+  );
   if (pStyle === 'skirt') {
     const st = hip.y - 1 * s,
       sb = hip.y + 9.5 * s;
@@ -1694,7 +1728,7 @@ export function drawPlayerAvatar(
   };
   drawArm(
     { x: neck.x + tw - 1 * s, y: neck.y + 3 * s },
-    { x: hip.x + 11 * s - swing * 3 * s, y: hip.y + 1 * s },
+    { x: hip.x + 11 * s + armX, y: hip.y + 1 * s + armY },
     true,
   );
 
@@ -2046,7 +2080,7 @@ export function drawPlayerAvatar(
   // ---- braccio davanti
   drawArm(
     { x: neck.x - tw + 1 * s, y: neck.y + 3 * s },
-    { x: hip.x - 11 * s + swing * 3 * s, y: hip.y + 1 * s },
+    { x: hip.x - 11 * s - armX, y: hip.y + 1 * s - armY },
     false,
   );
 
