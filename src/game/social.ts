@@ -152,6 +152,29 @@ export function startInbox(..._args: GameValue[]): GameValue {
   }, 3000);
 }
 
+// Animazione a schermo quando qualcuno ci colpisce
+function showHitEffect(who: string): void {
+  const fx = document.createElement('div');
+  fx.className = 'hit-fx';
+  const fist = document.createElement('div');
+  fist.className = 'hit-fist';
+  fist.textContent = '💥👊';
+  const txt = document.createElement('div');
+  txt.className = 'hit-text';
+  txt.textContent = `${who} ti ha colpito!`;
+  fx.append(fist, txt);
+  document.body.appendChild(fx);
+  const canvas = game.view.canvas;
+  canvas.classList.remove('hit-shake');
+  void canvas.offsetWidth; // riavvia il tremolio anche con colpi ravvicinati
+  canvas.classList.add('hit-shake');
+  if (navigator.vibrate) navigator.vibrate([60, 40, 90]);
+  lifetime.setTimeout((): void => {
+    fx.remove();
+    canvas.classList.remove('hit-shake');
+  }, 950);
+}
+
 export async function handleSocial(m?: GameValue): Promise<GameValue> {
   if (!m || !m.type) return;
   const who: GameValue = m.fromName || 'Qualcuno';
@@ -175,6 +198,7 @@ export async function handleSocial(m?: GameValue): Promise<GameValue> {
     if (game.player.healthLevel > 5)
       game.player.healthLevel = Math.max(5, game.player.healthLevel - 8); // le botte non uccidono mai da sole
     toast(`👊 ${who} ti ha picchiato! (−felicità, −salute)`, 4000);
+    showHitEffect(who);
   } else if (m.type === 'food') {
     game.player.hungerLevel = Math.min(100, game.player.hungerLevel + 50);
     toast(`🍽️ ${who} ti ha dato da mangiare! (+50% fame)`, 4000);
