@@ -239,32 +239,70 @@ export function drawFloorPattern(st?: GameValue): GameValue {
       break;
     }
     case 'grass': {
+      // Prato con i vialetti: quelli dell'ambiente (st.paths, in unità del pavimento a partire
+      // dall'angolo di fondo) o la croce centrale di sempre. Cespi e fiori seguono la superficie.
+      const area: number = (W * H) / (400 * 360);
+      const paths: GameValue[] = st.paths || [
+        { u: 0, v: H / 2 - 20, w: W, h: 40 },
+        { u: W / 2 - 20, v: 0, w: 40, h: H },
+      ];
+      const onPath = (u: number, v: number, pad: number): boolean =>
+        paths.some((p: GameValue) =>
+          p.r
+            ? Math.hypot(u - p.u, v - p.v) < p.r + pad
+            : u > p.u - pad && u < p.u + p.w + pad && v > p.v - pad && v < p.v + p.h + pad,
+        );
       ctx.fillStyle = base;
       ctx.fillRect(0, 0, W, H);
-      for (let i: GameValue = 0; i < 40; i++) {
+      for (let i: GameValue = 0; i < 40 * area; i++) {
         ctx.fillStyle = `rgba(${rnd(i) > 0.5 ? '255,255,255' : '0,60,0'},0.06)`;
         ctx.beginPath();
         ctx.arc(rnd(i * 3) * W, rnd(i * 5) * H, 20 + rnd(i) * 30, 0, 6.3);
         ctx.fill();
       }
-      ctx.fillStyle = '#cdbb98';
-      ctx.fillRect(0, H / 2 - 20, W, 40);
-      ctx.fillRect(W / 2 - 20, 0, 40, H);
-      for (let i: GameValue = 0; i < 160; i++) {
-        const onX: GameValue = i % 2 === 0;
-        const u: GameValue = onX ? rnd(i) * W : W / 2 - 18 + rnd(i) * 36,
-          v: GameValue = onX ? H / 2 - 18 + rnd(i + 3) * 36 : rnd(i + 3) * H;
-        ctx.fillStyle = mixColor('#b8a586', '#ffffff', rnd(i + 9) * 0.4);
+      const shape = (p: GameValue, grow: number): void => {
         ctx.beginPath();
-        ctx.ellipse(u, v, 4 + rnd(i) * 3, 3 + rnd(i + 1) * 2, rnd(i) * 3, 0, 6.3);
+        if (p.r) ctx.arc(p.u, p.v, p.r + grow, 0, 6.3);
+        else ctx.rect(p.u - grow, p.v - grow, p.w + grow * 2, p.h + grow * 2);
+      };
+      // bordo più scuro, poi la ghiaia
+      ctx.fillStyle = '#a8956f';
+      for (const p of paths) {
+        shape(p, 2);
         ctx.fill();
       }
+      ctx.fillStyle = '#cdbb98';
+      for (const p of paths) {
+        shape(p, 0);
+        ctx.fill();
+      }
+      paths.forEach((p: GameValue, k: number) => {
+        const n: number = p.r ? (Math.PI * p.r * p.r) / 200 : (p.w * p.h) / 200;
+        for (let i = 0; i < n; i++) {
+          const a = rnd(i * 7 + k * 101),
+            b = rnd(i * 13 + k * 57);
+          let u: number, v: number;
+          if (p.r) {
+            const ang = a * Math.PI * 2,
+              rr = Math.sqrt(b) * (p.r - 3);
+            u = p.u + Math.cos(ang) * rr;
+            v = p.v + Math.sin(ang) * rr;
+          } else {
+            u = p.u + 2 + a * (p.w - 4);
+            v = p.v + 2 + b * (p.h - 4);
+          }
+          ctx.fillStyle = mixColor('#b8a586', '#ffffff', rnd(i + k * 31 + 9) * 0.4);
+          ctx.beginPath();
+          ctx.ellipse(u, v, 4 + rnd(i) * 3, 3 + rnd(i + 1) * 2, rnd(i) * 3, 0, 6.3);
+          ctx.fill();
+        }
+      });
       ctx.strokeStyle = 'rgba(30,90,30,0.55)';
       ctx.lineWidth = 1;
-      for (let i: GameValue = 0; i < 320; i++) {
+      for (let i: GameValue = 0; i < 320 * area; i++) {
         const u: GameValue = rnd(i * 7) * W,
           v: GameValue = rnd(i * 11) * H;
-        if (Math.abs(v - H / 2) < 22 || Math.abs(u - W / 2) < 22) continue;
+        if (onPath(u, v, 4)) continue;
         ctx.beginPath();
         ctx.moveTo(u - 2, v);
         ctx.lineTo(u, v - 4);
@@ -272,10 +310,10 @@ export function drawFloorPattern(st?: GameValue): GameValue {
         ctx.stroke();
       }
       const fl: GameValue = ['#ff6b81', '#feca57', '#ffffff', '#a29bfe'];
-      for (let i: GameValue = 0; i < 50; i++) {
+      for (let i: GameValue = 0; i < 50 * area; i++) {
         const u: GameValue = rnd(i * 13) * W,
           v: GameValue = rnd(i * 17) * H;
-        if (Math.abs(v - H / 2) < 22 || Math.abs(u - W / 2) < 22) continue;
+        if (onPath(u, v, 4)) continue;
         ctx.fillStyle = fl[i % 4];
         ctx.beginPath();
         ctx.arc(u, v, 1.6, 0, 6.3);

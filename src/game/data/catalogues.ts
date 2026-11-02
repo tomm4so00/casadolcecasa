@@ -1796,37 +1796,19 @@ export const SALOON_DOORS = {
   },
 };
 
-// Cortile largo 960×440: al centro i 4 appartamenti di sempre sulla parete di fondo,
-// nell'ala sinistra altri 4 sulla parete di sinistra; l'ala destra è libera per gli eventi
-// (il razzo e il cartello TO THE MOON sono pronti in PROP_DRAW: kind 'rocket' e 'moonSign').
+// Cortile largo 960×440 con il prato: sul lato lungo (parete di fondo) 6 palazzine,
+// sul lato corto (parete di sinistra) altre 2; nell'ala destra una piazzola libera.
+// Il razzo e il cartello TO THE MOON (PROP_DRAW: kind 'rocket' e 'moonSign') andranno altrove.
 export const COURTYARD_DOORS = {
-  doorApt0: { x: -172, y: -205, w: 56, h: 10, z: 110, name: 'Appartamento 1', aptIdx: 0 },
-  doorApt1: { x: -57, y: -205, w: 56, h: 10, z: 110, name: 'Appartamento 2', aptIdx: 1 },
-  doorApt2: { x: 57, y: -205, w: 56, h: 10, z: 110, name: 'Appartamento 3', aptIdx: 2 },
-  doorApt3: { x: 172, y: -205, w: 56, h: 10, z: 110, name: 'Appartamento 4', aptIdx: 3 },
-  doorApt4: {
-    x: -465,
-    y: -165,
-    w: 10,
-    h: 56,
-    z: 110,
-    name: 'Appartamento 5',
-    aptIdx: 4,
-    side: 'left',
-  },
-  doorApt5: {
-    x: -465,
-    y: -55,
-    w: 10,
-    h: 56,
-    z: 110,
-    name: 'Appartamento 6',
-    aptIdx: 5,
-    side: 'left',
-  },
+  doorApt0: { x: -325, y: -205, w: 56, h: 10, z: 110, name: 'Appartamento 1', aptIdx: 0 },
+  doorApt1: { x: -195, y: -205, w: 56, h: 10, z: 110, name: 'Appartamento 2', aptIdx: 1 },
+  doorApt2: { x: -65, y: -205, w: 56, h: 10, z: 110, name: 'Appartamento 3', aptIdx: 2 },
+  doorApt3: { x: 65, y: -205, w: 56, h: 10, z: 110, name: 'Appartamento 4', aptIdx: 3 },
+  doorApt4: { x: 195, y: -205, w: 56, h: 10, z: 110, name: 'Appartamento 5', aptIdx: 4 },
+  doorApt5: { x: 325, y: -205, w: 56, h: 10, z: 110, name: 'Appartamento 6', aptIdx: 5 },
   doorApt6: {
     x: -465,
-    y: 55,
+    y: -70,
     w: 10,
     h: 56,
     z: 110,
@@ -1836,7 +1818,7 @@ export const COURTYARD_DOORS = {
   },
   doorApt7: {
     x: -465,
-    y: 165,
+    y: 90,
     w: 10,
     h: 56,
     z: 110,
@@ -2087,30 +2069,34 @@ export const ENV_PROPS = {
 
 export const ENV_DECOR = {
   CORTILE: [
-    // centro: fontana, panchine e alberi
-    { kind: 'tree', x: -155, y: -100, w: 18, h: 18, size: 1.1, z: 90 },
-    { kind: 'tree', x: 155, y: -100, w: 18, h: 18, size: 1.05, z: 90 },
-    { kind: 'tree', x: -155, y: 120, w: 16, h: 16, size: 0.9, z: 80 },
-    { kind: 'tree', x: 155, y: 120, w: 16, h: 16, size: 0.9, z: 80 },
+    // piazzetta: fontana e due lampioni ai suoi lati (a destra e a sinistra sullo schermo)
     { kind: 'fountain', x: 0, y: 0, w: 70, h: 70, label: 'Fontana ⛲', z: 60 },
-    { kind: 'bench', x: -95, y: 70, w: 50, h: 16 },
-    { kind: 'bench', x: 95, y: 70, w: 50, h: 16 },
-    { kind: 'streetlamp', x: -75, y: -100, w: 8, h: 8 },
-    { kind: 'streetlamp', x: 75, y: -100, w: 8, h: 8 },
-    // confini tra il centro e le ali
-    { kind: 'tree', x: -230, y: -60, w: 16, h: 16, size: 0.95, z: 85 },
-    { kind: 'tree', x: -230, y: 150, w: 16, h: 16, size: 1, z: 85 },
-    { kind: 'tree', x: 230, y: -60, w: 16, h: 16, size: 0.95, z: 85 },
-    { kind: 'tree', x: 230, y: 150, w: 16, h: 16, size: 1, z: 85 },
-    // ala sinistra: lampioni davanti agli appartamenti 5-8
-    { kind: 'streetlamp', x: -390, y: -100, w: 8, h: 8 },
-    { kind: 'streetlamp', x: -390, y: 100, w: 8, h: 8 },
-    // ala destra: per ora un piccolo giardino
-    { kind: 'streetlamp', x: 290, y: -160, w: 8, h: 8 },
-    { kind: 'tree', x: 350, y: -110, w: 18, h: 18, size: 1.15, z: 95 },
-    { kind: 'tree', x: 430, y: 60, w: 16, h: 16, size: 0.95, z: 85 },
-    { kind: 'bench', x: 340, y: 90, w: 50, h: 16 },
-    { kind: 'streetlamp', x: 290, y: 150, w: 8, h: 8 },
+    // due panchine sul bordo del vialetto che va all'ala sinistra, rivolte verso di lui
+    // (le panchine guardano verso +y)
+    { kind: 'bench', x: -180, y: -37, w: 50, h: 16 },
+    { kind: 'bench', x: -300, y: -37, w: 50, h: 16 },
+    { kind: 'streetlamp', x: -85, y: 45, w: 8, h: 8 },
+    { kind: 'streetlamp', x: 85, y: -45, w: 8, h: 8 },
+    // lampioni lungo i marciapiedi, tra un portone e l'altro
+    { kind: 'streetlamp', x: -260, y: -156, w: 8, h: 8 },
+    { kind: 'streetlamp', x: -130, y: -156, w: 8, h: 8 },
+    { kind: 'streetlamp', x: 130, y: -156, w: 8, h: 8 },
+    { kind: 'streetlamp', x: 260, y: -156, w: 8, h: 8 },
+    { kind: 'streetlamp', x: -416, y: 10, w: 8, h: 8 },
+    { kind: 'streetlamp', x: -416, y: 145, w: 8, h: 8 },
+    // alberi nelle aiuole tra i vialetti
+    { kind: 'tree', x: -250, y: -95, w: 18, h: 18, size: 1.1, z: 90 },
+    { kind: 'tree', x: -150, y: -110, w: 16, h: 16, size: 0.9, z: 80 },
+    { kind: 'tree', x: 150, y: -110, w: 16, h: 16, size: 0.9, z: 80 },
+    { kind: 'tree', x: 250, y: -95, w: 18, h: 18, size: 1.05, z: 90 },
+    { kind: 'tree', x: -260, y: 120, w: 18, h: 18, size: 1.15, z: 95 },
+    { kind: 'tree', x: -150, y: 150, w: 16, h: 16, size: 0.95, z: 85 },
+    { kind: 'tree', x: -350, y: 175, w: 16, h: 16, size: 0.9, z: 80 },
+    { kind: 'tree', x: 150, y: 150, w: 16, h: 16, size: 0.95, z: 85 },
+    // ala destra: piazzola libera con un lampione
+    { kind: 'streetlamp', x: 420, y: 70, w: 8, h: 8 },
+    { kind: 'tree', x: 440, y: -110, w: 18, h: 18, size: 1.1, z: 90 },
+    { kind: 'tree', x: 440, y: 170, w: 16, h: 16, size: 0.95, z: 85 },
   ],
   SALOON: [
     { kind: 'plant', x: -168, y: -160, w: 26, h: 26, z: 60 },
@@ -2387,7 +2373,22 @@ export const ENV_STYLE = {
     ],
   },
   viaggio: { floor: 'beach', floorColor: '#f0d9a0', outdoor: true },
-  CORTILE: { floor: 'concrete', floorColor: '#b9b3a8', outdoor: true },
+  CORTILE: {
+    floor: 'grass',
+    floorColor: '#5fa84a',
+    outdoor: true,
+    // vialetti (unità del pavimento dall'angolo di fondo: u = x + 480, v = y + 220)
+    paths: [
+      { u: 28, v: 28, w: 880, h: 40 }, // marciapiede davanti alle 6 palazzine
+      { u: 28, v: 28, w: 40, h: 342 }, // marciapiede davanti alle 2 palazzine di sinistra
+      { u: 480, v: 220, r: 95 }, // piazzetta della fontana
+      { u: 460, v: 64, w: 40, h: 72 }, // dal marciapiede alla piazzetta
+      { u: 64, v: 200, w: 326, h: 40 }, // dall'ala sinistra alla piazzetta
+      { u: 460, v: 306, w: 40, h: 134 }, // verso il bordo del cortile
+      { u: 570, v: 200, w: 226, h: 40 }, // verso l'ala destra
+      { u: 840, v: 220, r: 75 }, // piazzola libera nell'ala destra
+    ],
+  },
   passeggiata: { floor: 'grass', floorColor: '#5fa84a', outdoor: true },
   CIMITERO: { floor: 'grass', floorColor: '#4d7c46', outdoor: true },
   lavoro_cantiere: {

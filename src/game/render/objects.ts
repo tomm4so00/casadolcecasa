@@ -1716,9 +1716,210 @@ function facadeWindow(
   ctx.fillRect(wx - 3, wy + wh + 2, ww + 6, 3);
 }
 
+/** Tipo di tetto per palazzina: così lo skyline cambia da un palazzo all'altro. */
+const FACADE_ROOFS = ['gable', 'tiles', 'mansard', 'flat', 'gable', 'mansard', 'tiles', 'flat'];
+
+/**
+ * Tetto di una palazzina: a falde con il timpano, di coppi piatto, a mansarda in ardesia con gli
+ * abbaini, o a terrazza con il serbatoio dell'acqua e l'antenna.
+ * Le coordinate sono "lungo la facciata" (a) e "verso il cortile" (d), così vale per entrambe le pareti.
+ */
+function drawFacadeRoof(
+  it: GameValue,
+  side: boolean,
+  type: string,
+  tall: number,
+  wall: string,
+): void {
+  const ctx = game.view.ctx;
+  const W3 = (a: number, d: number, z: number) =>
+    isoProject(side ? it.x + d : it.x + a, side ? it.y + a : it.y + d, z);
+  const at = (a: number, d: number): [number, number] =>
+    side ? [it.x + d, it.y + a] : [it.x + a, it.y + d];
+  const sized = (along: number, deep: number): [number, number] =>
+    side ? [deep, along] : [along, deep];
+  const front = side ? 'right' : 'left';
+  const ha = FACADE_W / 2 + 3,
+    hd = FACADE_D / 2 + 3;
+  const edge = 'rgba(0,0,0,0.3)';
+  const rows = (
+    p0: (k: number) => { x: number; y: number },
+    p1: (k: number) => { x: number; y: number },
+    n: number,
+    color: string,
+  ) => {
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 0.8;
+    for (let i = 1; i < n; i++) {
+      const a = p0(i / n),
+        b = p1(i / n);
+      ctx.beginPath();
+      ctx.moveTo(a.x, a.y);
+      ctx.lineTo(b.x, b.y);
+      ctx.stroke();
+    }
+  };
+  const chimney = (a: number, d: number, z0: number, h: number) => {
+    const [cx, cy] = at(a, d);
+    const c: GameValue = box(cx, cy, 8, 8, h, '#8e4a36', { z0 });
+    onFace(c, 'left', (W: number, H: number): void => {
+      ctx.strokeStyle = 'rgba(0,0,0,0.25)';
+      ctx.lineWidth = 0.8;
+      for (let v = 4; v < H; v += 4) {
+        ctx.beginPath();
+        ctx.moveTo(0, v);
+        ctx.lineTo(W, v);
+        ctx.stroke();
+      }
+    });
+    box(cx, cy, 10, 10, 2, '#5d4037', { z0: z0 + h });
+  };
+  // cornicione sotto ogni tetto
+  {
+    const [bw, bh] = sized(FACADE_W + 4, FACADE_D + 4);
+    box(it.x, it.y, bw, bh, 3, game.darken(wall, 0.5), { z0: tall });
+  }
+  const z = tall + 3;
+  if (type === 'gable') {
+    // a due falde con il colmo lungo la facciata e il timpano sul fianco
+    const R = z + 26;
+    chimney(22, -7, z, 30);
+    poly([W3(-ha, -hd, z), W3(ha, -hd, z), W3(ha, 0, R), W3(-ha, 0, R)], '#8f3f2c', edge);
+    poly([W3(ha, -hd, z), W3(ha, hd, z), W3(ha, 0, R)], game.darken(wall, 0.12), edge);
+    const tri = W3(ha, 0, R - 12);
+    ctx.fillStyle = '#f5f0e6';
+    ctx.beginPath();
+    ctx.arc(tri.x, tri.y, 3, 0, 6.3);
+    ctx.fill();
+    poly([W3(-ha, hd, z), W3(ha, hd, z), W3(ha, 0, R), W3(-ha, 0, R)], '#b5523b', edge);
+    rows(
+      (k) => W3(-ha, hd * (1 - k), z + (R - z) * k),
+      (k) => W3(ha, hd * (1 - k), z + (R - z) * k),
+      5,
+      'rgba(0,0,0,0.22)',
+    );
+    rows(
+      (k) => W3(-ha + 2 * ha * k, hd, z),
+      (k) => W3(-ha + 2 * ha * k, 0, R),
+      14,
+      'rgba(0,0,0,0.12)',
+    );
+  } else if (type === 'mansard') {
+    // falde ripide in ardesia, sommità piatta e due abbaini con la finestra
+    const i = 8,
+      M = z + 18;
+    poly(
+      [W3(ha, -hd, z), W3(ha, hd, z), W3(ha - i, hd - i, M), W3(ha - i, -hd + i, M)],
+      '#4d5b6a',
+      edge,
+    );
+    poly(
+      [W3(-ha, hd, z), W3(ha, hd, z), W3(ha - i, hd - i, M), W3(-ha + i, hd - i, M)],
+      '#5d6d7e',
+      edge,
+    );
+    rows(
+      (k) => W3(-ha + i * k, hd - i * k, z + (M - z) * k),
+      (k) => W3(ha - i * k, hd - i * k, z + (M - z) * k),
+      4,
+      'rgba(255,255,255,0.12)',
+    );
+    poly(
+      [
+        W3(-ha + i, -hd + i, M),
+        W3(ha - i, -hd + i, M),
+        W3(ha - i, hd - i, M),
+        W3(-ha + i, hd - i, M),
+      ],
+      '#7f8c8d',
+      edge,
+    );
+    chimney(-24, -4, M, 14);
+    for (const a of [-20, 20]) {
+      const [dx, dy] = at(a, hd - 6);
+      const [w, h] = sized(13, 6);
+      const dormer: GameValue = box(dx, dy, w, h, 13, game.lighten(wall, 0.1), { z0: z + 1 });
+      onFace(dormer, front, (W: number, H: number): void => {
+        ctx.fillStyle = '#f5f0e6';
+        ctx.fillRect(W * 0.2 - 1, H * 0.25 - 1, W * 0.6 + 2, H * 0.6 + 2);
+        ctx.fillStyle = '#6fb1d6';
+        ctx.fillRect(W * 0.2, H * 0.25, W * 0.6, H * 0.6);
+        ctx.fillStyle = '#f5f0e6';
+        ctx.fillRect(W / 2 - 0.5, H * 0.25, 1, H * 0.6);
+      });
+      const [cw, ch] = sized(15, 8);
+      box(dx, dy, cw, ch, 2, '#4d5b6a', { z0: z + 14 });
+    }
+  } else if (type === 'flat') {
+    // terrazza con parapetto, serbatoio dell'acqua, antenna e vasi
+    const [pw, ph] = sized(FACADE_W + 2, FACADE_D + 2);
+    const deck: GameValue = box(it.x, it.y, pw, ph, 6, game.darken(wall, 0.15), { z0: z });
+    onFace(deck, 'top', (W: number, H: number): void => {
+      ctx.fillStyle = '#b8b2a4';
+      ctx.fillRect(3, 3, W - 6, H - 6);
+      ctx.fillStyle = 'rgba(0,0,0,0.08)';
+      for (let k = 0; k < 40; k++)
+        ctx.fillRect(3 + rnd(k) * (W - 7), 3 + rnd(k + 9) * (H - 7), 1, 1);
+    });
+    const [tx, ty] = at(-20, -3);
+    const tank: GameValue = box(tx, ty, 14, 14, 16, '#7f8c8d', { z0: z + 6 });
+    onFace(tank, 'left', (W: number, H: number): void => {
+      ctx.fillStyle = 'rgba(0,0,0,0.15)';
+      for (let v = 4; v < H; v += 5) ctx.fillRect(0, v, W, 1);
+    });
+    box(tx, ty, 16, 16, 2, '#5f6a6a', { z0: z + 22 });
+    const base = W3(26, -4, z + 6),
+      tip = W3(26, -4, z + 42);
+    ctx.strokeStyle = '#2d3436';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(base.x, base.y);
+    ctx.lineTo(tip.x, tip.y);
+    for (const [k, l] of [
+      [0.6, 7],
+      [0.8, 5],
+      [1, 3],
+    ]) {
+      const p = W3(26, -4, z + 6 + 36 * k);
+      ctx.moveTo(p.x - l, p.y + l * 0.3);
+      ctx.lineTo(p.x + l, p.y - l * 0.3);
+    }
+    ctx.stroke();
+    const s: number = isoScale();
+    for (const a of [-32, 32]) {
+      const [px, py] = at(a, hd - 7);
+      box(px, py, 6, 6, 5, '#a0522d', { z0: z + 6 });
+      const top = isoProject(px, py, z + 15);
+      ctx.fillStyle = '#2e7d32';
+      ctx.beginPath();
+      ctx.arc(top.x, top.y, 4.5 * s, 0, 6.3);
+      ctx.fill();
+    }
+  } else {
+    // tetto piatto di coppi, come le prime palazzine
+    const [rw, rh] = sized(FACADE_W + 6, FACADE_D + 6);
+    const roof: GameValue = box(it.x, it.y, rw, rh, 5, game.darken(wall, 0.5), { z0: z });
+    onFace(roof, 'top', (W: number, H: number): void => {
+      ctx.fillStyle = '#b5523b';
+      ctx.fillRect(2, 2, W - 4, H - 4);
+      ctx.strokeStyle = 'rgba(0,0,0,0.22)';
+      ctx.lineWidth = 1;
+      for (let u = 5; u < W - 2; u += 5) {
+        ctx.beginPath();
+        ctx.moveTo(u, 2);
+        ctx.lineTo(u, H - 2);
+        ctx.stroke();
+      }
+      ctx.fillStyle = 'rgba(255,255,255,0.12)';
+      for (let v = 4; v < H - 2; v += 6) ctx.fillRect(2, v, W - 4, 1);
+    });
+    chimney(22, -4, z + 5, 20);
+  }
+}
+
 /**
  * Palazzina vista dal cortile: piani di finestre (accese di notte, con le tende), fioriere,
- * balcone, cantonali in pietra, tetto di coppi con il camino, portone ad arco con pensilina,
+ * balcone, cantonali in pietra, tetti di tipi diversi, portone ad arco con pensilina,
  * lampioncini e vasi. `side: 'left'` = sulla parete di sinistra, altrimenti su quella di fondo.
  */
 function drawFacade(it: GameValue, o: { no: number; doorColor: string; building?: boolean }): void {
@@ -1734,36 +1935,7 @@ function drawFacade(it: GameValue, o: { no: number; doorColor: string; building?
   const bw = side ? FACADE_D : FACADE_W,
     bh = side ? FACADE_W : FACADE_D;
   const b: GameValue = box(it.x, it.y, bw, bh, tall, wall);
-  // tetto: cornicione sporgente, coppi e camino
-  const roof: GameValue = box(it.x, it.y, bw + 6, bh + 6, 7, game.darken(wall, 0.5), { z0: tall });
-  onFace(roof, 'top', (W: number, H: number): void => {
-    ctx.fillStyle = '#b5523b';
-    ctx.fillRect(2, 2, W - 4, H - 4);
-    ctx.strokeStyle = 'rgba(0,0,0,0.22)';
-    ctx.lineWidth = 1;
-    for (let u = 5; u < W - 2; u += 5) {
-      ctx.beginPath();
-      ctx.moveTo(u, 2);
-      ctx.lineTo(u, H - 2);
-      ctx.stroke();
-    }
-    ctx.fillStyle = 'rgba(255,255,255,0.12)';
-    for (let v = 4; v < H - 2; v += 6) ctx.fillRect(2, v, W - 4, 1);
-  });
-  const cx = side ? it.x - 4 : it.x + 22,
-    cy = side ? it.y + 22 : it.y - 4;
-  const chimney: GameValue = box(cx, cy, 8, 8, 20, '#8e4a36', { z0: tall + 7 });
-  onFace(chimney, 'left', (W: number, H: number): void => {
-    ctx.strokeStyle = 'rgba(0,0,0,0.25)';
-    ctx.lineWidth = 0.8;
-    for (let v = 4; v < H; v += 4) {
-      ctx.beginPath();
-      ctx.moveTo(0, v);
-      ctx.lineTo(W, v);
-      ctx.stroke();
-    }
-  });
-  box(cx, cy, 10, 10, 2, '#5d4037', { z0: tall + 27 });
+  drawFacadeRoof(it, side, FACADE_ROOFS[idx], tall, wall);
   // facciata principale
   onFace(b, side ? 'right' : 'left', (W: number, H: number): void => {
     // luce dall'alto: più chiaro in cima
