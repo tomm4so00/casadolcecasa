@@ -231,6 +231,21 @@ input[type='number'] {
   color: #ddd;
   line-height: 1.4;
 }
+.setup-remember {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 12px;
+  color: #ccc;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+.setup-remember input {
+  width: 16px;
+  height: 16px;
+  accent-color: #ff4757;
+}
 .setup-hint {
   margin: 8px 0 0;
   color: #999;

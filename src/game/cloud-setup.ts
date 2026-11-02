@@ -8,6 +8,9 @@ import {
   type GoogleAccess,
   LEGACY_SIM_CODE,
   localLegacySimCode,
+  rememberedGoogleUser,
+  rememberMe,
+  setRememberMe,
   signInWithGoogleAccount,
   useGoogleSim,
 } from './accounts.js';
@@ -57,8 +60,12 @@ export function mountCloudSetup(root: HTMLElement): void {
   const savedNick = () =>
     localStorage.getItem(game.session.LS_PREFIX + 'sims_player_nick') || access?.name || '';
 
+  const remember = el<HTMLInputElement>('setup-remember');
+  remember.checked = rememberMe();
+
   const signIn = async () => {
     access = await signInWithGoogleAccount();
+    await setRememberMe(remember.checked);
     if (access.playerId) {
       await play(access.playerId, savedNick());
       return;
@@ -79,7 +86,26 @@ export function mountCloudSetup(root: HTMLElement): void {
     show('choice');
   };
 
-  run(el('cloud-game-btn'), signIn);
+  const loginButton = el<HTMLButtonElement>('cloud-game-btn');
+  run(loginButton, signIn);
+  // With "Ricordami" a returning player goes straight into the game.
+  if (remember.checked) {
+    loginButton.disabled = true;
+    loginButton.textContent = 'Accesso in corso…';
+    const pageLoaded = new Promise<void>((resolve) => {
+      if (document.readyState === 'complete') resolve();
+      else lifetime.listen(window, 'load', () => resolve());
+    });
+    void Promise.all([rememberedGoogleUser(), pageLoaded])
+      .then(([user]) => (user ? signIn() : undefined))
+      .catch((error) =>
+        toast(error instanceof Error ? error.message : 'Accesso non riuscito: ' + error, 6000),
+      )
+      .finally(() => {
+        loginButton.disabled = false;
+        loginButton.textContent = 'Accedi con Google';
+      });
+  }
   run(el('setup-has-sim'), async () => {
     if (!codeInput.value) codeInput.value = localLegacySimCode() || '';
     show('code');

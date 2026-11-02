@@ -1,3 +1,4 @@
+import type firebase from 'firebase/compat/app';
 import 'firebase/compat/auth';
 import { firebaseClient, lifetime } from './runtime.js';
 import { game } from './context.js';
@@ -80,7 +81,7 @@ export async function releasePlayerSession() {
   }
 }
 
-export async function authenticateWithGoogle() {
+function googleAuth() {
   const auth = firebaseClient.auth();
   if (
     import.meta.env.DEV &&
@@ -89,6 +90,35 @@ export async function authenticateWithGoogle() {
   ) {
     auth.useEmulator('http://127.0.0.1:9099');
   }
+  return auth;
+}
+
+const REMEMBER_KEY = 'sims_remember_me';
+
+export function rememberMe(): boolean {
+  return localStorage.getItem(REMEMBER_KEY) === '1';
+}
+
+// "Ricordami": the Google sign-in survives closing the browser; otherwise it lasts for this tab only.
+export async function setRememberMe(remember: boolean): Promise<void> {
+  localStorage.setItem(REMEMBER_KEY, remember ? '1' : '0');
+  const { LOCAL, SESSION } = firebaseClient.auth.Auth.Persistence;
+  await googleAuth().setPersistence(remember ? LOCAL : SESSION);
+}
+
+// The Google user restored from a previous visit, once Firebase has finished loading it.
+export function rememberedGoogleUser(): Promise<firebase.User | null> {
+  const auth = googleAuth();
+  return new Promise((resolve) => {
+    const stop = auth.onAuthStateChanged((user) => {
+      stop();
+      resolve(user);
+    });
+  });
+}
+
+export async function authenticateWithGoogle() {
+  const auth = googleAuth();
   let user = auth.currentUser;
   if (!user || (await user.getIdTokenResult()).signInProvider !== 'google.com')
     user = (await auth.signInWithPopup(new firebaseClient.auth.GoogleAuthProvider())).user;

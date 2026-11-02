@@ -236,6 +236,30 @@ export function drawTargetRing(tg?: GameValue, t?: GameValue): GameValue {
   game.view.ctx.restore();
 }
 
+// Freccia sopra il punto di consegna: resta visibile anche quando un mobile alto copre il cerchio.
+export function drawTargetArrow(tg?: GameValue, t?: GameValue): GameValue {
+  const s: GameValue = isoScale(),
+    bob: GameValue = Math.sin(t * 4) * 5,
+    p: GameValue = isoProject(tg.x, tg.y, 100 + bob);
+  const ctx: GameValue = game.view.ctx;
+  ctx.save();
+  ctx.fillStyle = 'rgba(254,202,87,0.98)';
+  ctx.strokeStyle = 'rgba(120,80,0,0.9)';
+  ctx.lineWidth = 2 * s;
+  ctx.beginPath();
+  ctx.moveTo(p.x, p.y + 14 * s);
+  ctx.lineTo(p.x - 12 * s, p.y);
+  ctx.lineTo(p.x - 5 * s, p.y);
+  ctx.lineTo(p.x - 5 * s, p.y - 14 * s);
+  ctx.lineTo(p.x + 5 * s, p.y - 14 * s);
+  ctx.lineTo(p.x + 5 * s, p.y);
+  ctx.lineTo(p.x + 12 * s, p.y);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+  ctx.restore();
+}
+
 export function mgAddDrawables(
   addThing?: GameValue,
   drawables?: GameValue,
@@ -245,8 +269,10 @@ export function mgAddDrawables(
   game.MG.cfg.targets.forEach((tg?: GameValue): GameValue => {
     if (tg.draw)
       addThing(tg.x, tg.y, tg.w, tg.h, tg.z || 30, tg.label, (): GameValue => drawWorkTarget(tg));
-    if (st && tg.id === st.target)
+    if (st && tg.id === st.target) {
       drawables.push({ depth: -1e5 + 2, draw: (): GameValue => drawTargetRing(tg, t) });
+      drawables.push({ depth: 1e9, draw: (): GameValue => drawTargetArrow(tg, t) });
+    }
   });
   Object.keys(game.MG.map).forEach((k?: GameValue): GameValue => {
     const o: GameValue = game.MG.map[k];
