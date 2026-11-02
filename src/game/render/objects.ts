@@ -1679,9 +1679,25 @@ function facadeWindow(
   lit: boolean,
   night: boolean,
   wall: string,
+  arch = false,
 ): void {
+  // contorno della finestra (rettangolo o con l'arco in cima), allargato di `g`
+  const shape = (g: number): void => {
+    ctx.beginPath();
+    if (arch) {
+      ctx.moveTo(wx - g, wy + wh + g);
+      ctx.lineTo(wx - g, wy + ww / 2);
+      ctx.arc(wx + ww / 2, wy + ww / 2, ww / 2 + g, Math.PI, 0);
+      ctx.lineTo(wx + ww + g, wy + wh + g);
+      ctx.closePath();
+    } else ctx.rect(wx - g, wy - g, ww + g * 2, wh + g * 2);
+  };
   ctx.fillStyle = '#f5f0e6';
-  ctx.fillRect(wx - 2, wy - 2, ww + 4, wh + 4);
+  shape(2);
+  ctx.fill();
+  ctx.save();
+  shape(0);
+  ctx.clip();
   const g = ctx.createLinearGradient(wx, wy, wx + ww, wy + wh);
   if (lit) {
     g.addColorStop(0, '#ffe8a3');
@@ -1710,10 +1726,108 @@ function facadeWindow(
   ctx.fillStyle = '#f5f0e6';
   ctx.fillRect(wx + ww / 2 - 0.6, wy, 1.2, wh);
   ctx.fillRect(wx, wy + wh * 0.45, ww, 1.2);
-  // architrave e davanzale
+  ctx.restore();
+  // architrave (o ghiera dell'arco con la chiave di volta) e davanzale
   ctx.fillStyle = game.darken(wall, 0.3);
-  ctx.fillRect(wx - 4, wy - 5, ww + 8, 3);
+  if (arch) {
+    ctx.strokeStyle = game.darken(wall, 0.3);
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.arc(wx + ww / 2, wy + ww / 2, ww / 2 + 3.5, Math.PI, 0);
+    ctx.stroke();
+    ctx.fillRect(wx + ww / 2 - 2, wy - 6, 4, 5);
+  } else ctx.fillRect(wx - 4, wy - 5, ww + 8, 3);
   ctx.fillRect(wx - 3, wy + wh + 2, ww + 6, 3);
+}
+
+/**
+ * Finitura del muro di ogni palazzina (stesso stile, materiali diversi): intonaco liscio,
+ * mattoni a vista, conci di pietra, bugnato a fasce orizzontali o lesene tra le finestre.
+ */
+const FACADE_LOOKS: { tex: string; shutter: string; arch: boolean }[] = [
+  { tex: 'plaster', shutter: '#4e7d5b', arch: false },
+  { tex: 'brick', shutter: '#6d4c41', arch: false },
+  { tex: 'stone', shutter: '#4a6274', arch: true },
+  { tex: 'bands', shutter: '#7b3b3b', arch: false },
+  { tex: 'pilasters', shutter: '#4e7d5b', arch: true },
+  { tex: 'brick', shutter: '#3e5e4a', arch: false },
+  { tex: 'plaster', shutter: '#8a6d3b', arch: true },
+  { tex: 'stone', shutter: '#6d4c41', arch: false },
+];
+
+function facadeTexture(
+  ctx: CanvasRenderingContext2D,
+  tex: string,
+  W: number,
+  H: number,
+  wall: string,
+  seed: number,
+): void {
+  const top = 10,
+    bottom = H - 10;
+  if (tex === 'brick') {
+    // mattoni a vista con le fughe, un po' di colore diverso l'uno dall'altro
+    const bw = 9,
+      bh = 4.5;
+    for (let r = 0, v = top; v < bottom; r++, v += bh) {
+      for (let u = r % 2 ? -bw / 2 : 0, i = 0; u < W; u += bw, i++) {
+        const k = rnd(seed * 31 + r * 17 + i);
+        ctx.fillStyle = k > 0.5 ? game.darken(wall, 0.12 + k * 0.1) : game.lighten(wall, k * 0.12);
+        ctx.fillRect(u + 0.5, v + 0.5, bw - 1, bh - 1);
+      }
+    }
+  } else if (tex === 'stone') {
+    // conci di pietra squadrati, sfalsati riga per riga
+    ctx.strokeStyle = 'rgba(0,0,0,0.16)';
+    ctx.lineWidth = 0.8;
+    for (let r = 0, v = top; v < bottom; r++, v += 9) {
+      ctx.beginPath();
+      ctx.moveTo(0, v);
+      ctx.lineTo(W, v);
+      ctx.stroke();
+      for (let u = r % 2 ? 8 : 0; u < W; u += 16) {
+        ctx.fillStyle = `rgba(255,255,255,${0.04 + rnd(seed + r * 7 + u) * 0.08})`;
+        ctx.fillRect(u + 1, v + 1, 14, 7);
+        ctx.beginPath();
+        ctx.moveTo(u, v);
+        ctx.lineTo(u, v + 9);
+        ctx.stroke();
+      }
+    }
+  } else if (tex === 'bands') {
+    // bugnato: fasce orizzontali in rilievo, più marcate al piano terra
+    for (let v = top; v < bottom; v += 6) {
+      const ground = v > H - 58;
+      ctx.fillStyle = ground ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.1)';
+      ctx.fillRect(0, v, W, ground ? 1.5 : 1);
+      ctx.fillStyle = 'rgba(255,255,255,0.12)';
+      ctx.fillRect(0, v + 1.5, W, 1);
+    }
+  } else if (tex === 'pilasters') {
+    // lesene chiare tra una colonna di finestre e l'altra, con il loro capitello
+    for (const u of [W * 0.06, W * 0.375, W * 0.675, W * 0.94]) {
+      ctx.fillStyle = game.lighten(wall, 0.3);
+      ctx.fillRect(u - 3, top, 6, bottom - top - 46);
+      ctx.fillStyle = 'rgba(0,0,0,0.12)';
+      ctx.fillRect(u + 2, top, 1, bottom - top - 46);
+      ctx.fillStyle = game.lighten(wall, 0.45);
+      ctx.fillRect(u - 4.5, top, 9, 3);
+    }
+  } else {
+    // intonaco: leggere macchie di colore
+    for (let i = 0; i < 60; i++) {
+      ctx.fillStyle = rnd(seed + i) > 0.5 ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)';
+      ctx.beginPath();
+      ctx.arc(
+        rnd(seed * 3 + i) * W,
+        top + rnd(seed * 5 + i) * (bottom - top),
+        2 + rnd(i) * 4,
+        0,
+        6.3,
+      );
+      ctx.fill();
+    }
+  }
 }
 
 /** Tipo di tetto per palazzina: così lo skyline cambia da un palazzo all'altro. */
@@ -1930,6 +2044,9 @@ function drawFacade(it: GameValue, o: { no: number; doorColor: string; building?
   const floors = FACADE_FLOORS[idx];
   const tall = 70 + floors * 48;
   const awning = AWNING_COLORS[idx % AWNING_COLORS.length];
+  const look = FACADE_LOOKS[idx];
+  // balconi: sul piano più basso sempre, su tutti i piani nelle palazzine dispari
+  const balconyFloors = [...Array(floors).keys()].filter((f) => f === floors - 1 || idx % 2 === 1);
   const hour = realHour(new Date());
   const night = hour >= 19 || hour < 7;
   const bw = side ? FACADE_D : FACADE_W,
@@ -1944,17 +2061,20 @@ function drawFacade(it: GameValue, o: { no: number; doorColor: string; building?
     sh.addColorStop(1, 'rgba(0,0,0,0.1)');
     ctx.fillStyle = sh;
     ctx.fillRect(0, 0, W, H);
+    facadeTexture(ctx, look.tex, W, H, wall, o.no);
     // cornicione con dentelli
     ctx.fillStyle = game.darken(wall, 0.3);
     ctx.fillRect(0, 0, W, 7);
     ctx.fillStyle = game.lighten(wall, 0.35);
     for (let u = 2; u < W - 2; u += 6) ctx.fillRect(u, 7, 3, 3);
-    // cantonali in pietra sugli spigoli
-    ctx.fillStyle = game.lighten(wall, 0.45);
-    for (let v = 12, i = 0; v < H - 14; v += 9, i++) {
-      const qw = i % 2 ? 5 : 8;
-      ctx.fillRect(0, v, qw, 7);
-      ctx.fillRect(W - qw, v, qw, 7);
+    // cantonali in pietra sugli spigoli (mattoni e pietra hanno già il loro disegno)
+    if (look.tex === 'plaster' || look.tex === 'bands') {
+      ctx.fillStyle = game.lighten(wall, 0.45);
+      for (let v = 12, i = 0; v < H - 14; v += 9, i++) {
+        const qw = i % 2 ? 5 : 8;
+        ctx.fillRect(0, v, qw, 7);
+        ctx.fillRect(W - qw, v, qw, 7);
+      }
     }
     // piani: finestre con persiane e fioriere
     const ww = W * 0.17,
@@ -1964,10 +2084,10 @@ function drawFacade(it: GameValue, o: { no: number; doorColor: string; building?
       for (let c = 0; c < 3; c++) {
         const wx = W * (0.13 + c * 0.3);
         const lit = night && rnd(o.no * 13 + f * 3 + c) > 0.35;
-        ctx.fillStyle = '#4e7d5b';
+        ctx.fillStyle = look.shutter;
         ctx.fillRect(wx - 7, wy - 1, 4, wh + 2);
         ctx.fillRect(wx + ww + 3, wy - 1, 4, wh + 2);
-        facadeWindow(ctx, wx, wy, ww, wh, lit, night, wall);
+        facadeWindow(ctx, wx, wy, ww, wh, lit, night, wall, look.arch);
         if (rnd(o.no * 7 + f * 5 + c) > 0.45) {
           ctx.fillStyle = '#6d4c41';
           ctx.fillRect(wx - 1, wy + wh + 5, ww + 2, 4);
@@ -1983,16 +2103,9 @@ function drawFacade(it: GameValue, o: { no: number; doorColor: string; building?
       ctx.fillStyle = 'rgba(0,0,0,0.12)';
       ctx.fillRect(0, wy + 41, W, 3);
     }
-    // balcone sul piano più basso, davanti alla finestra centrale
-    const by = 16 + (floors - 1) * 48 + wh - 6,
-      bx = W * 0.43 - 8,
-      bl = ww + 16;
-    ctx.fillStyle = 'rgba(0,0,0,0.2)';
-    ctx.fillRect(bx, by + 12, bl, 3);
-    ctx.fillStyle = 'rgba(45,45,45,0.9)';
-    ctx.fillRect(bx, by, bl, 2);
-    ctx.fillRect(bx, by + 10, bl, 2);
-    for (let u = bx; u <= bx + bl; u += 3) ctx.fillRect(u, by, 1, 12);
+    // ombra sul muro sotto i balconi (i balconi sono in 3D, vedi sotto)
+    ctx.fillStyle = 'rgba(0,0,0,0.18)';
+    for (const f of balconyFloors) ctx.fillRect(W * 0.5 - 16, 16 + f * 48 + wh + 2, 32, 5);
     // piano terra
     const gy = H - 56;
     ctx.fillStyle = game.darken(wall, 0.08);
@@ -2133,6 +2246,31 @@ function drawFacade(it: GameValue, o: { no: number; doorColor: string; building?
   const out = FACADE_D / 2;
   const front = (along: number, away: number): [number, number] =>
     side ? [it.x + out + away, it.y + along] : [it.x + along, it.y + out + away];
+  const sized = (along: number, away: number): [number, number] =>
+    side ? [away, along] : [along, away];
+  const part = (
+    along: number,
+    away: number,
+    wA: number,
+    wD: number,
+    h: number,
+    c: string,
+    z0: number,
+  ) => {
+    const [px, py] = front(along, away);
+    const [pw, ph] = sized(wA, wD);
+    return box(px, py, pw, ph, h, c, { z0 });
+  };
+  // elementi che sporgono dalla facciata: pensilina sopra il portone e balconi con la ringhiera
+  part(0, 5, 40, 10, 3, '#4e342e', 52);
+  const rail = '#2d3436';
+  for (const f of balconyFloors) {
+    const z0 = tall - (16 + f * 48 + 28) - 3;
+    part(0, 5, 32, 10, 2.5, game.darken(wall, 0.3), z0);
+    for (let a = -14; a <= 14; a += 4) part(a, 9.5, 0.9, 0.9, 10, rail, z0 + 2.5);
+    for (const a of [-15.5, 15.5]) part(a, 5, 0.9, 9, 0.9, rail, z0 + 11.5);
+    part(0, 9.5, 32, 1.2, 1.2, rail, z0 + 11.5);
+  }
   {
     const [sx, sy] = front(0, 5);
     box(sx, sy, side ? 10 : 30, side ? 30 : 10, 4, '#bdb6aa');
