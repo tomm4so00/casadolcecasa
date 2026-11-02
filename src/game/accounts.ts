@@ -9,6 +9,13 @@ let releaseTab: (() => void) | null = null;
 let sessionId: string | null = null;
 let sessionValid = true;
 
+// Another device took over this Sim: stop saving and block this one until the player reloads.
+function loseSession(id: string) {
+  if (sessionId !== id || !sessionValid) return;
+  sessionValid = false;
+  document.getElementById('session-lost-banner')?.classList.remove('hidden');
+}
+
 export async function acquirePlayerSession() {
   if (
     !game.session.OFFLINE &&
@@ -22,38 +29,34 @@ export async function acquirePlayerSession() {
   });
   sessionValid = true;
   if (game.session.OFFLINE) return;
+  const id = crypto.randomUUID();
   lifetime.add(
     firebaseClient.auth().onAuthStateChanged((user) => {
-      if (user?.uid !== game.session.authUid) sessionValid = false;
+      if (user?.uid !== game.session.authUid) loseSession(id);
     }),
   );
-  const id = crypto.randomUUID();
   const ref = game.session.db.ref('sims_sessions/' + game.session.myPlayerId);
   ref.on('value', () => {});
   await ref.get();
   const now = () => Date.now() + (game.session.serverOffset || 0);
-  const result = await ref.transaction((value) => {
-    if (value && value.expiresAt > now() && value.id !== id) return undefined;
-    return { id, expiresAt: now() + 45000 };
-  });
+  // The latest access wins: the device that held the Sim sees the change and blocks itself.
+  const result = await ref.transaction(() => ({ id, expiresAt: now() + 45000 }));
   if (!result.committed) {
     releaseTab?.();
     releaseTab = null;
-    throw new Error(
-      'Questo personaggio è già aperto altrove. Esci dall’altra sessione o attendi 45 secondi.',
-    );
+    throw new Error('Impossibile aprire il Sim: riprova tra qualche secondo.');
   }
   sessionId = id;
   ref.on('value', (snap) => {
     const value = snap.val();
-    if (value?.id !== id) sessionValid = false;
+    if (value?.id !== id) loseSession(id);
   });
   lifetime.setInterval(() => {
     if (!sessionValid) return;
     void ref
       .transaction((value) => (value?.id === id ? { id, expiresAt: now() + 45000 } : undefined))
       .then((value) => {
-        if (!value.committed) sessionValid = false;
+        if (!value.committed) loseSession(id);
       })
       .catch((error) => console.warn('[session]', error));
   }, 10000);

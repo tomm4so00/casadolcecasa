@@ -270,10 +270,6 @@ export async function saveGame(forceCloud = false): Promise<boolean> {
   if (forceCloud || game.moneyLevel !== game.lastCloudMoney || now - game.lastCloudSaveAt > 15000) {
     game.lastCloudSaveAt = now;
     game.lastCloudMoney = game.moneyLevel;
-    if (dom('save-status'))
-      dom('save-status').textContent = game.session.OFFLINE
-        ? 'Salvataggio locale…'
-        : 'Salvataggio sul cloud…';
     game.lastSavePromise = Promise.all([
       game.session.db.ref('sims_saves/' + game.session.myPlayerId).set(data),
       game.session.db.ref('sims_leaderboard/' + game.session.myPlayerId).set({
@@ -286,18 +282,12 @@ export async function saveGame(forceCloud = false): Promise<boolean> {
     ])
       .then(() => {
         if (scope.active) game.lastCloudSaveContent = content;
-        if (scope.active && dom('save-status'))
-          dom('save-status').textContent = game.session.OFFLINE
-            ? 'Salvato su questo dispositivo'
-            : 'Salvato sul cloud';
         return true;
       })
       .catch((error) => {
         if (scope.active) {
           game.lastCloudSaveAt = 0;
           game.lastSaveContent = null;
-          if (dom('save-status'))
-            dom('save-status').textContent = 'Progressi in attesa di sincronizzazione';
         }
         console.warn('[save] Cloud non confermato', error);
         return false;

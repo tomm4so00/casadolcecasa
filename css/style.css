@@ -5,29 +5,6 @@
   user-select: none;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
-.btn-save-exit {
-  position: fixed;
-  top: 12px;
-  right: 12px;
-  z-index: 80;
-  color: white;
-  background: #252534;
-  border: 1px solid #555;
-  border-radius: 8px;
-  padding: 9px 12px;
-  cursor: pointer;
-}
-.save-status {
-  position: fixed;
-  top: 54px;
-  right: 12px;
-  z-index: 80;
-  color: #ddd;
-  font-size: 11px;
-  padding: 4px 7px;
-  background: #14141ed9;
-  border-radius: 5px;
-}
 body,
 html {
   width: 100%;
@@ -700,7 +677,8 @@ input[type='number'] {
   }
 }
 
-#update-banner {
+#update-banner,
+#session-lost-banner {
   position: fixed;
   inset: 0;
   z-index: 3000;

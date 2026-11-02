@@ -8,7 +8,12 @@ import { toast } from './missions.js';
 import { hasRoom, isMyRoomNow, saveGame } from './saves.js';
 import { sfx } from './audio.js';
 import { closeModal } from './render/primitives.js';
-import { changeSafePin, getCurrentFurnitureMap, setFurniturePosition } from './world.js';
+import {
+  changeSafePin,
+  getCurrentFurnitureMap,
+  setFurniturePosition,
+  spawnAtDoor,
+} from './world.js';
 export function itemById(id?: GameValue): GameValue {
   return game.shopCatalog.find((i?: GameValue): GameValue => i.id === id) || null;
 }
@@ -408,7 +413,7 @@ export function returnHomeFromActivity(..._args: GameValue[]): GameValue {
   if (hasRoom()) game.currentApt = game.aptOfRoom(game.myAssignedRoomIdx);
   game.view.activeEnvironment = 'SALOON';
   game.view.currentRoomTitle = game.saloonTitle();
-  game.playerPos = { x: 0, y: 150 };
+  spawnAtDoor(game.saloonDoors.exitHouse);
   dom('btn-return-home').classList.add('hidden');
 }
 

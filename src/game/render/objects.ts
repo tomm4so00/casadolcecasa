@@ -4,6 +4,7 @@ import { game } from '../context.js';
 import {
   isoProject,
   isoScale,
+  mixColor,
   poly,
   rnd,
   footprintOf,
@@ -1845,42 +1846,169 @@ export function drawMapItem(
 }
 
 // ---------------------------------------------------------------- OGGETTI DEGLI AMBIENTI
+// Circa un albero su quattro è un pino; la scelta dipende dalla posizione, quindi resta stabile.
 export function drawTreeProp(it?: GameValue, t?: GameValue): GameValue {
-  const s: GameValue = isoScale(),
-    k: GameValue = it.size || 1;
-  ellipseShadow(it.x + 6, it.y + 6, 34 * k, 17 * k, 0.22);
-  const trunk: GameValue = box(it.x, it.y, 10 * k, 10 * k, 52 * k, '#7b4a2e');
+  const k: GameValue = it.size || 1;
+  const seed: GameValue = rnd(it.x * 0.37 + it.y * 1.91);
+  if (seed > 0.74) return drawPineTree(it, t, k);
+  const ctx: GameValue = game.view.ctx,
+    s: GameValue = isoScale();
+  ellipseShadow(it.x + 10 * k, it.y + 8 * k, 42 * k, 22 * k, 0.24);
+  // Radici che affiorano attorno al tronco.
+  for (let i: GameValue = 0; i < 4; i++) {
+    const a: GameValue = (i / 4) * Math.PI * 2 + seed * 3;
+    box(it.x + Math.cos(a) * 6 * k, it.y + Math.sin(a) * 6 * k, 6 * k, 6 * k, 4 * k, '#5e3a24');
+  }
+  const trunk: GameValue = box(it.x, it.y, 12 * k, 12 * k, 36 * k, '#7b4a2e');
   onFace(
     trunk,
     'left',
     (W?: GameValue, H?: GameValue): GameValue => woodGrain(W, H, 'rgba(0,0,0,0.3)', true, 3),
   );
-  const sway: GameValue = Math.sin(t * 0.8 + it.x) * 1.5 * s;
+  onFace(
+    trunk,
+    'right',
+    (W?: GameValue, H?: GameValue): GameValue => woodGrain(W, H, 'rgba(0,0,0,0.2)', true, 3),
+  );
+  const sway: GameValue = Math.sin(t * 0.8 + it.x) * 1.6 * s;
+  // Rami che portano alla chioma.
+  ctx.strokeStyle = '#6b3f26';
+  ctx.lineCap = 'round';
+  ctx.lineWidth = 3 * k * s;
   [
-    [0, 0, 60, 19],
-    [-14, 6, 52, 15],
-    [12, -8, 54, 15],
-    [4, 12, 48, 14],
-    [-6, -10, 74, 15],
-    [8, 6, 78, 13],
-  ].forEach(([dx, dy, z, r]: GameValue = {}): GameValue => {
-    const p: GameValue = isoProject(it.x + dx * k, it.y + dy * k, z * k);
-    const R: GameValue = r * k * s;
-    const g: GameValue = game.view.ctx.createRadialGradient(
-      p.x - R * 0.35 + sway,
-      p.y - R * 0.45,
-      R * 0.15,
-      p.x + sway,
-      p.y,
-      R,
+    [-12, 4],
+    [10, -8],
+    [4, 12],
+  ].forEach(([dx, dy]: GameValue = []): GameValue => {
+    const from: GameValue = isoProject(it.x, it.y, 34 * k);
+    const to: GameValue = isoProject(it.x + dx * k, it.y + dy * k, 54 * k);
+    ctx.beginPath();
+    ctx.moveTo(from.x, from.y);
+    ctx.lineTo(to.x + sway * 0.6, to.y);
+    ctx.stroke();
+  });
+  ctx.lineCap = 'butt';
+  const palettes: GameValue = [
+    ['#a3e57e', '#4caf50', '#1f6b2a'],
+    ['#c1e874', '#72b83c', '#2f7a24'],
+    ['#94dc93', '#3f9e5c', '#1b5e36'],
+  ];
+  const [light, mid, dark]: GameValue = palettes[Math.floor(seed * 4.05) % 3];
+  // Chioma a ciuffi disposti a cupola, disegnati da dietro in avanti e dal basso in alto.
+  const tufts: GameValue = [];
+  for (let i: GameValue = 0; i < 24; i++) {
+    const ang: GameValue = i * 2.39996 + seed * 6;
+    const rad: GameValue = Math.sqrt(i / 24) * 25;
+    tufts.push({
+      dx: Math.cos(ang) * rad,
+      dy: Math.sin(ang) * rad,
+      z: 54 + (1 - rad / 25) * 26 + rnd(i + seed * 50) * 6,
+      r: 13 + rnd(i * 3 + seed * 70) * 6,
+    });
+  }
+  tufts.sort((a: GameValue, b: GameValue): GameValue => a.dx + a.dy + a.z - (b.dx + b.dy + b.z));
+  const centre: GameValue = (u: GameValue): GameValue => {
+    const p: GameValue = isoProject(it.x + u.dx * k, it.y + u.dy * k, u.z * k);
+    return { x: p.x + sway * (u.z / 80), y: p.y, R: u.r * k * s };
+  };
+  // Ombra interna: un contorno più scuro che dà volume alla chioma.
+  ctx.fillStyle = dark;
+  tufts.forEach((u: GameValue): GameValue => {
+    const c: GameValue = centre(u);
+    ctx.beginPath();
+    ctx.arc(c.x, c.y + c.R * 0.18, c.R * 1.06, 0, Math.PI * 2);
+    ctx.fill();
+  });
+  tufts.forEach((u: GameValue): GameValue => {
+    const c: GameValue = centre(u);
+    const g: GameValue = ctx.createRadialGradient(
+      c.x - c.R * 0.4,
+      c.y - c.R * 0.45,
+      c.R * 0.1,
+      c.x,
+      c.y,
+      c.R,
     );
-    g.addColorStop(0, '#8fdc72');
-    g.addColorStop(0.55, '#45a845');
-    g.addColorStop(1, '#22702c');
-    game.view.ctx.fillStyle = g;
-    game.view.ctx.beginPath();
-    game.view.ctx.arc(p.x + sway, p.y, R, 0, Math.PI * 2);
-    game.view.ctx.fill();
+    g.addColorStop(0, light);
+    g.addColorStop(0.5, mid);
+    g.addColorStop(1, mixColor(mid, dark, 0.55));
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(c.x, c.y, c.R, 0, Math.PI * 2);
+    ctx.fill();
+  });
+  // Foglie più chiare sul lato in alto a sinistra, rivolto verso la luce.
+  ctx.fillStyle = light;
+  ctx.globalAlpha = 0.7;
+  for (let i: GameValue = 0; i < 30; i++) {
+    const c: GameValue = centre(tufts[Math.floor(rnd(i * 7 + seed * 90) * tufts.length)]);
+    const a: GameValue = Math.PI * (1.05 + rnd(i * 11 + seed) * 0.6);
+    const d: GameValue = c.R * (0.35 + rnd(i * 13 + seed) * 0.45);
+    ctx.beginPath();
+    ctx.ellipse(c.x + Math.cos(a) * d, c.y + Math.sin(a) * d, 2.6 * s, 1.3 * s, a, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+}
+
+function drawPineTree(it: GameValue, t: GameValue, k: GameValue): void {
+  const ctx: GameValue = game.view.ctx,
+    s: GameValue = isoScale();
+  ellipseShadow(it.x + 8 * k, it.y + 6 * k, 30 * k, 16 * k, 0.24);
+  box(it.x, it.y, 8 * k, 8 * k, 22 * k, '#6b3f26');
+  const sway: GameValue = Math.sin(t * 0.7 + it.y) * 1.2 * s;
+  // Quattro strati di rami, sempre più stretti verso la punta.
+  [
+    [18, 28, 50],
+    [38, 23, 66],
+    [56, 17, 82],
+    [72, 11, 98],
+  ].forEach(([z0, r, z1]: GameValue = [], i: GameValue): GameValue => {
+    const shift: GameValue = sway * ((i + 1) / 4);
+    const apex: GameValue = isoProject(it.x, it.y, z1 * k);
+    const rim: GameValue = [];
+    for (let j: GameValue = 0; j < 24; j++) {
+      const a: GameValue = (j / 24) * Math.PI * 2;
+      const p: GameValue = isoProject(
+        it.x + Math.cos(a) * r * k,
+        it.y + Math.sin(a) * r * k,
+        z0 * k,
+      );
+      rim.push({ x: p.x + shift, y: p.y });
+    }
+    let left: GameValue = 0,
+      right: GameValue = 0;
+    rim.forEach((p: GameValue, j: GameValue): GameValue => {
+      if (p.x < rim[left].x) left = j;
+      if (p.x > rim[right].x) right = j;
+    });
+    // Contorno: punta, poi il bordo inferiore (quello verso chi guarda) da destra a sinistra.
+    const front: GameValue = [];
+    for (let j: GameValue = right; ; j = (j + 1) % 24) {
+      front.push(rim[j]);
+      if (j === left) break;
+    }
+    if (front.length > 1 && front[Math.floor(front.length / 2)].y < rim[left].y) {
+      front.length = 0;
+      for (let j: GameValue = right; ; j = (j + 23) % 24) {
+        front.push(rim[j]);
+        if (j === left) break;
+      }
+    }
+    const tip: GameValue = { x: apex.x + shift * 1.3, y: apex.y };
+    const g: GameValue = ctx.createLinearGradient(rim[left].x, 0, rim[right].x, 0);
+    g.addColorStop(0, '#4f9e5a');
+    g.addColorStop(0.5, '#2e7d43');
+    g.addColorStop(1, '#1a5232');
+    poly([tip, ...front], g);
+    // Bordo inferiore più scuro, come l'ombra dei rami sottostanti.
+    ctx.strokeStyle = 'rgba(10,50,25,0.55)';
+    ctx.lineWidth = 2 * s;
+    ctx.beginPath();
+    front.forEach(
+      (p: GameValue, j: GameValue): GameValue => (j ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y)),
+    );
+    ctx.stroke();
   });
 }
 

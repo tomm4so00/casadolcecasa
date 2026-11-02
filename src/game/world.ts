@@ -500,6 +500,39 @@ export function checkProximity(..._args: GameValue[]): GameValue {
   }
 }
 
+// Fa comparire il personaggio appena oltre la porta, spostato verso il centro dell'ambiente.
+export function spawnAtDoor(door: GameValue): void {
+  if (!door) {
+    game.playerPos = { x: 0, y: 0 };
+    return;
+  }
+  const step = 45;
+  game.playerPos =
+    Math.abs(door.x) > Math.abs(door.y)
+      ? { x: door.x - Math.sign(door.x) * step, y: door.y }
+      : { x: door.x, y: door.y - Math.sign(door.y) * step };
+}
+
+// Ritorno al salone davanti alla porta da cui si esce: stanza, cucina, bagno o uscita di casa.
+function backToSaloon(): void {
+  const env: GameValue = game.view.activeEnvironment;
+  const doors: GameValue = game.saloonDoors;
+  let door: GameValue = doors.exitHouse;
+  if (env === 'KITCHEN') door = doors.kitchen;
+  else if (env === 'BATHROOM') door = doors.bathroom;
+  else if (env === 'CORTILE') door = doors.courtyard;
+  else if (env === 'PLAYER_ROOM')
+    door =
+      Object.values(doors).find(
+        (d: GameValue): GameValue =>
+          d.targetEnv === 'PLAYER_ROOM' &&
+          d.roomIdx === (game.currentRoomIdx ?? 0) % game.ROOMS_PER_APT,
+      ) || door;
+  game.view.activeEnvironment = 'SALOON';
+  game.view.currentRoomTitle = game.saloonTitle();
+  spawnAtDoor(door);
+}
+
 export async function handleObjectInteract(..._args: GameValue[]): Promise<void> {
   if (!game.activeTargetProp) return;
   if (game.showerAnim) return;
@@ -566,38 +599,32 @@ export async function handleObjectInteract(..._args: GameValue[]): Promise<void>
         gi === game.myAssignedRoomIdx ? `La tua stanza 🏠` : `Stanza di ${room.owner}`;
       game.currentRoomIdx = gi;
       game.view.activeEnvironment = 'PLAYER_ROOM';
-      game.playerPos = { x: 0, y: 120 };
+      spawnAtDoor(getCurrentFurnitureMap().doorExit);
     } else {
       game.view.currentRoomTitle = item.title;
       game.view.activeEnvironment = item.targetEnv;
-      game.playerPos = { x: 0, y: 120 };
+      if (item.targetEnv === 'CORTILE')
+        spawnAtDoor(game.courtyardDoors['doorApt' + game.currentApt]);
+      else spawnAtDoor(getCurrentFurnitureMap().doorExit);
     }
   } else if (game.view.activeEnvironment === 'CORTILE') {
     if (item && item.aptIdx !== undefined) {
       game.currentApt = item.aptIdx;
-      game.view.activeEnvironment = 'SALOON';
-      game.view.currentRoomTitle = game.saloonTitle();
-      game.playerPos = { x: 0, y: -90 };
+      backToSaloon();
     }
   } else if (game.view.activeEnvironment === 'laboratorio') {
     if (String(game.activeTargetProp).startsWith('easel')) openPaintStudio();
     else if (game.activeTargetProp === 'doorExit') {
-      game.view.activeEnvironment = 'SALOON';
-      game.view.currentRoomTitle = game.saloonTitle();
-      game.playerPos = { x: 0, y: 0 };
+      backToSaloon();
     }
   } else if (game.view.activeEnvironment === 'banca') {
     if (game.activeTargetProp === 'bankCounter') await openBankCounter();
     else if (game.activeTargetProp === 'doorExit') {
-      game.view.activeEnvironment = 'SALOON';
-      game.view.currentRoomTitle = game.saloonTitle();
-      game.playerPos = { x: 0, y: 0 };
+      backToSaloon();
     }
   } else if (game.view.activeEnvironment === 'negozio_vestiti') {
     if (game.activeTargetProp === 'doorExit') {
-      game.view.activeEnvironment = 'SALOON';
-      game.view.currentRoomTitle = game.saloonTitle();
-      game.playerPos = { x: 0, y: 0 };
+      backToSaloon();
     } else {
       openClothesShop(item.slot || 'top', false);
     }
@@ -605,9 +632,7 @@ export async function handleObjectInteract(..._args: GameValue[]): Promise<void>
     if (game.activeTargetProp === 'shopCounter') {
       openFurnitureShopModal();
     } else if (game.activeTargetProp === 'doorExit') {
-      game.view.activeEnvironment = 'SALOON';
-      game.view.currentRoomTitle = game.saloonTitle();
-      game.playerPos = { x: 0, y: 0 };
+      backToSaloon();
     } else if (item.category) {
       const next: GameValue = nextUpgrade(
         game.furnitureCatalog,
@@ -648,9 +673,7 @@ export async function handleObjectInteract(..._args: GameValue[]): Promise<void>
         toast('Gnam! Fame +50%');
       }
     } else if (game.activeTargetProp === 'doorExit') {
-      game.view.activeEnvironment = 'SALOON';
-      game.view.currentRoomTitle = game.saloonTitle();
-      game.playerPos = { x: 0, y: 0 };
+      backToSaloon();
     }
   } else if (game.view.activeEnvironment === 'BATHROOM') {
     if (game.activeTargetProp === 'shower') {
@@ -662,15 +685,11 @@ export async function handleObjectInteract(..._args: GameValue[]): Promise<void>
       game.player.happinessLevel = Math.min(100, game.player.happinessLevel + 5);
       toast('Che sollievo! 🚽 (Felicità +5%)');
     } else if (game.activeTargetProp === 'doorExit') {
-      game.view.activeEnvironment = 'SALOON';
-      game.view.currentRoomTitle = game.saloonTitle();
-      game.playerPos = { x: 0, y: 0 };
+      backToSaloon();
     }
   } else {
     if (game.activeTargetProp === 'doorExit') {
-      game.view.activeEnvironment = 'SALOON';
-      game.view.currentRoomTitle = game.saloonTitle();
-      game.playerPos = { x: 0, y: 0 };
+      backToSaloon();
     } else if (game.activeTargetProp === 'bed') {
       game.player.isSleeping = !game.player.isSleeping;
       sfx(game.player.isSleeping ? 'sleep' : 'wake');

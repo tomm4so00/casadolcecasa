@@ -138,7 +138,7 @@ try {
   assert.equal(before.ownedFurniture.bed_lux, true);
   assert.equal(before.jobExperience.ufficio, 1);
   await page.screenshot({ path: 'test-results/latest-v8.png' });
-  await page.locator('#save-exit').click();
+  await page.reload();
   await page.locator('#ui-setup-screen').waitFor({ state: 'visible' });
   await page.locator('#start-game-btn').click();
   await page.locator('#ui-setup-screen').waitFor({ state: 'hidden' });

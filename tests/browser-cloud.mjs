@@ -94,16 +94,18 @@ try {
     const economy = await import('/src/game/economy.ts');
     await economy.creditMoney(807);
     await economy.purchaseItem('ownedItems', 'item_hoodie', 30);
-    await (await import('/src/game/saves.ts')).saveGame(true);
+    return (await import('/src/game/saves.ts')).saveGame(true);
   });
-  await page.getByText('Salvato sul cloud', { exact: true }).waitFor();
   await other.goto(url);
   await signIn(other);
+  // The latest access wins: the first device is blocked and stops saving.
   await other.locator('#cloud-game-btn').click();
-  await other.getByText(/Questo personaggio è già aperto altrove/).waitFor();
-  await page.locator('#save-exit').click();
-  await page.locator('#ui-setup-screen').waitFor({ state: 'visible' });
-  await other.locator('#cloud-game-btn').click();
+  await page.locator('#session-lost-banner').waitFor({ state: 'visible' });
+  assert.equal(
+    await page.evaluate(async () => (await import('/src/game/saves.ts')).saveGame(true)),
+    false,
+    'a device that lost the session must not save',
+  );
   await other
     .locator('#dialog-buttons')
     .getByRole('button', { name: 'Salta', exact: true })
@@ -177,11 +179,20 @@ try {
   });
   assert.equal(local.hygieneLevel, 88);
   await contexts[1].setOffline(false);
-  await other.getByText('Salvato sul cloud', { exact: true }).waitFor();
   const victim = await other.evaluate(async () => {
     const { game } = await import('/src/game/context.ts');
     return { id: game.session.myPlayerId, uid: game.session.authUid };
   });
+  for (let i = 0; ; i++) {
+    const cloud = await (
+      await fetch(`http://127.0.0.1:9000/sims_saves/${victim.id}.json?ns=${namespace}`, {
+        headers,
+      })
+    ).json();
+    if (cloud?.hygieneLevel === 88) break;
+    assert(i < 60, 'the offline save must reach the cloud after reconnecting');
+    await new Promise((resolve) => setTimeout(resolve, 250));
+  }
   const isolatedContext = await browser.newContext();
   const isolated = await isolatedContext.newPage();
   isolated.on('pageerror', (error) => errors.push(error.message));
@@ -312,9 +323,20 @@ try {
     alterLastSeen: false,
     forgeMaintenance: false,
   });
+  // Another device takes over the Sim: this page is blocked.
+  const takenId = await other.evaluate(async () => {
+    const { game } = await import('/src/game/context.ts');
+    return game.session.myPlayerId;
+  });
+  await fetch(`http://127.0.0.1:9000/sims_sessions/${takenId}.json?ns=${namespace}`, {
+    method: 'PUT',
+    headers,
+    body: JSON.stringify({ id: 'other-device', expiresAt: Date.now() + 45000 }),
+  });
+  await other.locator('#session-lost-banner').waitFor({ state: 'visible' });
   assert.deepEqual(errors, []);
   console.log(
-    'PASS cloud v8: Google account binding, v8 cloud saves, vault balance, two browsers, exclusive session, shared server quotes, read-only market and offline/reconnect.',
+    'PASS cloud v8: Google account binding, v8 cloud saves, vault balance, two browsers, exclusive session, latest access wins, shared server quotes, read-only market and offline/reconnect.',
   );
 } catch (error) {
   console.log(

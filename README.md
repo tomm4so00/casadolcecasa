@@ -80,14 +80,15 @@ e limiti delle meccaniche condivise sono in
 La proposta va pubblicata insieme alla nuova versione; non viene distribuita
 automaticamente da `firebase.json`.
 
-Un blocco in `sims_sessions/{playerId}` e Web Locks impediscono di aprire lo stesso
-personaggio contemporaneamente in due sessioni di questo client. Il blocco cloud
-scade dopo 45 secondi senza rinnovo. I vecchi client v8 non conoscono questo blocco;
+La sessione in `sims_sessions/{playerId}` fa giocare lo stesso personaggio su un
+solo dispositivo alla volta: l'ultimo accesso prende la sessione e blocca il
+precedente. Web Locks impedisce invece due schede dello stesso browser. I vecchi client v8 non conoscono questo blocco;
 questa estensione non modifica automaticamente le regole del database.
 
-Il salvataggio distingue copia locale e conferma cloud. **Salva ed esci** attende
-la scrittura prima di tornare all'ingresso, senza ricaricare la pagina, e chiude
-timer, input, anteprime e listener. In modalità offline anche il database simulato
+Il gioco salva da solo ogni 3 secondi, quando la pagina passa in background e
+quando viene chiusa: non c'è un pulsante di salvataggio. Se un altro dispositivo
+apre lo stesso Sim, l'ultimo accesso vince: il dispositivo precedente mostra
+«Gioco aperto su un altro dispositivo» e smette di salvare finché non si ricarica. In modalità offline anche il database simulato
 è salvato sul dispositivo, inclusi cassaforte, stanze e chat; la presenza non viene
 ricaricata come se un giocatore fosse ancora online.
 La cancellazione dei dati del browser elimina le sole copie locali.
