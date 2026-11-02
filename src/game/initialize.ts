@@ -1,4 +1,5 @@
 import { canKiss } from './romance.js';
+import { applyRoomBounds, growSceneData } from './room-size.js';
 import { startMarket } from './market-client.js';
 import { resetEconomy } from './economy.js';
 import { createCharacterState } from './models.js';
@@ -661,10 +662,8 @@ export function initializeGame() {
   ];
   rebuildGraveyard(null);
   game.ENV_STYLE = structuredClone(ENV_STYLE);
-  game.X0 = -200;
-  game.X1 = 200;
-  game.Y0 = -180;
-  game.Y1 = 180;
+  applyRoomBounds('');
+  growSceneData();
   game.WALL_DECOR = {
     window: (d?: GameValue, ctxInfo?: GameValue): GameValue =>
       wallWindow(d, ctxInfo.hour, ctxInfo.wallH),

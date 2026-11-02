@@ -40,6 +40,7 @@ import { overlapsCorridor } from './room-layout.js';
 import { approachKissPartner, drawKissHearts, kissActive } from './romance.js';
 import { faintAmount } from './faint.js';
 import { updateCamera } from './camera.js';
+import { applyRoomBounds } from './room-size.js';
 import { presenceState } from './presence-rules.js';
 import type { OnlinePlayer } from './network-model.js';
 export function getSolidObstacles(..._args: GameValue[]): GameValue {
@@ -124,12 +125,12 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
     const obstacles: GameValue = getSolidObstacles();
     const stuck: GameValue = collidesAt(game.playerPos.x, game.playerPos.y, obstacles);
     let nx: GameValue = Math.max(
-      -170,
-      Math.min(170, game.playerPos.x + game.moveRight * speed * delta),
+      game.X0 + 30,
+      Math.min(game.X1 - 30, game.playerPos.x + game.moveRight * speed * delta),
     );
     let ny: GameValue = Math.max(
-      -150,
-      Math.min(150, game.playerPos.y - game.moveForward * speed * delta),
+      game.Y0 + 30,
+      Math.min(game.Y1 - 30, game.playerPos.y - game.moveForward * speed * delta),
     );
     if (stuck || !collidesAt(nx, game.playerPos.y, obstacles)) game.playerPos.x = nx;
     if (stuck || !collidesAt(game.playerPos.x, ny, obstacles)) game.playerPos.y = ny;
@@ -432,6 +433,7 @@ export function startLoop(..._args: GameValue[]): GameValue {
     game.animClock += delta;
     tickNeeds();
     game.view.ctx.clearRect(0, 0, game.view.canvas.width, game.view.canvas.height);
+    applyRoomBounds(game.view.activeEnvironment);
     updateCamera(delta);
     renderEnvironment(delta, game.animClock);
   }
