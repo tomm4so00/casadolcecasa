@@ -2086,24 +2086,19 @@ export const ENV_DECOR = {
     { kind: 'tree', x: 150, y: 150, w: 16, h: 16, size: 0.95, z: 85 },
     { kind: 'tree', x: 440, y: -110, w: 18, h: 18, size: 1.1, z: 90 },
     { kind: 'tree', x: 440, y: 170, w: 16, h: 16, size: 0.95, z: 85 },
-    // lampioni, sempre sull'erba accanto ai vialetti:
-    // - lungo il marciapiede delle palazzine, a metà tra un portone e l'altro
-    { kind: 'streetlamp', x: -260, y: -140, w: 8, h: 8 },
-    { kind: 'streetlamp', x: -130, y: -140, w: 8, h: 8 },
-    { kind: 'streetlamp', x: 130, y: -140, w: 8, h: 8 },
-    { kind: 'streetlamp', x: 260, y: -140, w: 8, h: 8 },
-    // - ai due lati dell'incrocio davanti alle palazzine di sinistra
+    // lampioni, sull'erba e sempre a coppie, uno di fronte all'altro ai lati di un vialetto:
+    // - all'incrocio davanti alle palazzine di sinistra
     { kind: 'streetlamp', x: -400, y: -36, w: 8, h: 8 },
     { kind: 'streetlamp', x: -400, y: 36, w: 8, h: 8 },
-    // - ai lati della fontana (a sinistra e a destra sullo schermo, così non la coprono)
-    { kind: 'streetlamp', x: -78, y: 78, w: 8, h: 8 },
-    { kind: 'streetlamp', x: 78, y: -78, w: 8, h: 8 },
-    // - all'ingresso del cortile, ai due lati del vialetto
+    // - tra le due panchine e di fronte a loro
+    { kind: 'streetlamp', x: -240, y: -37, w: 8, h: 8 },
+    { kind: 'streetlamp', x: -240, y: 37, w: 8, h: 8 },
+    // - sul vialetto che va dalla piazzetta della fontana alle 6 palazzine
+    { kind: 'streetlamp', x: -36, y: -122, w: 8, h: 8 },
+    { kind: 'streetlamp', x: 36, y: -122, w: 8, h: 8 },
+    // - all'ingresso del cortile
     { kind: 'streetlamp', x: -36, y: 196, w: 8, h: 8 },
     { kind: 'streetlamp', x: 36, y: 196, w: 8, h: 8 },
-    // - ai lati della piazzola libera nell'ala destra
-    { kind: 'streetlamp', x: 298, y: 62, w: 8, h: 8 },
-    { kind: 'streetlamp', x: 422, y: -62, w: 8, h: 8 },
   ],
   SALOON: [
     { kind: 'plant', x: -168, y: -160, w: 26, h: 26, z: 60 },
