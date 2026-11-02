@@ -1,3 +1,4 @@
+import { purchaseItem, spendMoney } from './economy.js';
 import type { GameValue } from './context.js';
 import { game } from './context.js';
 import { lifetime, dom, browser } from './runtime.js';
@@ -14,10 +15,10 @@ export function itemById(id?: GameValue): GameValue {
 
 export function ownsItem(id?: GameValue): GameValue {
   const it: GameValue = itemById(id);
-  return !!it && (!!it.starter || !!game.ownedItems[id]);
+  return !!it && (!!it.starter || !!game.player.ownedItems[id]);
 }
 
-export function lookString(look: GameValue = game.equipped): GameValue {
+export function lookString(look: GameValue = game.player.equipped): GameValue {
   return game.SLOTS.map((sl?: GameValue): GameValue => look[sl])
     .filter(Boolean)
     .join(',');
@@ -102,11 +103,11 @@ export function bodyFromName(name?: GameValue): GameValue {
 }
 
 export function currentBody(..._args: GameValue[]): GameValue {
-  return game.myBody || bodyFromName(game.myData.nick);
+  return game.myBody || bodyFromName(game.player.myData.nick);
 }
 
 export function myLook(..._args: GameValue[]): GameValue {
-  const l: GameValue = resolveLook(game.equipped);
+  const l: GameValue = resolveLook(game.player.equipped);
   l.body = currentBody();
   return l;
 }
@@ -128,18 +129,26 @@ export function aptLabel(a?: GameValue): GameValue {
 
 // ---------- Anteprima del personaggio (canvas piccolo dentro le finestre) ----------
 export function drawAvatarPreview(cv?: GameValue, look?: GameValue, t?: GameValue): GameValue {
-  const savedCtx: GameValue = game.ctx;
-  game.ctx = cv.getContext('2d');
+  const savedCtx: GameValue = game.view.ctx;
+  game.view.ctx = cv.getContext('2d');
   game.viewOverride = { cx: cv.width / 2, cy: cv.height * 0.86, scale: cv.height / 92 };
   try {
-    game.ctx.clearRect(0, 0, cv.width, cv.height);
-    game.ctx.fillStyle = 'rgba(255,255,255,0.08)';
-    game.ctx.beginPath();
-    game.ctx.ellipse(cv.width / 2, cv.height * 0.86, cv.width * 0.32, cv.width * 0.1, 0, 0, 6.3);
-    game.ctx.fill();
+    game.view.ctx.clearRect(0, 0, cv.width, cv.height);
+    game.view.ctx.fillStyle = 'rgba(255,255,255,0.08)';
+    game.view.ctx.beginPath();
+    game.view.ctx.ellipse(
+      cv.width / 2,
+      cv.height * 0.86,
+      cv.width * 0.32,
+      cv.width * 0.1,
+      0,
+      0,
+      6.3,
+    );
+    game.view.ctx.fill();
     drawPlayerAvatar(0, 0, '', t, look, false, '');
   } finally {
-    game.ctx = savedCtx;
+    game.view.ctx = savedCtx;
     game.viewOverride = null;
   }
 }
@@ -199,7 +208,7 @@ export function openClothesShop(slot: GameValue = 'top', online: GameValue = fal
 }
 
 export function previewShopLook(..._args: GameValue[]): GameValue {
-  const look: GameValue = Object.assign({}, game.equipped);
+  const look: GameValue = Object.assign({}, game.player.equipped);
   const it: GameValue = itemById(game.shopState.tryOn);
   if (it) look[it.slot] = it.id;
   const r: GameValue = resolveLook(look);
@@ -240,15 +249,14 @@ export function renderClothesShop(..._args: GameValue[]): GameValue {
     });
 }
 
-export function buyClothing(id?: GameValue): GameValue {
+export async function buyClothing(id: string): Promise<void> {
   const it: GameValue = itemById(id);
   if (!it || ownsItem(id)) return;
   if (game.moneyLevel < it.price) {
     toast(`❌ Ti servono ${it.price} € per ${it.name}.`);
     return;
   }
-  game.moneyLevel -= it.price;
-  game.ownedItems[id] = true;
+  if (!(await purchaseItem('ownedItems', id, it.price))) return;
   game.shopState.tryOn = id;
   toast(`✅ Hai comprato ${it.name}! Indossalo dall'armadio della tua stanza 🚪`, 3500);
   saveGame(true);
@@ -324,7 +332,8 @@ export function renderWardrobe(..._args: GameValue[]): GameValue {
     items.unshift({ id: null, slot: game.wardrobeSlot, name: 'Niente', color: '#57606f' });
   items.forEach((it?: GameValue): GameValue => {
     const on: GameValue =
-      game.equipped[game.wardrobeSlot] === it.id || (!it.id && !game.equipped[game.wardrobeSlot]);
+      game.player.equipped[game.wardrobeSlot] === it.id ||
+      (!it.id && !game.player.equipped[game.wardrobeSlot]);
     const card: GameValue = document.createElement('div');
     card.className = 'item-card' + (on ? ' selected' : '');
     card.innerHTML =
@@ -343,9 +352,9 @@ export function renderWardrobe(..._args: GameValue[]): GameValue {
 }
 
 export function equipItem(slot?: GameValue, id?: GameValue): GameValue {
-  if (game.equipped[slot] === id) return;
-  game.equipped[slot] = id;
-  game.stats.outfits = (game.stats.outfits || 0) + 1;
+  if (game.player.equipped[slot] === id) return;
+  game.player.equipped[slot] = id;
+  game.player.stats.outfits = (game.player.stats.outfits || 0) + 1;
   sfx('click');
   renderWardrobe();
   saveGame(false);
@@ -353,15 +362,15 @@ export function equipItem(slot?: GameValue, id?: GameValue): GameValue {
 
 export function returnHomeFromActivity(..._args: GameValue[]): GameValue {
   if (hasRoom()) game.currentApt = game.aptOfRoom(game.myAssignedRoomIdx);
-  game.activeEnvironment = 'SALOON';
-  game.currentRoomTitle = game.saloonTitle();
+  game.view.activeEnvironment = 'SALOON';
+  game.view.currentRoomTitle = game.saloonTitle();
   game.playerPos = { x: 0, y: 150 };
   dom('btn-return-home').classList.add('hidden');
 }
 
-export function handleSubAction(..._args: GameValue[]): GameValue {
+export async function handleSubAction(..._args: GameValue[]): Promise<void> {
   if (
-    game.activeEnvironment === 'PLAYER_ROOM' &&
+    game.view.activeEnvironment === 'PLAYER_ROOM' &&
     game.activeTargetProp === 'safe' &&
     isMyRoomNow()
   ) {
@@ -369,17 +378,17 @@ export function handleSubAction(..._args: GameValue[]): GameValue {
     return;
   }
   if (
-    game.activeEnvironment === 'KITCHEN' &&
+    game.view.activeEnvironment === 'KITCHEN' &&
     game.activeTargetProp === 'fridge' &&
-    game.fridgeIsOpen
+    game.view.fridgeIsOpen
   ) {
     if (game.moneyLevel < 5) {
       toast('Non hai abbastanza soldi per prendere il cibo! Ti servono 5 €.');
       return;
     }
-    game.moneyLevel -= 5;
-    game.hasFoodInInventory = true;
-    game.foodIsCooked = false;
+    if (!(await spendMoney(5))) return;
+    game.player.hasFoodInInventory = true;
+    game.player.foodIsCooked = false;
     toast('Hai preso del cibo! (-5 €) 🍎');
     dom('btn-act-sub').classList.add('hidden');
   }

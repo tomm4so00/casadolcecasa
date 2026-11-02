@@ -236,8 +236,8 @@ export function musicStep(tr?: GameValue, s?: GameValue, t?: GameValue, d?: Game
 }
 
 export function musicWant(..._args: GameValue[]): GameValue {
-  if (!game.musicOn || game.isDead) return null;
-  return musicFor(game.activeEnvironment);
+  if (!game.musicOn || game.player.isDead) return null;
+  return musicFor(game.view.activeEnvironment);
 }
 
 export function musicTick(..._args: GameValue[]): GameValue {
@@ -246,7 +246,7 @@ export function musicTick(..._args: GameValue[]): GameValue {
     const want: GameValue = musicWant(),
       bus: GameValue = musicBus(),
       now: GameValue = game.audioCtx.currentTime;
-    const target: GameValue = want ? (game.isSleeping ? 0.18 : 0.55) : 0;
+    const target: GameValue = want ? (game.player.isSleeping ? 0.18 : 0.55) : 0;
     if (game.MUSIC.vol !== target) {
       bus.gain.cancelScheduledValues(now);
       bus.gain.setTargetAtTime(target, now, 0.15);
@@ -289,7 +289,7 @@ export function updateMusicButton(..._args: GameValue[]): GameValue {
 export function toggleMusic(..._args: GameValue[]): GameValue {
   game.musicOn = !game.musicOn;
   try {
-    localStorage.setItem(game.LS_PREFIX + 'sims_music', game.musicOn ? 'on' : 'off');
+    localStorage.setItem(game.session.LS_PREFIX + 'sims_music', game.musicOn ? 'on' : 'off');
   } catch (e: GameValue) {}
   updateMusicButton();
   if (game.musicOn) musicUnlock();
@@ -303,7 +303,7 @@ export function updateSoundButton(..._args: GameValue[]): GameValue {
 export function toggleSound(..._args: GameValue[]): GameValue {
   game.soundOn = !game.soundOn;
   try {
-    localStorage.setItem(game.LS_PREFIX + 'sims_sound', game.soundOn ? 'on' : 'off');
+    localStorage.setItem(game.session.LS_PREFIX + 'sims_sound', game.soundOn ? 'on' : 'off');
   } catch (e: GameValue) {}
   updateSoundButton();
   if (game.soundOn) sfx('click');

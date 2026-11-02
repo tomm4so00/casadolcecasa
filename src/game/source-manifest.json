@@ -370,16 +370,6 @@
       "line": 1857
     },
     {
-      "name": "drugRate",
-      "module": "needs",
-      "line": 1862
-    },
-    {
-      "name": "drugApply",
-      "module": "needs",
-      "line": 1871
-    },
-    {
       "name": "updateDrugHud",
       "module": "needs",
       "line": 1882
@@ -428,16 +418,6 @@
       "name": "handleSocial",
       "module": "social",
       "line": 2025
-    },
-    {
-      "name": "hash01",
-      "module": "business",
-      "line": 2070
-    },
-    {
-      "name": "mktLog",
-      "module": "business",
-      "line": 2076
     },
     {
       "name": "mktPrice",
@@ -1758,5 +1738,23 @@
     "BOT_LINES",
     "lastTime",
     "animClock"
+  ],
+  "replacements": [
+    {
+      "name": "hash01",
+      "module": "shared/market.ts"
+    },
+    {
+      "name": "mktLog",
+      "module": "shared/market.ts"
+    },
+    {
+      "name": "drugRate",
+      "module": "src/game/simulation.ts"
+    },
+    {
+      "name": "drugApply",
+      "module": "src/game/simulation.ts"
+    }
   ]
 }

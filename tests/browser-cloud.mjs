@@ -1,3 +1,5 @@
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 import { strict as assert } from 'node:assert';
 import { chromium } from '@playwright/test';
 import { createServer } from 'vite';
@@ -42,6 +44,44 @@ const signIn = (p) =>
   });
 try {
   await page.goto(url);
+  const fixture = await page.evaluate(async () => {
+    const { advanceMarket } = await import('/shared/market.ts');
+    const { prepareMarketRules } = await import('/shared/market-rules.ts');
+    return {
+      market: advanceMarket(null, Date.now(), () => 0),
+      rules: prepareMarketRules({ rules: { '.read': 'auth != null', '.write': 'auth != null' } }),
+    };
+  });
+  const installRules = await fetch(`http://127.0.0.1:9000/.settings/rules.json?ns=${namespace}`, {
+    method: 'PUT',
+    headers,
+    body: JSON.stringify(fixture.rules),
+  });
+  assert.equal(installRules.ok, true);
+  const runPublisher = () =>
+    promisify(execFile)(process.execPath, ['server/lib/server/src/index.js'], {
+      env: {
+        ...process.env,
+        FIREBASE_PROJECT_ID: 'demo-casadolcecasa',
+        FIREBASE_DATABASE_URL: 'https://demo-casadolcecasa-default-rtdb.firebaseio.com',
+      },
+      timeout: 30000,
+    });
+  const initialPublish = await runPublisher();
+  assert(initialPublish.stdout.includes('Shared market updated.'));
+  fixture.market = await (
+    await fetch(`http://127.0.0.1:9000/sims_market.json?ns=${namespace}`, { headers })
+  ).json();
+  const retries = await Promise.all([runPublisher(), runPublisher()]);
+  for (const retry of retries) assert(retry.stdout.includes('already published'));
+  const denied = await fetch(
+    `http://127.0.0.1:9000/sims_market/quotes/shop/price.json?ns=${namespace}`,
+    {
+      method: 'PUT',
+      body: '1',
+    },
+  );
+  assert.equal(denied.ok, false, 'a browser must not be able to change market quotes');
   await signIn(page);
   await page.locator('#nickname').fill('Profilo cloud v8');
   await page.locator('#cloud-game-btn').click();
@@ -53,9 +93,10 @@ try {
   await page.evaluate(async () => {
     const { game } = await import('/src/game/context.ts');
     game.pinPromptMoneyThreshold = 1e9;
-    game.moneyLevel = 777;
-    game.ownedItems.item_hoodie = true;
-    await window.saveGame(true);
+    const economy = await import('/src/game/economy.ts');
+    await economy.creditMoney(807);
+    await economy.purchaseItem('ownedItems', 'item_hoodie', 30);
+    await (await import('/src/game/saves.ts')).saveGame(true);
   });
   await page.getByText('Salvato sul cloud', { exact: true }).waitFor();
   await other.goto(url);
@@ -72,21 +113,74 @@ try {
     .click();
   await other.waitForFunction(async () => {
     const { game } = await import('/src/game/context.ts');
-    return game.ownedItems.item_hoodie && game.moneyLevel === 777;
+    return game.player.ownedItems.item_hoodie && game.moneyLevel === 777;
   });
+  const firstQuote = await page.evaluate(async () =>
+    (await import('/src/game/business.ts')).mktPrice({ id: 'shop' }),
+  );
+  const otherQuote = await other.evaluate(async () => {
+    const originalNow = Date.now;
+    Date.now = () => originalNow() + 36000000;
+    try {
+      return (await import('/src/game/business.ts')).mktPrice({ id: 'shop' });
+    } finally {
+      Date.now = originalNow;
+    }
+  });
+  assert.equal(firstQuote, fixture.market.quotes.shop.price);
+  assert.equal(otherQuote, firstQuote, 'device time must not change the shared price');
+  const authenticatedWrite = await other.evaluate(async () => {
+    const { game } = await import('/src/game/context.ts');
+    try {
+      await game.session.db.ref('sims_market/quotes/shop/price').set(1);
+      return true;
+    } catch {
+      return false;
+    }
+  });
+  assert.equal(authenticatedWrite, false, 'even a signed-in player must not change quotes');
+  const deniedDelete = await fetch(`http://127.0.0.1:9000/sims_market.json?ns=${namespace}`, {
+    method: 'DELETE',
+  });
+  assert.equal(deniedDelete.ok, false);
+  const staleMarket = await other.evaluate(async () =>
+    (await import('/shared/market.ts')).advanceMarket(null, Date.now() - 3600000, () => 0),
+  );
+  await fetch(`http://127.0.0.1:9000/sims_market.json?ns=${namespace}`, {
+    method: 'PUT',
+    headers,
+    body: JSON.stringify(staleMarket),
+  });
+  await other.waitForFunction(async () => {
+    const market = await import('/src/game/market-client.ts');
+    return market.marketSnapshot() !== null && !market.canTradeMarket();
+  });
+  await other.evaluate(async () => (await import('/src/game/business.ts')).openBizSite());
+  assert.equal(await other.locator('[data-action="bizInvest"]').first().isDisabled(), true);
+  await other.evaluate(async () =>
+    (await import('/src/game/render/primitives.ts')).closeModal('biz-modal'),
+  );
+  await fetch(`http://127.0.0.1:9000/sims_market.json?ns=${namespace}`, {
+    method: 'PUT',
+    headers,
+    body: JSON.stringify(fixture.market),
+  });
+  await other.waitForFunction(async () =>
+    (await import('/src/game/market-client.ts')).canTradeMarket(),
+  );
   await contexts[1].setOffline(true);
   await other.evaluate(async () => {
     const { game } = await import('/src/game/context.ts');
-    game.hygieneLevel = 88;
-    void window.saveGame(true);
+    game.player.hygieneLevel = 88;
+    void (await import('/src/game/saves.ts')).saveGame(true);
   });
-  const local = await other.evaluate(() => JSON.parse(localStorage.getItem('sims_save_v1')));
+  const local = await other.evaluate(async () => JSON.parse(localStorage.getItem('sims_save_v1')));
   assert.equal(local.hygieneLevel, 88);
   await contexts[1].setOffline(false);
   await other.getByText('Salvato sul cloud', { exact: true }).waitFor();
   assert.deepEqual(errors, []);
   console.log(
-    'PASS cloud v8: Google account binding, v8 cloud saves, vault balance, two browsers, exclusive session and offline/reconnect.',
+    'PASS cloud v8: Google account binding, v8 cloud saves, vault balance, two browsers, exclusive session, shared server quotes, read-only market and offline/reconnect.',
   );
 } catch (error) {
   console.log(

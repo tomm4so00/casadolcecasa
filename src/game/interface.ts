@@ -1,4 +1,5 @@
 import type { GameValue } from './context.js';
+import type { DialogOptions, DialogResult } from './models.js';
 import { acquirePlayerSession } from './accounts.js';
 import { game } from './context.js';
 import { lifetime, dom, browser } from './runtime.js';
@@ -21,7 +22,12 @@ import { startLoop } from './engine.js';
 import { die, reapAbsentPlayers, showDeathScreen, updateNotifyButton } from './needs.js';
 import { updateSoundButton } from './audio.js';
 // ---------- Finestre di dialogo in-game ----------
-export function openDialog({ title, text = '', input = null, buttons }: GameValue = {}): GameValue {
+export function openDialog({
+  title,
+  text = '',
+  input = null,
+  buttons,
+}: DialogOptions): Promise<DialogResult> {
   if (game.dialogResolve) game.dialogResolve({ action: null, value: '' });
   const modal: GameValue = dom('dialog-modal');
   const inp: GameValue = dom('dialog-input');
@@ -36,14 +42,14 @@ export function openDialog({ title, text = '', input = null, buttons }: GameValu
     inp.maxLength = input.maxLength || 60;
   }
   box.innerHTML = '';
-  return new Promise((resolve?: GameValue): GameValue => {
-    const finish: GameValue = (action?: GameValue): GameValue => {
+  return new Promise((resolve) => {
+    const finish = (action: string | null): void => {
       game.dialogResolve = null;
       modal.classList.add('hidden');
       resolve({ action, value: inp.value.trim() });
     };
     game.dialogResolve = resolve;
-    buttons.forEach((b?: GameValue): GameValue => {
+    buttons.forEach((b) => {
       const btn: GameValue = document.createElement('button');
       btn.className = 'btn-primary';
       btn.type = 'button';
@@ -76,13 +82,13 @@ export async function openChat(..._args: GameValue[]): Promise<GameValue> {
   });
   if (res.action === 'ok' && res.value) {
     game.mySay = res.value.slice(0, 60);
-    game.stats.chats++;
+    game.player.stats.chats++;
     game.mySayT = Date.now();
   }
 }
 
 export async function showIntro(force: GameValue = false): Promise<GameValue> {
-  const KEY: GameValue = game.LS_PREFIX + 'sims_intro_v2';
+  const KEY: GameValue = game.session.LS_PREFIX + 'sims_intro_v2';
   try {
     if (!force && localStorage.getItem(KEY) === 'seen') return;
   } catch (e: GameValue) {}
@@ -110,13 +116,15 @@ export async function showIntro(force: GameValue = false): Promise<GameValue> {
 
 export async function openProfile(..._args: GameValue[]): Promise<GameValue> {
   const res: GameValue = await openDialog({
-    title: `👤 ${game.myData.nick}`,
+    title: `👤 ${game.player.myData.nick}`,
     text:
-      `Il tuo codice personaggio è:\n${game.myPlayerId}\n\nSegnatelo! Serve per ritrovare i tuoi progressi su un altro telefono o computer.` +
+      `Il tuo codice personaggio è:\n${game.session.myPlayerId}\n\nSegnatelo! Serve per ritrovare i tuoi progressi su un altro telefono o computer.` +
       (hasRoom()
-        ? `\n\nLa tua stanza: n° ${game.myAssignedRoomIdx + 1} (Appartamento ${game.aptOfRoom(game.myAssignedRoomIdx) + 1})`
+        ? `\n\nLa tua stanza: n° ${(game.myAssignedRoomIdx ?? -1) + 1} (Appartamento ${game.aptOfRoom(game.myAssignedRoomIdx) + 1})`
         : '') +
-      (game.OFFLINE ? '\n\n🧪 Sei in modalità prova: niente viene salvato sul server.' : ''),
+      (game.session.OFFLINE
+        ? '\n\n🧪 Sei in modalità prova: niente viene salvato sul server.'
+        : ''),
     input: { placeholder: 'Codice di un altro dispositivo…', maxLength: 30 },
     buttons: [
       { label: 'Chiudi', value: null, color: '#57606f' },
@@ -137,11 +145,11 @@ export function switchToCode(code?: GameValue): GameValue {
     return false;
   }
   saveGame(true);
-  localStorage.setItem(game.LS_PREFIX + 'sims_device_id', code);
-  localStorage.setItem(game.LS_PREFIX + 'sims_adopt_nick', '1');
-  localStorage.removeItem(game.SAVE_KEY);
-  if (!localStorage.getItem(game.LS_PREFIX + 'sims_player_nick'))
-    localStorage.setItem(game.LS_PREFIX + 'sims_player_nick', 'Ospite');
+  localStorage.setItem(game.session.LS_PREFIX + 'sims_device_id', code);
+  localStorage.setItem(game.session.LS_PREFIX + 'sims_adopt_nick', '1');
+  localStorage.removeItem(game.session.SAVE_KEY);
+  if (!localStorage.getItem(game.session.LS_PREFIX + 'sims_player_nick'))
+    localStorage.setItem(game.session.LS_PREFIX + 'sims_player_nick', 'Ospite');
   location.reload();
   return true;
 }
@@ -160,37 +168,36 @@ export async function restoreFromCode(..._args: GameValue[]): Promise<GameValue>
 }
 
 export function resizeCanvas(..._args: GameValue[]): GameValue {
-  if (game.canvas) {
-    game.canvas.width = browser.innerWidth;
-    game.canvas.height = browser.innerHeight;
+  if (game.view.canvas) {
+    game.view.canvas.width = browser.innerWidth;
+    game.view.canvas.height = browser.innerHeight;
   }
 }
 
 export async function startGame(..._args: GameValue[]): Promise<GameValue> {
-  if (game.gameStarted) return;
-  game.gameStarted = true;
+  if (game.session.gameStarted) return;
+  game.session.gameStarted = true;
   try {
     await acquirePlayerSession();
   } catch (error) {
-    game.gameStarted = false;
+    game.session.gameStarted = false;
     toast(error instanceof Error ? error.message : String(error), 6000);
     return;
   }
-  game.myData.nick = (localStorage.getItem(game.LS_PREFIX + 'sims_player_nick') || 'Ospite').slice(
-    0,
-    20,
-  );
+  game.player.myData.nick = (
+    localStorage.getItem(game.session.LS_PREFIX + 'sims_player_nick') || 'Ospite'
+  ).slice(0, 20);
   dom('ui-setup-screen').classList.add('hidden');
   dom('needs-hud').classList.remove('hidden');
   dom('hud-actions').classList.remove('hidden');
-  if (game.OFFLINE) toast('🧪 Modalità prova: nessun dato viene inviato al server', 5000);
+  if (game.session.OFFLINE) toast('🧪 Modalità prova: nessun dato viene inviato al server', 5000);
   setupControls();
   startLoop();
   watchGameVersion();
   await loadGame();
-  if (game.isDead || game.healthLevel <= 0) {
+  if (game.player.isDead || game.player.healthLevel <= 0) {
     // morto in una sessione precedente, oppure durante l'assenza
-    if (!game.isDead) await die();
+    if (!game.player.isDead) await die();
     else writeGrave();
     showDeathScreen();
     return;
@@ -199,13 +206,19 @@ export async function startGame(..._args: GameValue[]): Promise<GameValue> {
   await claimRoom();
   reapAbsentPlayers();
   game.currentApt = hasRoom() ? game.aptOfRoom(game.myAssignedRoomIdx) : 0;
-  game.currentRoomTitle = game.saloonTitle();
-  game.db.ref('sims_rooms_state').on('value', (snapshot?: GameValue): GameValue => {
+  game.view.currentRoomTitle = game.saloonTitle();
+  if (game.player.isSleeping && hasRoom()) {
+    game.view.activeEnvironment = 'PLAYER_ROOM';
+    game.currentRoomIdx = game.myAssignedRoomIdx;
+    game.view.currentRoomTitle = 'La tua stanza 🏠';
+    game.playerPos = { x: game.playerRoomFurniture.bed.x, y: game.playerRoomFurniture.bed.y };
+  }
+  game.session.db.ref('sims_rooms_state').on('value', (snapshot?: GameValue): GameValue => {
     game.roomsState = normalizeRooms(snapshot.val());
     syncVaultFromServer();
     syncMyPinFromRoom();
   });
-  game.db
+  game.session.db
     .ref('sims_graveyard')
     .on('value', (snap?: GameValue): GameValue => rebuildGraveyard(snap.val()));
   startPresence();
@@ -217,7 +230,7 @@ export async function startGame(..._args: GameValue[]): Promise<GameValue> {
   lifetime.setInterval((): GameValue => saveGame(false), 3000);
   lifetime.setInterval((): GameValue => {
     if (hasRoom())
-      game.db.ref(`sims_rooms_state/${game.myAssignedRoomIdx}/lastSeen`).set(Date.now());
+      game.session.db.ref(`sims_rooms_state/${game.myAssignedRoomIdx}/lastSeen`).set(Date.now());
   }, 60000);
   lifetime.listen(browser, 'beforeunload', (): GameValue => saveGame(true));
   lifetime.listen(document, 'visibilitychange', (): GameValue => {
@@ -227,13 +240,13 @@ export async function startGame(..._args: GameValue[]): Promise<GameValue> {
 
 export function writeGrave(..._args: GameValue[]): GameValue {
   const g: GameValue = {
-    name: game.myData.nick,
-    deadAt: game.deadAt || Date.now(),
-    days: Math.floor(game.gameMinutes / 1440) + 1,
+    name: game.player.myData.nick,
+    deadAt: game.player.deadAt || Date.now(),
+    days: Math.floor(game.player.gameMinutes / 1440) + 1,
   };
-  if (game.bornAt) g.lived = Math.max(0, g.deadAt - game.bornAt);
-  if (game.epitaph) g.epitaph = game.epitaph;
+  if (game.player.bornAt) g.lived = Math.max(0, g.deadAt - game.player.bornAt);
+  if (game.player.epitaph) g.epitaph = game.player.epitaph;
   try {
-    game.db.ref('sims_graveyard/' + game.myPlayerId).update(g);
+    game.session.db.ref('sims_graveyard/' + game.session.myPlayerId).update(g);
   } catch (e: GameValue) {} // update: conserva i fiori già lasciati
 }

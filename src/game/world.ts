@@ -1,3 +1,4 @@
+import { purchaseItem, spendMoney, creditMoney } from './economy.js';
 import type { GameValue } from './context.js';
 import { game } from './context.js';
 import { lifetime, dom, browser } from './runtime.js';
@@ -20,8 +21,8 @@ import { sfx } from './audio.js';
 // Il proprietario può cambiare la combinazione della propria cassaforte quando vuole
 export async function changeSafePin(..._args: GameValue[]): Promise<GameValue> {
   if (!hasRoom() || !isMyRoomNow()) return;
-  const room: GameValue = game.roomsState[game.myAssignedRoomIdx];
-  if (!room || room.ownerId !== game.myPlayerId) return;
+  const room: GameValue = game.roomsState[game.myAssignedRoomIdx ?? -1];
+  if (!room || room.ownerId !== game.session.myPlayerId) return;
   const res: GameValue = await openDialog({
     title: game.hasSetSafePin ? '🔑 Cambia combinazione' : '🔑 Imposta combinazione',
     text: 'Scegli la nuova combinazione segreta della cassaforte: 3 cifre da 1 a 5 (es. 135).',
@@ -38,7 +39,7 @@ export async function changeSafePin(..._args: GameValue[]): Promise<GameValue> {
   }
   game.safePinCode = hashPin(res.value, room.id);
   game.hasSetSafePin = true;
-  game.db.ref(`sims_rooms_state/${game.myAssignedRoomIdx}/pin`).set(game.safePinCode);
+  game.session.db.ref(`sims_rooms_state/${game.myAssignedRoomIdx}/pin`).set(game.safePinCode);
   toast('✅ Nuova combinazione salvata!');
 }
 
@@ -143,7 +144,7 @@ export function moveFurnitureToPointer(clientX?: GameValue, clientY?: GameValue)
   if (!game.isMovingFurnitureMode || !game.movingPropKey) return;
   const obj: GameValue = getCurrentFurnitureMap()[game.movingPropKey];
   if (!obj) return;
-  const rect: GameValue = game.canvas.getBoundingClientRect();
+  const rect: GameValue = game.view.canvas.getBoundingClientRect();
   const s: GameValue = isoScale(),
     o: GameValue = isoProject(0, 0, 0);
   const a: GameValue = (clientX - rect.left - o.x) / (0.866 * s); // x - y
@@ -190,10 +191,10 @@ export function toggleSprint(..._args: GameValue[]): GameValue {
 }
 
 export function getCurrentFurnitureMap(..._args: GameValue[]): GameValue {
-  if (game.activeEnvironment === 'PLAYER_ROOM') {
+  if (game.view.activeEnvironment === 'PLAYER_ROOM') {
     if (isMyRoomNow()) return getMyRoomMap();
     // Stanza di un altro: mostra i suoi mobili come li ha sistemati lui
-    let room: GameValue = game.roomsState[game.currentRoomIdx];
+    let room: GameValue = game.roomsState[game.currentRoomIdx ?? -1];
     if (room && room.layout) {
       let m: GameValue = {};
       Object.keys(room.layout).forEach(
@@ -203,16 +204,16 @@ export function getCurrentFurnitureMap(..._args: GameValue[]): GameValue {
     }
     return Object.assign({}, game.playerRoomFurniture);
   }
-  if (game.activeEnvironment === 'KITCHEN') return game.kitchenFurniture;
-  if (game.activeEnvironment === 'BATHROOM') return game.bathroomFurniture;
-  if (game.activeEnvironment === 'SALOON') return game.saloonDoors;
-  if (game.activeEnvironment === 'CORTILE') return game.courtyardDoors;
-  if (game.activeEnvironment === 'negozio_mobili') return game.storeFloorFurniture;
-  if (game.activeEnvironment === 'negozio_vestiti') return game.clothesStoreFurniture;
-  if (game.activeEnvironment === 'CIMITERO') return game.graveMap;
-  if (game.MG.active && game.activeEnvironment === 'lavoro_' + game.MG.job) return game.MG.map;
-  if (game.activeEnvironment === 'bar') return game.barMap;
-  if (game.activeEnvironment === 'discoteca') return game.discoMap;
+  if (game.view.activeEnvironment === 'KITCHEN') return game.kitchenFurniture;
+  if (game.view.activeEnvironment === 'BATHROOM') return game.bathroomFurniture;
+  if (game.view.activeEnvironment === 'SALOON') return game.saloonDoors;
+  if (game.view.activeEnvironment === 'CORTILE') return game.courtyardDoors;
+  if (game.view.activeEnvironment === 'negozio_mobili') return game.storeFloorFurniture;
+  if (game.view.activeEnvironment === 'negozio_vestiti') return game.clothesStoreFurniture;
+  if (game.view.activeEnvironment === 'CIMITERO') return game.graveMap;
+  if (game.MG.active && game.view.activeEnvironment === 'lavoro_' + game.MG.job) return game.MG.map;
+  if (game.view.activeEnvironment === 'bar') return game.barMap;
+  if (game.view.activeEnvironment === 'discoteca') return game.discoMap;
   return {};
 }
 
@@ -241,7 +242,7 @@ export function checkProximity(..._args: GameValue[]): GameValue {
   const btnWork: GameValue = dom('btn-act-work');
   const btnCem: GameValue = dom('btn-act-cemetery');
   const btnDisco: GameValue = dom('btn-act-disco');
-  if (!game.isOutsideMenuOpen) {
+  if (!game.view.isOutsideMenuOpen) {
     btnWalk.classList.add('hidden');
     btnBar.classList.add('hidden');
     btnTrip.classList.add('hidden');
@@ -255,9 +256,9 @@ export function checkProximity(..._args: GameValue[]): GameValue {
     game.activeTargetProp = found;
     pop.classList.remove('hidden');
     let item: GameValue = map[found];
-    if (game.activeEnvironment === 'SALOON') {
+    if (game.view.activeEnvironment === 'SALOON') {
       if (found === 'exitHouse') {
-        if (!game.isOutsideMenuOpen) {
+        if (!game.view.isOutsideMenuOpen) {
           btnMain.innerText = '🚪 Esci di Casa';
           btnMain.classList.remove('btn-pop-locked');
           btnSub.classList.add('hidden');
@@ -273,7 +274,7 @@ export function checkProximity(..._args: GameValue[]): GameValue {
           btnDisco.classList.remove('hidden');
         }
       } else if (item.roomIdx !== undefined) {
-        game.isOutsideMenuOpen = false;
+        game.view.isOutsideMenuOpen = false;
         let room: GameValue = game.roomsState[game.gRoomIdx(item)];
         if (!room || !room.owner) {
           btnMain.innerText = `🔒 Stanza Vuota (Chiusa)`;
@@ -287,19 +288,19 @@ export function checkProximity(..._args: GameValue[]): GameValue {
           btnSub.classList.add('hidden');
         }
       } else {
-        game.isOutsideMenuOpen = false;
+        game.view.isOutsideMenuOpen = false;
         btnMain.innerText = `✋ ${item.name}`;
         btnMain.classList.remove('btn-pop-locked');
         btnSub.classList.add('hidden');
       }
-    } else if (game.activeEnvironment === 'negozio_vestiti') {
+    } else if (game.view.activeEnvironment === 'negozio_vestiti') {
       btnMain.classList.remove('btn-pop-locked');
       btnSub.classList.add('hidden');
       if (found === 'clothesCounter') btnMain.innerText = '🛍️ Sfoglia tutto il catalogo';
       else if (item.slot)
         btnMain.innerText = `${game.SLOT_INFO[item.slot].icon} Guarda ${game.SLOT_INFO[item.slot].label}`;
       else btnMain.innerText = '🚪 Torna Fuori';
-    } else if (game.activeEnvironment === 'negozio_mobili') {
+    } else if (game.view.activeEnvironment === 'negozio_mobili') {
       btnMain.classList.remove('btn-pop-locked');
       if (found === 'shopCounter') {
         btnMain.innerText = '🛋️ Apri Catalogo Web Showroom';
@@ -311,8 +312,8 @@ export function checkProximity(..._args: GameValue[]): GameValue {
         let luxItem: GameValue = game.furnitureCatalog.find(
           (f?: GameValue): GameValue => f.category === item.category && f.isLuxury,
         );
-        let hasStd: GameValue = game.ownedFurniture[stdItem.id];
-        let hasLux: GameValue = game.ownedFurniture[luxItem.id];
+        let hasStd: GameValue = game.player.ownedFurniture[stdItem.id];
+        let hasLux: GameValue = game.player.ownedFurniture[luxItem.id];
         if (!hasStd) {
           btnMain.innerText = `🛒 Acquista ${stdItem.name} (${stdItem.price} €)`;
           btnSub.classList.add('hidden');
@@ -328,29 +329,32 @@ export function checkProximity(..._args: GameValue[]): GameValue {
         btnMain.innerText = `🚪 Torna Fuori`;
         btnSub.classList.add('hidden');
       }
-    } else if (game.activeEnvironment === 'bar' || game.activeEnvironment === 'discoteca') {
+    } else if (
+      game.view.activeEnvironment === 'bar' ||
+      game.view.activeEnvironment === 'discoteca'
+    ) {
       btnMain.innerText = '🕴️ Parla con lo spacciatore';
       btnMain.classList.remove('btn-pop-locked');
       btnSub.classList.add('hidden');
-    } else if (game.MG.active && game.activeEnvironment === 'lavoro_' + game.MG.job) {
+    } else if (game.MG.active && game.view.activeEnvironment === 'lavoro_' + game.MG.job) {
       btnMain.innerText = mgButtonText(item);
       btnMain.classList.toggle('btn-pop-locked', item.kind === 'target' && !game.MG.carry);
       btnSub.classList.add('hidden');
-    } else if (game.activeEnvironment === 'CIMITERO') {
+    } else if (game.view.activeEnvironment === 'CIMITERO') {
       btnMain.innerText =
         item.kind === 'memorial'
           ? '📜 Leggi il registro dei defunti'
           : `🪦 Leggi la lapide di ${item.who}`;
       btnMain.classList.remove('btn-pop-locked');
       btnSub.classList.add('hidden');
-    } else if (game.activeEnvironment === 'CORTILE') {
+    } else if (game.view.activeEnvironment === 'CORTILE') {
       const mine: GameValue = hasRoom() && game.aptOfRoom(game.myAssignedRoomIdx) === item.aptIdx;
       btnMain.innerText = mine
         ? '🚪 Entra nel tuo appartamento 🏠'
         : `🚪 Entra nell'Appartamento ${item.aptIdx + 1} (${freeRoomsInApt(item.aptIdx)} stanze libere)`;
       btnMain.classList.remove('btn-pop-locked');
       btnSub.classList.add('hidden');
-    } else if (game.activeEnvironment === 'PLAYER_ROOM') {
+    } else if (game.view.activeEnvironment === 'PLAYER_ROOM') {
       if (found === 'safe') {
         let isMyRoom: GameValue = isMyRoomNow();
         btnMain.innerText = isMyRoom
@@ -366,7 +370,7 @@ export function checkProximity(..._args: GameValue[]): GameValue {
           btnSub.classList.add('hidden');
         }
       } else if (found === 'bed') {
-        btnMain.innerText = game.isSleeping ? '⏰ Svegliati' : '😴 Coricati a Letto';
+        btnMain.innerText = game.player.isSleeping ? '⏰ Svegliati' : '😴 Coricati a Letto';
         btnMain.classList.remove('btn-pop-locked');
         btnSub.classList.add('hidden');
       } else if (found === 'sofa' || found === 'tv') {
@@ -378,15 +382,15 @@ export function checkProximity(..._args: GameValue[]): GameValue {
         btnMain.classList.remove('btn-pop-locked');
         btnSub.classList.add('hidden');
       }
-    } else if (game.activeEnvironment === 'KITCHEN') {
+    } else if (game.view.activeEnvironment === 'KITCHEN') {
       btnMain.classList.remove('btn-pop-locked');
       if (found === 'fridge') {
-        if (!game.fridgeIsOpen) {
+        if (!game.view.fridgeIsOpen) {
           btnMain.innerText = '🧊 Apri Frigorifero';
           btnSub.classList.add('hidden');
         } else {
           btnMain.innerText = '🧊 Chiudi Frigorifero';
-          if (!game.hasFoodInInventory) {
+          if (!game.player.hasFoodInInventory) {
             btnSub.innerText = '🍎 Prendi Cibo (-5 €)';
             btnSub.classList.remove('hidden');
           } else {
@@ -394,10 +398,10 @@ export function checkProximity(..._args: GameValue[]): GameValue {
           }
         }
       } else if (found === 'stove') {
-        if (game.hasFoodInInventory && !game.foodIsCooked) {
+        if (game.player.hasFoodInInventory && !game.player.foodIsCooked) {
           btnMain.innerText = '🍳 Cucina Cibo';
           btnSub.classList.add('hidden');
-        } else if (game.foodIsCooked) {
+        } else if (game.player.foodIsCooked) {
           btnMain.innerText = '🍽️ Mangia';
           btnSub.classList.add('hidden');
         } else {
@@ -420,12 +424,12 @@ export function checkProximity(..._args: GameValue[]): GameValue {
       btnMain.innerText = `✋ ${item.name}`;
       btnSub.classList.add('hidden');
     }
-    if (game.activeEnvironment === 'BATHROOM' && found === 'shower') {
+    if (game.view.activeEnvironment === 'BATHROOM' && found === 'shower') {
       btnMain.innerText = game.showerAnim ? '🚿 Doccia in corso…' : '🚿 Fai la doccia';
       btnMain.classList.toggle('btn-pop-locked', !!game.showerAnim);
     }
     if (item.moveable && isMyRoomNow()) {
-      if (found === 'bed' && game.isSleeping) {
+      if (found === 'bed' && game.player.isSleeping) {
         btnMove.classList.add('hidden');
       } else {
         btnMove.classList.remove('hidden');
@@ -435,32 +439,32 @@ export function checkProximity(..._args: GameValue[]): GameValue {
     }
   } else {
     game.activeTargetProp = null;
-    if (!game.isOutsideMenuOpen) {
+    if (!game.view.isOutsideMenuOpen) {
       pop.classList.add('hidden');
     }
   }
 }
 
-export function handleObjectInteract(..._args: GameValue[]): GameValue {
+export async function handleObjectInteract(..._args: GameValue[]): Promise<void> {
   if (!game.activeTargetProp) return;
   if (game.showerAnim) return;
   let map: GameValue = getCurrentFurnitureMap();
   let item: GameValue = map[game.activeTargetProp];
-  if (game.activeEnvironment === 'CIMITERO') {
+  if (game.view.activeEnvironment === 'CIMITERO') {
     if (item) showGraveInfo(item);
     return;
   }
-  if (game.MG.active && game.activeEnvironment === 'lavoro_' + game.MG.job) {
+  if (game.MG.active && game.view.activeEnvironment === 'lavoro_' + game.MG.job) {
     if (item) mgInteract(item, game.activeTargetProp);
     return;
   }
-  if (game.activeEnvironment === 'bar' || game.activeEnvironment === 'discoteca') {
+  if (game.view.activeEnvironment === 'bar' || game.view.activeEnvironment === 'discoteca') {
     if (item) openDealer();
     return;
   }
-  if (game.activeEnvironment === 'SALOON') {
+  if (game.view.activeEnvironment === 'SALOON') {
     if (game.activeTargetProp === 'exitHouse') {
-      game.isOutsideMenuOpen = !game.isOutsideMenuOpen;
+      game.view.isOutsideMenuOpen = !game.view.isOutsideMenuOpen;
       const btnWalk: GameValue = dom('btn-act-walk');
       const btnBar: GameValue = dom('btn-act-bar');
       const btnTrip: GameValue = dom('btn-act-trip');
@@ -469,7 +473,7 @@ export function handleObjectInteract(..._args: GameValue[]): GameValue {
       const btnWork: GameValue = dom('btn-act-work');
       const btnCem: GameValue = dom('btn-act-cemetery');
       const btnDisco: GameValue = dom('btn-act-disco');
-      if (game.isOutsideMenuOpen) {
+      if (game.view.isOutsideMenuOpen) {
         dom('btn-act-main').innerText = '🚪 Chiudi Menu Uscita';
         btnWalk.classList.remove('hidden');
         btnBar.classList.remove('hidden');
@@ -497,37 +501,37 @@ export function handleObjectInteract(..._args: GameValue[]): GameValue {
         toast('🔒 Questa stanza è vuota.');
         return;
       }
-      game.currentRoomTitle =
+      game.view.currentRoomTitle =
         gi === game.myAssignedRoomIdx ? `La tua stanza 🏠` : `Stanza di ${room.owner}`;
       game.currentRoomIdx = gi;
-      game.activeEnvironment = 'PLAYER_ROOM';
+      game.view.activeEnvironment = 'PLAYER_ROOM';
       game.playerPos = { x: 0, y: 120 };
     } else {
-      game.currentRoomTitle = item.title;
-      game.activeEnvironment = item.targetEnv;
+      game.view.currentRoomTitle = item.title;
+      game.view.activeEnvironment = item.targetEnv;
       game.playerPos = { x: 0, y: 120 };
     }
-  } else if (game.activeEnvironment === 'CORTILE') {
+  } else if (game.view.activeEnvironment === 'CORTILE') {
     if (item && item.aptIdx !== undefined) {
       game.currentApt = item.aptIdx;
-      game.activeEnvironment = 'SALOON';
-      game.currentRoomTitle = game.saloonTitle();
+      game.view.activeEnvironment = 'SALOON';
+      game.view.currentRoomTitle = game.saloonTitle();
       game.playerPos = { x: 0, y: -90 };
     }
-  } else if (game.activeEnvironment === 'negozio_vestiti') {
+  } else if (game.view.activeEnvironment === 'negozio_vestiti') {
     if (game.activeTargetProp === 'doorExit') {
-      game.activeEnvironment = 'SALOON';
-      game.currentRoomTitle = game.saloonTitle();
+      game.view.activeEnvironment = 'SALOON';
+      game.view.currentRoomTitle = game.saloonTitle();
       game.playerPos = { x: 0, y: 0 };
     } else {
       openClothesShop(item.slot || 'top', false);
     }
-  } else if (game.activeEnvironment === 'negozio_mobili') {
+  } else if (game.view.activeEnvironment === 'negozio_mobili') {
     if (game.activeTargetProp === 'shopCounter') {
       openFurnitureShopModal();
     } else if (game.activeTargetProp === 'doorExit') {
-      game.activeEnvironment = 'SALOON';
-      game.currentRoomTitle = game.saloonTitle();
+      game.view.activeEnvironment = 'SALOON';
+      game.view.currentRoomTitle = game.saloonTitle();
       game.playerPos = { x: 0, y: 0 };
     } else if (item.category) {
       let stdItem: GameValue = game.furnitureCatalog.find(
@@ -536,74 +540,72 @@ export function handleObjectInteract(..._args: GameValue[]): GameValue {
       let luxItem: GameValue = game.furnitureCatalog.find(
         (f?: GameValue): GameValue => f.category === item.category && f.isLuxury,
       );
-      let hasStd: GameValue = game.ownedFurniture[stdItem.id];
-      let hasLux: GameValue = game.ownedFurniture[luxItem.id];
+      let hasStd: GameValue = game.player.ownedFurniture[stdItem.id];
+      let hasLux: GameValue = game.player.ownedFurniture[luxItem.id];
       if (!hasStd) {
         if (game.moneyLevel < stdItem.price) {
           toast('Non hai abbastanza soldi per acquistare questo mobile!');
           return;
         }
-        game.moneyLevel -= stdItem.price;
-        game.ownedFurniture[stdItem.id] = true;
+        if (!(await purchaseItem('ownedFurniture', stdItem.id, stdItem.price))) return;
         toast(`✅ Hai acquistato ${stdItem.name}! È comparso nella tua stanza.`);
       } else if (!hasLux) {
         if (game.moneyLevel < luxItem.price) {
           toast('Non hai abbastanza soldi per acquistare la versione di lusso!');
           return;
         }
-        game.moneyLevel -= luxItem.price;
-        game.ownedFurniture[luxItem.id] = true;
+        if (!(await purchaseItem('ownedFurniture', luxItem.id, luxItem.price))) return;
         toast(
           `✨ Complimenti! Hai acquistato ${luxItem.name}. La versione standard è stata sostituita dal modello di lusso nella tua stanza!`,
         );
       }
     }
-  } else if (game.activeEnvironment === 'KITCHEN') {
+  } else if (game.view.activeEnvironment === 'KITCHEN') {
     if (game.activeTargetProp === 'fridge') {
-      game.fridgeIsOpen = !game.fridgeIsOpen;
-      if (!game.fridgeIsOpen) game.hasFoodInInventory = false;
+      game.view.fridgeIsOpen = !game.view.fridgeIsOpen;
+      if (!game.view.fridgeIsOpen) game.player.hasFoodInInventory = false;
     } else if (game.activeTargetProp === 'coffee') {
       useCoffee();
     } else if (game.activeTargetProp === 'stove') {
-      if (game.hasFoodInInventory && !game.foodIsCooked) {
-        game.foodIsCooked = true;
+      if (game.player.hasFoodInInventory && !game.player.foodIsCooked) {
+        game.player.foodIsCooked = true;
         toast('Hai cucinato il cibo! 🍽️');
-      } else if (game.foodIsCooked) {
-        game.hungerLevel = Math.min(100, game.hungerLevel + 50);
-        game.stats.meals++;
-        game.hasFoodInInventory = false;
-        game.foodIsCooked = false;
-        game.fridgeIsOpen = false;
+      } else if (game.player.foodIsCooked) {
+        game.player.hungerLevel = Math.min(100, game.player.hungerLevel + 50);
+        game.player.stats.meals++;
+        game.player.hasFoodInInventory = false;
+        game.player.foodIsCooked = false;
+        game.view.fridgeIsOpen = false;
         toast('Gnam! Fame +50%');
       }
     } else if (game.activeTargetProp === 'doorExit') {
-      game.activeEnvironment = 'SALOON';
-      game.currentRoomTitle = game.saloonTitle();
+      game.view.activeEnvironment = 'SALOON';
+      game.view.currentRoomTitle = game.saloonTitle();
       game.playerPos = { x: 0, y: 0 };
     }
-  } else if (game.activeEnvironment === 'BATHROOM') {
+  } else if (game.view.activeEnvironment === 'BATHROOM') {
     if (game.activeTargetProp === 'shower') {
       startShower();
     } else if (game.activeTargetProp === 'sink') {
-      game.hygieneLevel = Math.min(100, game.hygieneLevel + 20);
+      game.player.hygieneLevel = Math.min(100, game.player.hygieneLevel + 20);
       toast('Ti sei lavato mani e viso 🚰 (Igiene +20%)');
     } else if (game.activeTargetProp === 'toilet') {
-      game.happinessLevel = Math.min(100, game.happinessLevel + 5);
+      game.player.happinessLevel = Math.min(100, game.player.happinessLevel + 5);
       toast('Che sollievo! 🚽 (Felicità +5%)');
     } else if (game.activeTargetProp === 'doorExit') {
-      game.activeEnvironment = 'SALOON';
-      game.currentRoomTitle = game.saloonTitle();
+      game.view.activeEnvironment = 'SALOON';
+      game.view.currentRoomTitle = game.saloonTitle();
       game.playerPos = { x: 0, y: 0 };
     }
   } else {
     if (game.activeTargetProp === 'doorExit') {
-      game.activeEnvironment = 'SALOON';
-      game.currentRoomTitle = game.saloonTitle();
+      game.view.activeEnvironment = 'SALOON';
+      game.view.currentRoomTitle = game.saloonTitle();
       game.playerPos = { x: 0, y: 0 };
     } else if (game.activeTargetProp === 'bed') {
-      game.isSleeping = !game.isSleeping;
-      sfx(game.isSleeping ? 'sleep' : 'wake');
-      toast(game.isSleeping ? 'Ti sei coricato a letto 🛏️' : 'Ti sei svegliato.');
+      game.player.isSleeping = !game.player.isSleeping;
+      sfx(game.player.isSleeping ? 'sleep' : 'wake');
+      toast(game.player.isSleeping ? 'Ti sei coricato a letto 🛏️' : 'Ti sei svegliato.');
     } else if (game.activeTargetProp === 'wardrobe') {
       if (isMyRoomNow()) openWardrobe();
       else toast("🚫 Non puoi frugare nell'armadio di un altro!");
@@ -618,9 +620,11 @@ export function handleObjectInteract(..._args: GameValue[]): GameValue {
 }
 
 export async function handleSafeInteraction(..._args: GameValue[]): Promise<GameValue> {
-  const room: GameValue = game.roomsState[game.currentRoomIdx];
+  const room: GameValue = game.roomsState[game.currentRoomIdx ?? -1];
   if (!room) return;
-  const vaultRef: GameValue = game.db.ref(`sims_rooms_state/${game.currentRoomIdx}/vaultMoney`);
+  const vaultRef: GameValue = game.session.db.ref(
+    `sims_rooms_state/${game.currentRoomIdx}/vaultMoney`,
+  );
   if (isMyRoomNow()) {
     const buttons: GameValue = [{ label: 'Chiudi', value: null, color: '#57606f' }];
     buttons.push({
@@ -669,7 +673,7 @@ export async function handleSafeInteraction(..._args: GameValue[]): Promise<Game
       return 0;
     });
     if (r && r.committed && stolen > 0) {
-      game.moneyLevel += stolen;
+      if (!(await creditMoney(stolen))) return;
       saveGame(true);
       toast(`🎉 COLPO RIUSCITO! Hai rubato ${stolen} € dalla cassaforte! 💰`, 4000);
     } else {
@@ -680,59 +684,68 @@ export async function handleSafeInteraction(..._args: GameValue[]): Promise<Game
   }
 }
 
-export function doActivity(type?: GameValue): GameValue {
-  game.isOutsideMenuOpen = false;
+export async function doActivity(type?: GameValue): Promise<void> {
+  game.view.isOutsideMenuOpen = false;
   dom('pop-interaction').classList.add('hidden');
   dom('btn-return-home').classList.remove('hidden');
   if (type === 'walk') {
-    game.happinessLevel = Math.min(100, game.happinessLevel + 10);
-    game.healthLevel = Math.min(100, game.healthLevel + 5);
-    game.sleepLevel = Math.max(0, game.sleepLevel - 5); // la passeggiata stanca un po'
-    game.activeEnvironment = 'passeggiata';
-    game.currentRoomTitle = 'Passeggiata nel Parco 🌳';
+    game.player.happinessLevel = Math.min(100, game.player.happinessLevel + 10);
+    game.player.healthLevel = Math.min(100, game.player.healthLevel + 5);
+    game.player.sleepLevel = Math.max(0, game.player.sleepLevel - 5); // la passeggiata stanca un po'
+    game.view.activeEnvironment = 'passeggiata';
+    game.view.currentRoomTitle = 'Passeggiata nel Parco 🌳';
   } else if (type === 'bar') {
     if (game.moneyLevel < 10) {
       toast('Non hai abbastanza soldi! Ti servono almeno 10 €.');
       returnHomeFromActivity();
       return;
     }
-    game.moneyLevel -= 10;
-    game.happinessLevel = Math.min(100, game.happinessLevel + 15);
-    game.hungerLevel = Math.min(100, game.hungerLevel + 15);
-    game.activeEnvironment = 'bar';
-    game.currentRoomTitle = "Bar all'Aperto ☕";
+    if (!(await spendMoney(10))) {
+      returnHomeFromActivity();
+      return;
+    }
+    game.player.happinessLevel = Math.min(100, game.player.happinessLevel + 15);
+    game.player.hungerLevel = Math.min(100, game.player.hungerLevel + 15);
+    game.view.activeEnvironment = 'bar';
+    game.view.currentRoomTitle = "Bar all'Aperto ☕";
   } else if (type === 'disco') {
     if (game.moneyLevel < game.DISCO_PRICE) {
       toast(`Non hai abbastanza soldi! L'ingresso costa ${game.DISCO_PRICE} €.`);
       returnHomeFromActivity();
       return;
     }
-    game.moneyLevel -= game.DISCO_PRICE;
-    game.happinessLevel = Math.min(100, game.happinessLevel + game.DISCO_HAPPY);
-    game.sleepLevel = Math.max(0, game.sleepLevel - game.DISCO_SLEEP);
-    game.activeEnvironment = 'discoteca';
-    game.currentRoomTitle = 'Discoteca 🪩';
+    if (!(await spendMoney(game.DISCO_PRICE))) {
+      returnHomeFromActivity();
+      return;
+    }
+    game.player.happinessLevel = Math.min(100, game.player.happinessLevel + game.DISCO_HAPPY);
+    game.player.sleepLevel = Math.max(0, game.player.sleepLevel - game.DISCO_SLEEP);
+    game.view.activeEnvironment = 'discoteca';
+    game.view.currentRoomTitle = 'Discoteca 🪩';
     toast(`🪩 Si balla! Felicità +${game.DISCO_HAPPY}%, sonno −${game.DISCO_SLEEP}%`, 3500);
   } else if (type === 'cemetery') {
-    game.activeEnvironment = 'CIMITERO';
-    game.currentRoomTitle = `Cimitero 🪦 (${game.graveList.length} ${game.graveList.length === 1 ? 'lapide' : 'lapidi'})`;
+    game.view.activeEnvironment = 'CIMITERO';
+    game.view.currentRoomTitle = `Cimitero 🪦 (${game.graveList.length} ${game.graveList.length === 1 ? 'lapide' : 'lapidi'})`;
     game.playerPos = { x: 0, y: 140 };
   } else if (type === 'trip') {
     let cost: GameValue = Math.floor(game.moneyLevel * 0.2);
-    game.moneyLevel -= cost;
+    if (!(await spendMoney(cost))) {
+      returnHomeFromActivity();
+      return;
+    }
     toast(`✈️ Viaggio pagato: -${cost} €`);
-    game.happinessLevel = Math.min(100, game.happinessLevel + 70);
-    game.activeEnvironment = 'viaggio';
-    game.currentRoomTitle = 'Viaggio ✈️';
+    game.player.happinessLevel = Math.min(100, game.player.happinessLevel + 70);
+    game.view.activeEnvironment = 'viaggio';
+    game.view.currentRoomTitle = 'Viaggio ✈️';
   } else if (type === 'clothesshop') {
-    game.activeEnvironment = 'negozio_vestiti';
-    game.currentRoomTitle = 'Boutique Dolce Casa 👗';
+    game.view.activeEnvironment = 'negozio_vestiti';
+    game.view.currentRoomTitle = 'Boutique Dolce Casa 👗';
     dom('btn-return-home').classList.add('hidden');
     game.playerPos = { x: 0, y: 110 };
     return;
   } else if (type === 'furnitureshop') {
-    game.activeEnvironment = 'negozio_mobili';
-    game.currentRoomTitle = 'Negozio di Mobili 🛋️';
+    game.view.activeEnvironment = 'negozio_mobili';
+    game.view.currentRoomTitle = 'Negozio di Mobili 🛋️';
     dom('btn-return-home').classList.add('hidden');
     game.playerPos = { x: 0, y: 110 };
     return;
@@ -744,7 +757,7 @@ export function openFurnitureShopModal(..._args: GameValue[]): GameValue {
   const container: GameValue = dom('furniture-catalog-container');
   container.innerHTML = '';
   game.furnitureCatalog.forEach((item?: GameValue): GameValue => {
-    const isOwned: GameValue = game.ownedFurniture[item.id];
+    const isOwned: GameValue = game.player.ownedFurniture[item.id];
     const card: GameValue = document.createElement('div');
     card.className = 'shop-item-card';
     card.innerHTML = `
@@ -752,7 +765,7 @@ export function openFurnitureShopModal(..._args: GameValue[]): GameValue {
             <h4>${item.name}</h4>
             <p>💰 ${item.price} €</p>
           </div>
-          <button class="btn-buy ${isOwned ? 'owned' : ''}" onclick="buyFurnitureItem('${item.id}', ${item.price})">
+          <button class="btn-buy ${isOwned ? 'owned' : ''}" data-action="buyFurnitureItem" data-arg="${item.id}">
             ${isOwned ? 'Acquistato ✓' : 'Acquista'}
           </button>
         `;
@@ -761,8 +774,11 @@ export function openFurnitureShopModal(..._args: GameValue[]): GameValue {
   dom('furniture-shop-modal').classList.remove('hidden');
 }
 
-export function buyFurnitureItem(itemId?: GameValue, price?: GameValue): GameValue {
-  if (game.ownedFurniture[itemId]) {
+export async function buyFurnitureItem(itemId: string): Promise<void> {
+  const definition = game.furnitureCatalog.find((item: { id: string }) => item.id === itemId);
+  if (!definition) return;
+  const price: number = definition.price;
+  if (game.player.ownedFurniture[itemId]) {
     toast('Hai già acquistato questo mobile!');
     return;
   }
@@ -770,8 +786,7 @@ export function buyFurnitureItem(itemId?: GameValue, price?: GameValue): GameVal
     toast('Non hai abbastanza soldi per acquistare questo mobile!');
     return;
   }
-  game.moneyLevel -= price;
-  game.ownedFurniture[itemId] = true;
+  if (!(await purchaseItem('ownedFurniture', itemId, price))) return;
   let def: GameValue = game.furnitureCatalog.find((f?: GameValue): GameValue => f.id === itemId);
   if (def && def.isLuxury) {
     toast('✨ Versione di lusso acquistata! Ha sostituito il modello standard nella tua stanza.');
@@ -785,18 +800,18 @@ export function buyFurnitureItem(itemId?: GameValue, price?: GameValue): GameVal
 export function handleJobMenuAction(..._args: GameValue[]): GameValue {
   const modal: GameValue = dom('job-select-modal');
   modal.classList.remove('hidden');
-  let statusText: GameValue = game.activeJobKey
-    ? `Attivo: ${game.activeJobKey.toUpperCase()}`
+  let statusText: GameValue = game.player.activeJobKey
+    ? `Attivo: ${game.player.activeJobKey.toUpperCase()}`
     : 'Nessun lavoro attivo';
   dom('current-job-status').innerText = 'Lavoro Attivo: ' + statusText;
-  Object.keys(game.jobExperience).forEach((key?: GameValue): GameValue => {
+  Object.keys(game.player.jobExperience).forEach((key?: GameValue): GameValue => {
     let el: GameValue = dom('count-' + key);
-    if (el) el.innerText = game.jobExperience[key];
+    if (el) el.innerText = game.player.jobExperience[key];
   });
   const choicesContainer: GameValue = dom('job-choices-container');
   const continueContainer: GameValue = dom('job-continue-container');
   const titleEl: GameValue = dom('job-modal-title');
-  if (!game.activeJobKey) {
+  if (!game.player.activeJobKey) {
     // Se non ha un lavoro attivo, mostra direttamente le scelte
     titleEl.innerText = '💼 Agenzia di Lavoro';
     choicesContainer.classList.remove('hidden');
@@ -816,46 +831,49 @@ export function showJobAgencySelection(..._args: GameValue[]): GameValue {
 }
 
 export function continueCurrentJob(..._args: GameValue[]): GameValue {
-  if (!game.activeJobKey) return;
+  if (!game.player.activeJobKey) return;
   let jobTitles: GameValue = {
     cantiere: 'Cantiere 🏗️',
     ospedale: 'Ospedale 🏥',
     ristorante: 'Ristorante 🍳',
     ufficio: 'Ufficio 💻',
   };
-  chooseOrGoToJob(game.activeJobKey, jobTitles[game.activeJobKey] || game.activeJobKey);
+  chooseOrGoToJob(
+    game.player.activeJobKey,
+    jobTitles[game.player.activeJobKey] || game.player.activeJobKey,
+  );
 }
 
 export async function chooseOrGoToJob(
   jobKey?: GameValue,
   jobTitleName?: GameValue,
 ): Promise<GameValue> {
-  if (game.activeJobKey && game.activeJobKey !== jobKey) {
+  if (game.player.activeJobKey && game.player.activeJobKey !== jobKey) {
     const res: GameValue = await openDialog({
       title: '⚠️ Cambiare lavoro?',
-      text: `Hai già un lavoro attivo (${game.activeJobKey.toUpperCase()}). Se cambi perdi i turni accumulati e ricominci da 50 € a turno.`,
+      text: `Hai già un lavoro attivo (${game.player.activeJobKey.toUpperCase()}). Se cambi perdi i turni accumulati e ricominci da 50 € a turno.`,
       buttons: [
         { label: 'No', value: null, color: '#57606f' },
         { label: 'Sì, cambia', value: 'ok', color: '#e74c3c' },
       ],
     });
     if (res.action !== 'ok') return;
-    game.jobExperience[game.activeJobKey] = 0;
+    game.player.jobExperience[game.player.activeJobKey] = 0;
   }
-  if (game.sleepLevel < 10 || game.healthLevel < 15) {
+  if (game.player.sleepLevel < 10 || game.player.healthLevel < 15) {
     toast('😵 Sei troppo stanco o malato per lavorare. Riposati prima!');
     return;
   }
-  game.activeJobKey = jobKey;
-  let turns: GameValue = (game.jobExperience[jobKey] || 0) + 1;
+  game.player.activeJobKey = jobKey;
+  let turns: GameValue = (game.player.jobExperience[jobKey] || 0) + 1;
   let pay: GameValue = turns >= 60 ? 120 : turns >= 30 ? 80 : 50;
   game.activeShift = { jobKey, title: jobTitleName, pay, remaining: game.SHIFT_SECONDS };
-  game.isOutsideMenuOpen = false;
+  game.view.isOutsideMenuOpen = false;
   dom('pop-interaction').classList.add('hidden');
   dom('job-select-modal').classList.add('hidden');
   dom('btn-return-home').classList.remove('hidden');
-  game.activeEnvironment = 'lavoro_' + jobKey;
-  game.currentRoomTitle = jobTitleName;
+  game.view.activeEnvironment = 'lavoro_' + jobKey;
+  game.view.currentRoomTitle = jobTitleName;
   game.playerPos = { x: 0, y: 60 };
   mgStart(jobKey);
   toast(

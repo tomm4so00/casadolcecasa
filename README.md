@@ -35,9 +35,11 @@ illuminazione e ambienti, dipendenza, morte e cimitero.
 Il sistema missioni è mantenuto, con catalogo vuoto come nella v8 originale.
 
 Il bilanciamento è quello della v8: ad esempio il recupero completo del riposo
-richiede otto ore reali prima degli eventuali bonus del letto. Il tempo passa
+richiede otto ore reali prima degli eventuali bonus del letto. Al riposo completo
+il personaggio si sveglia automaticamente, anche a gioco aperto. Il tempo passa
 anche durante l'assenza tramite `catchUpOffline`; vengono aggiornati anche gli
-altri bisogni. La versione precedente del prototipo usava valori differenti.
+altri bisogni e lo stesso bonus di salute del gioco aperto. Il sonno ancora
+in corso viene ripreso nella propria stanza al rientro. La versione precedente del prototipo usava valori differenti.
 
 ## Salvataggi e Firebase
 
@@ -99,7 +101,12 @@ src/game/
   accounts.ts, runtime.ts      accesso, sessione e collegamenti con il browser
   database.ts                 contratto database e simulazione locale
   save-model.ts, saves.ts      formato, importazione e salvataggi v8
-  context.ts, initialize.ts    stato e inizializzazione ordinata
+  context.ts, models.ts        stato tipizzato di personaggio, sessione e vista
+  initialize.ts               inizializzazione ordinata
+  economy.ts, room-economy.ts  soldi, acquisti e portafogli confermati insieme
+  simulation.ts, needs-rules.ts calcolo comune dei bisogni durante gioco e assenza
+  ui-actions.ts, ui-bindings.ts eventi senza funzioni globali o onclick HTML
+  market-client.ts            lettura delle quotazioni condivise
   data/catalogues.ts          cataloghi, ambienti e dati statici
   character.ts                vestiti, armadio e negozi
   world.ts, jobs.ts            interazioni, movimenti, carriera e minigiochi
@@ -115,17 +122,41 @@ css/style.css                  stile del gioco completo
 tests/                        test unitari, parità e prove browser
 ```
 
-La migrazione conserva i corpi delle funzioni della v8 e li separa per dominio.
-Il compilatore TypeScript resta in modalità `strict` con controlli sugli elementi
-inutilizzati. Il formato dei salvataggi, il database e il ciclo di vita hanno
-contratti espliciti; i cataloghi e le azioni polimorfe provenienti dal monolite
-usano ancora il tipo di compatibilità `GameValue`, dichiarato in un solo punto.
-Non è quindi una promessa di tipizzazione dettagliata di ogni singolo oggetto v8.
+La migrazione conserva la provenienza delle funzioni v8, documentando anche quelle
+sostituite dai servizi condivisi. Il compilatore TypeScript resta in modalità
+`strict`. Personaggio, sessione e vista sono separati in `game.player`,
+`game.session` e `game.view`; salvataggi, stanze, cataloghi, portafogli, messaggi e
+dialoghi hanno contratti espliciti. I dati caricati sono validati prima dell'uso.
+Le parti grafiche e alcune azioni legacy usano ancora `GameValue`: la tipizzazione
+dettagliata del vecchio renderer rimane un lavoro successivo.
+
+Le azioni dell'interfaccia usano una lista esplicita di comandi e un listener
+sul contenitore: le 304 funzioni del vecchio monolite non vengono più esposte
+su `window`. Non ci sono più attributi HTML `onclick`.
+
+## Mercato condiviso
+
+Le quotazioni online arrivano da `sims_market`, aggiornato ogni 15 minuti da
+un workflow GitHub Actions. I browser leggono gli stessi valori senza ricalcolare il
+mercato. Mancanza di connessione o prezzi più vecchi di 45 minuti sospendono gli
+scambi. La simulazione locale resta isolata con `?offline=1`.
+
+Il workflow va attivato separatamente: richiede una credenziale Firebase nei
+Secrets di GitHub e regole che consentano solo al processo centrale di scrivere
+le quotazioni. Firebase resta sul piano gratuito Spark; non servono Cloud
+Functions o un server dedicato. GitHub può ritardare gli aggiornamenti. Procedura e limiti sono in
+[docs/market-deployment.md](docs/market-deployment.md).
+
+Saldo e beni acquistati sono confermati insieme nella stanza. Il portafoglio
+v8 viene importato alla prima operazione; i nuovi acquisti non dipendono dalla
+riuscita di un secondo salvataggio per evitare di perdere l'oggetto pagato.
 
 ## Verifiche
 
 ```sh
 npm run typecheck
+npm ci --prefix server
+npm run build:server
 npm run format:check
 npm test
 npm run test:browser

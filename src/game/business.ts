@@ -1,43 +1,22 @@
+import { marketPriceAt, type Business, type BusinessId } from '../../shared/market.js';
+import { marketSnapshot, canTradeMarket } from './market-client.js';
+import { updateEconomy } from './economy.js';
 import type { GameValue } from './context.js';
 import { game } from './context.js';
 import { dom } from './runtime.js';
 import { openDialog } from './interface.js';
 import { toast } from './missions.js';
 import { hasRoom, saveGame } from './saves.js';
-export function hash01(a?: GameValue, b?: GameValue): GameValue {
-  let h: GameValue = Math.imul(a ^ 0x9e3779b9, 0x85ebca6b) ^ Math.imul(b + 0x7f4a7c15, 0xc2b2ae35);
-  h ^= h >>> 15;
-  h = Math.imul(h, 0x2c1b3c6d);
-  h ^= h >>> 12;
-  h = Math.imul(h, 0x297a2d39);
-  h ^= h >>> 15;
-  return (h >>> 0) / 4294967296;
-}
-
-export function mktLog(b?: GameValue, k?: GameValue): GameValue {
-  const m: GameValue = game.mktCache[b.id] || (game.mktCache[b.id] = { x: [0], n: 0 });
-  k = Math.max(0, k);
-  while (m.n < k) {
-    m.n++;
-    m.x.push(m.x[m.n - 1] * (1 - b.theta) + b.sigma * game.mktZ(b.seed, m.n));
-  }
-  return m.x[k] + (k * Math.log(1 + b.daily)) / 1440;
-}
-
-export function mktPrice(b?: GameValue, t: GameValue = Date.now()): GameValue {
-  const s: GameValue = Math.max(0, (t - game.MKT_EPOCH) / 60000),
-    k: GameValue = Math.floor(s),
-    f: GameValue = s - k;
-  const a: GameValue = mktLog(b, k),
-    c: GameValue = mktLog(b, k + 1);
-  return Math.exp(a + (c - a) * f) * 100;
+export function mktPrice(b: Business, at?: number): number {
+  const snapshot = marketSnapshot();
+  return snapshot && b ? marketPriceAt(snapshot, b.id, at ?? snapshot.updatedAt) : 0;
 }
 
 export function bizSpark(cv?: GameValue, b?: GameValue): GameValue {
   const W: GameValue = cv.width,
     H: GameValue = cv.height,
     ctx2: GameValue = cv.getContext('2d'),
-    now: GameValue = Date.now(),
+    now = marketSnapshot()?.updatedAt ?? Date.now(),
     N: GameValue = 96,
     pts: GameValue = [];
   for (let i: GameValue = 0; i <= N; i++) pts.push(mktPrice(b, now - (N - i) * 15 * 60000));
@@ -70,20 +49,30 @@ export function bizBuild(..._args: GameValue[]): GameValue {
           <div style="display:flex;justify-content:space-between;align-items:baseline;"><span>Quotazione: <b id="biz-p-${b.id}"></b></span><span id="biz-d-${b.id}" style="font-weight:bold;"></span></div>
           <canvas id="biz-c-${b.id}" width="320" height="56" style="width:100%;height:56px;background:rgba(0,0,0,0.25);border-radius:6px;"></canvas>
           <div id="biz-m-${b.id}" style="font-size:0.8rem;"></div>
-          <div style="display:flex;gap:8px;"><button type="button" class="btn-buy" style="background:#2ed573;flex:1;" onclick="bizInvest('${b.id}')">💶 Investi</button><button type="button" class="btn-buy" id="biz-w-${b.id}" style="background:#e74c3c;flex:1;" onclick="bizWithdraw('${b.id}')">💰 Ritira</button></div>`;
+          <div style="display:flex;gap:8px;"><button type="button" class="btn-buy" style="background:#2ed573;flex:1;" data-action="bizInvest" data-arg="${b.id}">💶 Investi</button><button type="button" class="btn-buy" id="biz-w-${b.id}" style="background:#e74c3c;flex:1;" data-action="bizWithdraw" data-arg="${b.id}">💰 Ritira</button></div>`;
     box.appendChild(c);
   });
   game.bizBuilt = true;
 }
 
 export function bizUpdate(..._args: GameValue[]): GameValue {
-  const now: GameValue = Date.now();
+  const snapshot = marketSnapshot();
+  const ready = canTradeMarket();
+  const status = dom('market-status');
+  if (status)
+    status.textContent = snapshot
+      ? `${game.session.OFFLINE ? 'Simulazione locale' : 'Mercato condiviso'} ? aggiornato alle ${new Date(snapshot.updatedAt).toLocaleTimeString('it-IT')}${ready ? '' : ' ? negoziazioni sospese'}`
+      : 'In attesa delle quotazioni del mercato?';
+  for (const button of document.querySelectorAll<HTMLButtonElement>('#biz-list button'))
+    button.disabled = !ready;
+  if (!snapshot) return;
+  const now = snapshot.updatedAt;
   let tot: GameValue = 0,
     cost: GameValue = 0;
   game.BIZ.forEach((b?: GameValue): GameValue => {
     const p: GameValue = mktPrice(b),
       p24: GameValue = mktPrice(b, now - 24 * 3600000),
-      v: GameValue = game.invest[b.id],
+      v: GameValue = game.player.invest[b.id],
       val: GameValue = v ? v.units * p : 0;
     tot += val;
     cost += v ? v.cost : 0;
@@ -111,9 +100,14 @@ export function openBizSite(..._args: GameValue[]): GameValue {
   bizUpdate();
 }
 
-export async function bizInvest(id?: GameValue): Promise<GameValue> {
-  const b: GameValue = game.bizById(id);
-  const res: GameValue = await openDialog({
+export async function bizInvest(id: BusinessId): Promise<void> {
+  if (!canTradeMarket()) {
+    toast('Mercato non disponibile: attendi quotazioni aggiornate.');
+    return;
+  }
+  const b: Business | undefined = game.bizById(id);
+  if (!b) return;
+  const res = await openDialog({
     title: `${b.emoji} Investi in ${b.name}`,
     text: `Disponibili in cassaforte: ${game.moneyLevel} €\n${b.risk}. Il valore sale e scende nel tempo: puoi anche perdere soldi.`,
     input: { placeholder: 'Importo in €', numeric: true, maxLength: 6 },
@@ -123,7 +117,7 @@ export async function bizInvest(id?: GameValue): Promise<GameValue> {
     ],
   });
   if (res.action !== 'ok') return;
-  const amt: GameValue = Math.floor(Number(res.value));
+  const amt = Math.floor(Number(res.value));
   if (!(amt >= 1)) {
     toast('❌ Importo non valido.');
     return;
@@ -132,19 +126,35 @@ export async function bizInvest(id?: GameValue): Promise<GameValue> {
     toast('❌ Non hai abbastanza soldi in cassaforte.');
     return;
   }
-  game.moneyLevel -= amt;
-  const v: GameValue = game.invest[id] || (game.invest[id] = { units: 0, cost: 0 });
-  v.units += amt / mktPrice(b);
-  v.cost += amt;
+  if (!canTradeMarket()) {
+    toast('Quotazione scaduta: riprova quando il mercato è aggiornato.');
+    return;
+  }
+  if (
+    !(await updateEconomy((economy, balance) => {
+      if (!canTradeMarket() || balance < amt) return null;
+      const price = mktPrice(b);
+      const investment = (economy.invest[id] ??= { units: 0, cost: 0 });
+      investment.units += amt / price;
+      investment.cost += amt;
+      return -amt;
+    }))
+  )
+    return;
   toast(`✅ Hai investito ${amt} € in ${b.name}`);
   saveGame(true);
   bizUpdate();
 }
 
-export async function bizWithdraw(id?: GameValue): Promise<GameValue> {
-  const b: GameValue = game.bizById(id),
-    v: GameValue = game.invest[id],
-    val: GameValue = game.bizValue(id);
+export async function bizWithdraw(id: BusinessId): Promise<void> {
+  if (!canTradeMarket()) {
+    toast('Mercato non disponibile: attendi quotazioni aggiornate.');
+    return;
+  }
+  const b = game.bizById(id);
+  if (!b) return;
+  const v = game.player.invest[id],
+    val = game.bizValue(id);
   if (!v || val < 1) {
     toast('Non hai niente da ritirare qui.');
     return;
@@ -153,7 +163,7 @@ export async function bizWithdraw(id?: GameValue): Promise<GameValue> {
     toast('🏠 Senza una stanza non hai una cassaforte dove versare i soldi.', 4000);
     return;
   }
-  const res: GameValue = await openDialog({
+  const res = await openDialog({
     title: `${b.emoji} Ritira da ${b.name}`,
     text: `Valore attuale: ${game.fmtEur(val)}`,
     input: { placeholder: 'Importo in €', numeric: true, maxLength: 7 },
@@ -164,18 +174,33 @@ export async function bizWithdraw(id?: GameValue): Promise<GameValue> {
     ],
   });
   if (res.action !== 'ok' && res.action !== 'all') return;
-  const now: GameValue = game.bizValue(id); // il prezzo può essere cambiato mentre decidevi
-  let amt: GameValue = res.action === 'all' ? Math.floor(now) : Math.floor(Number(res.value));
-  if (!(amt >= 1)) {
-    toast('❌ Importo non valido.');
+  if (!canTradeMarket()) {
+    toast('Quotazione scaduta: riprova quando il mercato è aggiornato.');
     return;
   }
-  amt = Math.min(amt, Math.floor(now));
-  const f: GameValue = amt / now;
-  v.units *= 1 - f;
-  v.cost *= 1 - f;
-  if (v.units * mktPrice(b) < 1) delete game.invest[id];
-  game.moneyLevel += amt;
+  const requested = Math.floor(Number(res.value));
+  if (res.action !== 'all' && !(requested >= 1)) {
+    toast('Importo non valido.');
+    return;
+  }
+  let amount = 0;
+  if (
+    !(await updateEconomy((economy) => {
+      const investment = economy.invest[id];
+      if (!canTradeMarket() || !investment) return null;
+      const price = mktPrice(b);
+      const value = investment.units * price;
+      amount = res.action === 'all' ? Math.floor(value) : Math.min(requested, Math.floor(value));
+      if (amount < 1) return null;
+      const fraction = amount / value;
+      investment.units *= 1 - fraction;
+      investment.cost *= 1 - fraction;
+      if (res.action === 'all' || investment.units * price < 1) delete economy.invest[id];
+      return amount;
+    }))
+  )
+    return;
+  const amt = amount;
   toast(`💰 Hai ritirato ${amt} € da ${b.name}`);
   saveGame(true);
   bizUpdate();

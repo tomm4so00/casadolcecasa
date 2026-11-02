@@ -5,7 +5,8 @@ import { Lifetime } from './lifetime.js';
 import { localDatabase } from './database.js';
 import type { GameDatabase, GameReference, GameSnapshot } from './database.js';
 import type { GameValue } from './context.js';
-export const browser: GameValue = window;
+export const browser = window as Window &
+  typeof globalThis & { webkitAudioContext?: typeof AudioContext };
 export const dom = (id: string): GameValue => document.getElementById(id);
 export const firebaseClient = firebase;
 export const firebaseOptions = FIREBASE_CONFIG;

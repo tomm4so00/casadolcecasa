@@ -1,3 +1,4 @@
+import { creditMoney } from './economy.js';
 import type { GameValue } from './context.js';
 import { game } from './context.js';
 import { lifetime, dom } from './runtime.js';
@@ -15,10 +16,10 @@ export function relaxWith(kind?: GameValue, item?: GameValue): GameValue {
   }
   const lux: GameValue = (item.name || '').includes('✨');
   const gain: GameValue = kind === 'tv' ? (lux ? 25 : 15) : lux ? 20 : 10;
-  game.happinessLevel = Math.min(100, game.happinessLevel + gain);
-  if (kind === 'tv') game.sleepLevel = Math.max(0, game.sleepLevel - 3);
-  else game.sleepLevel = Math.min(100, game.sleepLevel + 3);
-  game.stats.relax++;
+  game.player.happinessLevel = Math.min(100, game.player.happinessLevel + gain);
+  if (kind === 'tv') game.player.sleepLevel = Math.max(0, game.player.sleepLevel - 3);
+  else game.player.sleepLevel = Math.min(100, game.player.sleepLevel + 3);
+  game.player.stats.relax++;
   game.relaxCooldownUntil = now + 30000;
   toast(
     kind === 'tv'
@@ -35,21 +36,24 @@ export function getWealth(..._args: GameValue[]): GameValue {
 }
 
 export function updateMissionHud(..._args: GameValue[]): GameValue {
-  const m: GameValue = game.MISSIONS[game.missionIndex];
+  const m: GameValue = game.MISSIONS[game.player.missionIndex];
   const el: GameValue = dom('mission-text');
   el.style.display = game.MISSIONS.length ? '' : 'none'; // senza missioni il riquadro sparisce
   el.textContent = m ? `📋 ${m.text} (+${m.reward} €)` : '🏆 Tutte le missioni completate!';
 }
 
-export function checkMissions(..._args: GameValue[]): GameValue {
-  if (!game.saveReady) return;
-  const m: GameValue = game.MISSIONS[game.missionIndex];
+export async function checkMissions(..._args: GameValue[]): Promise<void> {
+  if (!game.session.saveReady) return;
+  const m: GameValue = game.MISSIONS[game.player.missionIndex];
   if (m) {
     if (m.skip && m.skip()) {
-      game.missionIndex++;
+      game.player.missionIndex++;
     } else if (m.check()) {
-      game.missionIndex++;
-      game.moneyLevel += m.reward;
+      game.player.missionIndex++;
+      if (!(await creditMoney(m.reward))) {
+        game.player.missionIndex--;
+        return;
+      }
       sfx('mission');
       toast(`🏆 Missione completata: ${m.text} (+${m.reward} €)`, 4000, false);
       saveGame(true);
@@ -61,10 +65,10 @@ export function checkMissions(..._args: GameValue[]): GameValue {
 export function openMissions(..._args: GameValue[]): GameValue {
   const lines: GameValue = game.MISSIONS.map(
     (m?: GameValue, i?: GameValue): GameValue =>
-      `${i < game.missionIndex ? '✅' : i === game.missionIndex ? '👉' : '⬜'} ${m.text} · ${m.reward} €`,
+      `${i < game.player.missionIndex ? '✅' : i === game.player.missionIndex ? '👉' : '⬜'} ${m.text} · ${m.reward} €`,
   ).join('\n');
   openDialog({
-    title: `📋 Missioni (${Math.min(game.missionIndex, game.MISSIONS.length)}/${game.MISSIONS.length})`,
+    title: `📋 Missioni (${Math.min(game.player.missionIndex, game.MISSIONS.length)}/${game.MISSIONS.length})`,
     text: lines,
     buttons: [{ label: 'Chiudi', value: null }],
   });
@@ -85,14 +89,17 @@ export async function openLeaderboard(mode: GameValue = 'wealth'): Promise<GameV
   let lb: GameValue = {},
     gy: GameValue = {};
   try {
-    const snap: GameValue = await withTimeout(game.db.ref('sims_leaderboard').once('value'), 5000);
+    const snap: GameValue = await withTimeout(
+      game.session.db.ref('sims_leaderboard').once('value'),
+      5000,
+    );
     lb = (snap && snap.val()) || {};
   } catch (e: GameValue) {}
   if (mode === 'lived') {
     try {
       gy =
         (
-          (await withTimeout(game.db.ref('sims_graveyard').once('value'), 5000)) || {
+          (await withTimeout(game.session.db.ref('sims_graveyard').once('value'), 5000)) || {
             val: (): GameValue => ({}),
           }
         ).val() || {};
@@ -126,9 +133,11 @@ export async function openLeaderboard(mode: GameValue = 'wealth'): Promise<GameV
       );
     list.sort((a?: GameValue, b?: GameValue): GameValue => b.ms - a.ms);
     const line: GameValue = (p?: GameValue, i?: GameValue): GameValue =>
-      `${medals[i] || i + 1 + '.'} ${p.name}${p.id === game.myPlayerId ? ' (tu)' : ''} — ${fmtDuration(p.ms)}${p.dead ? ' 🪦' : ''}`;
+      `${medals[i] || i + 1 + '.'} ${p.name}${p.id === game.session.myPlayerId ? ' (tu)' : ''} — ${fmtDuration(p.ms)}${p.dead ? ' 🪦' : ''}`;
     text = list.slice(0, 10).map(line).join('\n') || 'Ancora nessuno in classifica.';
-    const myPos: GameValue = list.findIndex((p?: GameValue): GameValue => p.id === game.myPlayerId);
+    const myPos: GameValue = list.findIndex(
+      (p?: GameValue): GameValue => p.id === game.session.myPlayerId,
+    );
     if (myPos >= 10)
       text += `\n…\n${myPos + 1}. ${list[myPos].name} (tu) — ${fmtDuration(list[myPos].ms)}`;
     text += '\n\nTempo di vita del personaggio. I vivi crescono ogni ora, 🪦 = morto.';
@@ -138,13 +147,15 @@ export async function openLeaderboard(mode: GameValue = 'wealth'): Promise<GameV
       .map((id?: GameValue): GameValue => Object.assign({ id }, lb[id]))
       .filter((p?: GameValue): GameValue => typeof p.wealth === 'number');
     list.sort((a?: GameValue, b?: GameValue): GameValue => b.wealth - a.wealth);
-    const myPos: GameValue = list.findIndex((p?: GameValue): GameValue => p.id === game.myPlayerId);
+    const myPos: GameValue = list.findIndex(
+      (p?: GameValue): GameValue => p.id === game.session.myPlayerId,
+    );
     text =
       list
         .slice(0, 10)
         .map(
           (p?: GameValue, i?: GameValue): GameValue =>
-            `${medals[i] || i + 1 + '.'} ${p.name}${p.id === game.myPlayerId ? ' (tu)' : ''} — ${p.wealth} €`,
+            `${medals[i] || i + 1 + '.'} ${p.name}${p.id === game.session.myPlayerId ? ' (tu)' : ''} — ${p.wealth} €`,
         )
         .join('\n') || 'Ancora nessun giocatore in classifica.';
     if (myPos >= 10)

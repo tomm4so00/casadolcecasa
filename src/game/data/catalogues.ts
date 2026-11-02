@@ -1209,44 +1209,7 @@ export const COURTYARD_DOORS = {
   doorApt3: { x: 135, y: -170, w: 56, h: 10, z: 110, name: 'Appartamento 4', aptIdx: 3 },
 };
 
-export const BIZ = [
-  {
-    id: 'shop',
-    name: 'Mini-shop online',
-    emoji: '🛒',
-    color: '#27ae60',
-    risk: 'Rischio basso',
-    desc: 'Vendi prodotti su internet: guadagni piccoli ma regolari.',
-    seed: 101,
-    theta: 0.0008,
-    sigma: 0.0008,
-    daily: 0.004,
-  },
-  {
-    id: 'app',
-    name: 'Startup di app',
-    emoji: '📱',
-    color: '#2e86de',
-    risk: 'Rischio medio',
-    desc: "Un'app che può decollare oppure ristagnare.",
-    seed: 202,
-    theta: 0.0006,
-    sigma: 0.0025,
-    daily: 0.008,
-  },
-  {
-    id: 'crypto',
-    name: 'Cripto-meme coin',
-    emoji: '🪙',
-    color: '#e67e22',
-    risk: 'Rischio alto',
-    desc: 'Sale e scende come un ottovolante: puoi vincere o perdere molto.',
-    seed: 303,
-    theta: 0.0004,
-    sigma: 0.0055,
-    daily: 0.012,
-  },
-];
+export { BUSINESSES as BIZ } from '../../../shared/market.js';
 
 export const WORK_JOBS = {
   cantiere: {

@@ -1,3 +1,6 @@
+import { startMarket } from './market-client.js';
+import { resetEconomy } from './economy.js';
+import { createCharacterState } from './models.js';
 import {
   SHOP_CATALOG,
   SLOT_INFO,
@@ -28,7 +31,7 @@ import { toast } from './missions.js';
 import { musicTick, musicUnlock } from './audio.js';
 import { resizeCanvas, startGame } from './interface.js';
 import { drawCoffeeMachine, tickNeeds } from './needs.js';
-import { bizUpdate, hash01, mktPrice } from './business.js';
+import { bizUpdate, mktPrice } from './business.js';
 import { closeGlobalChat, sendChat } from './chat.js';
 import { mixColor } from './render/primitives.js';
 import {
@@ -105,75 +108,77 @@ import {
 } from './render/scenes.js';
 import { firebaseOptions, isLocalMode, createDatabase } from './runtime.js';
 export function initializeGame() {
+  const canvas = document.getElementById('game-canvas');
+  if (!(canvas instanceof HTMLCanvasElement)) throw new Error('Canvas del gioco mancante');
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('Rendering 2D non disponibile');
+  game.view = {
+    canvas,
+    ctx,
+    activeEnvironment: 'SALOON',
+    currentRoomTitle: 'Salone Principale',
+    isOutsideMenuOpen: false,
+    fridgeIsOpen: false,
+  };
+  resetEconomy();
+  game.player = createCharacterState();
   game.lastSavePromise = Promise.resolve(true);
   game.lastSaveContent = null;
+  game.lastCloudSaveContent = null;
   game.firebaseConfig = firebaseOptions;
   game.GAME_VERSION = 8;
-  game.OFFLINE = isLocalMode();
-  game.LS_PREFIX = game.OFFLINE ? 'offline_' : '';
-
-  game.db = createDatabase(game.OFFLINE);
-  game.myPlayerId = localStorage.getItem(game.LS_PREFIX + 'sims_device_id');
-  if (!game.myPlayerId) {
-    game.myPlayerId = 'player_' + Math.random().toString(36).substring(2, 9);
-    localStorage.setItem(game.LS_PREFIX + 'sims_device_id', game.myPlayerId);
-  }
+  const offline = isLocalMode();
+  const prefix = offline ? 'offline_' : '';
+  const playerId =
+    localStorage.getItem(prefix + 'sims_device_id') ||
+    'player_' + Math.random().toString(36).substring(2, 9);
+  localStorage.setItem(prefix + 'sims_device_id', playerId);
+  game.session = {
+    OFFLINE: offline,
+    LS_PREFIX: prefix,
+    SAVE_KEY: prefix + 'sims_save_v1',
+    myPlayerId: playerId,
+    db: createDatabase(offline),
+    saveReady: false,
+    gameStarted: false,
+    serverOffset: 0,
+  };
   game.onlinePlayers = {};
-  game.activeEnvironment = 'SALOON';
-  game.currentRoomTitle = 'Salone Principale';
-  game.canvas = undefined;
-  game.ctx = undefined;
-  game.healthLevel = 50;
-  game.sleepLevel = 50;
-  game.hungerLevel = 50;
-  game.hygieneLevel = 50;
-  game.happinessLevel = 50;
+  game.view.activeEnvironment = 'SALOON';
+  game.view.currentRoomTitle = 'Salone Principale';
+  game.player.healthLevel = 50;
+  game.player.sleepLevel = 50;
+  game.player.hungerLevel = 50;
+  game.player.hygieneLevel = 50;
+  game.player.happinessLevel = 50;
   game.vaultCache = 0;
   game.legacyPocketMoney = 0;
   game.vaultSynced = false;
   game.lastNoRoomToastAt = 0;
   Object.defineProperty(game, 'moneyLevel', {
     configurable: true,
-    get() {
-      return Math.max(0, Math.round(game.vaultCache));
-    },
-    set(v?: GameValue) {
-      const target: GameValue = Math.max(0, Math.round(Number(v) || 0));
-      const delta: GameValue = target - Math.max(0, Math.round(game.vaultCache));
-      if (!delta) return;
-      if (!hasRoom()) {
-        if (delta > 0 && Date.now() - game.lastNoRoomToastAt > 8000) {
-          game.lastNoRoomToastAt = Date.now();
-          toast('🏠 Senza una stanza non hai una cassaforte: non puoi tenere soldi.', 4500);
-        }
-        return;
-      }
-      game.vaultCache = Math.max(0, game.vaultCache + delta);
-      game.db
-        .ref(`sims_rooms_state/${game.myAssignedRoomIdx}/vaultMoney`)
-        .transaction((v?: GameValue): GameValue => Math.max(0, (v || 0) + delta));
-    },
+    get: () => Math.max(0, Math.round(game.vaultCache)),
   });
   game.hasSetSafePin = false;
   game.safePinCode = '';
-  game.activeJobKey = null;
-  game.jobExperience = { cantiere: 0, ospedale: 0, ristorante: 0, ufficio: 0 };
-  game.isSleeping = false;
+  game.player.activeJobKey = null;
+  game.player.jobExperience = { cantiere: 0, ospedale: 0, ristorante: 0, ufficio: 0 };
+  game.player.isSleeping = false;
   game.showerAnim = null;
   game.sleepK = 0;
   game.showerFog = 0;
   game.frameShowerActors = [];
-  game.isOutsideMenuOpen = false;
-  game.fridgeIsOpen = false;
-  game.sleepGainedSinceLastHealthBoost = 0;
+  game.view.isOutsideMenuOpen = false;
+  game.view.fridgeIsOpen = false;
+  game.player.sleepGainedSinceLastHealthBoost = 0;
   game.SLEEP_DEPLETION_SEC = 86400;
   game.SLEEP_RECOVERY_SEC = 28800;
   game.HUNGER_AWAKE_DEPLETION_SEC = 86400;
   game.HUNGER_SLEEP_DEPLETION_SEC = 172800;
   game.HYGIENE_DEPLETION_SEC = 86400;
   game.HEALTH_DAMAGE_SEC = 172800;
-  game.hasFoodInInventory = false;
-  game.foodIsCooked = false;
+  game.player.hasFoodInInventory = false;
+  game.player.foodIsCooked = false;
   game.shopCatalog = structuredClone(SHOP_CATALOG);
   game.SLOTS = ['top', 'pants', 'shoes', 'hat', 'glasses'];
   game.SLOT_INFO = structuredClone(SLOT_INFO);
@@ -185,8 +190,8 @@ export function initializeGame() {
     hat: null,
     glasses: null,
   };
-  game.ownedItems = {};
-  game.equipped = Object.assign({}, game.DEFAULT_LOOK);
+  game.player.ownedItems = {};
+  game.player.equipped = Object.assign({}, game.DEFAULT_LOOK);
   game.botLooks = {};
   game.BODY_PARTS = structuredClone(BODY_PARTS);
   game.BODY_KEYS = [
@@ -207,7 +212,7 @@ export function initializeGame() {
   game.myBody = null;
   game.bodyChosen = false;
   game.furnitureCatalog = structuredClone(FURNITURE_CATALOG);
-  game.ownedFurniture = {};
+  game.player.ownedFurniture = {};
   game.playerPos = { x: 0, y: 0 };
   game.moveForward = 0;
   game.moveRight = 0;
@@ -249,16 +254,16 @@ export function initializeGame() {
   game.myAssignedRoomIdx = null;
   game.joystickTouchId = null;
   game.joystickOrigin = { x: 0, y: 0 };
-  game.myData = { nick: '' };
+  game.player.myData = { nick: '' };
   game.pinPromptMoneyThreshold = 0;
   game.theftAttempts = {};
   game.isWalking = false;
   game.remoteSmooth = {};
-  game.SAVE_KEY = game.LS_PREFIX + 'sims_save_v1';
-  game.saveReady = false;
-  game.gameStarted = false;
+  game.session.SAVE_KEY = game.session.LS_PREFIX + 'sims_save_v1';
+  game.session.saveReady = false;
+  game.session.gameStarted = false;
   game.currentRoomIdx = null;
-  game.gameMinutes = 8 * 60;
+  game.player.gameMinutes = 8 * 60;
   game.GAME_MINUTES_PER_SEC = 1 / 60;
   game.activeShift = null;
   game.SHIFT_SECONDS = 25;
@@ -269,11 +274,11 @@ export function initializeGame() {
   game.lastMoneyForSound = null;
   game.lastEnvForSound = null;
   game.relaxCooldownUntil = 0;
-  game.stats = { showers: 0, meals: 0, shifts: 0, deposits: 0, chats: 0, relax: 0 };
-  game.missionIndex = 0;
+  game.player.stats = { showers: 0, meals: 0, shifts: 0, deposits: 0, chats: 0, relax: 0 };
+  game.player.missionIndex = 0;
   game.audioCtx = null;
-  game.soundOn = localStorage.getItem(game.LS_PREFIX + 'sims_sound') !== 'off';
-  game.musicOn = localStorage.getItem(game.LS_PREFIX + 'sims_music') !== 'off';
+  game.soundOn = localStorage.getItem(game.session.LS_PREFIX + 'sims_sound') !== 'off';
+  game.musicOn = localStorage.getItem(game.session.LS_PREFIX + 'sims_music') !== 'off';
   game.MUSIC = {
     cur: null,
     step: 0,
@@ -308,7 +313,7 @@ export function initializeGame() {
   game.lastCloudSaveAt = 0;
   game.lastCloudMoney = null;
   game.lastLayoutKey = '';
-  game.serverOffset = 0;
+  game.session.serverOffset = 0;
   game.presenceTrack = {};
   game.INTRO_PAGES = structuredClone(INTRO_PAGES);
   game.simulationBots = structuredClone(SIMULATION_BOTS);
@@ -320,11 +325,13 @@ export function initializeGame() {
   game.saloonDoors = structuredClone(SALOON_DOORS);
   game.courtyardDoors = structuredClone(COURTYARD_DOORS);
   lifetime.listen(browser, 'load', (): GameValue => {
-    game.canvas = dom('game-canvas');
-    game.ctx = game.canvas.getContext('2d');
+    game.view.canvas = dom('game-canvas');
+    const context = game.view.canvas.getContext('2d');
+    if (!context) throw new Error('Rendering 2D non disponibile');
+    game.view.ctx = context;
     resizeCanvas();
     lifetime.listen(browser, 'resize', resizeCanvas);
-    const savedNick: GameValue = localStorage.getItem(game.LS_PREFIX + 'sims_player_nick');
+    const savedNick: GameValue = localStorage.getItem(game.session.LS_PREFIX + 'sims_player_nick');
     if (savedNick) dom('nickname').value = savedNick;
     const startBtn: GameValue = dom('start-game-btn');
     const triggerStart: GameValue = (e?: GameValue): GameValue => {
@@ -335,16 +342,16 @@ export function initializeGame() {
         toast('Inserisci un nome valido per iniziare!');
         return;
       }
-      localStorage.setItem(game.LS_PREFIX + 'sims_player_nick', enteredNick.slice(0, 20));
+      localStorage.setItem(game.session.LS_PREFIX + 'sims_player_nick', enteredNick.slice(0, 20));
       startGame();
     };
     lifetime.listen(startBtn, 'click', triggerStart);
     lifetime.listen(startBtn, 'touchstart', triggerStart);
   });
-  game.isDead = false;
-  game.deadAt = 0;
-  game.bornAt = 0;
-  game.epitaph = '';
+  game.player.isDead = false;
+  game.player.deadAt = 0;
+  game.player.bornAt = 0;
+  game.player.epitaph = '';
   game.ABSENT_DEATH_MS = 80 * 3600 * 1000;
   game.ABSENT_DEATH_ESTIMATE_MS = 72 * 3600 * 1000;
   game.lastNeedsWall = Date.now();
@@ -357,8 +364,9 @@ export function initializeGame() {
   game.DRUG_PEAK = 2.5;
   game.DRUG_HIGH_H = 6;
   game.DRUG_TAPER_H = 18;
-  game.drug = { active: false, doses: 0, lastDose: 0, endAt: 0, dAtDose: 0, crisisAt: 0 };
-  game.drugWindowMs = (): GameValue => Math.min(5, Math.max(1, game.drug.doses)) * 24 * 3600 * 1000;
+  game.player.drug = { active: false, doses: 0, lastDose: 0, endAt: 0, dAtDose: 0, crisisAt: 0 };
+  game.drugWindowMs = (): GameValue =>
+    Math.min(5, Math.max(1, game.player.drug.doses)) * 24 * 3600 * 1000;
   game.discoMap = { dealer: { x: 140, y: 70, w: 20, h: 20, name: 'Spacciatore' } };
   game.barMap = { dealer: { x: 140, y: -35, w: 20, h: 20, name: 'Spacciatore' } };
   game.DISCO_LINES = [
@@ -374,7 +382,7 @@ export function initializeGame() {
     'Ho quello che ti serve.',
     'Niente domande 🤫',
   ];
-  game.drugStock = 0;
+  game.player.drugStock = 0;
   game.SOC_RANGE = 70;
   game.SOC_CD_MS = 20000;
   game.SOC_MSG_TTL = 6 * 3600 * 1000;
@@ -391,42 +399,34 @@ export function initializeGame() {
       id: 'food',
       label: '🍽️ Dai cibo',
       color: '#e67e22',
-      show: (): GameValue => game.foodIsCooked,
+      show: (): GameValue => game.player.foodIsCooked,
     },
     { id: 'money', label: '💶 Regala soldi', color: '#27ae60', show: (): GameValue => hasRoom() },
     {
       id: 'drug',
-      label: (): GameValue => `💊 Regala droga (${game.drugStock})`,
+      label: (): GameValue => `💊 Regala droga (${game.player.drugStock})`,
       color: '#8e44ad',
-      show: (): GameValue => game.drugStock > 0,
+      show: (): GameValue => game.player.drugStock > 0,
     },
   ];
   game.socBusy = (): GameValue =>
-    game.isDead ||
-    game.isSleeping ||
+    game.player.isDead ||
+    game.player.isSleeping ||
     !!game.showerAnim ||
     !!game.activeShift ||
     game.MG.active ||
-    !game.saveReady;
+    !game.session.saveReady;
   game.pick = (arr?: GameValue): GameValue => arr[Math.floor(Math.random() * arr.length)];
   game.socDone = {};
   game.socPending = false;
   game.BIZ = structuredClone(BIZ);
-  game.MKT_EPOCH = Date.UTC(2026, 9, 1);
-  game.mktCache = {};
-  game.mktZ = (seed?: GameValue, k?: GameValue): GameValue =>
-    (hash01(seed, k * 4) +
-      hash01(seed, k * 4 + 1) +
-      hash01(seed, k * 4 + 2) +
-      hash01(seed, k * 4 + 3) -
-      2) *
-    Math.sqrt(3);
-  game.invest = {};
+  game.player.invest = {};
   game.bizById = (id?: GameValue): GameValue =>
     game.BIZ.find((b?: GameValue): GameValue => b.id === id);
   game.bizValue = (id?: GameValue): GameValue => {
-    const v: GameValue = game.invest[id];
-    return v ? v.units * mktPrice(game.bizById(id)) : 0;
+    const v: GameValue = game.player.invest[id];
+    const business = game.bizById(id);
+    return v && business ? v.units * mktPrice(business) : 0;
   };
   game.investedTotal = (): GameValue =>
     game.BIZ.reduce((n?: GameValue, b?: GameValue): GameValue => n + game.bizValue(b.id), 0);
@@ -438,6 +438,7 @@ export function initializeGame() {
   game.fmtPct = (p?: GameValue): GameValue =>
     (p >= 0 ? '+' : '') + (Math.round(p * 10) / 10).toFixed(1).replace('.', ',') + '%';
   game.bizBuilt = false;
+  startMarket();
   lifetime.setInterval((): GameValue => {
     try {
       const m: GameValue = dom('biz-modal');
@@ -451,8 +452,9 @@ export function initializeGame() {
   game.chatInit = false;
   game.chatSeen = {};
   game.chatLastSend = 0;
-  game.chatReadT = Number(localStorage.getItem(game.LS_PREFIX + 'sims_chat_read') || 0) || 0;
-  game.chatHadRead = localStorage.getItem(game.LS_PREFIX + 'sims_chat_read') !== null;
+  game.chatReadT =
+    Number(localStorage.getItem(game.session.LS_PREFIX + 'sims_chat_read') || 0) || 0;
+  game.chatHadRead = localStorage.getItem(game.session.LS_PREFIX + 'sims_chat_read') !== null;
   game.chatOpen = (): GameValue => !dom('gchat-modal').classList.contains('hidden');
   lifetime.listen(document, 'DOMContentLoaded', (): GameValue => {
     const i: GameValue = dom('gchat-input');
@@ -468,20 +470,20 @@ export function initializeGame() {
   game.COFFEE_HEALTH = 4;
   game.COFFEE_CD_MS = 20 * 60 * 1000;
   game.COFFEE_MIN_HEALTH = 10;
-  game.coffeeAt = 0;
+  game.player.coffeeAt = 0;
   game.coffeeBrewUntil = 0;
   game.BASE_TITLE = document.title;
   game.notifyOn = false;
   try {
     game.notifyOn =
-      localStorage.getItem(game.LS_PREFIX + 'sims_notify') === 'on' &&
+      localStorage.getItem(game.session.LS_PREFIX + 'sims_notify') === 'on' &&
       typeof browser.Notification !== 'undefined' &&
       browser.Notification.permission === 'granted';
   } catch (e: GameValue) {}
   game.ALERT_DEFS = [
     {
       key: 'hunger',
-      get: (): GameValue => game.hungerLevel,
+      get: (): GameValue => game.player.hungerLevel,
       low: 30,
       crit: 10,
       emoji: '🍽️',
@@ -490,7 +492,7 @@ export function initializeGame() {
     },
     {
       key: 'sleep',
-      get: (): GameValue => game.sleepLevel,
+      get: (): GameValue => game.player.sleepLevel,
       low: 30,
       crit: 10,
       emoji: '😴',
@@ -499,7 +501,7 @@ export function initializeGame() {
     },
     {
       key: 'hygiene',
-      get: (): GameValue => game.hygieneLevel,
+      get: (): GameValue => game.player.hygieneLevel,
       low: 30,
       crit: 10,
       emoji: '🚿',
@@ -508,7 +510,7 @@ export function initializeGame() {
     },
     {
       key: 'health',
-      get: (): GameValue => game.healthLevel,
+      get: (): GameValue => game.player.healthLevel,
       low: 50,
       crit: 25,
       emoji: '❤️',
