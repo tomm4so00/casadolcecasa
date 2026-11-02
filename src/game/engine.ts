@@ -166,6 +166,8 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
     });
   let drawables: GameValue = [];
   let labels: GameValue = [];
+  // a letto non si vedono i nomi dei mobili e degli oggetti: solo la stanza e chi dorme
+  const hideLabels: boolean = game.player.isSleeping || game.sleepK > 0;
   const addThing: GameValue = (
     x?: GameValue,
     y?: GameValue,
@@ -177,7 +179,7 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
     depthBias: GameValue = 0,
   ): GameValue => {
     drawables.push({ depth: x + y + depthBias, draw });
-    if (label) labels.push((): GameValue => drawLabel(label, x, y, w, h, z));
+    if (label && !hideLabels) labels.push((): GameValue => drawLabel(label, x, y, w, h, z));
   };
   (game.ENV_PROPS[game.view.activeEnvironment] || [])
     .concat(game.ENV_DECOR[game.view.activeEnvironment] || [])
