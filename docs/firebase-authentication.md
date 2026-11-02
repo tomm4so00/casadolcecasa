@@ -32,10 +32,10 @@ nuovo Sim. Non approvare un collegamento basandosi soltanto sul codice pubblico.
 
 ## Regole proposte
 
-Il file è `firebase/database.rules.proposed.json`. Non è collegato a una
-distribuzione automatica in `firebase.json`: va pubblicato durante il passaggio
-coordinato alla versione con Google obbligatorio, dopo il backup dei dati e
-delle regole precedenti.
+Il file `firebase/database.rules.proposed.json` contiene le regole pubblicate nel
+passaggio alla versione con Google obbligatorio. Non è collegato a una
+distribuzione automatica in `firebase.json`: i successivi aggiornamenti richiedono
+prove sugli emulatori e backup dei dati e delle regole precedenti.
 
 | Dati                                         | Accesso previsto                                                             |
 | -------------------------------------------- | ---------------------------------------------------------------------------- |

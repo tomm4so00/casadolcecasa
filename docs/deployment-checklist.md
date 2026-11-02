@@ -6,13 +6,13 @@ Progetto Firebase: **casadolcecasa-6d92a**. Manteniamo il piano gratuito Spark.
 ## Cosa facciamo noi
 
 - [x] Pubblicare il processo del mercato e questa documentazione su **main**,
-      mantenendo il frontend attualmente online.
+      nella repository principale.
 - [x] Caricare il nuovo frontend nel ramo **feature/typescript-shared-market**,
-      pronto da portare su main quando il mercato sarà attivo.
+      e integrarlo in main per la pubblicazione.
 - [x] Preparare e provare le nuove regole, con accesso Google e salvataggi privati.
-- [ ] Pubblicare le nuove regole durante il passaggio al nuovo frontend.
-- [ ] Controllare il primo aggiornamento del mercato dopo la configurazione.
-- [ ] Portare il nuovo frontend su main e verificare la pubblicazione del sito.
+- [x] Pubblicare le nuove regole durante il passaggio al nuovo frontend.
+- [x] Controllare il primo aggiornamento del mercato dopo la configurazione.
+- [x] Portare il nuovo frontend su main e verificare la pubblicazione del sito.
 
 ## Cosa deve fare Tom Tom
 
@@ -25,15 +25,15 @@ Progetto Firebase: **casadolcecasa-6d92a**. Manteniamo il piano gratuito Spark.
       Secrets and variables → Actions → Secrets, creare
       **FIREBASE_MARKET_SERVICE_ACCOUNT** e inserirvi l'intero JSON della chiave.
       La chiave va inserita direttamente nel Secret, senza inviarla in chat.
-- [ ] **Attivazione, dopo aver pubblicato le regole:** in GitHub → Settings →
+- [x] **Attivazione, dopo aver pubblicato le regole:** in GitHub → Settings →
       Secrets and variables → Actions → Variables, impostare **MARKET_ENABLED** a
       **true**. Poi aprire Actions → **Update shared stock market** →
       **Run workflow**, scegliendo il branch **main**.
 
 ## Verifiche finali
 
-- [ ] Il workflow del mercato termina correttamente e aggiorna `sims_market/updatedAt`.
-- [ ] Il workflow Pages pubblica il nuovo gioco senza errori.
+- [x] Il workflow del mercato termina correttamente e aggiorna `sims_market/updatedAt`.
+- [x] Il workflow Pages pubblica il nuovo gioco senza errori.
 - [ ] Accesso Google e recupero del personaggio funzionano sul sito reale.
 - [ ] Acquisti, saldo e salvataggi restano corretti dopo uscita e rientro.
 - [ ] Due dispositivi mostrano le stesse quotazioni.
@@ -42,5 +42,8 @@ Progetto Firebase: **casadolcecasa-6d92a**. Manteniamo il piano gratuito Spark.
 **Ordine:** prima carichiamo il processo del mercato; poi completiamo credenziale
 e regole Firebase; infine attiviamo il mercato e pubblichiamo il nuovo frontend.
 Gli aggiornamenti sono previsti ogni 15 minuti, con possibili ritardi di GitHub.
+Le verifiche ancora da spuntare richiedono una prova del giocatore sul sito reale
+e una successiva esecuzione automatica del mercato. I 20 salvataggi presenti
+prima della pubblicazione sono stati conservati; il backup è fuori dalla repository.
 Per i Sim precedenti, il gestore approva il collegamento a Google come descritto
 in [firebase-authentication.md](firebase-authentication.md).
