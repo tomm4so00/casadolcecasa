@@ -1,6 +1,7 @@
 import type { GameValue } from '../context.js';
 import { game } from '../context.js';
 import { dom } from '../runtime.js';
+import { cameraScale } from '../camera.js';
 export function closeModal(id?: GameValue): GameValue {
   dom(id).classList.add('hidden');
 }
@@ -8,10 +9,10 @@ export function closeModal(id?: GameValue): GameValue {
 export function isoProject(x?: GameValue, y?: GameValue, z?: GameValue): GameValue {
   const v: GameValue = game.viewOverride;
   const cx: GameValue = v ? v.cx : game.view.canvas.width / 2;
-  const scale: GameValue = v
-    ? v.scale
-    : Math.min(game.view.canvas.width / 450, game.view.canvas.height / 600, 1.2);
+  const scale: GameValue = v ? v.scale : cameraScale();
   const cy: GameValue = v ? v.cy : game.view.canvas.height / 2 + 55;
+  // Telecamera (solo per la scena, non per le icone disegnate a parte)
+  const cam: GameValue = !v && game.cam ? game.cam : null;
   // Mobile ruotato: i suoi punti girano attorno al centro prima della proiezione.
   const r = game.furnRot;
   if (r && r.k) {
@@ -19,8 +20,8 @@ export function isoProject(x?: GameValue, y?: GameValue, z?: GameValue): GameVal
     x = p.x;
     y = p.y;
   }
-  let isoX: GameValue = (x - y) * 0.866 * scale;
-  let isoY: GameValue = ((x + y) * 0.5 - z) * scale;
+  let isoX: GameValue = ((x - y) * 0.866 - (cam ? cam.u : 0)) * scale;
+  let isoY: GameValue = ((x + y) * 0.5 - z - (cam ? cam.v : 0)) * scale;
   return { x: cx + isoX, y: cy + isoY };
 }
 
@@ -28,9 +29,7 @@ export function isoProject(x?: GameValue, y?: GameValue, z?: GameValue): GameVal
 //  GRAFICA — blocchi 3D, texture, oggetti dettagliati, ambienti, luci
 // ======================================================================
 export function isoScale(..._args: GameValue[]): GameValue {
-  return game.viewOverride
-    ? game.viewOverride.scale
-    : Math.min(game.view.canvas.width / 450, game.view.canvas.height / 600, 1.2);
+  return game.viewOverride ? game.viewOverride.scale : cameraScale();
 }
 
 // Numero pseudo-casuale stabile (stesso input → stesso output: niente sfarfallii)

@@ -2044,8 +2044,6 @@ export const ENV_PROPS = {
 
 export const ENV_DECOR = {
   CORTILE: [
-    { kind: 'flowers', x: -70, y: -125, w: 56, h: 30, solid: false, flat: true },
-    { kind: 'flowers', x: 70, y: -125, w: 56, h: 30, solid: false, flat: true },
     { kind: 'tree', x: -155, y: -70, w: 18, h: 18, size: 1.1, z: 90 },
     { kind: 'tree', x: 155, y: -70, w: 18, h: 18, size: 1.05, z: 90 },
     { kind: 'tree', x: -155, y: 95, w: 16, h: 16, size: 0.9, z: 80 },

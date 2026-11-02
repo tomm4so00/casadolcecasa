@@ -188,6 +188,8 @@ export interface GameContext {
   wardrobeAnim: GameValue;
   wardrobeSlot: string;
   viewOverride: GameValue;
+  /** Spostamento della telecamera (unità isometriche) e ambiente in cui è stata posizionata. */
+  cam: GameValue;
   _rgbCache: GameValue;
   lighten: GameValue;
   darken: GameValue;

@@ -566,6 +566,7 @@ export function initializeGame() {
   game.wardrobeAnim = { state: 'closed', t0: 0 };
   game.wardrobeSlot = 'top';
   game.viewOverride = null;
+  game.cam = null;
   game._rgbCache = {};
   game.lighten = (c?: GameValue, t?: GameValue): GameValue => mixColor(c, '#ffffff', t);
   game.darken = (c?: GameValue, t?: GameValue): GameValue => mixColor(c, '#000000', t);

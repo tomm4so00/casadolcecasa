@@ -39,6 +39,7 @@ import { footprintOf } from './render/primitives.js';
 import { overlapsCorridor } from './room-layout.js';
 import { approachKissPartner, drawKissHearts, kissActive } from './romance.js';
 import { faintAmount } from './faint.js';
+import { updateCamera } from './camera.js';
 import { presenceState } from './presence-rules.js';
 export function getSolidObstacles(..._args: GameValue[]): GameValue {
   const extra: GameValue = (game.ENV_PROPS[game.view.activeEnvironment] || [])
@@ -429,6 +430,7 @@ export function startLoop(..._args: GameValue[]): GameValue {
     game.animClock += delta;
     tickNeeds();
     game.view.ctx.clearRect(0, 0, game.view.canvas.width, game.view.canvas.height);
+    updateCamera(delta);
     renderEnvironment(delta, game.animClock);
   }
   lifetime.requestAnimationFrame(animate);
