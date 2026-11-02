@@ -5,9 +5,9 @@ Progetto Firebase: **casadolcecasa-6d92a**. Manteniamo il piano gratuito Spark.
 
 ## Cosa facciamo noi
 
-- [ ] Pubblicare il processo del mercato e questa documentazione su **main**,
+- [x] Pubblicare il processo del mercato e questa documentazione su **main**,
       mantenendo il frontend attualmente online.
-- [ ] Caricare il nuovo frontend nel ramo **feature/typescript-shared-market**,
+- [x] Caricare il nuovo frontend nel ramo **feature/typescript-shared-market**,
       pronto da portare su main quando il mercato sarà attivo.
 - [ ] Preparare le regole aggiornate partendo da quelle attuali di Firebase.
 - [ ] Controllare il primo aggiornamento del mercato dopo la configurazione.
