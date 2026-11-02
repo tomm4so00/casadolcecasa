@@ -43,7 +43,7 @@ try {
   });
   assert.equal(catalog.version, 8);
   console.log('CATALOG', catalog);
-  assert.equal(catalog.rooms, 32);
+  assert.equal(catalog.rooms, 64);
   assert(
     catalog.clothes === 74 &&
       catalog.furniture === 21 &&
@@ -190,7 +190,7 @@ try {
   console.log('ERRORS', errors);
   assert.deepEqual(errors, []);
   console.log(
-    'PASS: v8 creator, 32 rooms, clothes, furniture, investments, jobs, chat, 16 scenes and saves.',
+    'PASS: v8 creator, 64 rooms, clothes, furniture, investments, jobs, chat, 16 scenes and saves.',
   );
 } finally {
   await browser.close();

@@ -57,7 +57,6 @@ import {
   drawDiscoBallProp,
   drawDjBoothProp,
   drawFlowersProp,
-  drawAptFacadeProp,
   drawRocketProp,
   drawMoonSignProp,
   drawFountainProp,
@@ -252,7 +251,7 @@ export function initializeGame() {
   game.isDraggingFurniture = false;
   game.movingPropKey = null;
   game.activeTargetProp = null;
-  game.APT_COUNT = 4;
+  game.APT_COUNT = 8;
   game.ROOMS_PER_APT = 8;
   game.TOTAL_ROOMS = game.APT_COUNT * game.ROOMS_PER_APT;
   game.APT_ENVS = ['SALOON', 'KITCHEN', 'BATHROOM'];
@@ -614,7 +613,6 @@ export function initializeGame() {
     bench: drawBenchProp,
     streetlamp: drawStreetLampProp,
     flowers: drawFlowersProp,
-    aptFacade: drawAptFacadeProp,
     rocket: drawRocketProp,
     moonSign: drawMoonSignProp,
     palm: drawPalmProp,

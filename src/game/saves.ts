@@ -485,7 +485,10 @@ export async function claimRoom(..._args: GameValue[]): Promise<GameValue> {
   }
   game.myAssignedRoomIdx = claimed;
   if (claimed === -1)
-    toast('🏠 Il condominio è pieno (32 stanze): per ora giochi come ospite senza stanza.', 5000);
+    toast(
+      `🏠 Il condominio è pieno (${game.TOTAL_ROOMS} stanze): per ora giochi come ospite senza stanza.`,
+      5000,
+    );
   else
     toast(`🏠 La tua stanza è la n° ${claimed + 1} (Appartamento ${game.aptOfRoom(claimed) + 1})`);
 }

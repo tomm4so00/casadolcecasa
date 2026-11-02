@@ -1750,7 +1750,7 @@ function drawFacade(it: GameValue, o: { no: number; doorColor: string; building?
     ctx.arc(dx + dw / 2 + 3, dy + 34, 1.5, 0, 6.3);
     ctx.fill();
     if (o.building) {
-      // ancora in costruzione: nastro bianco e rosso sul portone
+      // ancora vuoto: nastro bianco e rosso sul portone
       ctx.save();
       ctx.beginPath();
       ctx.rect(dx - 4, dy + 16, dw + 8, 10);
@@ -1794,19 +1794,16 @@ function drawFacade(it: GameValue, o: { no: number; doorColor: string; building?
   else box(it.x, it.y + 12, 28, 10, 4, '#bdb6aa');
 }
 
-// Ingresso di un appartamento visto dal cortile: il colore del portone dice se è il tuo o se è pieno
+// Ingresso di un appartamento visto dal cortile: il colore del portone dice se è il tuo o se è pieno;
+// il nastro bianco e rosso resta finché nell'appartamento non abita ancora nessuno.
 export function drawCourtyardDoor(_key?: GameValue, it?: GameValue): GameValue {
   const mine: GameValue = hasRoom() && game.aptOfRoom(game.myAssignedRoomIdx) === it.aptIdx;
-  const full: GameValue = freeRoomsInApt(it.aptIdx) === 0;
+  const free: number = freeRoomsInApt(it.aptIdx);
   drawFacade(it, {
     no: it.aptIdx + 1,
-    doorColor: mine ? '#2e86de' : full ? '#7f8c8d' : '#27ae60',
+    doorColor: mine ? '#2e86de' : free === 0 ? '#7f8c8d' : '#27ae60',
+    building: free === game.ROOMS_PER_APT,
   });
-}
-
-/** Palazzina dell'ala nuova, non ancora abitabile. */
-export function drawAptFacadeProp(it?: GameValue): GameValue {
-  drawFacade(it, { no: it.aptNo, doorColor: '#8d6e63', building: true });
 }
 
 // ---------------------------------------------------------------- RAZZO DELL'EVENTO

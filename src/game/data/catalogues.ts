@@ -1797,12 +1797,52 @@ export const SALOON_DOORS = {
 };
 
 // Cortile largo 960×440: al centro i 4 appartamenti di sempre sulla parete di fondo,
-// nell'ala sinistra altri 4 (per ora solo facciate), nell'ala destra il razzo dell'evento.
+// nell'ala sinistra altri 4 sulla parete di sinistra, nell'ala destra il razzo dell'evento.
 export const COURTYARD_DOORS = {
   doorApt0: { x: -135, y: -210, w: 56, h: 10, z: 110, name: 'Appartamento 1', aptIdx: 0 },
   doorApt1: { x: -45, y: -210, w: 56, h: 10, z: 110, name: 'Appartamento 2', aptIdx: 1 },
   doorApt2: { x: 45, y: -210, w: 56, h: 10, z: 110, name: 'Appartamento 3', aptIdx: 2 },
   doorApt3: { x: 135, y: -210, w: 56, h: 10, z: 110, name: 'Appartamento 4', aptIdx: 3 },
+  doorApt4: {
+    x: -470,
+    y: -150,
+    w: 10,
+    h: 56,
+    z: 110,
+    name: 'Appartamento 5',
+    aptIdx: 4,
+    side: 'left',
+  },
+  doorApt5: {
+    x: -470,
+    y: -50,
+    w: 10,
+    h: 56,
+    z: 110,
+    name: 'Appartamento 6',
+    aptIdx: 5,
+    side: 'left',
+  },
+  doorApt6: {
+    x: -470,
+    y: 50,
+    w: 10,
+    h: 56,
+    z: 110,
+    name: 'Appartamento 7',
+    aptIdx: 6,
+    side: 'left',
+  },
+  doorApt7: {
+    x: -470,
+    y: 150,
+    w: 10,
+    h: 56,
+    z: 110,
+    name: 'Appartamento 8',
+    aptIdx: 7,
+    side: 'left',
+  },
 };
 
 export { BUSINESSES as BIZ } from '../../../shared/market.js';
@@ -2061,11 +2101,7 @@ export const ENV_DECOR = {
     { kind: 'tree', x: -230, y: 150, w: 16, h: 16, size: 1, z: 85 },
     { kind: 'tree', x: 230, y: -60, w: 16, h: 16, size: 0.95, z: 85 },
     { kind: 'tree', x: 230, y: 150, w: 16, h: 16, size: 1, z: 85 },
-    // ala sinistra: appartamenti 5-8 sulla parete di sinistra (ancora da collegare)
-    { kind: 'aptFacade', x: -470, y: -150, w: 14, h: 84, z: 170, aptNo: 5, side: 'left' },
-    { kind: 'aptFacade', x: -470, y: -50, w: 14, h: 84, z: 170, aptNo: 6, side: 'left' },
-    { kind: 'aptFacade', x: -470, y: 50, w: 14, h: 84, z: 170, aptNo: 7, side: 'left' },
-    { kind: 'aptFacade', x: -470, y: 150, w: 14, h: 84, z: 170, aptNo: 8, side: 'left' },
+    // ala sinistra: lampioni davanti agli appartamenti 5-8
     { kind: 'streetlamp', x: -390, y: -100, w: 8, h: 8 },
     { kind: 'streetlamp', x: -390, y: 100, w: 8, h: 8 },
     // ala destra: il razzo dell'evento e il suo cartello
