@@ -144,8 +144,9 @@ Usa `npm run format` per applicare la formattazione comune.
 
 ## Pubblicazione automatica
 
-La destinazione della base corretta è
-<https://tomm4so00.github.io/casadolcecasa4/>.
+La repository di lavoro e pubblicazione è `tomm4so00/casadolcecasa`:
+<https://tomm4so00.github.io/casadolcecasa/>.
+`casadolcecasa4` rimane la fonte della base v8, non la destinazione predefinita.
 In **Settings → Pages → Source** scegli **GitHub Actions**. Il workflow
 `.github/workflows/pages.yml` controlla formattazione, test e tipi, compila il gioco
 e pubblica solo `dist/` a ogni push su `main`. Ricava il percorso corretto degli
