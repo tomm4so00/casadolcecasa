@@ -1,6 +1,7 @@
 import { startPlayersHud } from './players-hud.js';
 import { dayNumber } from './game-clock.js';
 import { renderArtSite, startArtMarket } from './art-market.js';
+import { startProjects } from './projects.js';
 import { resumeFaintSpot } from './faint.js';
 import type { GameValue } from './context.js';
 import type { DialogOptions, DialogResult } from './models.js';
@@ -137,7 +138,7 @@ export async function openProfile(..._args: GameValue[]): Promise<GameValue> {
     buttons: [
       { label: 'Chiudi', value: null, color: '#57606f' },
       { label: '🎨 Aspetto', value: 'look', color: '#8e44ad' },
-      { label: '🪦 Epitaffio', value: 'epitaph', color: '#636e72' },
+      { label: '⚰️ Epitaffio', value: 'epitaph', color: '#636e72' },
       ...(game.session.OFFLINE ? [{ label: 'Usa codice', value: 'switch', color: '#e67e22' }] : []),
     ],
   });
@@ -248,6 +249,7 @@ export async function startGame(..._args: GameValue[]): Promise<GameValue> {
   startPresence();
   startPlayersHud();
   startArtMarket();
+  startProjects();
   updateSoundButton();
   updateNotifyButton();
   checkMissions();

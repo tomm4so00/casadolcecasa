@@ -2303,11 +2303,18 @@ export function drawCourtyardDoor(_key?: GameValue, it?: GameValue): GameValue {
   });
 }
 
-// ---------------------------------------------------------------- RAZZO DELL'EVENTO
+// ---------------------------------------------------------------- RAZZO DEL LABORATORIO
+/** Rampa del laboratorio ingegneristico: il razzo cresce con i soldi versati dai giocatori. */
+export function drawRocketPad(it?: GameValue, t?: GameValue): GameValue {
+  drawRocketProp({ ...it, stage: game.rocketStage || 0 }, t);
+}
+
+/** Razzo sulla rampa. stage: 0 = solo la rampa, 1 = pezzi in costruzione, 2 = razzo completo. */
 export function drawRocketProp(it?: GameValue, t?: GameValue): GameValue {
   const ctx = game.view.ctx;
   const s: number = isoScale();
   const { x, y } = it;
+  const stage: number = it.stage ?? 2;
   // rampa di lancio con bordo a strisce
   const pad: GameValue = box(x, y, it.w, it.h, 10, '#8d99ae');
   onFace(pad, 'top', (W: number, H: number): void => {
@@ -2323,12 +2330,24 @@ export function drawRocketProp(it?: GameValue, t?: GameValue): GameValue {
     ctx.beginPath();
     ctx.arc(W / 2, H / 2, 22, 0, 6.3);
     ctx.stroke();
+    if (stage === 0) {
+      ctx.fillStyle = 'rgba(255,255,255,0.75)';
+      ctx.font = 'bold 9px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('CDC-1', W / 2, H / 2 + 3);
+    }
   });
-  // torre di servizio a traliccio, dietro al razzo
+  if (stage === 0) {
+    // ancora niente razzo: solo casse di materiale in attesa
+    box(x + 30, y + 30, 18, 18, 14, '#b9884f', { z0: 10 });
+    box(x + 30, y + 30, 14, 14, 12, '#a87b45', { z0: 24 });
+    return;
+  }
+  // torre di servizio a traliccio, dietro al razzo (a metà durante i lavori)
   const tx = x - 30,
     ty = y - 30,
     tw = 9,
-    tz = 250;
+    tz = stage === 1 ? 130 : 250;
   const corners = [
     [-tw, -tw],
     [tw, -tw],
@@ -2353,13 +2372,13 @@ export function drawRocketProp(it?: GameValue, t?: GameValue): GameValue {
       ctx.stroke();
     }
   // braccio che tiene il razzo
-  box(x - 15, y - 15, 26, 4, 4, '#7f8c8d', { z0: 190 });
+  if (stage >= 2) box(x - 15, y - 15, 26, 4, 4, '#7f8c8d', { z0: 190 });
   // razzo: corpo cilindrico, ogiva, finestrino e alette (disegnati a schermo sull'asse verticale)
   const P = (z: number) => isoProject(x, y, z);
   const cx = P(0).x,
     R = 17 * s;
   const yB = P(26).y,
-    yT = P(200).y,
+    yT = P(stage === 1 ? 100 : 200).y,
     yTip = P(285).y;
   const shade = (c1: string, c2: string) => {
     const g = ctx.createLinearGradient(cx - R, 0, cx + R, 0);
@@ -2377,8 +2396,8 @@ export function drawRocketProp(it?: GameValue, t?: GameValue): GameValue {
   ctx.lineTo(cx + R * 0.75, P(11).y);
   ctx.lineTo(cx - R * 0.75, P(11).y);
   ctx.fill();
-  // vapore che esce piano dalla base
-  for (let i = 0; i < 5; i++) {
+  // vapore che esce piano dalla base (solo a razzo finito)
+  for (let i = 0; i < (stage >= 2 ? 5 : 0); i++) {
     const k = ((t || 0) * 0.35 + i / 5) % 1;
     const p = isoProject(x + (i - 2) * 14 * k, y + 20 * k, 12 + 10 * k);
     ctx.fillStyle = `rgba(235,235,235,${0.45 * (1 - k)})`;
@@ -2394,11 +2413,17 @@ export function drawRocketProp(it?: GameValue, t?: GameValue): GameValue {
   ctx.fill();
   // fasce rosse
   ctx.fillStyle = shade('#e74c3c', '#ff7675');
-  for (const [z0, z1] of [
-    [44, 58],
-    [150, 158],
-  ])
+  for (const [z0, z1] of stage === 1
+    ? [[44, 58]]
+    : [
+        [44, 58],
+        [150, 158],
+      ])
     ctx.fillRect(cx - R, P(z1).y, R * 2, P(z0).y - P(z1).y);
+  if (stage === 1) {
+    drawRocketWorks(it, P, cx, R, yT, shade);
+    return;
+  }
   // scritta verticale
   ctx.save();
   ctx.translate(cx + R * 0.15, P(110).y);
@@ -2442,6 +2467,200 @@ export function drawRocketProp(it?: GameValue, t?: GameValue): GameValue {
   // aletta davanti: sporge solo sotto il corpo
   ctx.fillStyle = '#a93226';
   ctx.fillRect(cx - 2 * s, yB - 4 * s, 4 * s, P(6).y - yB + 4 * s);
+}
+
+/** Razzo in costruzione: bordo aperto in cima, impalcatura, alette e ogiva ancora a terra. */
+function drawRocketWorks(
+  it: GameValue,
+  P: (z: number) => { x: number; y: number },
+  cx: number,
+  R: number,
+  yT: number,
+  shade: (c1: string, c2: string) => GameValue,
+): void {
+  const ctx = game.view.ctx;
+  const s: number = isoScale();
+  // bordo aperto del tronco di razzo
+  ctx.fillStyle = '#57606f';
+  ctx.beginPath();
+  ctx.ellipse(cx, yT, R, R * 0.45, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#2f3542';
+  ctx.beginPath();
+  ctx.ellipse(cx, yT, R * 0.8, R * 0.34, 0, 0, Math.PI * 2);
+  ctx.fill();
+  // alette già montate
+  ctx.fillStyle = '#c0392b';
+  for (const dir of [-1, 1]) {
+    ctx.beginPath();
+    ctx.moveTo(cx + dir * R, P(80).y);
+    ctx.lineTo(cx + dir * (R + 16 * s), P(36).y);
+    ctx.lineTo(cx + dir * (R + 16 * s), P(10).y);
+    ctx.lineTo(cx + dir * R, P(32).y);
+    ctx.fill();
+  }
+  // impalcatura gialla attorno al razzo
+  ctx.strokeStyle = '#f1c40f';
+  ctx.lineWidth = Math.max(1, 1.6 * s);
+  const left = cx - R - 7 * s,
+    right = cx + R + 7 * s;
+  ctx.beginPath();
+  for (const xx of [left, right]) {
+    ctx.moveTo(xx, P(10).y);
+    ctx.lineTo(xx, P(120).y);
+  }
+  for (let z = 30; z <= 120; z += 30) {
+    ctx.moveTo(left, P(z).y);
+    ctx.lineTo(right, P(z).y);
+  }
+  ctx.moveTo(left, P(30).y);
+  ctx.lineTo(right, P(60).y);
+  ctx.moveTo(right, P(60).y);
+  ctx.lineTo(left, P(90).y);
+  ctx.stroke();
+  // ogiva appoggiata a terra, in attesa di essere montata
+  const nx = it.x + 34,
+    ny = it.y + 30;
+  const base = isoProject(nx - 14, ny, 12),
+    tip = isoProject(nx + 22, ny, 12);
+  ctx.fillStyle = shade('#e74c3c', '#ff7675');
+  ctx.beginPath();
+  ctx.moveTo(base.x, base.y - 12 * s);
+  ctx.quadraticCurveTo(tip.x - 6 * s, base.y - 12 * s, tip.x, tip.y);
+  ctx.quadraticCurveTo(tip.x - 6 * s, base.y + 12 * s, base.x, base.y + 12 * s);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = '#b2bec3';
+  ctx.beginPath();
+  ctx.ellipse(base.x, base.y, 4 * s, 12 * s, 0, 0, Math.PI * 2);
+  ctx.fill();
+  // cassa con i pezzi
+  box(it.x - 34, it.y + 34, 18, 18, 14, '#b9884f', { z0: 10 });
+}
+
+// ---------------------------------------------------------------- LABORATORIO INGEGNERISTICO
+/** Bacheca dei progetti: pannello di sughero con i fogli appesi; il primo è il razzo. */
+export function drawProjectBoard(it?: GameValue): GameValue {
+  const ctx = game.view.ctx;
+  const { x, y, w, z } = it;
+  box(x - w / 2 + 6, y, 5, 5, z - 70, '#636e72');
+  box(x + w / 2 - 6, y, 5, 5, z - 70, '#636e72');
+  const b: GameValue = box(x, y, w, 6, 72, '#8d6e63', { z0: z - 72 });
+  onFace(b, 'left', (W: number, H: number): void => {
+    ctx.fillStyle = '#c69c6d';
+    ctx.fillRect(3, 3, W - 6, H - 6);
+    // puntini del sughero
+    ctx.fillStyle = 'rgba(90,60,30,0.25)';
+    for (let i = 0; i < 70; i++)
+      ctx.fillRect(4 + rnd(i) * (W - 8), 4 + rnd(i + 50) * (H - 8), 1, 1);
+    ctx.fillStyle = '#2d3436';
+    ctx.font = 'bold 7px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('PROGETTI', W / 2, 11);
+    // foglio del razzo: disegno tecnico blu
+    const sheet = (sx: number, color: string, draw: () => void) => {
+      ctx.fillStyle = 'rgba(0,0,0,0.2)';
+      ctx.fillRect(sx + 1.5, 17.5, 30, 46);
+      ctx.fillStyle = color;
+      ctx.fillRect(sx, 16, 30, 46);
+      draw();
+      ctx.fillStyle = '#e74c3c';
+      ctx.beginPath();
+      ctx.arc(sx + 15, 18, 2, 0, 6.3);
+      ctx.fill();
+    };
+    sheet(8, '#0b3d91', () => {
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(23, 22);
+      ctx.quadraticCurveTo(28, 28, 28, 34);
+      ctx.lineTo(28, 52);
+      ctx.lineTo(18, 52);
+      ctx.lineTo(18, 34);
+      ctx.quadraticCurveTo(18, 28, 23, 22);
+      ctx.moveTo(18, 46);
+      ctx.lineTo(14, 56);
+      ctx.lineTo(18, 54);
+      ctx.moveTo(28, 46);
+      ctx.lineTo(32, 56);
+      ctx.lineTo(28, 54);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(23, 38, 2.5, 0, 6.3);
+      ctx.stroke();
+      // avanzamento del razzo
+      const k = (game.rocketStage || 0) / 2;
+      ctx.fillStyle = 'rgba(255,255,255,0.3)';
+      ctx.fillRect(11, 57, 24, 3);
+      ctx.fillStyle = '#2ed573';
+      ctx.fillRect(11, 57, 24 * k, 3);
+    });
+    for (const sx of [W / 2 - 15, W - 38])
+      sheet(sx, '#f5f6fa', () => {
+        ctx.fillStyle = '#b2bec3';
+        for (let l = 0; l < 5; l++) ctx.fillRect(sx + 4, 26 + l * 5, 22 - (l % 2) * 6, 1.5);
+        ctx.fillStyle = '#636e72';
+        ctx.font = 'bold 6px sans-serif';
+        ctx.fillText('🔒', sx + 15, 52);
+        ctx.fillText('presto', sx + 15, 58);
+      });
+  });
+}
+
+/** Bancone da lavoro con morsa, attrezzi e pezzi del razzo. */
+export function drawWorkbench(it?: GameValue, t?: GameValue): GameValue {
+  const ctx = game.view.ctx;
+  const { x, y, w, h, z } = it;
+  for (const [dx, dy] of [
+    [-1, -1],
+    [1, -1],
+    [-1, 1],
+    [1, 1],
+  ])
+    box(x + dx * (w / 2 - 5), y + dy * (h / 2 - 5), 5, 5, z - 6, '#57606f');
+  // ripiano basso con una cassetta degli attrezzi
+  box(x, y, w - 8, h - 8, 3, '#7f8c8d', { z0: 10 });
+  box(x, y + 20, 20, 30, 12, '#c0392b', { z0: 13 });
+  const top: GameValue = box(x, y, w, h, 6, '#a1887f', { z0: z - 6 });
+  onFace(top, 'top', (W: number, H: number): void => {
+    woodGrain(W, H, 'rgba(60,40,20,0.25)', false, 5);
+    // progetto arrotolato aperto sul bancone
+    ctx.fillStyle = '#0b3d91';
+    ctx.fillRect(8, 10, W - 16, 30);
+    ctx.strokeStyle = 'rgba(255,255,255,0.7)';
+    ctx.lineWidth = 0.8;
+    ctx.strokeRect(11, 13, W - 22, 24);
+    ctx.beginPath();
+    ctx.arc(W / 2, 25, 6, 0, 6.3);
+    ctx.stroke();
+    // ingranaggio
+    ctx.fillStyle = '#95a5a6';
+    ctx.beginPath();
+    for (let i = 0; i < 16; i++) {
+      const a = (i / 16) * Math.PI * 2 + (t || 0) * 0.2;
+      const r = i % 2 ? 6 : 8;
+      ctx.lineTo(W / 2 + Math.cos(a) * r, H * 0.62 + Math.sin(a) * r);
+    }
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = '#a1887f';
+    ctx.beginPath();
+    ctx.arc(W / 2, H * 0.62, 2.5, 0, 6.3);
+    ctx.fill();
+    // chiave inglese
+    ctx.strokeStyle = '#636e72';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.moveTo(10, H - 14);
+    ctx.lineTo(W - 14, H - 26);
+    ctx.stroke();
+  });
+  // morsa sul bordo davanti
+  box(x + w / 2 - 10, y - h / 2 + 18, 12, 14, 8, '#2d3436', { z0: z });
+  box(x + w / 2 - 10, y - h / 2 + 18, 4, 18, 4, '#636e72', { z0: z + 8 });
+  // aletta del razzo appena tagliata
+  box(x - 6, y + h / 2 - 22, 16, 3, 12, '#e74c3c', { z0: z });
 }
 
 /** Cartello accanto al razzo. */
@@ -2645,6 +2864,8 @@ export function drawMapItem(
   }
   if (k === 'doorExit' || k === 'exitHouse')
     return drawExitMat(item, k === 'exitHouse' ? 'ESCI DI CASA' : 'USCITA');
+  if (k === 'doorYard') return drawExitMat(item, 'ZONA ESTERNA');
+  if (k === 'doorLab') return drawExitMat(item, 'LABORATORIO');
   // Gli oggetti da parete (il quadro) si disegnano sulla parete, non sul pavimento.
   if (item.wallItem) return;
   if (game.view.activeEnvironment === 'CORTILE') return drawCourtyardDoor(k, item);
@@ -3709,7 +3930,7 @@ export function rebuildGraveyard(val?: GameValue): GameValue {
         h: 8,
         z: 40,
         style: nameHash(g.id || g.name) % 3,
-        label: '🪦 ' + g.name,
+        label: '⚰️ ' + g.name,
         who: g.name,
         name: g.name,
         days: g.days,
@@ -3726,7 +3947,7 @@ export function rebuildGraveyard(val?: GameValue): GameValue {
     });
   game.ENV_PROPS.CIMITERO = props;
   if (game.view.activeEnvironment === 'CIMITERO')
-    game.view.currentRoomTitle = `Cimitero 🪦 (${game.graveList.length} ${game.graveList.length === 1 ? 'lapide' : 'lapidi'})`;
+    game.view.currentRoomTitle = `Cimitero ⚰️ (${game.graveList.length} ${game.graveList.length === 1 ? 'lapide' : 'lapidi'})`;
 }
 
 export async function showGraveInfo(item?: GameValue): Promise<GameValue> {
@@ -3735,7 +3956,7 @@ export async function showGraveInfo(item?: GameValue): Promise<GameValue> {
       .slice(0, 40)
       .map(
         (g?: GameValue): GameValue =>
-          `🪦 ${g.name} — ${typeof g.lived === 'number' ? fmtDuration(g.lived) : 'giorno ' + (g.days || '?')}${g.deadAt ? ' · ' + new Date(g.deadAt).toLocaleDateString('it-IT') : ''}`,
+          `⚰️ ${g.name} — ${typeof g.lived === 'number' ? fmtDuration(g.lived) : 'giorno ' + (g.days || '?')}${g.deadAt ? ' · ' + new Date(g.deadAt).toLocaleDateString('it-IT') : ''}`,
       );
     openDialog({
       title: `📜 Registro dei defunti (${game.graveList.length})`,
@@ -3758,7 +3979,7 @@ export async function showGraveInfo(item?: GameValue): Promise<GameValue> {
   const buttons: GameValue = [{ label: 'Chiudi', value: null, color: '#57606f' }];
   if (!item.hasVisited)
     buttons.push({ label: '💐 Lascia dei fiori (5 €)', value: 'flowers', color: '#e84393' });
-  const res: GameValue = await openDialog({ title: `🪦 ${item.who}`, text, buttons });
+  const res: GameValue = await openDialog({ title: `⚰️ ${item.who}`, text, buttons });
   if (res.action === 'flowers') {
     if (game.moneyLevel < 5) {
       toast('Non hai abbastanza soldi: servono 5 € in cassaforte.');
@@ -3776,7 +3997,7 @@ export async function showGraveInfo(item?: GameValue): Promise<GameValue> {
 
 export async function openEpitaph(..._args: GameValue[]): Promise<GameValue> {
   const res: GameValue = await openDialog({
-    title: '🪦 Il tuo epitaffio',
+    title: '⚰️ Il tuo epitaffio',
     text:
       'Cosa vuoi che sia scritto sulla tua lapide, quando morirai? Gli altri giocatori potranno leggerlo.' +
       (game.player.epitaph ? `\n\nAttuale: « ${game.player.epitaph} »` : ''),
@@ -3789,7 +4010,7 @@ export async function openEpitaph(..._args: GameValue[]): Promise<GameValue> {
   if (res.action === 'ok') {
     game.player.epitaph = res.value.slice(0, 60);
     saveGame(true);
-    toast(game.player.epitaph ? '🪦 Epitaffio salvato' : '🪦 Epitaffio rimosso');
+    toast(game.player.epitaph ? '⚰️ Epitaffio salvato' : '⚰️ Epitaffio rimosso');
   }
 }
 

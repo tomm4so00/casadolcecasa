@@ -1461,3 +1461,117 @@ input[type='number'] {
     animation: none;
   }
 }
+
+/* Bacheca e sito dei progetti di gruppo */
+.proj-card {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(116, 185, 255, 0.35);
+  border-radius: 10px;
+  padding: 10px;
+}
+.proj-preview {
+  width: 150px;
+  height: 195px;
+  flex: none;
+  border-radius: 6px;
+  border: 3px solid #dfe6e9;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.4);
+}
+.proj-info {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.8rem;
+}
+.proj-info h4 {
+  margin: 0 0 4px;
+  color: #74b9ff;
+}
+.proj-info p {
+  margin: 4px 0;
+  line-height: 1.35;
+}
+.proj-total {
+  margin-top: 8px;
+}
+.proj-bar {
+  position: relative;
+  height: 12px;
+  background: #222;
+  border-radius: 6px;
+  margin: 6px 0 22px;
+}
+.proj-fill {
+  height: 100%;
+  border-radius: 6px;
+  background: linear-gradient(90deg, #0984e3, #2ed573);
+  transition: width 0.4s ease;
+}
+.proj-mark {
+  position: absolute;
+  top: -3px;
+  width: 2px;
+  height: 18px;
+  margin-left: -1px;
+  background: #b2bec3;
+}
+.proj-mark span {
+  position: absolute;
+  top: 19px;
+  right: 0;
+  white-space: nowrap;
+  font-size: 0.62rem;
+  color: #b2bec3;
+}
+.proj-mark:nth-child(2) span {
+  right: auto;
+  left: 50%;
+  transform: translateX(-50%);
+}
+.proj-mark.done {
+  background: #2ed573;
+}
+.proj-mark.done span {
+  color: #2ed573;
+}
+.proj-status {
+  color: #feca57;
+}
+.proj-mine {
+  color: #74b9ff;
+}
+.proj-donate {
+  margin-top: 6px;
+  width: 100%;
+}
+.proj-donors {
+  margin-top: 10px;
+  font-size: 0.78rem;
+}
+.proj-donors h5 {
+  margin: 0 0 4px;
+  font-size: 0.8rem;
+}
+.proj-donors ol {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.proj-donors li {
+  display: flex;
+  justify-content: space-between;
+  padding: 3px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+@media (max-width: 560px) {
+  .proj-card {
+    flex-direction: column;
+    align-items: center;
+  }
+  .proj-preview {
+    width: 130px;
+    height: 169px;
+  }
+}

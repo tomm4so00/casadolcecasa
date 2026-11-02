@@ -18,6 +18,8 @@ import {
   CLOTHES_STORE_FURNITURE,
   BANK_FURNITURE,
   ART_STUDIO_FURNITURE,
+  ENGINEERING_FURNITURE,
+  ENGINEERING_YARD_FURNITURE,
   STORE_FLOOR_FURNITURE,
   SALOON_DOORS,
   COURTYARD_DOORS,
@@ -58,6 +60,9 @@ import {
   drawDjBoothProp,
   drawFlowersProp,
   drawRocketProp,
+  drawRocketPad,
+  drawProjectBoard,
+  drawWorkbench,
   drawMoonSignProp,
   drawFountainProp,
   drawFridge,
@@ -130,6 +135,7 @@ export function initializeGame() {
     activeEnvironment: 'SALOON',
     currentRoomTitle: 'Salone Principale',
     isOutsideMenuOpen: false,
+    outsideSubmenu: '',
     fridgeIsOpen: false,
   };
   resetEconomy();
@@ -189,6 +195,7 @@ export function initializeGame() {
   game.showerFog = 0;
   game.frameShowerActors = [];
   game.view.isOutsideMenuOpen = false;
+  game.view.outsideSubmenu = '';
   game.view.fridgeIsOpen = false;
   game.player.sleepGainedSinceLastHealthBoost = 0;
   game.SLEEP_DEPLETION_SEC = 86400;
@@ -345,6 +352,9 @@ export function initializeGame() {
   game.storeFloorFurniture = structuredClone(STORE_FLOOR_FURNITURE);
   game.bankFurniture = structuredClone(BANK_FURNITURE);
   game.artStudioFurniture = structuredClone(ART_STUDIO_FURNITURE);
+  game.engineeringFurniture = structuredClone(ENGINEERING_FURNITURE);
+  game.engineeringYardFurniture = structuredClone(ENGINEERING_YARD_FURNITURE);
+  game.rocketStage = 0;
   game.saloonDoors = structuredClone(SALOON_DOORS);
   game.courtyardDoors = structuredClone(COURTYARD_DOORS);
   lifetime.listen(browser, 'load', (): GameValue => {
@@ -590,6 +600,9 @@ export function initializeGame() {
     easel1: drawEasel,
     easel2: drawEasel,
     easel3: drawEasel,
+    projectBoard: drawProjectBoard,
+    workbench: drawWorkbench,
+    rocketPad: drawRocketPad,
     coffee: drawCoffeeMachine,
     toilet: drawToilet,
     sink: drawSink,

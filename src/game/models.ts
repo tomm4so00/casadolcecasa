@@ -1,4 +1,5 @@
 import type { PersonalityState } from './personality-rules.js';
+import type { WorkDay } from './job-pay.js';
 import type { RomanceBook } from './romance-rules.js';
 import type { GameDatabase } from './database.js';
 
@@ -123,6 +124,8 @@ export interface CharacterState {
   romance?: RomanceBook;
   /** Punti delle personalità sviluppate giocando. */
   personality?: PersonalityState;
+  /** Turni di lavoro iniziati oggi (massimo SHIFTS_PER_DAY). */
+  workDay?: WorkDay;
 }
 export interface SessionState {
   authUid: string | null;
@@ -141,6 +144,8 @@ export interface ViewState {
   canvas: HTMLCanvasElement;
   ctx: CanvasRenderingContext2D;
   isOutsideMenuOpen: boolean;
+  /** Gruppo aperto nel menu di uscita: '' (principale), 'fun' (attività ricreative) o 'shops' (negozi). */
+  outsideSubmenu: '' | 'fun' | 'shops';
   fridgeIsOpen: boolean;
 }
 export const createCharacterState = (): CharacterState => ({

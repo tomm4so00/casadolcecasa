@@ -39,6 +39,7 @@ export interface SaveV8 {
   inventory?: { hasFood: boolean; foodCooked: boolean };
   romance?: unknown;
   personality?: unknown;
+  workDay?: unknown;
 }
 
 export const isRecord = (value: unknown): value is Record<string, unknown> =>

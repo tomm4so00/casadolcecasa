@@ -135,14 +135,14 @@ export async function openLeaderboard(mode: GameValue = 'wealth'): Promise<GameV
       );
     list.sort((a?: GameValue, b?: GameValue): GameValue => b.ms - a.ms);
     const line: GameValue = (p?: GameValue, i?: GameValue): GameValue =>
-      `${medals[i] || i + 1 + '.'} ${p.name}${p.id === game.session.myPlayerId ? ' (tu)' : ''} — ${fmtDuration(p.ms)}${p.dead ? ' 🪦' : ''}`;
+      `${medals[i] || i + 1 + '.'} ${p.name}${p.id === game.session.myPlayerId ? ' (tu)' : ''} — ${fmtDuration(p.ms)}${p.dead ? ' ⚰️' : ''}`;
     text = list.slice(0, 10).map(line).join('\n') || 'Ancora nessuno in classifica.';
     const myPos: GameValue = list.findIndex(
       (p?: GameValue): GameValue => p.id === game.session.myPlayerId,
     );
     if (myPos >= 10)
       text += `\n…\n${myPos + 1}. ${list[myPos].name} (tu) — ${fmtDuration(list[myPos].ms)}`;
-    text += '\n\nTempo di vita del personaggio. I vivi crescono ogni ora, 🪦 = morto.';
+    text += '\n\nTempo di vita del personaggio. I vivi crescono ogni ora, ⚰️ = morto.';
     title = '⏳ Classifica dei più longevi';
   } else {
     list = Object.keys(lb)

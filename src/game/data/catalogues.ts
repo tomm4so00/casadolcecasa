@@ -268,7 +268,7 @@ export const SHOP_CATALOG = [
   {
     id: 'top_plaid',
     slot: 'top',
-    name: 'Camicia a Quadri 🪵',
+    name: 'Camicia a Quadri',
     price: 40,
     color: '#c0392b',
     color2: '#1e272e',
@@ -780,7 +780,7 @@ export const FURNITURE_CATALOG = [
   },
   {
     id: 'wardrobe_lux',
-    name: 'Armadio di Lusso in Noce 🪵🚪',
+    name: 'Armadio di Lusso in Noce ✨🚪',
     price: 115,
     category: 'wardrobe',
     isLuxury: true,
@@ -791,7 +791,7 @@ export const FURNITURE_CATALOG = [
       w: 85,
       h: 65,
       z: 140,
-      name: 'Armadio di Lusso 🪵🚪',
+      name: 'Armadio di Lusso ✨🚪',
       color: '#6e2c00',
       topColor: '#935116',
       moveable: true,
@@ -1065,7 +1065,7 @@ export const FURNITURE_CATALOG = [
   },
   {
     id: 'plant_std',
-    name: 'Pianta Verde 🪴',
+    name: 'Pianta Verde 🌿',
     price: 15,
     category: 'plant',
     isLuxury: false,
@@ -1076,7 +1076,7 @@ export const FURNITURE_CATALOG = [
       w: 30,
       h: 30,
       z: 55,
-      name: 'Pianta 🪴',
+      name: 'Pianta 🌿',
       color: '#8d6e63',
       topColor: '#27ae60',
       moveable: true,
@@ -1084,7 +1084,7 @@ export const FURNITURE_CATALOG = [
   },
   {
     id: 'plant_pre',
-    name: 'Monstera Pregiata 💎🪴',
+    name: 'Monstera Pregiata 💎🌿',
     price: 40,
     category: 'plant',
     isLuxury: false,
@@ -1095,7 +1095,7 @@ export const FURNITURE_CATALOG = [
       w: 31,
       h: 31,
       z: 58,
-      name: 'Monstera 💎🪴',
+      name: 'Monstera 💎🌿',
       color: '#ecf0f1',
       topColor: '#1e8449',
       moveable: true,
@@ -1103,7 +1103,7 @@ export const FURNITURE_CATALOG = [
   },
   {
     id: 'plant_lux',
-    name: 'Bonsai di Lusso ✨🪴',
+    name: 'Bonsai di Lusso ✨🌿',
     price: 55,
     category: 'plant',
     isLuxury: true,
@@ -1114,7 +1114,7 @@ export const FURNITURE_CATALOG = [
       w: 32,
       h: 32,
       z: 60,
-      name: 'Bonsai ✨🪴',
+      name: 'Bonsai ✨🌿',
       color: '#5d4037',
       topColor: '#16a085',
       moveable: true,
@@ -1244,7 +1244,7 @@ export const INTRO_PAGES = [
   },
   {
     title: '💼 Soldi e consigli',
-    text: 'Per guadagnare vai al lavoro: nel salone esci di casa e apri "Lavoro". Porta gli oggetti ai punti giusti per fare bene il turno.\n\nI soldi stanno nella cassaforte della tua stanza: proteggila con un PIN.\n\n🔔 Attiva le notifiche (pulsante a destra) per essere avvisato quando il personaggio sta male.\n\n❓ Puoi rileggere questa guida in ogni momento dal pulsante a destra.',
+    text: 'Per guadagnare vai al lavoro: nel salone esci di casa e apri "Lavoro". Porta gli oggetti ai punti giusti: ogni oggetto consegnato vale euro in più. Puoi andare al lavoro al massimo 4 volte al giorno.\n\nI soldi stanno nella cassaforte della tua stanza: proteggila con un PIN.\n\n🔔 Attiva le notifiche (pulsante a destra) per essere avvisato quando il personaggio sta male.\n\n❓ Puoi rileggere questa guida in ogni momento dal pulsante a destra.',
   },
 ];
 
@@ -1512,6 +1512,45 @@ export const CLOTHES_STORE_FURNITURE = {
   doorExit: { x: 0, y: 160, w: 60, h: 15, z: 110, name: 'Torna Fuori 🚪', moveable: false },
 };
 
+// Laboratorio ingegneristico: la bacheca dei progetti, il bancone da lavoro, la porta per la zona
+// esterna (dove si costruisce il razzo) e l'uscita.
+export const ENGINEERING_FURNITURE = {
+  projectBoard: {
+    x: -120,
+    y: -150,
+    w: 120,
+    h: 12,
+    z: 112,
+    name: 'Bacheca dei progetti 📌',
+    moveable: false,
+  },
+  workbench: {
+    x: -150,
+    y: 20,
+    w: 52,
+    h: 110,
+    z: 46,
+    name: 'Bancone da lavoro 🔧',
+    moveable: false,
+  },
+  doorYard: { x: -130, y: 160, w: 60, h: 15, z: 110, name: 'Zona esterna 🚀', moveable: false },
+  doorExit: { x: 60, y: 160, w: 60, h: 15, z: 110, name: 'Torna Fuori 🚪', moveable: false },
+};
+
+// Zona esterna del laboratorio: la rampa del razzo e la porta per rientrare.
+export const ENGINEERING_YARD_FURNITURE = {
+  rocketPad: { x: -100, y: -50, w: 96, h: 96, z: 60, name: 'Razzo spaziale 🚀', moveable: false },
+  doorLab: {
+    x: 0,
+    y: 160,
+    w: 60,
+    h: 15,
+    z: 110,
+    name: 'Torna nel laboratorio 🔧',
+    moveable: false,
+  },
+};
+
 // Banca: lo sportello per depositare e prelevare, e l'uscita.
 export const BANK_FURNITURE = {
   bankCounter: {
@@ -1663,7 +1702,7 @@ export const STORE_FLOOR_FURNITURE = {
     w: 50,
     h: 50,
     z: 50,
-    name: 'Reparto Piante 🪴 (Acquista)',
+    name: 'Reparto Piante 🌿 (Acquista)',
     category: 'plant',
     color: '#8d6e63',
     topColor: '#27ae60',
@@ -2152,6 +2191,16 @@ export const ENV_DECOR = {
     { kind: 'plant', x: -168, y: -160, w: 26, h: 26, z: 60 },
     { kind: 'plant', x: 168, y: 150, w: 26, h: 26, z: 60 },
   ],
+  ingegneria: [
+    { kind: 'cooler', x: 160, y: -150, w: 22, h: 22, z: 70 },
+    { kind: 'plant', x: 168, y: 150, w: 26, h: 26, z: 60 },
+  ],
+  ingegneria_esterno: [
+    { kind: 'moonSign', x: 80, y: 0, w: 70, h: 6, z: 60 },
+    { kind: 'cone', x: -175, y: 85, w: 10, h: 10 },
+    { kind: 'cone', x: -165, y: 40, w: 10, h: 10 },
+    { kind: 'bricks', x: 140, y: 110, w: 40, h: 36, z: 37 },
+  ],
   banca: [
     { kind: 'plant', x: -168, y: -160, w: 26, h: 26, z: 60 },
     { kind: 'plant', x: 168, y: -160, w: 26, h: 26, z: 60 },
@@ -2266,6 +2315,42 @@ export const ENV_STYLE = {
       { x: 90, y: 0, z: 0, r: 220, color: '255,245,225' },
     ],
   },
+  ingegneria: {
+    floor: 'concrete',
+    floorColor: '#a4aab0',
+    wall: '#dfe6e9',
+    wallStyle: 'plain',
+    trim: '#0984e3',
+    decor: {
+      back: [
+        { t: 'window', u: 270, w: 100, h: 60 },
+        { t: 'poster', u: 380, text: 'SICUREZZA', color: '#f39c12', w: 40 },
+      ],
+      left: [
+        { t: 'logo', u: 130, text: 'LABORATORIO', sub: 'ingegneristico', color: '#0984e3' },
+        { t: 'clock', u: 260 },
+      ],
+    },
+    lights: [
+      { x: -80, y: -60, z: 0, r: 230, color: '235,245,255' },
+      { x: 90, y: 20, z: 0, r: 220, color: '235,245,255' },
+    ],
+  },
+  ingegneria_esterno: {
+    floor: 'concrete',
+    floorColor: '#9aa0a6',
+    outdoor: true,
+    fence: true,
+    wallStyle: 'hoarding',
+    wall: '#7f8fa6',
+    wallH: 60,
+    trim: '#2d3436',
+    decor: {
+      back: [{ t: 'poster', u: 200, text: 'ZONA DI LANCIO', color: '#e74c3c' }],
+      left: [{ t: 'poster', u: 180, text: 'PROGETTO CDC-1', color: '#0984e3' }],
+    },
+    lights: [{ x: -100, y: -50, z: 0, r: 260, color: '255,245,220' }],
+  },
   banca: {
     floor: 'checker',
     floorColor: '#efe9dc',
@@ -2367,7 +2452,7 @@ export const ENV_STYLE = {
     trim: '#e84393',
     decor: {
       back: [{ t: 'neon', u: 200, text: 'DISCO', color: '180,80,255' }],
-      left: [{ t: 'neon', u: 200, text: '🪩', color: '80,200,255' }],
+      left: [{ t: 'neon', u: 200, text: '🕺', color: '80,200,255' }],
     },
     lights: [
       { x: -100, y: -60, z: 0, r: 190, color: '255,0,200' },

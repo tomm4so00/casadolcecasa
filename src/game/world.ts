@@ -34,11 +34,13 @@ import { showGraveInfo } from './render/objects.js';
 import { startShower } from './render/avatars.js';
 import { sfx } from './audio.js';
 import { openBankCounter } from './bank.js';
+import { openProjects, rocketFunded } from './projects.js';
+import { PROJECTS, projectGoal } from './project-rules.js';
 import { avoidWallSafe, pushOutOfCorridor } from './room-layout.js';
 import { managePainting, openPaintStudio } from './paint-studio.js';
 import { bestOwnedByProp, nextUpgrade, TIER_LABEL, TIER_RANK, tierOf } from './furniture-tiers.js';
 import { furnitureBenefit } from './furniture-benefits.js';
-import { jobPayTier } from './job-pay.js';
+import { SHIFTS_PER_DAY, jobPayTier, recordShift, shiftsLeftToday } from './job-pay.js';
 // Il proprietario può cambiare la combinazione della propria cassaforte quando vuole
 export async function changeSafePin(..._args: GameValue[]): Promise<GameValue> {
   if (!hasRoom() || !isMyRoomNow()) return;
@@ -290,6 +292,8 @@ export function getCurrentFurnitureMap(..._args: GameValue[]): SceneMap {
   if (game.view.activeEnvironment === 'negozio_vestiti') return game.clothesStoreFurniture;
   if (game.view.activeEnvironment === 'banca') return game.bankFurniture;
   if (game.view.activeEnvironment === 'laboratorio') return game.artStudioFurniture;
+  if (game.view.activeEnvironment === 'ingegneria') return game.engineeringFurniture;
+  if (game.view.activeEnvironment === 'ingegneria_esterno') return game.engineeringYardFurniture;
   if (game.view.activeEnvironment === 'CIMITERO') return game.graveMap;
   if (game.MG.active && game.view.activeEnvironment === 'lavoro_' + game.MG.job) return game.MG.map;
   if (game.view.activeEnvironment === 'bar') return game.barMap;
@@ -318,28 +322,7 @@ export function checkProximity(..._args: GameValue[]): GameValue {
   const btnMove: GameValue = dom('btn-act-move');
   const btnMain: GameValue = dom('btn-act-main');
   const btnSub: GameValue = dom('btn-act-sub');
-  const btnWalk: GameValue = dom('btn-act-walk');
-  const btnBar: GameValue = dom('btn-act-bar');
-  const btnTrip: GameValue = dom('btn-act-trip');
-  const btnFurnitureShop: GameValue = dom('btn-act-furnitureshop');
-  const btnClothesShop: GameValue = dom('btn-act-clothesshop');
-  const btnWork: GameValue = dom('btn-act-work');
-  const btnCem: GameValue = dom('btn-act-cemetery');
-  const btnDisco: GameValue = dom('btn-act-disco');
-  const btnBank: GameValue = dom('btn-act-bank');
-  const btnArt: GameValue = dom('btn-act-art');
-  if (!game.view.isOutsideMenuOpen) {
-    btnWalk.classList.add('hidden');
-    btnBar.classList.add('hidden');
-    btnTrip.classList.add('hidden');
-    btnFurnitureShop.classList.add('hidden');
-    btnClothesShop.classList.add('hidden');
-    btnWork.classList.add('hidden');
-    btnCem.classList.add('hidden');
-    btnDisco.classList.add('hidden');
-    btnBank.classList.add('hidden');
-    btnArt.classList.add('hidden');
-  }
+  renderOutsideMenu();
   if (found) {
     game.activeTargetProp = found;
     pop.classList.remove('hidden');
@@ -352,16 +335,6 @@ export function checkProximity(..._args: GameValue[]): GameValue {
           btnSub.classList.add('hidden');
         } else {
           btnMain.innerText = '🚪 Chiudi Menu Uscita';
-          btnWalk.classList.remove('hidden');
-          btnBar.classList.remove('hidden');
-          btnTrip.classList.remove('hidden');
-          btnFurnitureShop.classList.remove('hidden');
-          btnClothesShop.classList.remove('hidden');
-          btnWork.classList.remove('hidden');
-          btnCem.classList.remove('hidden');
-          btnDisco.classList.remove('hidden');
-          btnBank.classList.remove('hidden');
-          btnArt.classList.remove('hidden');
         }
       } else if (item.roomIdx !== undefined) {
         game.view.isOutsideMenuOpen = false;
@@ -387,6 +360,20 @@ export function checkProximity(..._args: GameValue[]): GameValue {
       btnMain.classList.remove('btn-pop-locked');
       btnSub.classList.add('hidden');
       btnMain.innerText = found.startsWith('easel') ? '🎨 Dipingi un quadro' : '🚪 Torna Fuori';
+    } else if (game.view.activeEnvironment === 'ingegneria') {
+      btnMain.classList.remove('btn-pop-locked');
+      btnSub.classList.add('hidden');
+      const labels: Record<string, string> = {
+        projectBoard: '📌 Guarda i progetti',
+        workbench: '🔧 Lavora al bancone',
+        doorYard: '🚀 Vai nella zona esterna',
+      };
+      btnMain.innerText = labels[found] || '🚪 Torna Fuori';
+    } else if (game.view.activeEnvironment === 'ingegneria_esterno') {
+      btnMain.classList.remove('btn-pop-locked');
+      btnSub.classList.add('hidden');
+      btnMain.innerText =
+        found === 'rocketPad' ? '🚀 Guarda il progetto del razzo' : '🔧 Torna nel laboratorio';
     } else if (game.view.activeEnvironment === 'banca') {
       btnMain.classList.remove('btn-pop-locked');
       btnSub.classList.add('hidden');
@@ -437,7 +424,7 @@ export function checkProximity(..._args: GameValue[]): GameValue {
       btnMain.innerText =
         item.kind === 'memorial'
           ? '📜 Leggi il registro dei defunti'
-          : `🪦 Leggi la lapide di ${item.who}`;
+          : `⚰️ Leggi la lapide di ${item.who}`;
       btnMain.classList.remove('btn-pop-locked');
       btnSub.classList.add('hidden');
     } else if (game.view.activeEnvironment === 'CORTILE') {
@@ -540,6 +527,36 @@ export function checkProximity(..._args: GameValue[]): GameValue {
       pop.classList.add('hidden');
     }
   }
+}
+
+// Menu "Esci di casa": i luoghi principali, più due gruppi che si aprono con un tocco
+// (attività ricreative e negozi) e il pulsante Indietro per tornare all'elenco principale.
+const OUTSIDE_MENU: Record<'' | 'fun' | 'shops', string[]> = {
+  '': [
+    'btn-act-walk',
+    'btn-act-fun',
+    'btn-act-shops',
+    'btn-act-work',
+    'btn-act-bank',
+    'btn-act-art',
+    'btn-act-eng',
+    'btn-act-cemetery',
+  ],
+  fun: ['btn-act-bar', 'btn-act-trip', 'btn-act-disco', 'btn-act-back'],
+  shops: ['btn-act-furnitureshop', 'btn-act-clothesshop', 'btn-act-back'],
+};
+const OUTSIDE_BUTTONS = [...new Set(Object.values(OUTSIDE_MENU).flat())];
+
+/** Mostra i pulsanti del menu di uscita giusti (nessuno se il menu è chiuso). */
+export function renderOutsideMenu(): void {
+  const shown = game.view.isOutsideMenuOpen ? OUTSIDE_MENU[game.view.outsideSubmenu || ''] : [];
+  for (const id of OUTSIDE_BUTTONS) dom(id)?.classList.toggle('hidden', !shown.includes(id));
+}
+
+/** Apre un gruppo del menu di uscita ('' torna all'elenco principale). */
+export function openOutsideSubmenu(sub: string): void {
+  game.view.outsideSubmenu = sub === 'fun' || sub === 'shops' ? sub : '';
+  renderOutsideMenu();
 }
 
 // Fa comparire il personaggio appena oltre la porta, spostato verso il centro dell'ambiente.
@@ -669,41 +686,11 @@ export async function handleObjectInteract(..._args: GameValue[]): Promise<void>
   if (game.view.activeEnvironment === 'SALOON') {
     if (game.activeTargetProp === 'exitHouse') {
       game.view.isOutsideMenuOpen = !game.view.isOutsideMenuOpen;
-      const btnWalk: GameValue = dom('btn-act-walk');
-      const btnBar: GameValue = dom('btn-act-bar');
-      const btnTrip: GameValue = dom('btn-act-trip');
-      const btnFurnitureShop: GameValue = dom('btn-act-furnitureshop');
-      const btnClothesShop: GameValue = dom('btn-act-clothesshop');
-      const btnWork: GameValue = dom('btn-act-work');
-      const btnCem: GameValue = dom('btn-act-cemetery');
-      const btnDisco: GameValue = dom('btn-act-disco');
-      const btnBank: GameValue = dom('btn-act-bank');
-      const btnArt: GameValue = dom('btn-act-art');
-      if (game.view.isOutsideMenuOpen) {
-        dom('btn-act-main').innerText = '🚪 Chiudi Menu Uscita';
-        btnWalk.classList.remove('hidden');
-        btnBar.classList.remove('hidden');
-        btnTrip.classList.remove('hidden');
-        btnFurnitureShop.classList.remove('hidden');
-        btnClothesShop.classList.remove('hidden');
-        btnWork.classList.remove('hidden');
-        btnCem.classList.remove('hidden');
-        btnDisco.classList.remove('hidden');
-        btnBank.classList.remove('hidden');
-        btnArt.classList.remove('hidden');
-      } else {
-        dom('btn-act-main').innerText = '🚪 Esci di Casa';
-        btnWalk.classList.add('hidden');
-        btnBar.classList.add('hidden');
-        btnTrip.classList.add('hidden');
-        btnFurnitureShop.classList.add('hidden');
-        btnClothesShop.classList.add('hidden');
-        btnWork.classList.add('hidden');
-        btnCem.classList.add('hidden');
-        btnDisco.classList.add('hidden');
-        btnBank.classList.add('hidden');
-        btnArt.classList.add('hidden');
-      }
+      game.view.outsideSubmenu = '';
+      dom('btn-act-main').innerText = game.view.isOutsideMenuOpen
+        ? '🚪 Chiudi Menu Uscita'
+        : '🚪 Esci di Casa';
+      renderOutsideMenu();
     } else if (item.targetEnv === 'PLAYER_ROOM') {
       const gi: GameValue = game.gRoomIdx(item);
       let room: GameValue = game.roomsState[gi];
@@ -734,6 +721,14 @@ export async function handleObjectInteract(..._args: GameValue[]): Promise<void>
     else if (game.activeTargetProp === 'doorExit') {
       backToSaloon();
     }
+  } else if (game.view.activeEnvironment === 'ingegneria') {
+    if (game.activeTargetProp === 'projectBoard') openProjects(false);
+    else if (game.activeTargetProp === 'workbench') workbenchMessage();
+    else if (game.activeTargetProp === 'doorYard') goToEngineering(true);
+    else if (game.activeTargetProp === 'doorExit') backToSaloon();
+  } else if (game.view.activeEnvironment === 'ingegneria_esterno') {
+    if (game.activeTargetProp === 'rocketPad') openProjects(false);
+    else if (game.activeTargetProp === 'doorLab') goToEngineering(false);
   } else if (game.view.activeEnvironment === 'banca') {
     if (game.activeTargetProp === 'bankCounter') await openBankCounter();
     else if (game.activeTargetProp === 'doorExit') {
@@ -914,6 +909,7 @@ export async function handleSafeInteraction(..._args: GameValue[]): Promise<Game
 
 export async function doActivity(type?: GameValue): Promise<void> {
   game.view.isOutsideMenuOpen = false;
+  game.view.outsideSubmenu = '';
   dom('pop-interaction').classList.add('hidden');
   dom('btn-return-home').classList.remove('hidden');
   if (type === 'walk') {
@@ -949,11 +945,11 @@ export async function doActivity(type?: GameValue): Promise<void> {
     game.player.happinessLevel = Math.min(100, game.player.happinessLevel + game.DISCO_HAPPY);
     game.player.sleepLevel = Math.max(0, game.player.sleepLevel - game.DISCO_SLEEP);
     game.view.activeEnvironment = 'discoteca';
-    game.view.currentRoomTitle = 'Discoteca 🪩';
-    toast(`🪩 Si balla! Felicità +${game.DISCO_HAPPY}%, sonno −${game.DISCO_SLEEP}%`, 3500);
+    game.view.currentRoomTitle = 'Discoteca 🕺';
+    toast(`🕺 Si balla! Felicità +${game.DISCO_HAPPY}%, sonno −${game.DISCO_SLEEP}%`, 3500);
   } else if (type === 'cemetery') {
     game.view.activeEnvironment = 'CIMITERO';
-    game.view.currentRoomTitle = `Cimitero 🪦 (${game.graveList.length} ${game.graveList.length === 1 ? 'lapide' : 'lapidi'})`;
+    game.view.currentRoomTitle = `Cimitero ⚰️ (${game.graveList.length} ${game.graveList.length === 1 ? 'lapide' : 'lapidi'})`;
     game.playerPos = { x: 0, y: 140 };
   } else if (type === 'trip') {
     let cost: GameValue = Math.floor(game.moneyLevel * 0.2);
@@ -977,6 +973,12 @@ export async function doActivity(type?: GameValue): Promise<void> {
     dom('btn-return-home').classList.add('hidden');
     game.playerPos = { x: 0, y: 110 };
     return;
+  } else if (type === 'engineering') {
+    game.view.activeEnvironment = 'ingegneria';
+    game.view.currentRoomTitle = 'Laboratorio Ingegneristico 🔧';
+    dom('btn-return-home').classList.add('hidden');
+    game.playerPos = { x: 0, y: 110 };
+    return;
   } else if (type === 'bank') {
     game.view.activeEnvironment = 'banca';
     game.view.currentRoomTitle = 'Banca Dolce Casa 🏦';
@@ -991,6 +993,33 @@ export async function doActivity(type?: GameValue): Promise<void> {
     return;
   }
   game.playerPos = { x: 0, y: 80 };
+}
+
+/** Passa tra il laboratorio ingegneristico e la sua zona esterna (dove si costruisce il razzo). */
+function goToEngineering(yard: boolean): void {
+  if (yard) {
+    game.view.activeEnvironment = 'ingegneria_esterno';
+    game.view.currentRoomTitle = 'Zona esterna del laboratorio 🚀';
+    spawnAtDoor(game.engineeringYardFurniture.doorLab);
+  } else {
+    game.view.activeEnvironment = 'ingegneria';
+    game.view.currentRoomTitle = 'Laboratorio Ingegneristico 🔧';
+    spawnAtDoor(game.engineeringFurniture.doorYard);
+  }
+}
+
+/** Al bancone si vede a che punto sono i lavori del razzo. */
+function workbenchMessage(): void {
+  const stage = game.rocketStage || 0;
+  const left = (projectGoal(PROJECTS.rocket) - rocketFunded()).toLocaleString('it-IT');
+  toast(
+    stage >= 2
+      ? '🔧 Il razzo è completo! Sul bancone si progettano già le prossime idee…'
+      : stage === 1
+        ? `🔧 Stai lucidando un pezzo del razzo. Per completarlo mancano ${left} €: versali alla bacheca!`
+        : '🔧 Sul bancone ci sono i disegni del razzo: per iniziare i lavori servono 5.000 € versati alla bacheca.',
+    5500,
+  );
 }
 
 // Dopo un acquisto spiega al giocatore cosa fa il mobile.
@@ -1052,7 +1081,19 @@ export async function buyFurnitureItem(itemId: string): Promise<void> {
 }
 
 // Gestione intelligente del menu Lavoro
+/** Avvisa se oggi si è già andati al lavoro il numero massimo di volte. */
+function workLimitReached(): boolean {
+  if (shiftsLeftToday(game.player.workDay, new Date()) > 0) return false;
+  void openDialog({
+    title: '💼 Basta lavoro per oggi',
+    text: `Oggi sei già andato al lavoro ${SHIFTS_PER_DAY} volte, il massimo in un giorno. Riposati: potrai tornare al lavoro domani, dopo mezzanotte.`,
+    buttons: [{ label: 'Ok', value: 'ok' }],
+  });
+  return true;
+}
+
 export function handleJobMenuAction(..._args: GameValue[]): GameValue {
+  if (workLimitReached()) return;
   const modal: GameValue = dom('job-select-modal');
   modal.classList.remove('hidden');
   let statusText: GameValue = game.player.activeJobKey
@@ -1119,6 +1160,9 @@ export async function chooseOrGoToJob(
     toast('😵 Sei troppo stanco o malato per lavorare. Riposati prima!');
     return;
   }
+  if (workLimitReached()) return;
+  game.player.workDay = recordShift(game.player.workDay, new Date());
+  const leftToday = shiftsLeftToday(game.player.workDay, new Date());
   game.player.activeJobKey = jobKey;
   const tier = jobPayTier((game.player.jobExperience[jobKey] || 0) + 1);
   const pay: number = tier.base;
@@ -1131,6 +1175,7 @@ export async function chooseOrGoToJob(
     remaining: game.SHIFT_SECONDS,
   };
   game.view.isOutsideMenuOpen = false;
+  game.view.outsideSubmenu = '';
   dom('pop-interaction').classList.add('hidden');
   dom('job-select-modal').classList.add('hidden');
   dom('btn-return-home').classList.remove('hidden');
@@ -1139,7 +1184,10 @@ export async function chooseOrGoToJob(
   game.playerPos = { x: 0, y: 60 };
   mgStart(jobKey);
   toast(
-    `💼 Turno iniziato: hai ${game.SHIFT_SECONDS} secondi! Base ${pay} € + ${tier.perItem} € per ogni oggetto consegnato`,
-    3500,
+    `💼 Turno iniziato: hai ${game.SHIFT_SECONDS} secondi! Base ${pay} € + ${tier.perItem} € per ogni oggetto consegnato. ` +
+      (leftToday > 0
+        ? `Oggi puoi lavorare ancora ${leftToday} ${leftToday === 1 ? 'volta' : 'volte'}.`
+        : 'È il tuo ultimo turno di oggi.'),
+    5000,
   );
 }

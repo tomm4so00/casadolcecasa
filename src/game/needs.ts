@@ -1,3 +1,4 @@
+import { startNewLife } from './rebirth.js';
 import { clockText, dayNumber, isNight, realHour } from './game-clock.js';
 import { spendMoney } from './economy.js';
 import { advanceNeeds } from './simulation.js';
@@ -155,24 +156,30 @@ export function showDeathScreen(..._args: GameValue[]): GameValue {
     '.' +
     (when ? '<br>' + when : '') +
     '</p>' +
-    '<p style="opacity:.6;font-size:13px">Questo personaggio non può più giocare.</p>' +
-    (game.session.OFFLINE
-      ? '<button id="death-restart" style="margin-top:18px;padding:10px 18px;border-radius:10px;border:0;background:#e74c3c;color:#fff;font-size:15px;cursor:pointer">🧪 Ricomincia (solo modalità prova)</button>'
-      : '');
+    '<p style="opacity:.6;font-size:13px">Riposerà al cimitero, dove gli altri giocatori potranno ricordarlo.</p>' +
+    '<div style="margin-top:18px;display:flex;flex-direction:column;gap:8px;align-items:center;width:100%;max-width:300px">' +
+    '<p style="margin:0;font-size:14px">🌱 Ricomincia da zero con un nuovo personaggio:</p>' +
+    '<input id="death-new-name" maxlength="20" autocomplete="off" placeholder="Nome del nuovo personaggio" style="width:100%;box-sizing:border-box;padding:10px;border-radius:10px;border:1px solid #444;background:#1b1b26;color:#fff;font-size:15px;text-align:center">' +
+    '<div id="death-name-error" style="min-height:18px;color:#ff7675;font-size:13px"></div>' +
+    '<button id="death-restart" style="padding:10px 18px;border-radius:10px;border:0;background:#2ed573;color:#fff;font-size:15px;font-weight:bold;cursor:pointer">🌱 Ricomincia da zero</button>' +
+    '</div>';
+  const input: GameValue = dom('death-new-name');
+  const errorBox: GameValue = dom('death-name-error');
   const b: GameValue = dom('death-restart');
-  if (b)
-    b.onclick = (): GameValue => {
-      try {
-        localStorage.removeItem(game.session.SAVE_KEY);
-      } catch (e: GameValue) {}
-      try {
-        game.session.db.ref('sims_saves/' + game.session.myPlayerId).set(null);
-      } catch (e: GameValue) {}
-      try {
-        game.session.db.ref('sims_graveyard/' + game.session.myPlayerId).set(null);
-      } catch (e: GameValue) {}
-      location.reload();
-    };
+  const restart = async (): Promise<void> => {
+    if (b.disabled) return;
+    b.disabled = true;
+    errorBox.textContent = '';
+    const error = await startNewLife(String(input.value || ''));
+    if (error) {
+      errorBox.textContent = error;
+      b.disabled = false;
+    }
+  };
+  b.onclick = (): void => void restart();
+  input.onkeydown = (e: KeyboardEvent): void => {
+    if (e.key === 'Enter') void restart();
+  };
 }
 
 export function escapeHtmlSafe(t?: GameValue): string {

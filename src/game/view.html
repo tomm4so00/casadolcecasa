@@ -157,6 +157,24 @@
   </button>
   <button
     class="btn-pop btn-pop-exit hidden"
+    id="btn-act-fun"
+    style="background: #8e44ad"
+    data-action="openOutsideSubmenu"
+    data-args='["fun"]'
+  >
+    🎉 Attività ricreative
+  </button>
+  <button
+    class="btn-pop btn-pop-furniture hidden"
+    id="btn-act-shops"
+    style="background: #e84393"
+    data-action="openOutsideSubmenu"
+    data-args='["shops"]'
+  >
+    🛍️ Negozi
+  </button>
+  <button
+    class="btn-pop btn-pop-exit hidden"
     id="btn-act-bar"
     data-action="doActivity"
     data-args='["bar"]'
@@ -206,8 +224,17 @@
   >
     🎨 Laboratorio Artistico
   </button>
+  <button
+    class="btn-pop btn-pop-furniture hidden"
+    id="btn-act-eng"
+    style="background: #0984e3"
+    data-action="doActivity"
+    data-args='["engineering"]'
+  >
+    🔧 Laboratorio Ingegneristico
+  </button>
   <button class="btn-pop btn-pop-exit hidden" id="btn-act-work" data-action="handleJobMenuAction">
-    💼 Lavoro (Gestisci Carriera)
+    💼 Lavoro
   </button>
   <button
     class="btn-pop btn-pop-exit hidden"
@@ -216,7 +243,7 @@
     data-action="doActivity"
     data-args='["cemetery"]'
   >
-    🪦 Cimitero
+    ⚰️ Cimitero
   </button>
   <button
     class="btn-pop btn-pop-exit hidden"
@@ -225,7 +252,16 @@
     data-action="doActivity"
     data-args='["disco"]'
   >
-    🪩 Discoteca (-20 €, +50% Felicità, -15% Sonno)
+    🕺 Discoteca (-20 €, +50% Felicità, -15% Sonno)
+  </button>
+  <button
+    class="btn-pop hidden"
+    id="btn-act-back"
+    style="background: #57606f"
+    data-action="openOutsideSubmenu"
+    data-args='[""]'
+  >
+    ⬅️ Indietro
   </button>
 
   <button class="btn-pop btn-pop-alt hidden" id="btn-act-move" data-action="startMovingFurniture">
@@ -523,6 +559,18 @@
         type="button"
         class="shop-item-card"
         style="cursor: pointer; text-align: left; color: inherit"
+        data-action="openProjectsSite"
+      >
+        <div class="shop-item-info">
+          <h4>🛠️ progettinsieme.it</h4>
+          <p>Versa soldi per i progetti di gruppo del laboratorio ingegneristico</p>
+        </div>
+        <span>›</span>
+      </button>
+      <button
+        type="button"
+        class="shop-item-card"
+        style="cursor: pointer; text-align: left; color: inherit"
         data-action="openBizSite"
       >
         <div class="shop-item-info">
@@ -578,6 +626,27 @@
       <div id="art-list" class="art-list"></div>
     </div>
     <button class="btn-primary" data-action="closeModal" data-args='["art-modal"]'>Chiudi</button>
+  </div>
+</div>
+
+<!-- BACHECA E SITO DEI PROGETTI DI GRUPPO -->
+<div id="projects-modal" class="fullscreen-modal hidden">
+  <div class="browser-window">
+    <div id="projects-browser-bar" class="browser-header">
+      <div class="browser-dot"></div>
+      <div class="browser-dot"></div>
+      <div class="browser-dot"></div>
+      <div class="browser-url">🌐 https://www.progettinsieme.it/razzo</div>
+    </div>
+    <div class="browser-body">
+      <h3 id="projects-title" style="color: #74b9ff; text-align: center">
+        📌 Bacheca dei progetti
+      </h3>
+      <div id="projects-body"></div>
+    </div>
+    <button class="btn-primary" data-action="closeModal" data-args='["projects-modal"]'>
+      Chiudi
+    </button>
   </div>
 </div>
 

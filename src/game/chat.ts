@@ -107,7 +107,7 @@ export async function sendChat(..._args: GameValue[]): Promise<GameValue> {
   const text: GameValue = inp.value.trim().slice(0, game.CHAT_MAX_LEN);
   if (!text) return;
   if (game.player.isDead) {
-    toast('🪦 Un fantasma non può scrivere in chat.');
+    toast('⚰️ Un fantasma non può scrivere in chat.');
     return;
   }
   const now: GameValue = Date.now();

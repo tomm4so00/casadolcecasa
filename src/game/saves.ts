@@ -15,6 +15,7 @@ import { startChat } from './chat.js';
 import { bestOwnedByProp } from './furniture-tiers.js';
 import { decodeRomance } from './romance-rules.js';
 import { decodePersonality } from './personality-rules.js';
+import { decodeWorkDay } from './job-pay.js';
 import { pushOutOfCorridor } from './room-layout.js';
 import { footprintOf } from './render/primitives.js';
 import { PAINTING_SLOTS, paintingKey, roomPaintings } from './painting-rules.js';
@@ -145,6 +146,7 @@ export function buildSaveData(..._args: GameValue[]): SaveV8 {
   if (game.player.romance && Object.keys(game.player.romance).length)
     data.romance = game.player.romance;
   if (game.player.personality) data.personality = game.player.personality;
+  if (game.player.workDay) data.workDay = game.player.workDay;
   if (game.player.coffeeAt) data.coffeeAt = game.player.coffeeAt;
   if (Object.keys(game.player.invest).length) {
     data.invest = {};
@@ -198,6 +200,7 @@ export function applySave(value: unknown): void {
   game.player.drugStock = Math.max(0, Math.floor(num(s.drugStock, 0)));
   game.player.romance = decodeRomance(s.romance);
   game.player.personality = decodePersonality(s.personality);
+  game.player.workDay = decodeWorkDay(s.workDay);
   game.player.coffeeAt = num(s.coffeeAt, 0);
   game.player.invest = {};
   game.BIZ.forEach((b?: GameValue): GameValue => {

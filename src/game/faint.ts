@@ -35,6 +35,8 @@ export async function resumeFaintSpot(): Promise<void> {
       if (last.env === 'PLAYER_ROOM') {
         game.currentRoomIdx = game.myAssignedRoomIdx;
         game.view.currentRoomTitle = 'La tua stanza 🏠';
+      } else if (typeof last.place === 'string' && last.place) {
+        game.view.currentRoomTitle = last.place;
       }
       if (typeof last.apt === 'number') game.currentApt = last.apt;
       game.playerPos = { x: last.x, y: last.y };

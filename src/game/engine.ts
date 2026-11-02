@@ -222,7 +222,8 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
       }
       if (game.view.activeEnvironment === 'CORTILE' && item.aptIdx !== undefined)
         label = aptLabel(item.aptIdx);
-      const flat: GameValue = k === 'doorExit' || k === 'exitHouse';
+      const flat: GameValue =
+        k === 'doorExit' || k === 'exitHouse' || k === 'doorYard' || k === 'doorLab';
       addThing(
         item.x,
         item.y,

@@ -1,4 +1,5 @@
 import { openArtSite, setArtTab } from './art-market.js';
+import { openProjects } from './projects.js';
 import { standUp } from './faint.js';
 import {
   closeWardrobe,
@@ -21,6 +22,7 @@ import {
   chooseOrGoToJob,
   continueCurrentJob,
   doActivity,
+  openOutsideSubmenu,
   handleJobMenuAction,
   handleObjectInteract,
   openFurnitureShopModal,
@@ -45,12 +47,14 @@ export const uiActions: Readonly<Record<string, UiAction>> = {
   handleObjectInteract: () => handleObjectInteract(),
   handleSubAction: () => handleSubAction(),
   doActivity: ([arg0]) => doActivity(String(arg0)),
+  openOutsideSubmenu: ([arg0]) => openOutsideSubmenu(String(arg0 ?? '')),
   handleJobMenuAction: () => handleJobMenuAction(),
   startMovingFurniture: () => startMovingFurniture(),
   placeFurniture: () => placeFurniture(),
   rotateFurniture: () => rotateFurniture(),
   standUp: () => standUp(),
   openArtSite: () => openArtSite(),
+  openProjectsSite: () => openProjects(true),
   setArtTab: ([tab]) => setArtTab(String(tab)),
   returnHomeFromActivity: () => returnHomeFromActivity(),
   reloadForUpdate: () => reloadForUpdate(),
