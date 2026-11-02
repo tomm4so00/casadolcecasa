@@ -2068,7 +2068,6 @@ export const ENV_DECOR = {
     { kind: 'aptFacade', x: -470, y: 150, w: 14, h: 84, z: 170, aptNo: 8, side: 'left' },
     { kind: 'streetlamp', x: -390, y: -100, w: 8, h: 8 },
     { kind: 'streetlamp', x: -390, y: 100, w: 8, h: 8 },
-    { kind: 'bench', x: -330, y: 0, w: 16, h: 50 },
     // ala destra: il razzo dell'evento e il suo cartello
     { kind: 'rocket', x: 370, y: -40, w: 90, h: 90, z: 290, label: 'Razzo 🚀' },
     { kind: 'moonSign', x: 300, y: 90, w: 96, h: 6, z: 60 },
