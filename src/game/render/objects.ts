@@ -2165,13 +2165,6 @@ function drawFacade(it: GameValue, o: { no: number; doorColor: string; building?
       }
       ctx.restore();
     }
-    // targa con il numero
-    ctx.fillStyle = 'rgba(255,255,255,0.95)';
-    ctx.fillRect(W / 2 - 10, gy - 4, 20, 10);
-    ctx.fillStyle = '#2d3436';
-    ctx.font = 'bold 8px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText('A' + o.no, W / 2, gy + 3.5);
     // vetrine del piano terra con tende a strisce
     for (const wx of [W * 0.07, W * 0.73]) {
       const vw = W * 0.2;
@@ -2261,8 +2254,17 @@ function drawFacade(it: GameValue, o: { no: number; doorColor: string; building?
     const [pw, ph] = sized(wA, wD);
     return box(px, py, pw, ph, h, c, { z0 });
   };
-  // elementi che sporgono dalla facciata: pensilina sopra il portone e balconi con la ringhiera
-  part(0, 5, 40, 10, 3, '#4e342e', 52);
+  // elementi che sporgono dalla facciata: il cartello col numero sopra il portone e i balconi
+  const sign: GameValue = part(0, 1.5, 24, 3, 11, '#f5f0e6', 57);
+  onFace(sign, side ? 'right' : 'left', (W: number, H: number): void => {
+    ctx.strokeStyle = '#5d4037';
+    ctx.lineWidth = 1.2;
+    ctx.strokeRect(0.6, 0.6, W - 1.2, H - 1.2);
+    ctx.fillStyle = '#2d3436';
+    ctx.font = 'bold 8px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('A' + o.no, W / 2, H / 2 + 3);
+  });
   const rail = '#2d3436';
   for (const f of balconyFloors) {
     const z0 = tall - (16 + f * 48 + 28) - 3;
