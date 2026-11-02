@@ -1662,73 +1662,180 @@ const FACADE_COLORS = [
   '#d7c4e0',
   '#c4dcd6',
 ];
+/** Piani sopra il piano terra, per palazzina: così lo skyline non è tutto uguale. */
+const FACADE_FLOORS = [2, 3, 2, 3, 3, 2, 3, 2];
+const AWNING_COLORS = ['#c0392b', '#2471a3', '#1e8449', '#b9770e'];
+const FLOWER_COLORS = ['#ff6b81', '#feca57', '#ff9ff3', '#ffffff', '#e84393'];
+const FACADE_W = 84;
+const FACADE_D = 26;
+
+/** Finestra con cornice, architrave, davanzale e (se accesa) tende. */
+function facadeWindow(
+  ctx: CanvasRenderingContext2D,
+  wx: number,
+  wy: number,
+  ww: number,
+  wh: number,
+  lit: boolean,
+  night: boolean,
+  wall: string,
+): void {
+  ctx.fillStyle = '#f5f0e6';
+  ctx.fillRect(wx - 2, wy - 2, ww + 4, wh + 4);
+  const g = ctx.createLinearGradient(wx, wy, wx + ww, wy + wh);
+  if (lit) {
+    g.addColorStop(0, '#ffe8a3');
+    g.addColorStop(1, '#f6b93b');
+  } else {
+    g.addColorStop(0, night ? '#2c3e66' : '#cdeefd');
+    g.addColorStop(1, night ? '#1b2440' : '#6fb1d6');
+  }
+  ctx.fillStyle = g;
+  ctx.fillRect(wx, wy, ww, wh);
+  if (lit) {
+    // tende raccolte ai lati
+    ctx.fillStyle = 'rgba(192,57,43,0.55)';
+    ctx.fillRect(wx, wy, ww * 0.22, wh);
+    ctx.fillRect(wx + ww * 0.78, wy, ww * 0.22, wh);
+  } else if (!night) {
+    // riflesso del cielo
+    ctx.fillStyle = 'rgba(255,255,255,0.45)';
+    ctx.beginPath();
+    ctx.moveTo(wx + ww * 0.15, wy + wh);
+    ctx.lineTo(wx + ww * 0.6, wy);
+    ctx.lineTo(wx + ww * 0.8, wy);
+    ctx.lineTo(wx + ww * 0.35, wy + wh);
+    ctx.fill();
+  }
+  ctx.fillStyle = '#f5f0e6';
+  ctx.fillRect(wx + ww / 2 - 0.6, wy, 1.2, wh);
+  ctx.fillRect(wx, wy + wh * 0.45, ww, 1.2);
+  // architrave e davanzale
+  ctx.fillStyle = game.darken(wall, 0.3);
+  ctx.fillRect(wx - 4, wy - 5, ww + 8, 3);
+  ctx.fillRect(wx - 3, wy + wh + 2, ww + 6, 3);
+}
 
 /**
- * Facciata di una palazzina vista dal cortile: due piani di finestre (accese di notte), balcone,
- * portone con pensilina e targa. `side: 'left'` = sulla parete di sinistra, altrimenti su quella di fondo.
+ * Palazzina vista dal cortile: piani di finestre (accese di notte, con le tende), fioriere,
+ * balcone, cantonali in pietra, tetto di coppi con il camino, portone ad arco con pensilina,
+ * lampioncini e vasi. `side: 'left'` = sulla parete di sinistra, altrimenti su quella di fondo.
  */
 function drawFacade(it: GameValue, o: { no: number; doorColor: string; building?: boolean }): void {
   const ctx = game.view.ctx;
   const side = it.side === 'left';
-  const wall = FACADE_COLORS[(o.no - 1) % FACADE_COLORS.length];
+  const idx = (o.no - 1) % FACADE_COLORS.length;
+  const wall = FACADE_COLORS[idx];
+  const floors = FACADE_FLOORS[idx];
+  const tall = 70 + floors * 48;
+  const awning = AWNING_COLORS[idx % AWNING_COLORS.length];
   const hour = realHour(new Date());
   const night = hour >= 19 || hour < 7;
-  const b: GameValue = box(it.x, it.y, side ? 14 : 84, side ? 84 : 14, 170, wall);
-  box(it.x, it.y, side ? 18 : 90, side ? 90 : 18, 6, game.darken(wall, 0.45), { z0: 170 });
+  const bw = side ? FACADE_D : FACADE_W,
+    bh = side ? FACADE_W : FACADE_D;
+  const b: GameValue = box(it.x, it.y, bw, bh, tall, wall);
+  // tetto: cornicione sporgente, coppi e camino
+  const roof: GameValue = box(it.x, it.y, bw + 6, bh + 6, 7, game.darken(wall, 0.5), { z0: tall });
+  onFace(roof, 'top', (W: number, H: number): void => {
+    ctx.fillStyle = '#b5523b';
+    ctx.fillRect(2, 2, W - 4, H - 4);
+    ctx.strokeStyle = 'rgba(0,0,0,0.22)';
+    ctx.lineWidth = 1;
+    for (let u = 5; u < W - 2; u += 5) {
+      ctx.beginPath();
+      ctx.moveTo(u, 2);
+      ctx.lineTo(u, H - 2);
+      ctx.stroke();
+    }
+    ctx.fillStyle = 'rgba(255,255,255,0.12)';
+    for (let v = 4; v < H - 2; v += 6) ctx.fillRect(2, v, W - 4, 1);
+  });
+  const cx = side ? it.x - 4 : it.x + 22,
+    cy = side ? it.y + 22 : it.y - 4;
+  const chimney: GameValue = box(cx, cy, 8, 8, 20, '#8e4a36', { z0: tall + 7 });
+  onFace(chimney, 'left', (W: number, H: number): void => {
+    ctx.strokeStyle = 'rgba(0,0,0,0.25)';
+    ctx.lineWidth = 0.8;
+    for (let v = 4; v < H; v += 4) {
+      ctx.beginPath();
+      ctx.moveTo(0, v);
+      ctx.lineTo(W, v);
+      ctx.stroke();
+    }
+  });
+  box(cx, cy, 10, 10, 2, '#5d4037', { z0: tall + 27 });
+  // facciata principale
   onFace(b, side ? 'right' : 'left', (W: number, H: number): void => {
-    // cornicione, marcapiani e zoccolo
+    // luce dall'alto: più chiaro in cima
+    const sh = ctx.createLinearGradient(0, 0, 0, H);
+    sh.addColorStop(0, 'rgba(255,255,255,0.12)');
+    sh.addColorStop(1, 'rgba(0,0,0,0.1)');
+    ctx.fillStyle = sh;
+    ctx.fillRect(0, 0, W, H);
+    // cornicione con dentelli
     ctx.fillStyle = game.darken(wall, 0.3);
     ctx.fillRect(0, 0, W, 7);
-    ctx.fillStyle = 'rgba(255,255,255,0.2)';
-    ctx.fillRect(0, 7, W, 2);
-    ctx.fillStyle = 'rgba(0,0,0,0.12)';
-    ctx.fillRect(0, 58, W, 3);
-    ctx.fillRect(0, 104, W, 3);
-    ctx.fillStyle = game.darken(wall, 0.22);
-    ctx.fillRect(0, H - 10, W, 10);
-    // finestre dei due piani, con persiane
-    const ww = W * 0.18,
-      wh = 30;
-    for (let r = 0; r < 2; r++)
+    ctx.fillStyle = game.lighten(wall, 0.35);
+    for (let u = 2; u < W - 2; u += 6) ctx.fillRect(u, 7, 3, 3);
+    // cantonali in pietra sugli spigoli
+    ctx.fillStyle = game.lighten(wall, 0.45);
+    for (let v = 12, i = 0; v < H - 14; v += 9, i++) {
+      const qw = i % 2 ? 5 : 8;
+      ctx.fillRect(0, v, qw, 7);
+      ctx.fillRect(W - qw, v, qw, 7);
+    }
+    // piani: finestre con persiane e fioriere
+    const ww = W * 0.17,
+      wh = 28;
+    for (let f = 0; f < floors; f++) {
+      const wy = 16 + f * 48;
       for (let c = 0; c < 3; c++) {
-        const wx = W * (0.11 + c * 0.305),
-          wy = 16 + r * 46;
-        const lit = night && rnd(o.no * 13 + r * 3 + c) > 0.35;
-        ctx.fillStyle = '#f5f0e6';
-        ctx.fillRect(wx - 2, wy - 2, ww + 4, wh + 4);
-        const g = ctx.createLinearGradient(wx, wy, wx + ww, wy + wh);
-        if (lit) {
-          g.addColorStop(0, '#ffe8a3');
-          g.addColorStop(1, '#f6b93b');
-        } else {
-          g.addColorStop(0, night ? '#2c3e66' : '#bfe4f5');
-          g.addColorStop(1, night ? '#1b2440' : '#6fb1d6');
-        }
-        ctx.fillStyle = g;
-        ctx.fillRect(wx, wy, ww, wh);
-        ctx.fillStyle = '#f5f0e6';
-        ctx.fillRect(wx + ww / 2 - 0.6, wy, 1.2, wh);
-        ctx.fillRect(wx, wy + wh * 0.45, ww, 1.2);
-        ctx.fillStyle = game.darken(wall, 0.35);
-        ctx.fillRect(wx - 3, wy + wh + 2, ww + 6, 3);
+        const wx = W * (0.13 + c * 0.3);
+        const lit = night && rnd(o.no * 13 + f * 3 + c) > 0.35;
         ctx.fillStyle = '#4e7d5b';
         ctx.fillRect(wx - 7, wy - 1, 4, wh + 2);
         ctx.fillRect(wx + ww + 3, wy - 1, 4, wh + 2);
+        facadeWindow(ctx, wx, wy, ww, wh, lit, night, wall);
+        if (rnd(o.no * 7 + f * 5 + c) > 0.45) {
+          ctx.fillStyle = '#6d4c41';
+          ctx.fillRect(wx - 1, wy + wh + 5, ww + 2, 4);
+          for (let k = 0; k < 4; k++) {
+            ctx.fillStyle = FLOWER_COLORS[(o.no + f + c + k) % FLOWER_COLORS.length];
+            ctx.beginPath();
+            ctx.arc(wx + 2 + (k * (ww - 4)) / 3, wy + wh + 4, 1.6, 0, 6.3);
+            ctx.fill();
+          }
+        }
       }
-    // balcone al primo piano
-    const bx = W * 0.4 - 6,
-      by = 16 + wh - 6,
-      bw = W * 0.2 + 12;
-    ctx.fillStyle = 'rgba(60,60,60,0.85)';
-    ctx.fillRect(bx, by, bw, 2);
-    ctx.fillRect(bx, by + 10, bw, 2);
-    for (let u = bx; u <= bx + bw; u += 3) ctx.fillRect(u, by, 1, 12);
-    // portone ad arco con pensilina
+      // marcapiano
+      ctx.fillStyle = 'rgba(0,0,0,0.12)';
+      ctx.fillRect(0, wy + 41, W, 3);
+    }
+    // balcone sul piano più basso, davanti alla finestra centrale
+    const by = 16 + (floors - 1) * 48 + wh - 6,
+      bx = W * 0.43 - 8,
+      bl = ww + 16;
+    ctx.fillStyle = 'rgba(0,0,0,0.2)';
+    ctx.fillRect(bx, by + 12, bl, 3);
+    ctx.fillStyle = 'rgba(45,45,45,0.9)';
+    ctx.fillRect(bx, by, bl, 2);
+    ctx.fillRect(bx, by + 10, bl, 2);
+    for (let u = bx; u <= bx + bl; u += 3) ctx.fillRect(u, by, 1, 12);
+    // piano terra
+    const gy = H - 56;
+    ctx.fillStyle = game.darken(wall, 0.08);
+    ctx.fillRect(0, gy, W, 46);
+    // portone ad arco
     const dx = W * 0.36,
       dw = W * 0.28,
-      dy = 118;
-    ctx.fillStyle = game.darken(wall, 0.4);
-    ctx.fillRect(dx - 3, dy - 3, dw + 6, H - 10 - dy + 3);
+      dy = gy + 8;
+    ctx.fillStyle = game.lighten(wall, 0.4);
+    ctx.beginPath();
+    ctx.moveTo(dx - 4, H - 10);
+    ctx.lineTo(dx - 4, dy + dw / 2);
+    ctx.arc(dx + dw / 2, dy + dw / 2, dw / 2 + 4, Math.PI, 0);
+    ctx.lineTo(dx + dw + 4, H - 10);
+    ctx.fill();
     ctx.fillStyle = o.doorColor;
     ctx.beginPath();
     ctx.moveTo(dx, H - 10);
@@ -1736,62 +1843,142 @@ function drawFacade(it: GameValue, o: { no: number; doorColor: string; building?
     ctx.arc(dx + dw / 2, dy + dw / 2, dw / 2, Math.PI, 0);
     ctx.lineTo(dx + dw, H - 10);
     ctx.fill();
+    // lunetta a vetri sopra il portone
+    ctx.fillStyle = night ? '#ffe08a' : 'rgba(205,238,253,0.9)';
+    ctx.beginPath();
+    ctx.arc(dx + dw / 2, dy + dw / 2, dw / 2 - 3, Math.PI, 0);
+    ctx.fill();
     ctx.strokeStyle = 'rgba(0,0,0,0.3)';
     ctx.lineWidth = 1;
     ctx.beginPath();
-    ctx.moveTo(dx + dw / 2, dy + 4);
+    ctx.moveTo(dx + dw / 2, dy + 3);
     ctx.lineTo(dx + dw / 2, H - 10);
+    ctx.moveTo(dx + 3, dy + dw / 2);
+    ctx.lineTo(dx + dw - 3, dy + dw / 2);
     ctx.stroke();
-    ctx.strokeRect(dx + 3, dy + dw / 2 + 6, dw / 2 - 6, 12);
-    ctx.strokeRect(dx + dw / 2 + 3, dy + dw / 2 + 6, dw / 2 - 6, 12);
+    ctx.strokeRect(dx + 3, dy + dw / 2 + 5, dw / 2 - 6, 10);
+    ctx.strokeRect(dx + dw / 2 + 3, dy + dw / 2 + 5, dw / 2 - 6, 10);
     ctx.fillStyle = '#f1c40f';
     ctx.beginPath();
-    ctx.arc(dx + dw / 2 - 3, dy + 34, 1.5, 0, 6.3);
-    ctx.arc(dx + dw / 2 + 3, dy + 34, 1.5, 0, 6.3);
+    ctx.arc(dx + dw / 2 - 3, dy + dw / 2 + 21, 1.5, 0, 6.3);
+    ctx.arc(dx + dw / 2 + 3, dy + dw / 2 + 21, 1.5, 0, 6.3);
     ctx.fill();
     if (o.building) {
-      // ancora vuoto: nastro bianco e rosso sul portone
+      // appartamento ancora vuoto: nastro bianco e rosso sul portone
       ctx.save();
       ctx.beginPath();
-      ctx.rect(dx - 4, dy + 16, dw + 8, 10);
+      ctx.rect(dx - 4, dy + dw / 2 + 2, dw + 8, 9);
       ctx.clip();
       for (let u = dx - 14, i = 0; u < dx + dw + 8; u += 8, i++) {
         ctx.fillStyle = i % 2 ? '#ffffff' : '#e74c3c';
         ctx.beginPath();
-        ctx.moveTo(u, dy + 26);
-        ctx.lineTo(u + 8, dy + 16);
-        ctx.lineTo(u + 16, dy + 16);
-        ctx.lineTo(u + 8, dy + 26);
+        ctx.moveTo(u, dy + dw / 2 + 11);
+        ctx.lineTo(u + 8, dy + dw / 2 + 2);
+        ctx.lineTo(u + 16, dy + dw / 2 + 2);
+        ctx.lineTo(u + 8, dy + dw / 2 + 11);
         ctx.fill();
       }
       ctx.restore();
     }
-    ctx.fillStyle = '#5d4037';
-    ctx.fillRect(dx - 8, dy - 9, dw + 16, 5);
-    ctx.fillStyle = 'rgba(0,0,0,0.18)';
-    ctx.fillRect(dx - 6, dy - 4, dw + 12, 3);
-    // lampade ai lati del portone
-    ctx.fillStyle = night ? '#ffe08a' : '#d6d0c4';
-    ctx.fillRect(dx - 9, dy + 4, 4, 6);
-    ctx.fillRect(dx + dw + 5, dy + 4, 4, 6);
-    // finestrelle del piano terra
-    ctx.fillStyle = night ? '#2c3e66' : '#9fd3ec';
-    ctx.fillRect(W * 0.08, 124, W * 0.18, 20);
-    ctx.fillRect(W * 0.74, 124, W * 0.18, 20);
-    ctx.fillStyle = '#f5f0e6';
-    ctx.fillRect(W * 0.17 - 0.6, 124, 1.2, 20);
-    ctx.fillRect(W * 0.83 - 0.6, 124, 1.2, 20);
     // targa con il numero
     ctx.fillStyle = 'rgba(255,255,255,0.95)';
-    ctx.fillRect(W / 2 - 10, dy - 21, 20, 11);
+    ctx.fillRect(W / 2 - 10, gy - 4, 20, 10);
     ctx.fillStyle = '#2d3436';
     ctx.font = 'bold 8px sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText('A' + o.no, W / 2, dy - 12.5);
+    ctx.fillText('A' + o.no, W / 2, gy + 3.5);
+    // vetrine del piano terra con tende a strisce
+    for (const wx of [W * 0.07, W * 0.73]) {
+      const vw = W * 0.2;
+      ctx.fillStyle = night ? '#2c3e66' : '#9fd3ec';
+      ctx.fillRect(wx, gy + 18, vw, 20);
+      ctx.fillStyle = '#f5f0e6';
+      ctx.fillRect(wx + vw / 2 - 0.6, gy + 18, 1.2, 20);
+      for (let k = 0; k < 5; k++) {
+        ctx.fillStyle = k % 2 ? '#ffffff' : awning;
+        ctx.beginPath();
+        ctx.moveTo(wx - 2 + (k * (vw + 4)) / 5, gy + 9);
+        ctx.lineTo(wx - 2 + ((k + 1) * (vw + 4)) / 5, gy + 9);
+        ctx.lineTo(wx - 2 + ((k + 1) * (vw + 4)) / 5, gy + 15);
+        ctx.lineTo(wx - 2 + (k * (vw + 4)) / 5, gy + 15);
+        ctx.fill();
+      }
+      ctx.fillStyle = game.darken(awning, 0.25);
+      for (let k = 0; k <= 5; k++) {
+        ctx.beginPath();
+        ctx.arc(wx - 2 + (k * (vw + 4)) / 5, gy + 15, 1.6, 0, Math.PI);
+        ctx.fill();
+      }
+    }
+    // pensilina e lampioncini
+    ctx.fillStyle = '#4e342e';
+    ctx.fillRect(dx - 8, dy - 6, dw + 16, 4);
+    for (const lx of [dx - 9, dx + dw + 5]) {
+      if (night) {
+        const glow = ctx.createRadialGradient(lx + 2, dy + 8, 0, lx + 2, dy + 8, 12);
+        glow.addColorStop(0, 'rgba(255,224,138,0.8)');
+        glow.addColorStop(1, 'rgba(255,224,138,0)');
+        ctx.fillStyle = glow;
+        ctx.fillRect(lx - 10, dy - 4, 24, 24);
+      }
+      ctx.fillStyle = '#2d3436';
+      ctx.fillRect(lx, dy + 3, 4, 2);
+      ctx.fillStyle = night ? '#ffe08a' : '#d6d0c4';
+      ctx.fillRect(lx, dy + 5, 4, 6);
+    }
+    // zoccolo in pietra
+    ctx.fillStyle = game.darken(wall, 0.3);
+    ctx.fillRect(0, H - 10, W, 10);
+    ctx.strokeStyle = 'rgba(0,0,0,0.2)';
+    ctx.lineWidth = 0.8;
+    for (let u = 0, r = 0; u < W; u += 10, r++) {
+      ctx.beginPath();
+      ctx.moveTo(u + (r % 2) * 5, H - 10);
+      ctx.lineTo(u + (r % 2) * 5, H);
+      ctx.stroke();
+    }
   });
-  // gradino davanti al portone
-  if (side) box(it.x + 12, it.y, 10, 28, 4, '#bdb6aa');
-  else box(it.x, it.y + 12, 28, 10, 4, '#bdb6aa');
+  // fianco della palazzina: finestrelle per piano
+  onFace(b, side ? 'left' : 'right', (W: number, H: number): void => {
+    ctx.fillStyle = 'rgba(0,0,0,0.08)';
+    ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = game.darken(wall, 0.35);
+    ctx.fillRect(0, 0, W, 7);
+    ctx.fillRect(0, H - 10, W, 10);
+    for (let f = 0; f < floors; f++)
+      facadeWindow(
+        ctx,
+        W / 2 - 4,
+        20 + f * 48,
+        8,
+        20,
+        night && rnd(o.no + f * 11) > 0.5,
+        night,
+        wall,
+      );
+  });
+  // gradino, zerbino e vasi ai lati del portone
+  const out = FACADE_D / 2;
+  const front = (along: number, away: number): [number, number] =>
+    side ? [it.x + out + away, it.y + along] : [it.x + along, it.y + out + away];
+  {
+    const [sx, sy] = front(0, 5);
+    box(sx, sy, side ? 10 : 30, side ? 30 : 10, 4, '#bdb6aa');
+  }
+  for (const along of [-21, 21]) {
+    const [px, py] = front(along, 6);
+    box(px, py, 7, 7, 8, '#a0522d');
+    const top = isoProject(px, py, 14);
+    const s: number = isoScale();
+    ctx.fillStyle = '#2e7d32';
+    ctx.beginPath();
+    ctx.arc(top.x, top.y, 5.5 * s, 0, 6.3);
+    ctx.fill();
+    ctx.fillStyle = '#43a047';
+    ctx.beginPath();
+    ctx.arc(top.x - 1.5 * s, top.y - 1.5 * s, 3 * s, 0, 6.3);
+    ctx.fill();
+  }
 }
 
 // Ingresso di un appartamento visto dal cortile: il colore del portone dice se è il tuo o se è pieno;

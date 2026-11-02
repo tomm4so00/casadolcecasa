@@ -1797,15 +1797,16 @@ export const SALOON_DOORS = {
 };
 
 // Cortile largo 960×440: al centro i 4 appartamenti di sempre sulla parete di fondo,
-// nell'ala sinistra altri 4 sulla parete di sinistra, nell'ala destra il razzo dell'evento.
+// nell'ala sinistra altri 4 sulla parete di sinistra; l'ala destra è libera per gli eventi
+// (il razzo e il cartello TO THE MOON sono pronti in PROP_DRAW: kind 'rocket' e 'moonSign').
 export const COURTYARD_DOORS = {
-  doorApt0: { x: -135, y: -210, w: 56, h: 10, z: 110, name: 'Appartamento 1', aptIdx: 0 },
-  doorApt1: { x: -45, y: -210, w: 56, h: 10, z: 110, name: 'Appartamento 2', aptIdx: 1 },
-  doorApt2: { x: 45, y: -210, w: 56, h: 10, z: 110, name: 'Appartamento 3', aptIdx: 2 },
-  doorApt3: { x: 135, y: -210, w: 56, h: 10, z: 110, name: 'Appartamento 4', aptIdx: 3 },
+  doorApt0: { x: -172, y: -205, w: 56, h: 10, z: 110, name: 'Appartamento 1', aptIdx: 0 },
+  doorApt1: { x: -57, y: -205, w: 56, h: 10, z: 110, name: 'Appartamento 2', aptIdx: 1 },
+  doorApt2: { x: 57, y: -205, w: 56, h: 10, z: 110, name: 'Appartamento 3', aptIdx: 2 },
+  doorApt3: { x: 172, y: -205, w: 56, h: 10, z: 110, name: 'Appartamento 4', aptIdx: 3 },
   doorApt4: {
-    x: -470,
-    y: -150,
+    x: -465,
+    y: -165,
     w: 10,
     h: 56,
     z: 110,
@@ -1814,8 +1815,8 @@ export const COURTYARD_DOORS = {
     side: 'left',
   },
   doorApt5: {
-    x: -470,
-    y: -50,
+    x: -465,
+    y: -55,
     w: 10,
     h: 56,
     z: 110,
@@ -1824,8 +1825,8 @@ export const COURTYARD_DOORS = {
     side: 'left',
   },
   doorApt6: {
-    x: -470,
-    y: 50,
+    x: -465,
+    y: 55,
     w: 10,
     h: 56,
     z: 110,
@@ -1834,8 +1835,8 @@ export const COURTYARD_DOORS = {
     side: 'left',
   },
   doorApt7: {
-    x: -470,
-    y: 150,
+    x: -465,
+    y: 165,
     w: 10,
     h: 56,
     z: 110,
@@ -2104,10 +2105,12 @@ export const ENV_DECOR = {
     // ala sinistra: lampioni davanti agli appartamenti 5-8
     { kind: 'streetlamp', x: -390, y: -100, w: 8, h: 8 },
     { kind: 'streetlamp', x: -390, y: 100, w: 8, h: 8 },
-    // ala destra: il razzo dell'evento e il suo cartello
-    { kind: 'rocket', x: 370, y: -40, w: 90, h: 90, z: 290, label: 'Razzo 🚀' },
-    { kind: 'moonSign', x: 300, y: 90, w: 96, h: 6, z: 60 },
+    // ala destra: per ora un piccolo giardino
     { kind: 'streetlamp', x: 290, y: -160, w: 8, h: 8 },
+    { kind: 'tree', x: 350, y: -110, w: 18, h: 18, size: 1.15, z: 95 },
+    { kind: 'tree', x: 430, y: 60, w: 16, h: 16, size: 0.95, z: 85 },
+    { kind: 'bench', x: 340, y: 90, w: 50, h: 16 },
+    { kind: 'streetlamp', x: 290, y: 150, w: 8, h: 8 },
   ],
   SALOON: [
     { kind: 'plant', x: -168, y: -160, w: 26, h: 26, z: 60 },
