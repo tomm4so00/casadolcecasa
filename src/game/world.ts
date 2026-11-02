@@ -774,7 +774,7 @@ export async function handleObjectInteract(..._args: GameValue[]): Promise<void>
     if (game.activeTargetProp === 'fridge') {
       game.view.fridgeIsOpen = !game.view.fridgeIsOpen;
       sfx(game.view.fridgeIsOpen ? 'fridgeOpen' : 'fridgeClose');
-      if (!game.view.fridgeIsOpen) game.player.hasFoodInInventory = false;
+      // il cibo preso resta in mano anche chiudendo il frigo: serve per il fornello
     } else if (game.activeTargetProp === 'coffee') {
       useCoffee();
     } else if (game.activeTargetProp === 'stove') {
