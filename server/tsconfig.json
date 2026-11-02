@@ -1,0 +1,15 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "skipLibCheck": true,
+    "rootDir": "..",
+    "outDir": "lib",
+    "sourceMap": true
+  },
+  "include": ["src/**/*.ts", "../shared/**/*.ts"]
+}

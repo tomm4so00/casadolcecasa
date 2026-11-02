@@ -8,3 +8,8 @@ dist/
 test-results/
 playwright-report/
 .firebase/
+
+server/lib/
+
+*service-account*.json
+*firebase-adminsdk*.json

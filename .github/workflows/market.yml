@@ -1,0 +1,38 @@
+name: Update shared stock market
+
+on:
+  schedule:
+    - cron: '7,22,37,52 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: shared-stock-market
+  cancel-in-progress: false
+
+jobs:
+  update:
+    if: github.repository == 'tomm4so00/casadolcecasa' && github.event.repository.private == false && github.ref == 'refs/heads/main' && vars.MARKET_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - name: Set up Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: server/package-lock.json
+      - name: Install publisher dependencies
+        run: npm ci --prefix server
+      - name: Build publisher
+        run: npm run build --prefix server
+      - name: Publish this market slot
+        env:
+          FIREBASE_MARKET_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_MARKET_SERVICE_ACCOUNT }}
+          FIREBASE_PROJECT_ID: ${{ vars.VITE_FIREBASE_PROJECT_ID || 'casadolcecasa-6d92a' }}
+          FIREBASE_DATABASE_URL: ${{ vars.VITE_FIREBASE_DATABASE_URL || 'https://casadolcecasa-6d92a-default-rtdb.firebaseio.com' }}
+        run: node server/lib/server/src/index.js

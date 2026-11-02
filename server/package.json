@@ -1,0 +1,19 @@
+{
+  "name": "casadolcecasa-market-publisher",
+  "private": true,
+  "type": "module",
+  "main": "lib/server/src/index.js",
+  "engines": {
+    "node": "22"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "firebase-admin": "^13.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.0",
+    "@types/node": "^22.0.0"
+  }
+}
