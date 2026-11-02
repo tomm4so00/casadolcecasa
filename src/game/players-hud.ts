@@ -6,6 +6,7 @@ import { presenceAlive } from './saves.js';
 import { bodyFromName, legacyLook, parseBody, parseLook, resolveLook } from './character.js';
 import { drawPlayerAvatar } from './render/avatars.js';
 import { escapeHtmlSafe } from './needs.js';
+import type { OnlinePlayer } from './network-model.js';
 import { onlineVitals, type VitalKey } from './players-hud-rules.js';
 
 const FULL_KEY = 'sims_hud_full';
@@ -25,7 +26,7 @@ function setupHudToggle(): void {
 }
 
 /** Disegna la testa del giocatore in una piccola icona tonda. */
-function drawHeadIcon(cv: HTMLCanvasElement, op: GameValue): void {
+function drawHeadIcon(cv: HTMLCanvasElement, op: OnlinePlayer): void {
   const ctx = cv.getContext('2d');
   if (!ctx) return;
   const look: GameValue = op.look ? resolveLook(parseLook(op.look)) : legacyLook(op);
@@ -45,11 +46,11 @@ function drawHeadIcon(cv: HTMLCanvasElement, op: GameValue): void {
 }
 
 /** Giocatori online adesso (escluso me), in ordine di nome. */
-function onlineList(): [string, GameValue][] {
+function onlineList(): [string, OnlinePlayer][] {
   const now = Date.now();
-  return Object.entries<GameValue>(game.onlinePlayers || {})
+  return Object.entries(game.onlinePlayers || {})
     .filter(
-      ([id, op]: [string, GameValue]) =>
+      ([id, op]: [string, OnlinePlayer]) =>
         id !== game.session.myPlayerId &&
         !!op &&
         !!op.name &&
@@ -71,17 +72,17 @@ const VITAL_LABEL: Record<VitalKey, [string, string]> = {
 };
 
 /** Posto del giocatore visto da me: il suo titolo "La tua stanza" è la stanza sua, non la mia. */
-function placeFor(op: GameValue, place: string): string {
+function placeFor(op: OnlinePlayer, place: string): string {
   if (op.env === 'PLAYER_ROOM' && typeof op.roomIdx === 'number') {
     if (op.roomIdx === game.myAssignedRoomIdx) return 'Nella tua stanza 🏠';
-    const owner: GameValue = game.roomsState?.[op.roomIdx]?.owner;
+    const owner = game.roomsState?.[op.roomIdx]?.owner;
     if (owner && owner === op.name) return 'Nella sua stanza 🏠';
     if (owner) return `Nella stanza di ${owner}`;
   }
   return place.replace(/^La tua stanza/, 'La sua stanza');
 }
 
-function renderCard(op: GameValue, icon: HTMLElement): void {
+function renderCard(op: OnlinePlayer, icon: HTMLElement): void {
   const card = dom('player-card');
   const v = onlineVitals(op);
   const status =

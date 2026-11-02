@@ -6,6 +6,43 @@ export interface Point {
   x: number;
   y: number;
 }
+/** Spostamento della telecamera in unità isometriche e ambiente in cui è stata posizionata. */
+export interface CameraState {
+  u: number;
+  v: number;
+  env: string | null;
+}
+/** Disegno fuori dalla scena (icone, anteprime, sfondo in cache): centro e scala propri. */
+export interface ViewOverride {
+  cx: number;
+  cy: number;
+  scale: number;
+}
+/** Un oggetto di una scena: mobile, porta, bancone… (catalogues.ts). */
+export interface MapItem extends Point {
+  w: number;
+  h: number;
+  z?: number;
+  name?: string;
+  moveable?: boolean;
+  color?: string;
+  topColor?: string;
+  /** Porta: ambiente in cui porta. */
+  targetEnv?: string;
+  /** Porta di una stanza privata (indice nell'appartamento) o di un appartamento. */
+  roomIdx?: number;
+  aptIdx?: number;
+  category?: string;
+  slot?: string;
+  wallItem?: boolean;
+  title?: string;
+  seed?: number;
+  /** Quarti di giro del mobile. */
+  rot?: number;
+  /** Campi propri di alcuni oggetti (tombe, postazioni di lavoro…). */
+  [extra: string]: unknown;
+}
+export type SceneMap = Record<string, MapItem>;
 export interface Investment {
   units: number;
   cost: number;

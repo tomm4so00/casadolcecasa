@@ -928,13 +928,14 @@ export function drawStaticScene(st?: GameValue, hour?: GameValue): GameValue {
     s,
     Math.floor(hour),
   ].join('|');
-  if (game.bgCache.key !== key) {
-    const off: GameValue = game.bgCache.canvas || document.createElement('canvas');
+  let off = game.bgCache.canvas;
+  if (game.bgCache.key !== key || !off) {
+    off ||= document.createElement('canvas');
     off.width = Math.ceil(W + (r.u1 - r.u0) * s);
     off.height = Math.ceil(H + (r.v1 - r.v0) * s);
-    const mainCtx: GameValue = game.view.ctx;
-    const mainOverride: GameValue = game.viewOverride;
-    game.view.ctx = off.getContext('2d');
+    const mainCtx = game.view.ctx;
+    const mainOverride = game.viewOverride;
+    game.view.ctx = off.getContext('2d')!;
     game.viewOverride = { cx: W / 2 - r.u0 * s, cy: H / 2 + 55 - r.v0 * s, scale: s };
     try {
       game.view.ctx.clearRect(0, 0, off.width, off.height);
@@ -946,12 +947,8 @@ export function drawStaticScene(st?: GameValue, hour?: GameValue): GameValue {
     }
     game.bgCache = { key, canvas: off };
   }
-  const cam: GameValue = game.cam || { u: 0, v: 0 };
-  game.view.ctx.drawImage(
-    game.bgCache.canvas,
-    Math.round(-(cam.u - r.u0) * s),
-    Math.round(-(cam.v - r.v0) * s),
-  );
+  const cam = game.cam || { u: 0, v: 0 };
+  game.view.ctx.drawImage(off, Math.round(-(cam.u - r.u0) * s), Math.round(-(cam.v - r.v0) * s));
 }
 
 export function drawDynamicFloor(st?: GameValue, t?: GameValue): GameValue {

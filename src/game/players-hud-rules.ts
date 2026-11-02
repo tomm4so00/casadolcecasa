@@ -17,7 +17,8 @@ export interface PlayerVitals extends Record<VitalKey, number | null> {
 }
 
 /** Legge i parametri di un altro giocatore; null se non li pubblica (versione vecchia del gioco). */
-export function onlineVitals(op: Record<string, unknown> | null | undefined): PlayerVitals {
+export function onlineVitals(data: object | null | undefined): PlayerVitals {
+  const op = data as Record<string, unknown> | null | undefined; // dati di rete: si controlla ogni campo
   const out = { place: '' } as PlayerVitals;
   for (const k of Object.keys(VITAL_FIELDS) as VitalKey[]) {
     const v = op?.[VITAL_FIELDS[k]];

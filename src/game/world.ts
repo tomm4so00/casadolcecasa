@@ -1,6 +1,7 @@
 import { bedtimeThought, notePersonality } from './personality.js';
 import { purchaseItem, spendMoney, creditMoney } from './economy.js';
 import type { GameValue } from './context.js';
+import type { SceneMap } from './models.js';
 import { game } from './context.js';
 import { lifetime, dom, browser } from './runtime.js';
 import {
@@ -159,7 +160,7 @@ export function setupControls(..._args: GameValue[]): GameValue {
 // Converte un punto dello schermo in coordinate del pavimento e ci sposta il mobile
 export function moveFurnitureToPointer(clientX?: GameValue, clientY?: GameValue): GameValue {
   if (!game.isMovingFurnitureMode || !game.movingPropKey) return;
-  const obj: GameValue = getCurrentFurnitureMap()[game.movingPropKey];
+  const obj = getCurrentFurnitureMap()[game.movingPropKey];
   if (!obj) return;
   const rect: GameValue = game.view.canvas.getBoundingClientRect();
   const s: GameValue = isoScale(),
@@ -237,7 +238,7 @@ export function toggleSprint(..._args: GameValue[]): GameValue {
   dom('btn-sprint').classList.toggle('active', game.isSprinting);
 }
 
-export function getCurrentFurnitureMap(..._args: GameValue[]): GameValue {
+export function getCurrentFurnitureMap(..._args: GameValue[]): SceneMap {
   if (game.view.activeEnvironment === 'PLAYER_ROOM') {
     if (isMyRoomNow()) return getMyRoomMap();
     // Stanza di un altro: mostra i suoi mobili come li ha sistemati lui
@@ -274,7 +275,7 @@ export function checkProximity(..._args: GameValue[]): GameValue {
     dom('pop-interaction').classList.add('hidden');
     return;
   }
-  let map: GameValue = getCurrentFurnitureMap();
+  let map = getCurrentFurnitureMap();
   let found: GameValue = null;
   let bestDist: GameValue = 65;
   Object.keys(map).forEach((key?: GameValue): GameValue => {
@@ -549,7 +550,7 @@ function backToSaloon(): void {
 export async function handleObjectInteract(..._args: GameValue[]): Promise<void> {
   if (!game.activeTargetProp) return;
   if (game.showerAnim) return;
-  let map: GameValue = getCurrentFurnitureMap();
+  let map = getCurrentFurnitureMap();
   let item: GameValue = map[game.activeTargetProp];
   if (game.view.activeEnvironment === 'CIMITERO') {
     if (item) showGraveInfo(item);

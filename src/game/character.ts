@@ -450,7 +450,7 @@ export function startMovingFurniture(..._args: GameValue[]): GameValue {
   game.movingPropKey = game.activeTargetProp;
   dom('pop-interaction').classList.add('hidden');
   dom('btn-place-furniture').classList.remove('hidden');
-  const moving: GameValue = getCurrentFurnitureMap()[game.movingPropKey];
+  const moving = game.movingPropKey ? getCurrentFurnitureMap()[game.movingPropKey] : undefined;
   dom('btn-rotate-furniture').classList.toggle('hidden', !moving || !!moving.wallItem);
   const isTouch: GameValue = 'ontouchstart' in browser || navigator.maxTouchPoints > 0;
   toast(
@@ -474,7 +474,7 @@ export function placeFurniture(..._args: GameValue[]): GameValue {
 // Gira di un quarto di giro il mobile che si sta spostando (davanti verso i 4 assi).
 export function rotateFurniture(..._args: GameValue[]): GameValue {
   if (!game.isMovingFurnitureMode || !game.movingPropKey) return;
-  const obj: GameValue = getCurrentFurnitureMap()[game.movingPropKey];
+  const obj = getCurrentFurnitureMap()[game.movingPropKey];
   if (!obj || obj.wallItem) return;
   obj.rot = ((obj.rot || 0) + 1) % 4;
   setFurniturePosition(obj, obj.x, obj.y); // l'ingombro cambia: resta dentro la stanza

@@ -12,7 +12,7 @@ export function isoProject(x?: GameValue, y?: GameValue, z?: GameValue): GameVal
   const scale: GameValue = v ? v.scale : cameraScale();
   const cy: GameValue = v ? v.cy : game.view.canvas.height / 2 + 55;
   // Telecamera (solo per la scena, non per le icone disegnate a parte)
-  const cam: GameValue = !v && game.cam ? game.cam : null;
+  const cam = v ? null : game.cam;
   // Mobile ruotato: i suoi punti girano attorno al centro prima della proiezione.
   const r = game.furnRot;
   if (r && r.k) {

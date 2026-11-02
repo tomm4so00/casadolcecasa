@@ -41,13 +41,14 @@ import { approachKissPartner, drawKissHearts, kissActive } from './romance.js';
 import { faintAmount } from './faint.js';
 import { updateCamera } from './camera.js';
 import { presenceState } from './presence-rules.js';
+import type { OnlinePlayer } from './network-model.js';
 export function getSolidObstacles(..._args: GameValue[]): GameValue {
   const extra: GameValue = (game.ENV_PROPS[game.view.activeEnvironment] || [])
     .concat(game.ENV_DECOR[game.view.activeEnvironment] || [])
     .filter((p?: GameValue): GameValue => p.solid !== false);
   if (game.ENV_PROPS[game.view.activeEnvironment]) return extra;
   if (game.view.activeEnvironment === 'SALOON') return extra;
-  let map: GameValue = getCurrentFurnitureMap();
+  let map = getCurrentFurnitureMap();
   return Object.keys(map)
     .filter(
       (k?: GameValue): GameValue =>
@@ -79,7 +80,7 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
     delta = 0;
   }
   const speed: GameValue = (game.isSprinting ? 220 : 130) * (game.player.sleepLevel < 20 ? 0.6 : 1); // stanco = più lento
-  let map: GameValue = getCurrentFurnitureMap();
+  let map = getCurrentFurnitureMap();
   // In modalità "Sposta Mobile" WASD/frecce/joystick muovono il mobile invece del personaggio
   if (
     game.isMovingFurnitureMode &&
@@ -302,9 +303,9 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
   });
   const now: GameValue = Date.now();
   game.frameNear = [];
-  Object.keys(game.onlinePlayers).forEach((id?: GameValue): GameValue => {
+  Object.keys(game.onlinePlayers).forEach((id: string): void => {
     if (id === game.session.myPlayerId) return;
-    let op: GameValue = game.onlinePlayers[id];
+    const op: OnlinePlayer | undefined = game.onlinePlayers[id];
     if (!op || op.env !== game.view.activeEnvironment) return;
     // Chi ha lasciato il gioco resta visibile (offline); se non dormiva, sviene a sonno finito
     const alive: boolean = presenceAlive(id, op, now);
@@ -347,7 +348,7 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
       const lz = state === 'fainted' ? 34 : state === 'sleeping' ? 70 : 92;
       labels.push((): GameValue => drawOfflineTag(s.x, s.y, lz, op.name));
     }
-    const lk: GameValue = (op.look || op.outfit + op.acc) + '|' + (op.body || '');
+    const lk: GameValue = (op.look || `${op.outfit}${op.acc}`) + '|' + (op.body || '');
     if (s.lookKey !== lk) {
       s.lookKey = lk;
       s.look = op.look ? resolveLook(parseLook(op.look)) : legacyLook(op);

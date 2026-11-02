@@ -1,7 +1,7 @@
 // Telecamera: sul telefono la scena è più grande e segue il giocatore, con una zona morta
 // al centro (si muove solo quando ti avvicini al bordo) e senza mai uscire dalla stanza.
-import type { GameValue } from './context.js';
 import { game } from './context.js';
+import type { CameraState } from './models.js';
 
 const PHONE_ZOOM = 1.6; // quanto si ingrandisce la scena sul telefono
 const MAX_SCALE = 1.6;
@@ -51,7 +51,7 @@ export function cameraRange(s = cameraScale()): { u0: number; u1: number; v0: nu
 
 /** Muove la telecamera verso il giocatore; al cambio di ambiente salta subito su di lui. */
 export function updateCamera(delta: number): void {
-  const cam: GameValue = (game.cam ||= { u: 0, v: 0, env: null });
+  const cam: CameraState = (game.cam ||= { u: 0, v: 0, env: null });
   const s = cameraScale();
   const w = game.view.canvas.width / s,
     h = game.view.canvas.height / s;

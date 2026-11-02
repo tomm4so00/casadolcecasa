@@ -8,7 +8,11 @@ import type {
   RoomState,
   ChatMessage,
   DialogResult,
+  CameraState,
+  ViewOverride,
+  SceneMap,
 } from './models.js';
+import type { OnlinePlayer } from './network-model.js';
 
 /** Dynamic values at the boundary with the v8 save format and scene catalogues. */
 export type GameValue = any;
@@ -19,7 +23,7 @@ export interface GameContext {
   session: SessionState;
   firebaseConfig: GameValue;
   GAME_VERSION: number;
-  onlinePlayers: GameValue;
+  onlinePlayers: Record<string, OnlinePlayer>;
   vaultCache: number;
   bankBalance: number;
   kissAnim: GameValue;
@@ -71,7 +75,7 @@ export interface GameContext {
   keysPressed: GameValue;
   isMovingFurnitureMode: boolean;
   isDraggingFurniture: boolean;
-  movingPropKey: GameValue;
+  movingPropKey: string | null;
   activeTargetProp: GameValue;
   APT_COUNT: number;
   ROOMS_PER_APT: number;
@@ -116,15 +120,15 @@ export interface GameContext {
   presenceTrack: GameValue;
   INTRO_PAGES: GameValue;
   simulationBots: GameValue;
-  playerRoomFurniture: GameValue;
-  kitchenFurniture: GameValue;
-  bathroomFurniture: GameValue;
-  clothesStoreFurniture: GameValue;
-  storeFloorFurniture: GameValue;
-  bankFurniture: GameValue;
-  artStudioFurniture: GameValue;
-  saloonDoors: GameValue;
-  courtyardDoors: GameValue;
+  playerRoomFurniture: SceneMap;
+  kitchenFurniture: SceneMap;
+  bathroomFurniture: SceneMap;
+  clothesStoreFurniture: SceneMap;
+  storeFloorFurniture: SceneMap;
+  bankFurniture: SceneMap;
+  artStudioFurniture: SceneMap;
+  saloonDoors: SceneMap;
+  courtyardDoors: SceneMap;
   ABSENT_DEATH_MS: GameValue;
   ABSENT_DEATH_ESTIMATE_MS: GameValue;
   lastNeedsWall: GameValue;
@@ -187,9 +191,8 @@ export interface GameContext {
   shopState: GameValue;
   wardrobeAnim: GameValue;
   wardrobeSlot: string;
-  viewOverride: GameValue;
-  /** Spostamento della telecamera (unità isometriche) e ambiente in cui è stata posizionata. */
-  cam: GameValue;
+  viewOverride: ViewOverride | null;
+  cam: CameraState | null;
   _rgbCache: GameValue;
   lighten: GameValue;
   darken: GameValue;
@@ -211,7 +214,8 @@ export interface GameContext {
   Y1: number;
   WALL_DECOR: GameValue;
   WALL_DECOR_DYNAMIC: GameValue;
-  bgCache: GameValue;
+  /** Pavimento e pareti già disegnati, con la chiave della scena a cui appartengono. */
+  bgCache: { key: string; canvas: HTMLCanvasElement | null };
   lightCanvas: GameValue;
   SKIN_TONES: GameValue;
   HAIR_COLORS: GameValue;
