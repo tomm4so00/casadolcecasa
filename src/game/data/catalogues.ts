@@ -2079,20 +2079,21 @@ export const ENV_DECOR = {
     { kind: 'tree', x: -250, y: -95, w: 18, h: 18, size: 1.1, z: 90 },
     { kind: 'tree', x: -150, y: -110, w: 16, h: 16, size: 0.9, z: 80 },
     { kind: 'tree', x: 150, y: -110, w: 16, h: 16, size: 0.9, z: 80 },
-    { kind: 'tree', x: 250, y: -95, w: 18, h: 18, size: 1.05, z: 90 },
+    { kind: 'tree', x: 320, y: -110, w: 18, h: 18, size: 1.05, z: 90 },
     { kind: 'tree', x: -260, y: 120, w: 18, h: 18, size: 1.15, z: 95 },
     { kind: 'tree', x: -150, y: 150, w: 16, h: 16, size: 0.95, z: 85 },
     { kind: 'tree', x: -350, y: 175, w: 16, h: 16, size: 0.9, z: 80 },
     { kind: 'tree', x: 150, y: 150, w: 16, h: 16, size: 0.95, z: 85 },
     { kind: 'tree', x: 440, y: -110, w: 18, h: 18, size: 1.1, z: 90 },
     { kind: 'tree', x: 440, y: 170, w: 16, h: 16, size: 0.95, z: 85 },
-    // lampioni, sull'erba e sempre a coppie, uno di fronte all'altro ai lati di un vialetto:
+    // lampioni, sull'erba e sempre a coppie specchiate:
     // - all'incrocio davanti alle palazzine di sinistra
     { kind: 'streetlamp', x: -400, y: -36, w: 8, h: 8 },
     { kind: 'streetlamp', x: -400, y: 36, w: 8, h: 8 },
-    // - tra le due panchine e di fronte a loro
+    // - uno tra le due panchine e il suo gemello dall'altra parte della fontana,
+    //   sullo stesso bordo del vialetto che va verso destra
     { kind: 'streetlamp', x: -240, y: -37, w: 8, h: 8 },
-    { kind: 'streetlamp', x: -240, y: 37, w: 8, h: 8 },
+    { kind: 'streetlamp', x: 240, y: -37, w: 8, h: 8 },
     // - sul vialetto che va dalla piazzetta della fontana alle 6 palazzine
     { kind: 'streetlamp', x: -36, y: -122, w: 8, h: 8 },
     { kind: 'streetlamp', x: 36, y: -122, w: 8, h: 8 },
