@@ -68,8 +68,9 @@ La compatibilità con i dati esistenti non equivale a un audit delle regole in u
 
 L'accesso online richiede **Google**, senza password separata del gioco. Ogni
 account è collegato a un Sim; i salvataggi locali online sono separati per
-personaggio. Per i Sim v8 precedenti, il codice permette di richiedere un
-collegamento al gestore, senza accedere automaticamente ai progressi altrui.
+personaggio. I Sim v8 precedenti vengono collegati automaticamente al primo
+accesso (dal dispositivo dove erano salvati o con il codice); ogni Sim resta del
+primo account che lo reclama.
 Le copie locali precedenti sono conservate.
 
 Il file `firebase/database.rules.proposed.json` contiene la politica con accesso

@@ -1,6 +1,6 @@
 import type { GameValue } from './context.js';
 import type { DialogOptions, DialogResult } from './models.js';
-import { acquirePlayerSession, authenticateWithGoogle, requestLegacyLink } from './accounts.js';
+import { acquirePlayerSession } from './accounts.js';
 import { game } from './context.js';
 import { lifetime, dom, browser } from './runtime.js';
 import {
@@ -163,25 +163,24 @@ export function switchToCode(code?: GameValue): GameValue {
 }
 
 export async function restoreFromCode(..._args: GameValue[]): Promise<GameValue> {
-  if (!game.session.OFFLINE) await authenticateWithGoogle();
+  if (!game.session.OFFLINE) {
+    // Online the account already owns this Sim: a previous one is linked only on the first access.
+    toast(
+      'Questo account Google ha già un Sim. Un Sim precedente si recupera al primo accesso con un altro account Google.',
+      7000,
+    );
+    return;
+  }
   const res: GameValue = await openDialog({
-    title: game.session.OFFLINE ? '🔑 Recupera personaggio' : 'Collega un Sim precedente',
-    text: game.session.OFFLINE
-      ? "Inserisci il codice personaggio che trovi nel profilo (👤) sull'altro dispositivo."
-      : 'Inserisci il codice del Sim precedente. Il gestore verificherà il collegamento al tuo account Google; il codice da solo non permette di accedere al personaggio.',
+    title: '🔑 Recupera personaggio',
+    text: "Inserisci il codice personaggio che trovi nel profilo (👤) sull'altro dispositivo.",
     input: { placeholder: 'player_…', maxLength: 140 },
     buttons: [
       { label: 'Annulla', value: null, color: '#57606f' },
       { label: 'Recupera', value: 'ok', color: '#2ed573' },
     ],
   });
-  if (res.action === 'ok') {
-    if (game.session.OFFLINE) switchToCode(res.value);
-    else {
-      await requestLegacyLink(res.value);
-      toast('Richiesta inviata. Il gestore può ora collegare il Sim al tuo account Google.', 6000);
-    }
-  }
+  if (res.action === 'ok') switchToCode(res.value);
 }
 
 export function resizeCanvas(..._args: GameValue[]): GameValue {

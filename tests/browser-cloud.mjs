@@ -211,6 +211,13 @@ try {
           .ref('sims_accounts/' + firebaseClient.auth().currentUser.uid)
           .set({ playerId: victim.id }),
       ),
+      // A Google Sim is never claimable as a legacy code, even bypassing the client check.
+      claimGoogleSim: await attempt(() =>
+        game.session.db.ref('').update({
+          ['sims_legacy_claims/' + victim.id]: firebaseClient.auth().currentUser.uid,
+          ['sims_accounts/' + firebaseClient.auth().currentUser.uid]: { playerId: victim.id },
+        }),
+      ),
     };
   }, victim);
   assert.deepEqual(deniedOther, {
@@ -218,8 +225,9 @@ try {
     writeSave: false,
     readAccount: false,
     replaceBinding: false,
+    claimGoogleSim: false,
   });
-  // A legacy code creates a request. Only the trusted admin can approve the account binding.
+  // A legacy code is linked at once to the first Google account that claims it.
   const legacyId = 'player_legacytest';
   const legacySave = await (
     await fetch(`http://127.0.0.1:9000/sims_saves/${victim.id}.json?ns=${namespace}`, { headers })
@@ -231,20 +239,24 @@ try {
     body: JSON.stringify(legacySave),
   });
   await isolated.evaluate(
-    async (id) => (await import('/src/game/accounts.ts')).requestLegacyLink(id),
+    async (id) => (await import('/src/game/accounts.ts')).claimLegacySim(id),
     legacyId,
   );
-  const request = await (
-    await fetch(`http://127.0.0.1:9000/sims_link_requests/${isolatedUid}.json?ns=${namespace}`, {
+  const claim = await (
+    await fetch(`http://127.0.0.1:9000/sims_legacy_claims/${legacyId}.json?ns=${namespace}`, {
       headers,
     })
   ).json();
-  assert.equal(request.playerId, legacyId);
-  await fetch(`http://127.0.0.1:9000/sims_accounts/${isolatedUid}.json?ns=${namespace}`, {
-    method: 'PUT',
-    headers,
-    body: JSON.stringify({ playerId: legacyId }),
-  });
+  assert.equal(claim, isolatedUid);
+  const stolen = await other.evaluate(async (id) => {
+    try {
+      await (await import('/src/game/accounts.ts')).claimLegacySim(id);
+      return true;
+    } catch {
+      return false;
+    }
+  }, legacyId);
+  assert.equal(stolen, false);
   await isolated.locator('#cloud-game-btn').click();
   await isolated
     .locator('#dialog-buttons')

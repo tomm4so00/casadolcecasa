@@ -18,21 +18,31 @@ progressi di un altro account sullo stesso browser.
 
 ## Sim precedenti
 
-Il vecchio codice personaggio non è più una credenziale di accesso. La schermata
-iniziale chiede solo **Accedi con Google**. Se l'account non ha ancora un Sim, il
-gioco chiede se il giocatore ne aveva già uno: con **No** crea il nuovo Sim dopo
-la scelta del nome; con **Sì** chiede il codice e registra una richiesta in
-`sims_link_requests/{uid}`. La richiesta non trasferisce il personaggio: finché
-il gestore non la approva, la schermata mostra la richiesta in attesa e permette
-di tornare indietro e creare un nuovo Sim.
+La schermata iniziale chiede solo **Accedi con Google**. Al primo accesso di un
+account senza Sim, il gioco collega automaticamente, senza approvazione del
+gestore:
 
-Il gestore verifica l'identità del proprietario e il Sim richiesto, controlla
-che non appartenga già a un altro account e conserva una copia degli eventuali
-collegamenti precedenti. Poi imposta `sims_accounts/{uid}/playerId` al codice
-approvato dalla console amministrativa. Al successivo accesso con Google il
-giocatore ritrova quel Sim, senza cambiare i percorsi dei progressi o della stanza.
+1. il Sim indicato in una vecchia richiesta `sims_link_requests/{uid}`, se presente;
+2. altrimenti il Sim v8 salvato sul dispositivo in uso.
+
+Se nessuno dei due è collegabile, chiede se il giocatore aveva già un Sim: con
+**No** crea il nuovo Sim dopo la scelta del nome; con **Sì** chiede il codice e lo
+collega subito.
+
+Il collegamento è un aggiornamento atomico che scrive `sims_legacy_claims/{playerId}`
+con l'UID e `sims_accounts/{uid}/playerId` con il codice. Le regole lo accettano solo
+se il codice ha il formato v8 (`player_` più 4–20 caratteri minuscoli o cifre: i Sim
+creati con Google non sono reclamabili), esiste un salvataggio cloud, il Sim non è
+già reclamato e l'account non ha ancora un Sim. Il primo account che reclama un
+codice lo tiene: il codice è visibile ad altri giocatori, quindi un Sim non ancora
+reclamato può essere preso da chi lo conosce. Il gestore può correggere un
+collegamento dalla console, modificando entrambi i nodi.
+
+I collegamenti approvati a mano prima di questa modifica non hanno una voce in
+`sims_legacy_claims`: per proteggerli va aggiunta
+`sims_legacy_claims/{playerId} = {uid}` dalla console.
 Il vecchio salvataggio locale viene conservato e non è cancellato creando un
-nuovo Sim. Non approvare un collegamento basandosi soltanto sul codice pubblico.
+nuovo Sim.
 
 ## Regole proposte
 
@@ -44,7 +54,7 @@ prove sugli emulatori e backup dei dati e delle regole precedenti.
 | Dati                                         | Accesso previsto                                                             |
 | -------------------------------------------- | ---------------------------------------------------------------------------- |
 | Salvataggio e sessione                       | Account Google collegato a quel Sim                                          |
-| Collegamento account e richiesta di recupero | Solo l'account interessato; approvazione del gestore                         |
+| Collegamento account e recupero di un Sim v8 | Solo l'account interessato; un Sim v8 al primo account che lo reclama        |
 | Mercato                                      | Lettura pubblica, scrittura del processo centrale                            |
 | Presenza e classifica                        | Lettura dei giocatori con profilo; scrittura del proprio Sim                 |
 | Chat                                         | Lettura dei giocatori con profilo; invio e cancellazione dei propri messaggi |

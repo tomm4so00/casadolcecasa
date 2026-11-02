@@ -45,5 +45,6 @@ Gli aggiornamenti sono previsti ogni 15 minuti, con possibili ritardi di GitHub.
 Le verifiche ancora da spuntare richiedono una prova del giocatore sul sito reale
 e una successiva esecuzione automatica del mercato. I 20 salvataggi presenti
 prima della pubblicazione sono stati conservati; il backup è fuori dalla repository.
-Per i Sim precedenti, il gestore approva il collegamento a Google come descritto
-in [firebase-authentication.md](firebase-authentication.md).
+I Sim precedenti si collegano a Google automaticamente al primo accesso, come
+descritto in [firebase-authentication.md](firebase-authentication.md); le regole
+aggiornate vanno pubblicate insieme al frontend.

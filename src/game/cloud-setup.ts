@@ -3,15 +3,16 @@ import { startGame } from './interface.js';
 import { toast } from './missions.js';
 import { lifetime } from './runtime.js';
 import {
+  claimLegacySim,
   createGoogleSim,
   type GoogleAccess,
+  LEGACY_SIM_CODE,
   localLegacySimCode,
-  requestLegacyLink,
   signInWithGoogleAccount,
   useGoogleSim,
 } from './accounts.js';
 
-type Step = 'login' | 'choice' | 'code' | 'new' | 'pending';
+type Step = 'login' | 'choice' | 'code' | 'new';
 
 // Online setup: Google first, then (only on the first access) existing Sim or new Sim.
 export function mountCloudSetup(root: HTMLElement): void {
@@ -29,8 +30,6 @@ export function mountCloudSetup(root: HTMLElement): void {
     panel.querySelectorAll<HTMLElement>('.setup-step').forEach((node) => {
       node.classList.toggle('hidden', node.dataset.step !== step);
     });
-    if (step === 'pending' && access?.pendingPlayerId)
-      el('setup-pending-code').textContent = access.pendingPlayerId;
   };
 
   // Disables the button while the action runs and reports failures without leaving the step.
@@ -55,36 +54,45 @@ export function mountCloudSetup(root: HTMLElement): void {
     await startGame();
   };
 
+  const savedNick = () =>
+    localStorage.getItem(game.session.LS_PREFIX + 'sims_player_nick') || access?.name || '';
+
   const signIn = async () => {
     access = await signInWithGoogleAccount();
-    if (access.playerId)
-      await play(
-        access.playerId,
-        localStorage.getItem(game.session.LS_PREFIX + 'sims_player_nick') || access.name,
-      );
-    else show(access.pendingPlayerId ? 'pending' : 'choice');
+    if (access.playerId) {
+      await play(access.playerId, savedNick());
+      return;
+    }
+    // First access: link by itself the Sim saved on this device, or the one requested
+    // when links still needed an admin. Without one, ask the player.
+    const candidates = [access.pendingPlayerId, localLegacySimCode()].filter(
+      (code): code is string => !!code && LEGACY_SIM_CODE.test(code),
+    );
+    for (const code of new Set(candidates)) {
+      try {
+        await play(await claimLegacySim(code), savedNick());
+        return;
+      } catch {
+        codeInput.value ||= code;
+      }
+    }
+    show('choice');
   };
 
   run(el('cloud-game-btn'), signIn);
-  run(el('setup-check-again'), signIn);
   run(el('setup-has-sim'), async () => {
     if (!codeInput.value) codeInput.value = localLegacySimCode() || '';
     show('code');
     codeInput.focus();
   });
   run(el('setup-new-sim'), async () => {
-    if (!nickInput.value)
-      nickInput.value =
-        localStorage.getItem(game.session.LS_PREFIX + 'sims_player_nick') || access?.name || '';
+    if (!nickInput.value) nickInput.value = savedNick();
     show('new');
     nickInput.focus();
   });
   run(el('setup-send-code'), async () => {
     if (!access) return;
-    const code = codeInput.value.trim();
-    await requestLegacyLink(code);
-    access.pendingPlayerId = code;
-    show('pending');
+    await play(await claimLegacySim(codeInput.value), savedNick());
   });
   run(el('setup-create-sim'), async () => {
     if (!access) return;

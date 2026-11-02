@@ -93,12 +93,27 @@ export async function authenticateWithGoogle() {
   return user;
 }
 
-export async function requestLegacyLink(playerId: string): Promise<void> {
-  if (!/^player_[A-Za-z0-9_-]{4,128}$/.test(playerId)) throw new Error('Codice Sim non valido.');
+// Codes of the Sims created before Google sign-in (Google Sims use the longer `player_{uid}`).
+export const LEGACY_SIM_CODE = /^player_[a-z0-9]{4,20}$/;
+
+// Links a pre-Google Sim to this account with no admin step. The database rules accept it only
+// for a legacy code with a cloud save that no other account has claimed yet.
+export async function claimLegacySim(playerId: string): Promise<string> {
+  const code = playerId.trim();
+  if (!LEGACY_SIM_CODE.test(code)) throw new Error('Codice Sim non valido (es. player_ab12cd3).');
   const user = await authenticateWithGoogle();
-  await game.session.db
-    .ref('sims_link_requests/' + user.uid)
-    .set({ playerId, requestedAt: Date.now() });
+  try {
+    await game.session.db.ref('').update({
+      ['sims_legacy_claims/' + code]: user.uid,
+      ['sims_accounts/' + user.uid]: { playerId: code },
+      ['sims_link_requests/' + user.uid]: null,
+    });
+  } catch {
+    throw new Error(
+      'Impossibile collegare ' + code + ': il Sim non esiste o è già di un altro account.',
+    );
+  }
+  return code;
 }
 
 export interface GoogleAccess {
@@ -138,7 +153,7 @@ export function localLegacySimCode(): string | null {
   }
 }
 
-// A new identity can only create its own deterministic ID. Existing Sims require an admin-approved link.
+// A new identity creates its own deterministic ID; existing Sims go through claimLegacySim.
 export async function createGoogleSim(uid: string): Promise<string> {
   const binding = decodeAccountBinding(
     (
