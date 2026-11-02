@@ -2188,9 +2188,7 @@ function drawFacade(it: GameValue, o: { no: number; doorColor: string; building?
         ctx.fill();
       }
     }
-    // pensilina e lampioncini
-    ctx.fillStyle = '#4e342e';
-    ctx.fillRect(dx - 8, dy - 6, dw + 16, 4);
+    // lampioncini ai lati del portone
     for (const lx of [dx - 9, dx + dw + 5]) {
       if (night) {
         const glow = ctx.createRadialGradient(lx + 2, dy + 8, 0, lx + 2, dy + 8, 12);
@@ -2255,7 +2253,7 @@ function drawFacade(it: GameValue, o: { no: number; doorColor: string; building?
     return box(px, py, pw, ph, h, c, { z0 });
   };
   // elementi che sporgono dalla facciata: il cartello col numero sopra il portone e i balconi
-  const sign: GameValue = part(0, 1.5, 24, 3, 11, '#f5f0e6', 57);
+  const sign: GameValue = part(0, 1.5, 24, 3, 11, '#f5f0e6', 48);
   onFace(sign, side ? 'right' : 'left', (W: number, H: number): void => {
     ctx.strokeStyle = '#5d4037';
     ctx.lineWidth = 1.2;
