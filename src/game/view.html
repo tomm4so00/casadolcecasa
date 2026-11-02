@@ -1,0 +1,535 @@
+<canvas id="game-canvas"></canvas>
+<div id="toast-container"></div>
+
+<!-- HUD CON 5 BARRE E 1 ETICHETTA SOLDI IN EURO -->
+<div id="needs-hud" class="needs-hud-container hidden">
+  <div class="need-info" style="font-size: 0.6rem; color: #feca57">
+    <span id="clock-text">🕐 08:00</span><span id="day-text">Giorno 1</span>
+  </div>
+  <div class="need-row">
+    <div class="need-info"><span>❤️ Salute</span><span id="health-text">50%</span></div>
+    <div class="bar-bg"><div id="health-bar-fill" class="bar-fill" style="width: 50%"></div></div>
+  </div>
+  <div class="need-row">
+    <div class="need-info"><span>😴 Sonno</span><span id="sleep-text">50%</span></div>
+    <div class="bar-bg"><div id="sleep-bar-fill" class="bar-fill" style="width: 50%"></div></div>
+  </div>
+  <div class="need-row">
+    <div class="need-info"><span>🍕 Fame</span><span id="hunger-text">50%</span></div>
+    <div class="bar-bg"><div id="hunger-bar-fill" class="bar-fill" style="width: 50%"></div></div>
+  </div>
+  <div class="need-row">
+    <div class="need-info"><span>🧼 Igiene</span><span id="hygiene-text">50%</span></div>
+    <div class="bar-bg"><div id="hygiene-bar-fill" class="bar-fill" style="width: 50%"></div></div>
+  </div>
+  <div class="need-row">
+    <div class="need-info"><span>🙂 Felicità</span><span id="happiness-text">50%</span></div>
+    <div class="bar-bg">
+      <div id="happiness-bar-fill" class="bar-fill" style="width: 50%"></div>
+    </div>
+  </div>
+  <div class="need-row hidden" id="drug-row">
+    <div class="need-info"><span>💊 Dipendenza</span><span id="drug-text">0%</span></div>
+    <div class="bar-bg">
+      <div id="drug-bar-fill" class="bar-fill" style="width: 0%; background: #a29bfe"></div>
+    </div>
+  </div>
+  <div class="need-row">
+    <div class="need-info"><span>🔐 Cassaforte</span><span id="money-text">0 €</span></div>
+    <div class="bar-bg"><div id="money-bar-fill" class="bar-fill" style="width: 0%"></div></div>
+  </div>
+  <div id="mission-text" onclick="openMissions()" title="Apri le missioni">📋 Missioni</div>
+</div>
+
+<div id="left-touch-zone"></div>
+<div id="dynamic-joystick"><div id="joystick-knob"></div></div>
+
+<div id="hud-actions" class="hud-controls hidden">
+  <button class="btn-hud" id="btn-sound" onclick="toggleSound()" title="Suoni on/off">🔊</button>
+  <button class="btn-hud" id="btn-music" onclick="toggleMusic()" title="Musica on/off">🎵</button>
+  <button class="btn-hud" id="btn-help" onclick="showIntro(true)" title="Guida: come non morire">
+    ❓
+  </button>
+  <button
+    class="btn-hud"
+    id="btn-notify"
+    onclick="toggleNotify()"
+    title="Avvisi quando il personaggio sta male"
+  >
+    🔕
+  </button>
+  <button class="btn-hud" id="btn-leaderboard" onclick="openLeaderboard()" title="Classifica">
+    🏆
+  </button>
+  <button
+    class="btn-hud"
+    id="btn-profile"
+    onclick="openProfile()"
+    title="Profilo e codice personaggio"
+  >
+    👤
+  </button>
+  <button
+    class="btn-hud"
+    id="btn-chat"
+    onclick="openChat()"
+    title="Scrivi un messaggio sopra la testa"
+  >
+    💬
+  </button>
+  <button
+    class="btn-hud"
+    id="btn-gchat"
+    onclick="openGlobalChat()"
+    title="Chat di tutti i giocatori"
+    style="position: relative"
+  >
+    🗨️<span
+      id="gchat-badge"
+      class="hidden"
+      style="
+        position: absolute;
+        top: -4px;
+        right: -4px;
+        background: #ff4757;
+        color: #fff;
+        border-radius: 10px;
+        font-size: 0.65rem;
+        min-width: 16px;
+        height: 16px;
+        line-height: 16px;
+        text-align: center;
+        padding: 0 3px;
+      "
+      >0</span
+    >
+  </button>
+  <button class="btn-hud" id="btn-sprint" onclick="toggleSprint()" title="Corri">🏃</button>
+</div>
+
+<!-- POPUP DINAMICO DI INTERAZIONE -->
+<div id="social-panel" class="hidden">
+  <div class="soc-title" id="soc-title"></div>
+  <div class="soc-row" id="soc-row"></div>
+</div>
+<div id="pop-interaction" class="popup-interact hidden">
+  <button class="btn-pop" id="btn-act-main" onclick="handleObjectInteract()">✋ Interagisci</button>
+  <button class="btn-pop btn-pop-action hidden" id="btn-act-sub" onclick="handleSubAction()">
+    🍎 Prendi Cibo (-5 €)
+  </button>
+
+  <button class="btn-pop btn-pop-exit hidden" id="btn-act-walk" onclick="doActivity('walk')">
+    🚶 Passeggiata (+10% Felicità, +5% Salute, -5% Sonno)
+  </button>
+  <button class="btn-pop btn-pop-exit hidden" id="btn-act-bar" onclick="doActivity('bar')">
+    ☕ Bar (-10 €, +15% Felicità, +15% Fame)
+  </button>
+  <button class="btn-pop btn-pop-exit hidden" id="btn-act-trip" onclick="doActivity('trip')">
+    ✈️ Viaggio (+70% Felicità, -20% Soldi)
+  </button>
+  <button
+    class="btn-pop btn-pop-furniture hidden"
+    id="btn-act-furnitureshop"
+    onclick="doActivity('furnitureshop')"
+  >
+    🛋️ Negozio di Mobili
+  </button>
+  <button
+    class="btn-pop btn-pop-furniture hidden"
+    id="btn-act-clothesshop"
+    style="background: #e84393"
+    onclick="doActivity('clothesshop')"
+  >
+    👗 Negozio di Vestiti
+  </button>
+  <button class="btn-pop btn-pop-exit hidden" id="btn-act-work" onclick="handleJobMenuAction()">
+    💼 Lavoro (Gestisci Carriera)
+  </button>
+  <button
+    class="btn-pop btn-pop-exit hidden"
+    id="btn-act-cemetery"
+    style="background: #636e72"
+    onclick="doActivity('cemetery')"
+  >
+    🪦 Cimitero
+  </button>
+  <button
+    class="btn-pop btn-pop-exit hidden"
+    id="btn-act-disco"
+    style="background: #8e44ad"
+    onclick="doActivity('disco')"
+  >
+    🪩 Discoteca (-20 €, +50% Felicità, -15% Sonno)
+  </button>
+
+  <button class="btn-pop btn-pop-alt hidden" id="btn-act-move" onclick="startMovingFurniture()">
+    🖐️ Sposta Mobile
+  </button>
+</div>
+
+<button
+  id="btn-place-furniture"
+  class="btn-pop hidden"
+  style="position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); z-index: 60"
+  onclick="placeFurniture()"
+>
+  📌 Lascia Mobile
+</button>
+<button id="btn-return-home" class="hidden" onclick="returnHomeFromActivity()">
+  🏡 Torna a Casa
+</button>
+
+<div id="minigame" class="hidden"></div>
+
+<div id="shift-hud" class="hidden">
+  <div id="shift-text">💼 Turno in corso</div>
+  <div class="bar-bg"><div id="shift-fill" class="bar-fill"></div></div>
+</div>
+
+<!-- FINESTRA DI DIALOGO GENERICA -->
+<div id="dialog-modal" class="fullscreen-modal hidden">
+  <div class="card">
+    <h3 id="dialog-title"></h3>
+    <p id="dialog-text"></p>
+    <input type="text" id="dialog-input" class="hidden" autocomplete="off" />
+    <div id="dialog-buttons"></div>
+  </div>
+</div>
+
+<!-- AVVISO NUOVA VERSIONE -->
+<div id="update-banner" class="hidden">
+  <div class="card">
+    <h2>🔄 Nuova versione!</h2>
+    <p style="margin: 12px 0; color: #ccc">
+      È uscito un aggiornamento del gioco. Ricarica per continuare a giocare con gli altri.
+    </p>
+    <button class="btn-primary" onclick="reloadForUpdate()">Aggiorna ora</button>
+  </div>
+</div>
+
+<div id="ui-setup-screen">
+  <div class="card">
+    <h2>🏠 Casa dolce casa</h2>
+    <div class="input-group">
+      <label>Nome Giocatore</label>
+      <input
+        type="text"
+        id="nickname"
+        value=""
+        placeholder="Inserisci il tuo nome..."
+        maxlength="20"
+      />
+    </div>
+    <button class="btn-primary" id="start-game-btn" type="button">Entra nel Gioco</button>
+    <button class="btn-link" type="button" onclick="restoreFromCode()">
+      🔑 Ho già un personaggio (codice)
+    </button>
+  </div>
+</div>
+
+<!-- MODALE SCELTA O GESTIONE LAVORO -->
+<div id="job-select-modal" class="fullscreen-modal hidden">
+  <div class="card" style="text-align: center; max-width: 400px">
+    <h2 id="job-modal-title">💼 Agenzia di Lavoro</h2>
+    <p
+      id="current-job-status"
+      style="margin: 8px 0; color: #2ed573; font-size: 0.85rem; font-weight: bold"
+    >
+      Lavoro Attivo: Nessuno
+    </p>
+
+    <!-- Sezione Scelta Lavoro (Primo accesso o Cambio Lavoro) -->
+    <div id="job-choices-container">
+      <p style="margin: 5px 0 15px 0; color: #aaa; font-size: 0.75rem">
+        Progressione: 0-29 turni (50€) | 30-59 turni (80€) | 60+ turni (120€)
+      </p>
+      <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 15px">
+        <button
+          class="btn-buy"
+          style="background: #e67e22; padding: 12px"
+          onclick="chooseOrGoToJob('cantiere', 'Cantiere 🏗️')"
+        >
+          🏗️ Cantiere (Turni: <span id="count-cantiere">0</span>/60)
+        </button>
+        <button
+          class="btn-buy"
+          style="background: #e74c3c; padding: 12px"
+          onclick="chooseOrGoToJob('ospedale', 'Ospedale 🏥')"
+        >
+          🏥 Ospedale (Turni: <span id="count-ospedale">0</span>/60)
+        </button>
+        <button
+          class="btn-buy"
+          style="background: #f1c40f; color: #111; padding: 12px"
+          onclick="chooseOrGoToJob('ristorante', 'Ristorante 🍳')"
+        >
+          🍳 Ristorante (Turni: <span id="count-ristorante">0</span>/60)
+        </button>
+        <button
+          class="btn-buy"
+          style="background: #3498db; padding: 12px"
+          onclick="chooseOrGoToJob('ufficio', 'Ufficio 💻')"
+        >
+          💻 Ufficio (Turni: <span id="count-ufficio">0</span>/60)
+        </button>
+      </div>
+    </div>
+
+    <!-- Sezione Continua / Cambia (Dal secondo turno dello stesso lavoro) -->
+    <div
+      id="job-continue-container"
+      class="hidden"
+      style="display: flex; flex-direction: column; gap: 10px; margin: 15px 0"
+    >
+      <button
+        class="btn-primary"
+        style="background: #2ed573; margin-top: 0"
+        onclick="continueCurrentJob()"
+      >
+        ▶️ Continua Lavoro
+      </button>
+      <button
+        class="btn-buy"
+        style="background: #e74c3c; padding: 12px"
+        onclick="showJobAgencySelection()"
+      >
+        🔄 Cambia Lavoro
+      </button>
+    </div>
+
+    <button class="btn-primary" onclick="closeModal('job-select-modal')">Chiudi</button>
+  </div>
+</div>
+
+<!-- IL MIO PC: tre siti finti -->
+<div id="pc-modal" class="fullscreen-modal hidden" style="z-index: 490">
+  <div class="browser-window">
+    <div class="browser-header">
+      <div class="browser-dot"></div>
+      <div class="browser-dot"></div>
+      <div class="browser-dot"></div>
+      <div class="browser-url">🖥️ Il mio PC — Siti preferiti</div>
+    </div>
+    <div class="browser-body">
+      <h3 style="text-align: center">🖥️ Dove vuoi andare?</h3>
+      <button
+        type="button"
+        class="shop-item-card"
+        style="cursor: pointer; text-align: left; color: inherit"
+        onclick="openClothesShop('top', true)"
+      >
+        <div class="shop-item-info">
+          <h4>👗 modaonline.it</h4>
+          <p>Vestiti e accessori per il tuo personaggio</p>
+        </div>
+        <span>›</span>
+      </button>
+      <button
+        type="button"
+        class="shop-item-card"
+        style="cursor: pointer; text-align: left; color: inherit"
+        onclick="openFurnitureShopModal()"
+      >
+        <div class="shop-item-info">
+          <h4>🛋️ arredocasa.it</h4>
+          <p>Catalogo di mobili standard e di lusso</p>
+        </div>
+        <span>›</span>
+      </button>
+      <button
+        type="button"
+        class="shop-item-card"
+        style="cursor: pointer; text-align: left; color: inherit"
+        onclick="openBizSite()"
+      >
+        <div class="shop-item-info">
+          <h4>📈 bizlancio.it</h4>
+          <p>Avvia un business online e fai crescere i tuoi soldi</p>
+        </div>
+        <span>›</span>
+      </button>
+      <button class="btn-primary" style="margin-top: auto" onclick="closeModal('pc-modal')">
+        Spegni il PC
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- SITO BUSINESS ONLINE -->
+<div id="biz-modal" class="fullscreen-modal hidden">
+  <div class="browser-window">
+    <div class="browser-header">
+      <div class="browser-dot"></div>
+      <div class="browser-dot"></div>
+      <div class="browser-dot"></div>
+      <div class="browser-url">🌐 https://www.bizlancio.it/investi</div>
+    </div>
+    <div class="browser-body">
+      <h3 style="color: #2ed573; text-align: center">📈 Bizlancio — il tuo business online</h3>
+      <p style="text-align: center; font-size: 0.8rem; color: #aaa">
+        Metti i tuoi soldi in un business: il valore oscilla nel tempo, anche quando il gioco è
+        chiuso.
+      </p>
+      <div
+        id="biz-sum"
+        style="
+          background: rgba(0, 0, 0, 0.3);
+          border-radius: 8px;
+          padding: 10px;
+          font-size: 0.85rem;
+          text-align: center;
+        "
+      ></div>
+      <div id="biz-list" style="display: flex; flex-direction: column; gap: 10px"></div>
+      <button class="btn-primary" style="margin-top: auto" onclick="closeModal('biz-modal')">
+        Chiudi sito
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- CHAT GLOBALE -->
+<div id="gchat-modal" class="fullscreen-modal hidden">
+  <div class="browser-window" style="max-height: 640px">
+    <div class="browser-header">
+      <div class="browser-dot"></div>
+      <div class="browser-dot"></div>
+      <div class="browser-dot"></div>
+      <div class="browser-url">🗨️ Chat di tutti i giocatori</div>
+    </div>
+    <div
+      id="gchat-list"
+      style="
+        flex-grow: 1;
+        overflow-y: auto;
+        padding: 12px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      "
+    ></div>
+    <div
+      style="
+        display: flex;
+        gap: 8px;
+        padding: 10px;
+        border-top: 1px solid #333;
+        background: #111119;
+      "
+    >
+      <input
+        id="gchat-input"
+        type="text"
+        maxlength="200"
+        placeholder="Scrivi a tutti…"
+        autocomplete="off"
+        style="flex: 1; min-width: 0"
+      />
+      <button class="btn-buy" style="background: #2e86de" onclick="sendChat()">Invia</button>
+      <button class="btn-buy" style="background: #57606f" onclick="closeGlobalChat()">✕</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODALE NEGOZIO MOBILI -->
+<div id="furniture-shop-modal" class="fullscreen-modal hidden">
+  <div class="browser-window">
+    <div class="browser-header">
+      <div class="browser-dot"></div>
+      <div class="browser-dot"></div>
+      <div class="browser-dot"></div>
+      <div class="browser-url">🌐 https://www.arredocasa.it/catalogo</div>
+    </div>
+    <div class="browser-body">
+      <h3 style="color: #e67e22; text-align: center">🛋️ Showroom Negozio di Mobili</h3>
+      <p style="text-align: center; font-size: 0.8rem; color: #aaa; margin-bottom: 10px">
+        Acquista versioni Standard o di Lusso per arredare la tua stanza!
+      </p>
+      <div
+        id="furniture-catalog-container"
+        style="display: flex; flex-direction: column; gap: 10px"
+      ></div>
+      <button
+        class="btn-primary"
+        style="margin-top: auto"
+        onclick="closeModal('furniture-shop-modal')"
+      >
+        Chiudi Showroom
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- CREAZIONE / MODIFICA DEL PERSONAGGIO -->
+<div id="creator-modal" class="fullscreen-modal hidden">
+  <div class="shop-panel">
+    <div class="shop-head"><h3 id="creator-title">🎨 Crea il tuo personaggio</h3></div>
+    <div class="shop-main">
+      <canvas id="creator-preview" width="320" height="400"></canvas>
+      <div class="shop-right">
+        <div id="creator-tabs" class="tabs"></div>
+        <div id="creator-options" class="creator-opts"></div>
+      </div>
+    </div>
+    <div class="creator-actions">
+      <button
+        class="btn-primary"
+        style="background: #57606f"
+        id="creator-cancel"
+        onclick="finishCreator(false)"
+      >
+        Annulla
+      </button>
+      <button class="btn-primary" style="background: #8e44ad" onclick="randomizeCreator()">
+        🎲 Casuale
+      </button>
+      <button class="btn-primary" style="background: #2ed573" onclick="finishCreator(true)">
+        ✅ Conferma
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- MODALE ARMADIO (con animazione delle ante) -->
+<div id="wardrobe-modal" class="fullscreen-modal hidden">
+  <div class="shop-panel wardrobe-panel">
+    <div class="wd-doors">
+      <div class="wd-door left"></div>
+      <div class="wd-door right"></div>
+    </div>
+    <div class="shop-head">
+      <h3>🚪 Il tuo Armadio</h3>
+      <span class="shop-money" id="wardrobe-count"></span>
+    </div>
+    <div class="shop-main">
+      <canvas id="wardrobe-preview" width="320" height="400"></canvas>
+      <div class="shop-right">
+        <div id="wardrobe-tabs" class="tabs"></div>
+        <div id="wardrobe-items-container" class="item-grid"></div>
+      </div>
+    </div>
+    <div class="creator-actions">
+      <button class="btn-primary" style="background: #8e44ad" onclick="openCharacterCreator(false)">
+        🎨 Modifica aspetto</button
+      ><button class="btn-primary" onclick="closeWardrobe()">Chiudi l'armadio</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODALE BOUTIQUE / NEGOZIO ONLINE -->
+<div id="clothes-modal" class="fullscreen-modal hidden">
+  <div class="shop-panel">
+    <div class="shop-head">
+      <h3 id="clothes-title">👗 Boutique Dolce Casa</h3>
+      <span class="shop-money" id="clothes-money"></span>
+    </div>
+    <div class="shop-main">
+      <canvas id="clothes-preview" width="320" height="400"></canvas>
+      <div class="shop-right">
+        <div id="clothes-tabs" class="tabs"></div>
+        <div id="clothes-list" class="item-grid"></div>
+      </div>
+    </div>
+    <button class="btn-primary" onclick="closeModal('clothes-modal')">Chiudi</button>
+  </div>
+</div>

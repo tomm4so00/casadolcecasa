@@ -1,0 +1,2117 @@
+import type { GameValue } from '../context.js';
+import { game } from '../context.js';
+import { isoProject, isoScale, poly, rnd, setPlane } from './primitives.js';
+import { hasRoom, isMyRoomNow, saveGame } from '../saves.js';
+import {
+  freeRoomsInApt,
+  ownsItem,
+  parseLook,
+  resolveLook,
+  wardrobeOpenAmount,
+} from '../character.js';
+import { drawGlasses, drawHat, drawPlayerAvatar, drawShowerWater } from './avatars.js';
+import { nameHash } from './scenes.js';
+import { fmtDuration, toast } from '../missions.js';
+import { openDialog } from '../interface.js';
+export function resetPlane(..._args: GameValue[]): GameValue {
+  game.ctx.setTransform(1, 0, 0, 1, 0, 0);
+}
+
+// Parallelepipedo: (x,y) centro, w lungo x, h lungo y, d altezza. Disegna le 3 facce visibili.
+export function box(
+  x?: GameValue,
+  y?: GameValue,
+  w?: GameValue,
+  h?: GameValue,
+  d?: GameValue,
+  color?: GameValue,
+  opt: GameValue = {},
+): GameValue {
+  const z0: GameValue = opt.z0 || 0,
+    z1: GameValue = z0 + d;
+  const x0: GameValue = x - w / 2,
+    x1: GameValue = x + w / 2,
+    y0: GameValue = y - h / 2,
+    y1: GameValue = y + h / 2;
+  const P: GameValue = isoProject;
+  const edge: GameValue = opt.edge === undefined ? 'rgba(0,0,0,0.3)' : opt.edge;
+  poly(
+    [P(x0, y1, z0), P(x1, y1, z0), P(x1, y1, z1), P(x0, y1, z1)],
+    opt.left || game.darken(color, 0.1),
+    edge,
+  ); // faccia davanti-sinistra
+  poly(
+    [P(x1, y1, z0), P(x1, y0, z0), P(x1, y0, z1), P(x1, y1, z1)],
+    opt.right || game.darken(color, 0.28),
+    edge,
+  ); // faccia davanti-destra
+  poly(
+    [P(x0, y0, z1), P(x1, y0, z1), P(x1, y1, z1), P(x0, y1, z1)],
+    opt.top || game.lighten(color, 0.1),
+    edge,
+  ); // sopra
+  return { x, y, w, h, d, x0, x1, y0, y1, z0, z1 };
+}
+
+// Disegna su una faccia del box: fn(larghezza, altezza) in coordinate locali (origine in alto a sinistra)
+export function onFace(b?: GameValue, face?: GameValue, fn?: GameValue): GameValue {
+  if (face === 'top') setPlane([b.x0, b.y0, b.z1], [1, 0, 0], [0, 1, 0]);
+  else if (face === 'left') setPlane([b.x0, b.y1, b.z1], [1, 0, 0], [0, 0, -1]);
+  else setPlane([b.x1, b.y1, b.z1], [0, -1, 0], [0, 0, -1]);
+  try {
+    fn(face === 'right' ? b.h : b.w, face === 'top' ? b.h : b.d);
+  } finally {
+    resetPlane();
+  }
+}
+
+export function woodGrain(
+  W?: GameValue,
+  H?: GameValue,
+  color?: GameValue,
+  vertical: GameValue = false,
+  n: GameValue = 6,
+): GameValue {
+  game.ctx.strokeStyle = color;
+  game.ctx.lineWidth = 0.7;
+  game.ctx.beginPath();
+  for (let i: GameValue = 1; i < n; i++) {
+    if (vertical) {
+      const u: GameValue = (W * i) / n;
+      game.ctx.moveTo(u, 0);
+      game.ctx.bezierCurveTo(u + 1.5, H * 0.3, u - 1.5, H * 0.65, u, H);
+    } else {
+      const t: GameValue = (H * i) / n;
+      game.ctx.moveTo(0, t);
+      game.ctx.bezierCurveTo(W * 0.3, t + 1.2, W * 0.65, t - 1.2, W, t);
+    }
+  }
+  game.ctx.stroke();
+}
+
+export function softShadow(x?: GameValue, y?: GameValue, w?: GameValue, h?: GameValue): GameValue {
+  setPlane([x - w / 2, y - h / 2, 0], [1, 0, 0], [0, 1, 0]);
+  game.ctx.fillStyle = 'rgba(0,0,0,0.13)';
+  game.ctx.fillRect(-2, -2, w + 12, h + 12);
+  game.ctx.fillStyle = 'rgba(0,0,0,0.14)';
+  game.ctx.fillRect(1, 1, w + 5, h + 5);
+  resetPlane();
+}
+
+export function ellipseShadow(
+  x?: GameValue,
+  y?: GameValue,
+  rx?: GameValue,
+  ry?: GameValue,
+  a: GameValue = 0.28,
+): GameValue {
+  const p: GameValue = isoProject(x, y, 0),
+    s: GameValue = isoScale();
+  game.ctx.fillStyle = `rgba(0,0,0,${a})`;
+  game.ctx.beginPath();
+  game.ctx.ellipse(p.x, p.y, rx * s, ry * s, 0, 0, Math.PI * 2);
+  game.ctx.fill();
+}
+
+export function isLux(it?: GameValue): GameValue {
+  return /✨|Lusso/.test(it.name || '');
+}
+
+export function gameClockText(..._args: GameValue[]): GameValue {
+  const m: GameValue = Math.floor(game.gameMinutes);
+  return String(Math.floor(m / 60) % 24).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0');
+}
+
+// ---------------------------------------------------------------- MOBILI DELLA STANZA
+export function drawBed(it?: GameValue): GameValue {
+  const Z: GameValue = it.zb || 0,
+    lux: GameValue = isLux(it);
+  const frameC: GameValue = lux ? '#c9a227' : '#7b4a2e';
+  const { x, y, w, h }: GameValue = it;
+  const hb: GameValue = box(x, y - h / 2 + 4, w, 8, lux ? 54 : 44, frameC, { z0: Z });
+  onFace(hb, 'left', (W?: GameValue, H?: GameValue): GameValue => {
+    game.ctx.fillStyle = game.darken(frameC, 0.18);
+    game.ctx.fillRect(5, 6, W - 10, H - 16);
+    if (lux) {
+      game.ctx.strokeStyle = '#fff3b0';
+      game.ctx.lineWidth = 1.5;
+      game.ctx.strokeRect(8, 9, W - 16, H - 22);
+    }
+    woodGrain(W, H, 'rgba(0,0,0,0.15)');
+  });
+  const fr: GameValue = box(x, y + 4, w, h - 8, 14, frameC, { z0: Z });
+  onFace(
+    fr,
+    'left',
+    (W?: GameValue, H?: GameValue): GameValue => woodGrain(W, H, 'rgba(0,0,0,0.18)', false, 3),
+  );
+  onFace(
+    fr,
+    'right',
+    (W?: GameValue, H?: GameValue): GameValue => woodGrain(W, H, 'rgba(0,0,0,0.18)', false, 3),
+  );
+  box(x, y + 4, w - 6, h - 12, 9, '#f4f6f7', { z0: Z + 14, edge: 'rgba(0,0,0,0.12)' });
+  box(x - w * 0.22, y - h / 2 + 20, w * 0.36, 16, 7, '#ffffff', {
+    z0: Z + 23,
+    edge: 'rgba(0,0,0,0.15)',
+  });
+  box(x + w * 0.22, y - h / 2 + 20, w * 0.36, 16, 7, '#ffffff', {
+    z0: Z + 23,
+    edge: 'rgba(0,0,0,0.15)',
+  });
+  const bl: GameValue = box(x, y + h * 0.14, w - 2, h * 0.62, 11, it.color, {
+    z0: Z + 15,
+    top: it.topColor || game.lighten(it.color, 0.15),
+  });
+  const stripes: GameValue = (W?: GameValue, H?: GameValue): GameValue => {
+    game.ctx.fillStyle = 'rgba(255,255,255,0.13)';
+    for (let i: GameValue = 4; i < W; i += 14) game.ctx.fillRect(i, 0, 5, H);
+  };
+  onFace(bl, 'top', (W?: GameValue, H?: GameValue): GameValue => {
+    stripes(W, H);
+    game.ctx.fillStyle = 'rgba(255,255,255,0.55)';
+    game.ctx.fillRect(0, 0, W, 7);
+  });
+  onFace(bl, 'left', stripes);
+}
+
+export function drawShirtShape(
+  cx?: GameValue,
+  top?: GameValue,
+  w?: GameValue,
+  h?: GameValue,
+  color?: GameValue,
+  kind?: GameValue,
+): GameValue {
+  game.ctx.fillStyle = color;
+  game.ctx.beginPath();
+  if (kind === 'pants') {
+    game.ctx.moveTo(cx - w / 2, top);
+    game.ctx.lineTo(cx + w / 2, top);
+    game.ctx.lineTo(cx + w / 2, top + h);
+    game.ctx.lineTo(cx + 1.2, top + h);
+    game.ctx.lineTo(cx, top + h * 0.32);
+    game.ctx.lineTo(cx - 1.2, top + h);
+    game.ctx.lineTo(cx - w / 2, top + h);
+  } else {
+    game.ctx.moveTo(cx - w * 0.28, top);
+    game.ctx.lineTo(cx - w * 0.7, top + h * 0.18);
+    game.ctx.lineTo(cx - w * 0.55, top + h * 0.4);
+    game.ctx.lineTo(cx - w * 0.36, top + h * 0.3);
+    game.ctx.lineTo(cx - w * 0.36, top + h);
+    game.ctx.lineTo(cx + w * 0.36, top + h);
+    game.ctx.lineTo(cx + w * 0.36, top + h * 0.3);
+    game.ctx.lineTo(cx + w * 0.55, top + h * 0.4);
+    game.ctx.lineTo(cx + w * 0.7, top + h * 0.18);
+    game.ctx.lineTo(cx + w * 0.28, top);
+  }
+  game.ctx.closePath();
+  game.ctx.fill();
+  game.ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+  game.ctx.lineWidth = 0.6;
+  game.ctx.stroke();
+  game.ctx.strokeStyle = '#95a5a6';
+  game.ctx.lineWidth = 0.8;
+  game.ctx.beginPath();
+  game.ctx.moveTo(cx - w * 0.3, top);
+  game.ctx.lineTo(cx, top - 3);
+  game.ctx.lineTo(cx + w * 0.3, top);
+  game.ctx.moveTo(cx, top - 3);
+  game.ctx.lineTo(cx, top - 5);
+  game.ctx.stroke();
+}
+
+export function drawWardrobe(it?: GameValue): GameValue {
+  const Z: GameValue = it.zb || 0,
+    lux: GameValue = isLux(it);
+  const c: GameValue = lux ? '#7a3b12' : '#a47551';
+  const openK: GameValue = !it.zb && isMyRoomNow() ? wardrobeOpenAmount() : 0;
+  const b: GameValue = box(it.x, it.y, it.w, it.h, it.z, c, { z0: Z });
+  onFace(b, 'left', (W?: GameValue, H?: GameValue): GameValue => {
+    woodGrain(W, H, 'rgba(0,0,0,0.13)', true, 9);
+    if (openK > 0.02) {
+      // interno: ripiano, appendiabiti e i vestiti che possiedi
+      game.ctx.fillStyle = '#2b1d14';
+      game.ctx.fillRect(4, 6, W - 8, H - 18);
+      game.ctx.fillStyle = 'rgba(255,230,180,' + 0.12 * openK + ')';
+      game.ctx.fillRect(4, 6, W - 8, H - 18);
+      game.ctx.fillStyle = '#b2bec3';
+      game.ctx.fillRect(6, 16, W - 12, 2);
+      const clothes: GameValue = game.shopCatalog
+        .filter(
+          (i?: GameValue): GameValue => (i.slot === 'top' || i.slot === 'pants') && ownsItem(i.id),
+        )
+        .slice(0, 7);
+      clothes.forEach(
+        (g?: GameValue, i?: GameValue): GameValue =>
+          drawShirtShape(
+            12 + (i * (W - 24)) / Math.max(1, clothes.length - 1 || 1),
+            19,
+            14,
+            g.slot === 'pants' ? 34 : 26,
+            g.color,
+            g.slot === 'pants' ? 'pants' : 'top',
+          ),
+      );
+      game.ctx.fillStyle = '#4e342e';
+      game.ctx.fillRect(4, H - 30, W - 8, 3);
+      game.shopCatalog
+        .filter((i?: GameValue): GameValue => i.slot === 'shoes' && ownsItem(i.id))
+        .slice(0, 4)
+        .forEach((g?: GameValue, i?: GameValue): GameValue => {
+          game.ctx.fillStyle = g.color;
+          game.ctx.fillRect(8 + i * 16, H - 20, 10, 5);
+        });
+    } else {
+      game.ctx.strokeStyle = 'rgba(0,0,0,0.4)';
+      game.ctx.lineWidth = 1.2;
+      game.ctx.strokeRect(4, 6, W / 2 - 6, H - 18);
+      game.ctx.strokeRect(W / 2 + 2, 6, W / 2 - 6, H - 18);
+      if (lux) {
+        game.ctx.strokeStyle = '#e5c158';
+        game.ctx.strokeRect(9, 13, W / 2 - 16, H - 32);
+        game.ctx.strokeRect(W / 2 + 7, 13, W / 2 - 16, H - 32);
+      }
+      game.ctx.fillStyle = lux ? '#f1c40f' : '#2d3436';
+      game.ctx.fillRect(W / 2 - 6, H * 0.42, 2.5, 16);
+      game.ctx.fillRect(W / 2 + 3.5, H * 0.42, 2.5, 16);
+    }
+    game.ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    game.ctx.fillRect(0, H - 10, W, 10);
+  });
+  onFace(
+    b,
+    'right',
+    (W?: GameValue, H?: GameValue): GameValue => woodGrain(W, H, 'rgba(0,0,0,0.13)', true, 5),
+  );
+  onFace(b, 'top', (W?: GameValue, H?: GameValue): GameValue => {
+    game.ctx.fillStyle = 'rgba(255,255,255,0.08)';
+    game.ctx.fillRect(0, 0, W, H);
+  });
+  if (openK > 0.02) {
+    // ante che ruotano sui cardini verso l'esterno
+    const ang: GameValue = openK * Math.PI * 0.58;
+    const leaf: GameValue = (b.x1 - b.x0) / 2 - 3;
+    const zA: GameValue = b.z0 + 10,
+      zB: GameValue = b.z1 - 6;
+    const doorC: GameValue = lux ? '#8a4a1c' : '#b68562';
+    const drawLeaf: GameValue = (
+      hx?: GameValue,
+      dir?: GameValue,
+      shadeK?: GameValue,
+    ): GameValue => {
+      const ex: GameValue = hx + dir * leaf * Math.cos(ang),
+        ey: GameValue = b.y1 + leaf * Math.sin(ang);
+      const pts: GameValue = [
+        isoProject(hx, b.y1, zA),
+        isoProject(ex, ey, zA),
+        isoProject(ex, ey, zB),
+        isoProject(hx, b.y1, zB),
+      ];
+      poly(pts, game.darken(doorC, shadeK), 'rgba(0,0,0,0.45)');
+      const k: GameValue = 0.82,
+        hz: GameValue = zA + (zB - zA) * 0.5;
+      const hp: GameValue = isoProject(
+        hx + dir * leaf * Math.cos(ang) * k,
+        b.y1 + leaf * Math.sin(ang) * k,
+        hz,
+      );
+      game.ctx.fillStyle = lux ? '#f1c40f' : '#2d3436';
+      game.ctx.fillRect(hp.x - 1.2, hp.y - 7, 2.4, 14);
+    };
+    drawLeaf(b.x0 + 3, 1, 0.05 + 0.15 * openK);
+    drawLeaf(b.x1 - 3, -1, 0.2);
+  }
+}
+
+export function drawDesk(it?: GameValue, t?: GameValue): GameValue {
+  const Z: GameValue = it.zb || 0,
+    lux: GameValue = isLux(it);
+  const { x, y, w, h }: GameValue = it;
+  const deskH: GameValue = Math.max(20, it.z - 20);
+  const legC: GameValue = lux ? '#2c2c54' : '#4a4a4a';
+  [
+    [-1, -1],
+    [1, -1],
+    [-1, 1],
+    [1, 1],
+  ].forEach(
+    ([sx, sy]: GameValue = {}): GameValue =>
+      box(x + sx * (w / 2 - 4), y + sy * (h / 2 - 4), 5, 5, deskH, legC, { z0: Z }),
+  );
+  const top: GameValue = box(x, y, w, h, 5, lux ? '#1e1e2e' : '#c8a27a', { z0: Z + deskH });
+  onFace(top, 'top', (W?: GameValue, H?: GameValue): GameValue => {
+    if (!lux) woodGrain(W, H, 'rgba(0,0,0,0.1)', false, 5);
+  });
+  if (lux)
+    ['left', 'right'].forEach(
+      (f?: GameValue): GameValue =>
+        onFace(top, f, (W?: GameValue, H?: GameValue): GameValue => {
+          game.ctx.fillStyle = `hsl(${(t * 90) % 360},90%,60%)`;
+          game.ctx.fillRect(0, H - 2, W, 2);
+        }),
+    );
+  const tz: GameValue = Z + deskH + 5;
+  box(x, y - h * 0.28, 5, 5, 6, '#333', { z0: tz });
+  const mon: GameValue = box(x, y - h * 0.28, w * 0.55, 4, 26, '#111', { z0: tz + 6 });
+  onFace(mon, 'left', (W?: GameValue, H?: GameValue): GameValue => {
+    const g: GameValue = game.ctx.createLinearGradient(0, 0, W, H);
+    g.addColorStop(0, lux ? '#6c5ce7' : '#0984e3');
+    g.addColorStop(1, lux ? '#00cec9' : '#74b9ff');
+    game.ctx.fillStyle = g;
+    game.ctx.fillRect(2, 2, W - 4, H - 4);
+    game.ctx.fillStyle = 'rgba(255,255,255,0.65)';
+    for (let i: GameValue = 0; i < 4; i++)
+      game.ctx.fillRect(5, 5 + i * 5, (W - 14) * (0.35 + 0.5 * rnd(i + 3)), 1.5);
+  });
+  box(x, y + h * 0.12, w * 0.45, 10, 2, '#dfe6e9', { z0: tz });
+  box(x + w * 0.32, y + h * 0.1, 6, 8, 2, '#dfe6e9', { z0: tz });
+}
+
+export function drawNightstand(it?: GameValue): GameValue {
+  const Z: GameValue = it.zb || 0,
+    lux: GameValue = isLux(it);
+  const c: GameValue = lux ? '#eceff1' : '#a47148';
+  const b: GameValue = box(it.x, it.y, it.w, it.h, it.z, c, { z0: Z });
+  onFace(b, 'left', (W?: GameValue, H?: GameValue): GameValue => {
+    if (lux) {
+      game.ctx.strokeStyle = 'rgba(120,120,140,0.25)';
+      game.ctx.beginPath();
+      game.ctx.moveTo(2, H * 0.2);
+      game.ctx.bezierCurveTo(W * 0.4, H * 0.5, W * 0.6, H * 0.1, W, H * 0.6);
+      game.ctx.stroke();
+    } else woodGrain(W, H, 'rgba(0,0,0,0.15)', false, 4);
+    game.ctx.strokeStyle = 'rgba(0,0,0,0.35)';
+    game.ctx.lineWidth = 1;
+    game.ctx.strokeRect(3, 3, W - 6, H / 2 - 4);
+    game.ctx.strokeRect(3, H / 2 + 1, W - 6, H / 2 - 6);
+    game.ctx.fillStyle = lux ? '#d4ac0d' : '#2d3436';
+    game.ctx.fillRect(W / 2 - 3, H / 4 - 1, 6, 2.5);
+    game.ctx.fillRect(W / 2 - 3, H * 0.75 - 2, 6, 2.5);
+  });
+  if (!it.zb) {
+    const ck: GameValue = box(it.x, it.y, 14, 7, 8, '#2d3436', { z0: Z + it.z });
+    onFace(ck, 'left', (_W?: GameValue, H?: GameValue): GameValue => {
+      game.ctx.fillStyle = '#ff4757';
+      game.ctx.font = 'bold 5px monospace';
+      game.ctx.fillText(gameClockText(), 1, H - 2);
+    });
+  }
+}
+
+export function drawLamp(it?: GameValue, _t?: GameValue, lights?: GameValue): GameValue {
+  const Z: GameValue = it.zb || 0,
+    lux: GameValue = isLux(it);
+  box(it.x, it.y, it.w * 0.7, it.h * 0.7, 3, '#2d3436', { z0: Z });
+  box(it.x, it.y, 3, 3, it.z - 22, lux ? '#d4ac0d' : '#7f8c8d', { z0: Z + 3 });
+  const sh: GameValue = box(it.x, it.y, it.w * 0.85, it.h * 0.85, 20, lux ? '#f7dc6f' : '#f5ecd7', {
+    z0: Z + it.z - 20,
+    edge: 'rgba(0,0,0,0.15)',
+  });
+  onFace(sh, 'left', (W?: GameValue, H?: GameValue): GameValue => {
+    const g: GameValue = game.ctx.createLinearGradient(0, 0, 0, H);
+    g.addColorStop(0, 'rgba(255,240,180,0)');
+    g.addColorStop(1, 'rgba(255,214,120,0.55)');
+    game.ctx.fillStyle = g;
+    game.ctx.fillRect(0, 0, W, H);
+  });
+  if (lights && !it.zb)
+    lights.push({ x: it.x, y: it.y, z: it.z, r: lux ? 190 : 150, color: '255,206,130' });
+}
+
+export function drawSofa(it?: GameValue): GameValue {
+  const Z: GameValue = it.zb || 0,
+    lux: GameValue = isLux(it);
+  const c: GameValue = it.color,
+    { x, y, w, h }: GameValue = it;
+  const arm: GameValue = Math.max(6, w * 0.11);
+  const back: GameValue = box(x, y - h / 2 + 6, w, 12, it.z, game.darken(c, 0.05), { z0: Z });
+  onFace(back, 'left', (W?: GameValue, _H?: GameValue): GameValue => {
+    if (lux) {
+      game.ctx.fillStyle = 'rgba(255,255,255,0.4)';
+      for (let i: GameValue = 0; i < 4; i++)
+        for (let j: GameValue = 0; j < 2; j++) {
+          game.ctx.beginPath();
+          game.ctx.arc((W * (i + 0.5)) / 4, 6 + j * 8, 1.2, 0, 6.3);
+          game.ctx.fill();
+        }
+    }
+  });
+  box(x - w / 2 + arm / 2, y + 4, arm, h - 8, it.z * 0.65, c, { z0: Z });
+  const seat: GameValue = box(x, y + 5, w - arm * 2, h - 14, it.z * 0.45, c, { z0: Z });
+  onFace(seat, 'top', (W?: GameValue, H?: GameValue): GameValue => {
+    game.ctx.strokeStyle = 'rgba(0,0,0,0.25)';
+    game.ctx.lineWidth = 1;
+    for (let i: GameValue = 1; i < 3; i++) {
+      game.ctx.beginPath();
+      game.ctx.moveTo((W * i) / 3, 0);
+      game.ctx.lineTo((W * i) / 3, H);
+      game.ctx.stroke();
+    }
+  });
+  if (!it.zb)
+    box(x - w * 0.22, y - h / 2 + 16, 14, 6, 12, lux ? '#f5d76e' : game.lighten(c, 0.4), {
+      z0: Z + it.z * 0.45,
+    });
+  box(x + w / 2 - arm / 2, y + 4, arm, h - 8, it.z * 0.65, c, { z0: Z });
+}
+
+export function drawTV(it?: GameValue, t?: GameValue, lights?: GameValue): GameValue {
+  const Z: GameValue = it.zb || 0,
+    lux: GameValue = isLux(it);
+  const { x, y, w, h }: GameValue = it;
+  const standH: GameValue = Math.min(18, it.z * 0.3);
+  const stand: GameValue = box(x, y, w, h, standH, lux ? '#1b1b1b' : '#6d4c41', { z0: Z });
+  onFace(stand, 'left', (W?: GameValue, H?: GameValue): GameValue => {
+    game.ctx.strokeStyle = 'rgba(255,255,255,0.14)';
+    game.ctx.strokeRect(3, 3, W / 2 - 5, H - 6);
+    game.ctx.strokeRect(W / 2 + 2, 3, W / 2 - 5, H - 6);
+  });
+  box(x, y - 4, 6, 4, 4, '#222', { z0: Z + standH });
+  const scr: GameValue = box(x, y - 4, w * (lux ? 1.05 : 0.9), 3, it.z - standH - 4, '#0b0b0b', {
+    z0: Z + standH + 4,
+  });
+  onFace(scr, 'left', (W?: GameValue, H?: GameValue): GameValue => {
+    const hue: GameValue = (t * 35) % 360;
+    const g: GameValue = game.ctx.createLinearGradient(0, 0, W, H);
+    g.addColorStop(0, `hsl(${hue},70%,48%)`);
+    g.addColorStop(1, `hsl(${(hue + 120) % 360},70%,32%)`);
+    game.ctx.fillStyle = g;
+    game.ctx.fillRect(1.5, 1.5, W - 3, H - 3);
+    game.ctx.fillStyle = 'rgba(255,255,255,0.85)';
+    game.ctx.beginPath();
+    game.ctx.arc(W * (0.3 + 0.4 * ((t * 0.05) % 1)), H * 0.32, H * 0.12, 0, 6.3);
+    game.ctx.fill();
+    game.ctx.fillStyle = 'rgba(0,0,0,0.35)';
+    game.ctx.beginPath();
+    game.ctx.moveTo(1.5, H - 1.5);
+    game.ctx.quadraticCurveTo(W * 0.3, H * 0.4, W * 0.62, H - 1.5);
+    game.ctx.fill();
+    game.ctx.fillStyle = 'rgba(255,255,255,0.08)';
+    game.ctx.fillRect(1.5, 1.5, W * 0.35, H - 3);
+  });
+  if (lights && !it.zb)
+    lights.push({ x, y: y + 20, z: 20, r: lux ? 110 : 80, color: '130,170,255' });
+}
+
+export function drawPlant(it?: GameValue, t?: GameValue): GameValue {
+  const Z: GameValue = it.zb || 0,
+    lux: GameValue = isLux(it),
+    s: GameValue = isoScale();
+  const sz: GameValue = Math.min(it.w, it.h);
+  let top: GameValue;
+  if (lux) {
+    box(it.x, it.y, it.w, it.h * 0.8, 6, '#34495e', { z0: Z });
+    box(it.x, it.y, 4, 4, 18, '#6d4c41', { z0: Z + 6 });
+    top = isoProject(it.x, it.y, Z + 26);
+    [
+      [-8, 2, 7],
+      [7, -2, 8],
+      [0, -7, 6],
+    ].forEach(([dx, dy, r]: GameValue = {}, _i?: GameValue): GameValue => {
+      const g: GameValue = game.ctx.createRadialGradient(
+        top.x + dx * s - 2,
+        top.y + dy * s - 3,
+        1,
+        top.x + dx * s,
+        top.y + dy * s,
+        r * s * 1.3,
+      );
+      g.addColorStop(0, '#76d7a1');
+      g.addColorStop(1, '#117a65');
+      game.ctx.fillStyle = g;
+      game.ctx.beginPath();
+      game.ctx.ellipse(top.x + dx * s, top.y + dy * s, r * 1.4 * s, r * 0.8 * s, 0, 0, 6.3);
+      game.ctx.fill();
+    });
+    return;
+  }
+  const pot: GameValue = box(
+    it.x,
+    it.y,
+    sz * 0.75,
+    sz * 0.75,
+    Math.max(10, it.z * 0.32),
+    '#c0623b',
+    { z0: Z },
+  );
+  onFace(pot, 'left', (W?: GameValue, _H?: GameValue): GameValue => {
+    game.ctx.fillStyle = 'rgba(255,255,255,0.18)';
+    game.ctx.fillRect(0, 0, W, 3);
+  });
+  onFace(pot, 'top', (W?: GameValue, H?: GameValue): GameValue => {
+    game.ctx.fillStyle = '#3e2723';
+    game.ctx.fillRect(1.5, 1.5, W - 3, H - 3);
+  });
+  top = isoProject(it.x, it.y, Z + pot.d);
+  const k: GameValue = (it.z / 55) * s;
+  for (let i: GameValue = 0; i < 8; i++) {
+    const a: GameValue = -Math.PI / 2 + (i - 3.5) * 0.32 + Math.sin(t * 1.4 + i) * 0.04;
+    const len: GameValue = (16 + rnd(i + 2) * 10) * k;
+    game.ctx.fillStyle = i % 2 ? '#2e8b57' : '#3cb371';
+    game.ctx.beginPath();
+    game.ctx.ellipse(
+      top.x + Math.cos(a) * len * 0.5,
+      top.y + Math.sin(a) * len * 0.5,
+      len * 0.55,
+      3.2 * k,
+      a,
+      0,
+      6.3,
+    );
+    game.ctx.fill();
+  }
+}
+
+export function drawSafe(it?: GameValue): GameValue {
+  const Z: GameValue = it.zb || 0;
+  const b: GameValue = box(it.x, it.y, it.w, it.h, it.z, '#4b5563', { z0: Z });
+  onFace(b, 'left', (W?: GameValue, H?: GameValue): GameValue => {
+    const g: GameValue = game.ctx.createLinearGradient(0, 0, W, H);
+    g.addColorStop(0, '#7b8794');
+    g.addColorStop(1, '#3a4250');
+    game.ctx.fillStyle = g;
+    game.ctx.fillRect(4, 4, W - 8, H - 8);
+    game.ctx.strokeStyle = 'rgba(0,0,0,0.55)';
+    game.ctx.lineWidth = 1;
+    game.ctx.strokeRect(4, 4, W - 8, H - 8);
+    game.ctx.fillStyle = '#e5e7eb';
+    game.ctx.beginPath();
+    game.ctx.arc(W * 0.45, H * 0.45, 7, 0, 6.3);
+    game.ctx.fill();
+    game.ctx.strokeStyle = '#111';
+    game.ctx.beginPath();
+    game.ctx.arc(W * 0.45, H * 0.45, 4.5, 0, 6.3);
+    game.ctx.stroke();
+    game.ctx.beginPath();
+    game.ctx.moveTo(W * 0.45, H * 0.45);
+    game.ctx.lineTo(W * 0.45 + 4, H * 0.45 - 3);
+    game.ctx.stroke();
+    game.ctx.fillStyle = '#cbd5e1';
+    game.ctx.fillRect(W * 0.76, H * 0.32, 3, 13);
+    game.ctx.fillStyle = '#1f2937';
+    game.ctx.fillRect(5, H * 0.2, 2, 6);
+    game.ctx.fillRect(5, H * 0.7, 2, 6);
+  });
+}
+
+export function drawStove(it?: GameValue): GameValue {
+  const cooking: GameValue = game.hasFoodInInventory || game.foodIsCooked;
+  const b: GameValue = box(it.x, it.y, it.w, it.h, it.z - 4, '#ecf0f1');
+  onFace(b, 'left', (W?: GameValue, H?: GameValue): GameValue => {
+    game.ctx.fillStyle = '#2d3436';
+    game.ctx.fillRect(6, 12, W - 12, H - 20);
+    game.ctx.fillStyle = `rgba(255,140,0,${game.foodIsCooked ? 0.35 : 0.08})`;
+    game.ctx.fillRect(9, 15, W - 18, H - 26);
+    game.ctx.fillStyle = '#b2bec3';
+    game.ctx.fillRect(8, 6, W - 16, 3);
+    for (let i: GameValue = 0; i < 4; i++) {
+      game.ctx.fillStyle = '#636e72';
+      game.ctx.beginPath();
+      game.ctx.arc(10 + (i * (W - 20)) / 3, 3, 1.6, 0, 6.3);
+      game.ctx.fill();
+    }
+  });
+  onFace(b, 'right', (W?: GameValue, H?: GameValue): GameValue => {
+    game.ctx.strokeStyle = 'rgba(0,0,0,0.2)';
+    game.ctx.strokeRect(4, 6, W - 8, H - 12);
+  });
+  const top: GameValue = box(it.x, it.y, it.w, it.h, 4, '#2d3436', { z0: it.z - 4 });
+  onFace(top, 'top', (W?: GameValue, H?: GameValue): GameValue => {
+    [
+      [0.28, 0.3],
+      [0.72, 0.3],
+      [0.28, 0.72],
+      [0.72, 0.72],
+    ].forEach(([u, v]: GameValue = {}, i?: GameValue): GameValue => {
+      game.ctx.strokeStyle =
+        cooking && i === 2 ? `rgba(255,${90 + Math.random() * 60},0,0.95)` : '#636e72';
+      game.ctx.lineWidth = 2;
+      game.ctx.beginPath();
+      game.ctx.arc(W * u, H * v, W * 0.12, 0, 6.3);
+      game.ctx.stroke();
+      game.ctx.beginPath();
+      game.ctx.arc(W * u, H * v, W * 0.05, 0, 6.3);
+      game.ctx.stroke();
+    });
+  });
+  if (cooking) {
+    const pot: GameValue = box(it.x - it.w * 0.22, it.y + it.h * 0.22, 20, 20, 12, '#b2bec3', {
+      z0: it.z,
+    });
+    onFace(pot, 'top', (W?: GameValue, H?: GameValue): GameValue => {
+      game.ctx.fillStyle = game.foodIsCooked ? '#e17055' : '#fdcb6e';
+      game.ctx.fillRect(2, 2, W - 4, H - 4);
+    });
+    if (game.foodIsCooked) {
+      const p: GameValue = isoProject(it.x - it.w * 0.22, it.y + it.h * 0.22, it.z + 14),
+        s: GameValue = isoScale(),
+        tt: GameValue = performance.now() / 1000;
+      for (let i: GameValue = 0; i < 3; i++) {
+        const ph: GameValue = (tt * 0.6 + i / 3) % 1;
+        game.ctx.fillStyle = `rgba(255,255,255,${0.5 * (1 - ph)})`;
+        game.ctx.beginPath();
+        game.ctx.arc(
+          p.x + Math.sin(ph * 6 + i) * 4 * s,
+          p.y - ph * 30 * s,
+          (3 + ph * 5) * s,
+          0,
+          6.3,
+        );
+        game.ctx.fill();
+      }
+    }
+  }
+}
+
+export function drawFridge(it?: GameValue): GameValue {
+  const b: GameValue = box(it.x, it.y, it.w, it.h, it.z, '#dfe6e9');
+  onFace(b, 'left', (W?: GameValue, H?: GameValue): GameValue => {
+    const g: GameValue = game.ctx.createLinearGradient(0, 0, W, 0);
+    g.addColorStop(0, '#f5f6fa');
+    g.addColorStop(1, '#c8d0d6');
+    game.ctx.fillStyle = g;
+    game.ctx.fillRect(0, 0, W, H);
+    if (game.fridgeIsOpen) {
+      game.ctx.fillStyle = '#fffbe6';
+      game.ctx.fillRect(4, 4, W - 8, H - 8);
+      game.ctx.strokeStyle = '#dcd6c0';
+      for (let i: GameValue = 1; i < 5; i++) {
+        game.ctx.beginPath();
+        game.ctx.moveTo(4, (H * i) / 5);
+        game.ctx.lineTo(W - 4, (H * i) / 5);
+        game.ctx.stroke();
+      }
+      const foods: GameValue = ['#e74c3c', '#f1c40f', '#27ae60', '#e67e22', '#ecf0f1', '#8e44ad'];
+      for (let i: GameValue = 0; i < 9; i++) {
+        game.ctx.fillStyle = foods[i % foods.length];
+        game.ctx.fillRect(
+          8 + ((i % 3) * (W - 16)) / 3,
+          (H * (Math.floor(i / 3) + 1)) / 5 - 9,
+          9,
+          8,
+        );
+      }
+    } else {
+      game.ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+      game.ctx.beginPath();
+      game.ctx.moveTo(2, H * 0.35);
+      game.ctx.lineTo(W - 2, H * 0.35);
+      game.ctx.stroke();
+      game.ctx.fillStyle = '#636e72';
+      game.ctx.fillRect(W - 10, H * 0.12, 3, H * 0.16);
+      game.ctx.fillRect(W - 10, H * 0.45, 3, H * 0.3);
+      [
+        ['#e74c3c', 0.2, 0.5],
+        ['#0984e3', 0.35, 0.6],
+        ['#fdcb6e', 0.25, 0.7],
+      ].forEach(([c, u, v]: GameValue = {}): GameValue => {
+        game.ctx.fillStyle = c;
+        game.ctx.beginPath();
+        game.ctx.arc(W * u, H * v, 2.5, 0, 6.3);
+        game.ctx.fill();
+      });
+      game.ctx.fillStyle = '#ffffff';
+      game.ctx.fillRect(W * 0.12, H * 0.55, 14, 10);
+    }
+  });
+  onFace(b, 'right', (W?: GameValue, H?: GameValue): GameValue => {
+    game.ctx.fillStyle = 'rgba(255,255,255,0.08)';
+    game.ctx.fillRect(0, 0, W * 0.3, H);
+  });
+}
+
+export function drawToilet(it?: GameValue): GameValue {
+  const tank: GameValue = box(it.x, it.y - it.h / 2 + 8, it.w * 0.8, 14, 42, '#ffffff');
+  onFace(tank, 'top', (W?: GameValue, H?: GameValue): GameValue => {
+    game.ctx.fillStyle = '#b2bec3';
+    game.ctx.fillRect(W / 2 - 4, H / 2 - 1.5, 8, 3);
+  });
+  const base: GameValue = box(it.x, it.y + 6, it.w * 0.55, it.h * 0.58, 18, '#f5f6fa');
+  onFace(base, 'top', (W?: GameValue, H?: GameValue): GameValue => {
+    game.ctx.fillStyle = '#dcdde1';
+    game.ctx.beginPath();
+    game.ctx.ellipse(W / 2, H / 2, W / 2, H / 2, 0, 0, 6.3);
+    game.ctx.fill();
+    game.ctx.fillStyle = '#9ad0f5';
+    game.ctx.beginPath();
+    game.ctx.ellipse(W / 2, H / 2, W / 3.3, H / 3.3, 0, 0, 6.3);
+    game.ctx.fill();
+  });
+}
+
+export function drawSink(it?: GameValue): GameValue {
+  const cab: GameValue = box(it.x, it.y, it.w, it.h, it.z - 5, it.color || '#0984e3');
+  onFace(cab, 'left', (W?: GameValue, H?: GameValue): GameValue => {
+    game.ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+    game.ctx.strokeRect(3, 3, W / 2 - 4, H - 6);
+    game.ctx.strokeRect(W / 2 + 1, 3, W / 2 - 4, H - 6);
+    game.ctx.fillStyle = '#dfe6e9';
+    game.ctx.fillRect(W / 2 - 5, H * 0.3, 2, 8);
+    game.ctx.fillRect(W / 2 + 3, H * 0.3, 2, 8);
+  });
+  const top: GameValue = box(it.x, it.y, it.w + 4, it.h + 4, 5, '#f5f6fa', { z0: it.z - 5 });
+  onFace(top, 'top', (W?: GameValue, H?: GameValue): GameValue => {
+    game.ctx.fillStyle = '#c8d6e5';
+    game.ctx.beginPath();
+    game.ctx.ellipse(W / 2, H / 2 + 2, W * 0.32, H * 0.3, 0, 0, 6.3);
+    game.ctx.fill();
+    game.ctx.fillStyle = '#74b9ff';
+    game.ctx.beginPath();
+    game.ctx.ellipse(W / 2, H / 2 + 3, W * 0.22, H * 0.18, 0, 0, 6.3);
+    game.ctx.fill();
+  });
+  box(it.x, it.y - it.h / 2 + 5, 4, 4, 12, '#b2bec3', { z0: it.z });
+  box(it.x, it.y - it.h / 2 + 9, 4, 9, 3, '#b2bec3', { z0: it.z + 9 });
+}
+
+export function drawShower(it?: GameValue, t?: GameValue): GameValue {
+  const sc: GameValue = isoScale();
+  box(it.x, it.y, it.w, it.h, 6, '#dfe6e9');
+  const H: GameValue = it.z;
+  box(it.x - it.w / 2 + 6, it.y - it.h / 2 + 6, 3, 3, H - 12, '#b2bec3', { z0: 6 });
+  box(it.x - it.w / 2 + 14, it.y - it.h / 2 + 8, 16, 8, 3, '#b2bec3', { z0: H - 12 });
+  const occ: GameValue = game.frameShowerActors;
+  if (occ.length) {
+    occ.forEach((a?: GameValue): GameValue => {
+      game.ctx.save();
+      game.ctx.translate(0, -6 * sc);
+      drawPlayerAvatar(a.x, a.y, '', t, a.look, false, '');
+      game.ctx.restore();
+    });
+    drawShowerWater(it, t, occ);
+  }
+  const glass: GameValue = box(it.x, it.y, it.w, it.h, H - 6, '#81ecec', {
+    z0: 6,
+    top: 'rgba(255,255,255,0.06)',
+    left: 'rgba(129,236,236,0.22)',
+    right: 'rgba(129,236,236,0.15)',
+    edge: 'rgba(255,255,255,0.65)',
+  });
+  ['left', 'right'].forEach(
+    (f?: GameValue): GameValue =>
+      onFace(glass, f, (W?: GameValue, Hh?: GameValue): GameValue => {
+        if (game.showerFog > 0.01) {
+          game.ctx.fillStyle = 'rgba(235,245,250,' + 0.5 * game.showerFog + ')';
+          game.ctx.fillRect(0, 0, W, Hh);
+        }
+        game.ctx.strokeStyle = 'rgba(255,255,255,0.45)';
+        game.ctx.lineWidth = 2;
+        game.ctx.beginPath();
+        game.ctx.moveTo(W * 0.15, Hh * 0.25);
+        game.ctx.lineTo(W * 0.4, Hh * 0.08);
+        game.ctx.moveTo(W * 0.2, Hh * 0.45);
+        game.ctx.lineTo(W * 0.55, Hh * 0.18);
+        game.ctx.stroke();
+      }),
+  );
+  if (game.showerFog > 0.01) {
+    // vapore che sale sopra il box
+    for (let i: GameValue = 0; i < 6; i++) {
+      const ph: GameValue = (t * 0.25 + i / 6) % 1;
+      const p: GameValue = isoProject(
+        it.x + Math.sin(t * 0.7 + i * 2) * 14,
+        it.y + Math.cos(t * 0.6 + i * 1.7) * 10,
+        40 + ph * 110,
+      );
+      game.ctx.fillStyle =
+        'rgba(245,250,255,' + game.showerFog * 0.4 * Math.sin(Math.PI * ph) + ')';
+      game.ctx.beginPath();
+      game.ctx.arc(p.x, p.y, (9 + ph * 16) * sc, 0, 6.3);
+      game.ctx.fill();
+    }
+  }
+}
+
+export function drawCounter(it?: GameValue): GameValue {
+  const b: GameValue = box(it.x, it.y, it.w, it.h, it.z - 5, it.color || '#d35400');
+  onFace(b, 'left', (W?: GameValue, H?: GameValue): GameValue => {
+    woodGrain(W, H, 'rgba(0,0,0,0.15)', true, 10);
+    game.ctx.fillStyle = 'rgba(255,255,255,0.9)';
+    game.ctx.font = 'bold 9px sans-serif';
+    game.ctx.textAlign = 'center';
+    game.ctx.fillText('CASSA', W / 2, H / 2 + 3);
+  });
+  box(it.x, it.y, it.w + 6, it.h + 6, 5, '#f5f6fa', { z0: it.z - 5 });
+  const reg: GameValue = box(it.x + it.w * 0.28, it.y, 22, 16, 12, '#2d3436', { z0: it.z });
+  onFace(reg, 'left', (W?: GameValue, _H?: GameValue): GameValue => {
+    game.ctx.fillStyle = '#55efc4';
+    game.ctx.fillRect(3, 2, W - 6, 5);
+  });
+}
+
+export function drawShelf(it?: GameValue, t?: GameValue): GameValue {
+  const plat: GameValue = box(it.x, it.y, it.w, it.h, 12, '#f5f6fa');
+  const std: GameValue = game.furnitureCatalog.find(
+    (f?: GameValue): GameValue => f.category === it.category && !f.isLuxury,
+  );
+  const lux: GameValue = game.furnitureCatalog.find(
+    (f?: GameValue): GameValue => f.category === it.category && f.isLuxury,
+  );
+  const def: GameValue = std && game.ownedFurniture[std.id] ? lux : std;
+  if (!def) return;
+  onFace(plat, 'left', (W?: GameValue, H?: GameValue): GameValue => {
+    game.ctx.fillStyle = def.isLuxury ? '#f1c40f' : '#ff4757';
+    game.ctx.fillRect(W / 2 - 13, 2, 26, H - 4);
+    game.ctx.fillStyle = '#fff';
+    game.ctx.font = 'bold 7px sans-serif';
+    game.ctx.textAlign = 'center';
+    game.ctx.fillText(def.price + '€', W / 2, H - 4);
+  });
+  const pd: GameValue = def.propData;
+  const k: GameValue = Math.min((it.w - 8) / pd.w, (it.h - 8) / pd.h, 1);
+  const mini: GameValue = Object.assign({}, pd, {
+    x: it.x,
+    y: it.y,
+    w: pd.w * k,
+    h: pd.h * k,
+    z: pd.z * Math.max(k, 0.45),
+    zb: 12,
+  });
+  drawFurnitureByKind(def.propKey, mini, t, null);
+}
+
+export function drawExitMat(it?: GameValue, text?: GameValue): GameValue {
+  const b: GameValue = box(it.x, it.y - 10, Math.max(it.w, 64), 28, 2, '#7a2828', {
+    edge: 'rgba(0,0,0,0.3)',
+  });
+  onFace(b, 'top', (W?: GameValue, H?: GameValue): GameValue => {
+    game.ctx.strokeStyle = 'rgba(255,255,255,0.4)';
+    game.ctx.setLineDash([3, 2]);
+    game.ctx.strokeRect(3, 3, W - 6, H - 6);
+    game.ctx.setLineDash([]);
+    game.ctx.fillStyle = '#fff';
+    game.ctx.font = 'bold 8px sans-serif';
+    game.ctx.textAlign = 'center';
+    game.ctx.fillText(text, W / 2, H / 2 + 3);
+  });
+}
+
+export function drawSaloonDoor(key?: GameValue, it?: GameValue): GameValue {
+  const thinX: GameValue = it.w < it.h;
+  let doorC: GameValue = '#8d5a3b',
+    sign: GameValue = '';
+  if (it.roomIdx !== undefined) {
+    const gi: GameValue = game.gRoomIdx(it);
+    const room: GameValue = game.roomsState[gi];
+    doorC =
+      room && room.owner ? (gi === game.myAssignedRoomIdx ? '#2e86de' : '#27ae60') : '#7f8c8d';
+    sign = String(gi + 1);
+  } else if (key === 'courtyard') sign = '🌳';
+  else if (key === 'kitchen') sign = '🍳';
+  else if (key === 'bathroom') sign = '🚿';
+  const b: GameValue = box(it.x, it.y, thinX ? 8 : it.w, thinX ? it.h : 8, 96, '#ecf0f1');
+  onFace(b, thinX ? 'right' : 'left', (W?: GameValue, H?: GameValue): GameValue => {
+    game.ctx.fillStyle = doorC;
+    game.ctx.fillRect(5, 7, W - 10, H - 7);
+    woodGrain(W, H, 'rgba(0,0,0,0.12)', true, 6);
+    game.ctx.strokeStyle = 'rgba(0,0,0,0.28)';
+    game.ctx.lineWidth = 1;
+    game.ctx.strokeRect(9, 13, W - 18, H * 0.3);
+    game.ctx.strokeRect(9, H * 0.48, W - 18, H * 0.42);
+    game.ctx.fillStyle = '#f1c40f';
+    game.ctx.beginPath();
+    game.ctx.arc(W - 11, H * 0.55, 2.2, 0, 6.3);
+    game.ctx.fill();
+    if (sign) {
+      game.ctx.fillStyle = 'rgba(255,255,255,0.92)';
+      game.ctx.fillRect(W / 2 - 8, 15, 16, 12);
+      game.ctx.fillStyle = '#2d3436';
+      game.ctx.font = 'bold 9px sans-serif';
+      game.ctx.textAlign = 'center';
+      game.ctx.fillText(sign, W / 2, 24.5);
+    }
+  });
+}
+
+// Ingresso di un appartamento visto dal cortile: facciata con finestre e porta
+export function drawCourtyardDoor(_key?: GameValue, it?: GameValue): GameValue {
+  const mine: GameValue = hasRoom() && game.aptOfRoom(game.myAssignedRoomIdx) === it.aptIdx;
+  const full: GameValue = freeRoomsInApt(it.aptIdx) === 0;
+  const doorC: GameValue = mine ? '#2e86de' : full ? '#7f8c8d' : '#27ae60';
+  const b: GameValue = box(it.x, it.y, 64, 10, 118, '#cdbfa8');
+  onFace(b, 'left', (W?: GameValue, H?: GameValue): GameValue => {
+    game.ctx.fillStyle = '#6d4c41';
+    game.ctx.fillRect(0, 0, W, 5);
+    game.ctx.fillStyle = 'rgba(135,206,235,0.9)';
+    game.ctx.fillRect(W * 0.1, H * 0.14, W * 0.2, H * 0.2);
+    game.ctx.fillRect(W * 0.7, H * 0.14, W * 0.2, H * 0.2);
+    game.ctx.fillStyle = doorC;
+    game.ctx.fillRect(W * 0.3, H * 0.42, W * 0.4, H * 0.58);
+    game.ctx.strokeStyle = 'rgba(0,0,0,0.28)';
+    game.ctx.lineWidth = 1;
+    game.ctx.strokeRect(W * 0.34, H * 0.47, W * 0.32, H * 0.2);
+    game.ctx.strokeRect(W * 0.34, H * 0.72, W * 0.32, H * 0.22);
+    game.ctx.fillStyle = '#f1c40f';
+    game.ctx.beginPath();
+    game.ctx.arc(W * 0.64, H * 0.75, 1.8, 0, 6.3);
+    game.ctx.fill();
+    game.ctx.fillStyle = 'rgba(255,255,255,0.95)';
+    game.ctx.fillRect(W / 2 - 9, H * 0.3, 18, 11);
+    game.ctx.fillStyle = '#2d3436';
+    game.ctx.font = 'bold 8px sans-serif';
+    game.ctx.textAlign = 'center';
+    game.ctx.fillText('A' + (it.aptIdx + 1), W / 2, H * 0.3 + 8.5);
+  });
+}
+
+export function drawClothesRack(it?: GameValue): GameValue {
+  const { x, y, w, z }: GameValue = it;
+  const items: GameValue = game.shopCatalog.filter(
+    (i?: GameValue): GameValue => i.slot === it.slot && !i.starter,
+  );
+  box(x, y, w, 12, 3, '#636e72');
+  box(x - w / 2 + 3, y, 4, 4, z, '#b2bec3', { z0: 3 });
+  box(x, y, w, 3, 3, '#dfe6e9', { z0: z - 1 });
+  items.forEach((g?: GameValue, i?: GameValue): GameValue => {
+    const gx: GameValue = x - w / 2 + 9 + (i * (w - 18)) / Math.max(1, items.length - 1);
+    setPlane([gx - 8, y + (i % 2 ? -1.5 : 1.5), z - 3], [1, 0, 0], [0, 0, -1]);
+    drawShirtShape(
+      8,
+      2,
+      15,
+      it.slot === 'pants' ? 34 : 27,
+      g.color,
+      it.slot === 'pants' ? 'pants' : 'top',
+    );
+    if (g.style === 'stripes') {
+      game.ctx.fillStyle = g.color2;
+      for (let v: GameValue = 8; v < 27; v += 4) game.ctx.fillRect(3, v, 10, 1.5);
+    }
+    resetPlane();
+  });
+  box(x + w / 2 - 3, y, 4, 4, z, '#b2bec3', { z0: 3 });
+  const sign: GameValue = box(x, y + 8, 22, 2, 10, '#ffffff', { z0: 3 });
+  onFace(sign, 'left', (W?: GameValue, H?: GameValue): GameValue => {
+    game.ctx.fillStyle = '#e84393';
+    game.ctx.font = 'bold 6px sans-serif';
+    game.ctx.textAlign = 'center';
+    game.ctx.fillText(game.SLOT_INFO[it.slot].label.toUpperCase(), W / 2, H - 3);
+  });
+}
+
+export function drawDisplayShelf(it?: GameValue, _t?: GameValue): GameValue {
+  const { x, y, w, h }: GameValue = it;
+  void box(x, y - h / 2 + 2, w, 4, it.z + 26, '#f5f6fa');
+  const low: GameValue = box(x, y + 2, w, h - 4, it.z * 0.45, '#ffffff');
+  onFace(low, 'left', (W?: GameValue, _H?: GameValue): GameValue => {
+    game.ctx.fillStyle = '#e84393';
+    game.ctx.fillRect(0, 2, W, 3);
+  });
+  box(x, y - 2, w, h - 10, 3, '#dfe6e9', { z0: it.z + 6 });
+  const items: GameValue = game.shopCatalog.filter(
+    (i?: GameValue): GameValue => i.slot === it.slot && !i.starter,
+  );
+  const s: GameValue = isoScale();
+  items.forEach((g?: GameValue, i?: GameValue): GameValue => {
+    const upper: GameValue = i % 2 === 0,
+      k: GameValue = Math.floor(i / 2);
+    const gx: GameValue =
+      x - w / 2 + 10 + (k * (w - 20)) / Math.max(1, Math.ceil(items.length / 2) - 1);
+    const gz: GameValue = upper ? it.z + 9 : it.z * 0.45;
+    const gy: GameValue = upper ? y - 6 : y + 4;
+    if (it.slot === 'shoes') {
+      box(gx - 3, gy, 5, 10, 4, g.color, { z0: gz });
+      box(gx + 3, gy + 1, 5, 10, 4, g.color, { z0: gz });
+    } else {
+      const hp: GameValue = isoProject(gx, gy, gz + 7);
+      game.ctx.fillStyle = '#ced6e0';
+      game.ctx.beginPath();
+      game.ctx.arc(hp.x, hp.y, 6 * s, 0, 6.3);
+      game.ctx.fill();
+      box(gx, gy, 3, 3, 2, '#a4b0be', { z0: gz });
+      drawHat({ x: hp.x, y: hp.y + 1 * s }, s * 0.66, g);
+    }
+  });
+}
+
+export function drawGlassesStand(it?: GameValue, _t?: GameValue): GameValue {
+  const b: GameValue = box(it.x, it.y, it.w, it.h, it.z - 18, '#ffffff');
+  onFace(b, 'left', (W?: GameValue, _H?: GameValue): GameValue => {
+    game.ctx.fillStyle = '#e84393';
+    game.ctx.fillRect(0, 3, W, 2.5);
+  });
+  const items: GameValue = game.shopCatalog.filter(
+    (i?: GameValue): GameValue => i.slot === 'glasses',
+  );
+  const s: GameValue = isoScale();
+  items.forEach((g?: GameValue, i?: GameValue): GameValue => {
+    const gx: GameValue = it.x - it.w / 2 + 7 + (i * (it.w - 14)) / Math.max(1, items.length - 1);
+    box(gx, it.y, 3, 3, 8, '#a4b0be', { z0: it.z - 18 });
+    const hp: GameValue = isoProject(gx, it.y, it.z - 2);
+    game.ctx.fillStyle = '#ced6e0';
+    game.ctx.beginPath();
+    game.ctx.arc(hp.x, hp.y, 7 * s, 0, 6.3);
+    game.ctx.fill();
+    drawGlasses({ x: hp.x, y: hp.y - 1 * s }, s * 0.8, g);
+  });
+}
+
+export function drawBoutiqueCounter(it?: GameValue): GameValue {
+  const b: GameValue = box(it.x, it.y, it.w, it.h, it.z - 5, '#e84393');
+  onFace(b, 'left', (W?: GameValue, H?: GameValue): GameValue => {
+    game.ctx.fillStyle = 'rgba(255,255,255,0.18)';
+    for (let u: GameValue = 6; u < W; u += 12) game.ctx.fillRect(u, 0, 4, H);
+    game.ctx.fillStyle = '#ffffff';
+    game.ctx.font = 'bold 9px sans-serif';
+    game.ctx.textAlign = 'center';
+    game.ctx.fillText('BOUTIQUE', W / 2, H / 2 + 3);
+  });
+  box(it.x, it.y, it.w + 6, it.h + 6, 5, '#ffffff', { z0: it.z - 5 });
+  const reg: GameValue = box(it.x + it.w * 0.28, it.y, 22, 16, 12, '#2d3436', { z0: it.z });
+  onFace(reg, 'left', (W?: GameValue, _H?: GameValue): GameValue => {
+    game.ctx.fillStyle = '#fd79a8';
+    game.ctx.fillRect(3, 2, W - 6, 5);
+  });
+  [
+    ['#ffffff', -0.3],
+    ['#fd79a8', -0.12],
+  ].forEach(([c, k]: GameValue = {}): GameValue => {
+    const bag: GameValue = box(it.x + it.w * k, it.y, 14, 8, 16, c, { z0: it.z });
+    onFace(bag, 'left', (W?: GameValue, _H?: GameValue): GameValue => {
+      game.ctx.strokeStyle = '#2d3436';
+      game.ctx.lineWidth = 1;
+      game.ctx.beginPath();
+      game.ctx.arc(W / 2, 0, 4, Math.PI, 0);
+      game.ctx.stroke();
+    });
+  });
+}
+
+export function drawBoutiqueItem(k?: GameValue, item?: GameValue, t?: GameValue): GameValue {
+  if (k === 'clothesCounter') return drawBoutiqueCounter(item);
+  if (k.startsWith('rack')) return drawClothesRack(item);
+  if (k === 'standGlasses') return drawGlassesStand(item, t);
+  return drawDisplayShelf(item, t);
+}
+
+export function drawMannequinProp(it?: GameValue, _t?: GameValue): GameValue {
+  box(it.x, it.y, 18, 18, 3, '#2d3436');
+  const look: GameValue = resolveLook(parseLook(it.look));
+  look.mannequin = true;
+  drawPlayerAvatar(it.x, it.y, '', 0, look, false, '');
+}
+
+export function drawFurnitureByKind(
+  kind?: GameValue,
+  it?: GameValue,
+  t?: GameValue,
+  lights?: GameValue,
+): GameValue {
+  const f: GameValue = game.FURNITURE_DRAW[kind];
+  if (f) f(it, t, lights);
+  else box(it.x, it.y, it.w, it.h, it.z || 40, it.color || '#888888', { z0: it.zb || 0 });
+}
+
+export function drawMapItem(
+  k?: GameValue,
+  item?: GameValue,
+  t?: GameValue,
+  lights?: GameValue,
+): GameValue {
+  if (k === game.movingPropKey) {
+    setPlane([item.x - item.w / 2, item.y - item.h / 2, 0], [1, 0, 0], [0, 1, 0]);
+    game.ctx.fillStyle = `rgba(254,202,87,${0.35 + 0.2 * Math.sin(t * 6)})`;
+    game.ctx.fillRect(-4, -4, item.w + 8, item.h + 8);
+    resetPlane();
+  }
+  if (k === 'doorExit' || k === 'exitHouse')
+    return drawExitMat(item, k === 'exitHouse' ? 'ESCI DI CASA' : 'USCITA');
+  if (game.activeEnvironment === 'CORTILE') return drawCourtyardDoor(k, item);
+  if (game.activeEnvironment === 'SALOON') return drawSaloonDoor(k, item);
+  if (game.activeEnvironment === 'negozio_vestiti') {
+    softShadow(item.x, item.y, item.w, item.h);
+    return drawBoutiqueItem(k, item, t);
+  }
+  if (k.startsWith('shelf')) return drawShelf(item, t);
+  softShadow(item.x, item.y, item.w, item.h);
+  drawFurnitureByKind(k, item, t, lights);
+}
+
+// ---------------------------------------------------------------- OGGETTI DEGLI AMBIENTI
+export function drawTreeProp(it?: GameValue, t?: GameValue): GameValue {
+  const s: GameValue = isoScale(),
+    k: GameValue = it.size || 1;
+  ellipseShadow(it.x + 6, it.y + 6, 34 * k, 17 * k, 0.22);
+  const trunk: GameValue = box(it.x, it.y, 10 * k, 10 * k, 52 * k, '#7b4a2e');
+  onFace(
+    trunk,
+    'left',
+    (W?: GameValue, H?: GameValue): GameValue => woodGrain(W, H, 'rgba(0,0,0,0.3)', true, 3),
+  );
+  const sway: GameValue = Math.sin(t * 0.8 + it.x) * 1.5 * s;
+  [
+    [0, 0, 60, 19],
+    [-14, 6, 52, 15],
+    [12, -8, 54, 15],
+    [4, 12, 48, 14],
+    [-6, -10, 74, 15],
+    [8, 6, 78, 13],
+  ].forEach(([dx, dy, z, r]: GameValue = {}): GameValue => {
+    const p: GameValue = isoProject(it.x + dx * k, it.y + dy * k, z * k);
+    const R: GameValue = r * k * s;
+    const g: GameValue = game.ctx.createRadialGradient(
+      p.x - R * 0.35 + sway,
+      p.y - R * 0.45,
+      R * 0.15,
+      p.x + sway,
+      p.y,
+      R,
+    );
+    g.addColorStop(0, '#8fdc72');
+    g.addColorStop(0.55, '#45a845');
+    g.addColorStop(1, '#22702c');
+    game.ctx.fillStyle = g;
+    game.ctx.beginPath();
+    game.ctx.arc(p.x + sway, p.y, R, 0, Math.PI * 2);
+    game.ctx.fill();
+  });
+}
+
+export function drawFountainProp(it?: GameValue, t?: GameValue): GameValue {
+  const b: GameValue = box(it.x, it.y, it.w, it.h, 16, '#b8b2a7');
+  const stones: GameValue = (W?: GameValue, H?: GameValue): GameValue => {
+    game.ctx.strokeStyle = 'rgba(0,0,0,0.18)';
+    game.ctx.lineWidth = 0.8;
+    for (let u: GameValue = 0; u < W; u += 14) {
+      game.ctx.beginPath();
+      game.ctx.moveTo(u, 0);
+      game.ctx.lineTo(u, H);
+      game.ctx.stroke();
+    }
+    game.ctx.beginPath();
+    game.ctx.moveTo(0, H / 2);
+    game.ctx.lineTo(W, H / 2);
+    game.ctx.stroke();
+  };
+  onFace(b, 'left', stones);
+  onFace(b, 'right', stones);
+  onFace(b, 'top', (W?: GameValue, H?: GameValue): GameValue => {
+    const g: GameValue = game.ctx.createLinearGradient(0, 0, W, H);
+    g.addColorStop(0, '#2f80c0');
+    g.addColorStop(1, '#5dade2');
+    game.ctx.fillStyle = g;
+    game.ctx.fillRect(6, 6, W - 12, H - 12);
+    for (let i: GameValue = 0; i < 3; i++) {
+      const r: GameValue = (t * 10 + i * 10) % 30;
+      game.ctx.strokeStyle = `rgba(255,255,255,${Math.max(0, 0.55 - r / 55)})`;
+      game.ctx.lineWidth = 1;
+      game.ctx.beginPath();
+      game.ctx.ellipse(W / 2, H / 2, r, r, 0, 0, 6.3);
+      game.ctx.stroke();
+    }
+  });
+  box(it.x, it.y, 10, 10, 32, '#d5d0c6', { z0: 16 });
+  const bowl: GameValue = box(it.x, it.y, 28, 28, 5, '#cfc8bb', { z0: 46 });
+  onFace(bowl, 'top', (W?: GameValue, H?: GameValue): GameValue => {
+    game.ctx.fillStyle = '#5dade2';
+    game.ctx.fillRect(3, 3, W - 6, H - 6);
+  });
+  const top: GameValue = isoProject(it.x, it.y, 58),
+    s: GameValue = isoScale();
+  game.ctx.strokeStyle = 'rgba(210,240,255,0.85)';
+  game.ctx.lineWidth = 1.5;
+  for (let i: GameValue = 0; i < 6; i++) {
+    const a: GameValue = (i / 6) * Math.PI * 2 + t * 0.4;
+    const dx: GameValue = Math.cos(a) * 20 * s,
+      dy: GameValue = Math.sin(a) * 10 * s;
+    game.ctx.beginPath();
+    game.ctx.moveTo(top.x, top.y);
+    game.ctx.quadraticCurveTo(top.x + dx * 0.5, top.y - 14 * s, top.x + dx, top.y + 18 * s + dy);
+    game.ctx.stroke();
+  }
+  game.ctx.fillStyle = 'rgba(230,248,255,0.9)';
+  for (let i: GameValue = 0; i < 10; i++) {
+    const ph: GameValue = (t * 1.3 + i * 0.1) % 1,
+      a: GameValue = i * 2.4;
+    game.ctx.beginPath();
+    game.ctx.arc(
+      top.x + Math.cos(a) * 20 * s * ph,
+      top.y - 10 * s + ph * ph * 30 * s + Math.sin(a) * 6 * s * ph,
+      1.2 * s,
+      0,
+      6.3,
+    );
+    game.ctx.fill();
+  }
+}
+
+export function drawBenchProp(it?: GameValue): GameValue {
+  const { x, y, w, h }: GameValue = it;
+  box(x, y - h / 2 + 2, w, 3, 18, '#7b4a2e', { z0: 14 });
+  box(x - w / 2 + 5, y, 4, h - 4, 12, '#2d3436');
+  for (let i: GameValue = 0; i < 3; i++)
+    box(x, y - h / 2 + 4 + (i * (h - 6)) / 3 + 2, w, (h - 8) / 3, 2.5, '#a0623b', { z0: 12 });
+  box(x + w / 2 - 5, y, 4, h - 4, 12, '#2d3436');
+}
+
+export function drawStreetLampProp(it?: GameValue, _t?: GameValue, lights?: GameValue): GameValue {
+  box(it.x, it.y, 10, 10, 4, '#2d3436');
+  box(it.x, it.y, 4, 4, 82, '#2d3436', { z0: 4 });
+  void box(it.x, it.y, 14, 14, 10, '#fff3c4', { z0: 78, top: '#2d3436', edge: 'rgba(0,0,0,0.4)' });
+  box(it.x, it.y, 16, 16, 3, '#2d3436', { z0: 88 });
+  if (lights) lights.push({ x: it.x, y: it.y, z: 80, r: 170, color: '255,214,150' });
+}
+
+export function drawFlowersProp(it?: GameValue): GameValue {
+  void box(it.x, it.y, it.w, it.h, 4, '#5d4037', { edge: 'rgba(0,0,0,0.2)' });
+  const cols: GameValue = ['#ff6b81', '#feca57', '#ff9ff3', '#ffffff', '#ff4757', '#a29bfe'];
+  const s: GameValue = isoScale();
+  for (let i: GameValue = 0; i < 16; i++) {
+    const px: GameValue = it.x - it.w / 2 + 5 + rnd(i + it.x) * (it.w - 10),
+      py: GameValue = it.y - it.h / 2 + 4 + rnd(i * 3 + it.y) * (it.h - 8);
+    const base: GameValue = isoProject(px, py, 4),
+      tip: GameValue = isoProject(px, py, 10 + rnd(i) * 6);
+    game.ctx.strokeStyle = '#2e7d32';
+    game.ctx.lineWidth = 1;
+    game.ctx.beginPath();
+    game.ctx.moveTo(base.x, base.y);
+    game.ctx.lineTo(tip.x, tip.y);
+    game.ctx.stroke();
+    game.ctx.fillStyle = cols[i % cols.length];
+    game.ctx.beginPath();
+    game.ctx.arc(tip.x, tip.y, 2.4 * s, 0, 6.3);
+    game.ctx.fill();
+  }
+}
+
+export function drawPalmProp(it?: GameValue, t?: GameValue): GameValue {
+  const s: GameValue = isoScale();
+  ellipseShadow(it.x + 10, it.y + 10, 34, 16, 0.2);
+  for (let i: GameValue = 0; i < 9; i++)
+    box(it.x + i * i * 0.3, it.y, 8 - i * 0.35, 8 - i * 0.35, 10, i % 2 ? '#a67c52' : '#8d6748', {
+      z0: i * 10,
+      edge: 'rgba(0,0,0,0.2)',
+    });
+  const top: GameValue = isoProject(it.x + 24, it.y, 92);
+  for (let i: GameValue = 0; i < 8; i++) {
+    const a: GameValue = (i / 8) * Math.PI * 2 + Math.sin(t + i) * 0.05;
+    const ex: GameValue = top.x + Math.cos(a) * 38 * s,
+      ey: GameValue = top.y + Math.sin(a) * 16 * s + 16 * s;
+    game.ctx.strokeStyle = i % 2 ? '#1e8449' : '#27ae60';
+    game.ctx.lineWidth = 6 * s;
+    game.ctx.lineCap = 'round';
+    game.ctx.beginPath();
+    game.ctx.moveTo(top.x, top.y);
+    game.ctx.quadraticCurveTo(top.x + Math.cos(a) * 24 * s, top.y - 12 * s, ex, ey);
+    game.ctx.stroke();
+  }
+  game.ctx.fillStyle = '#6d4c41';
+  [
+    [-3, 3],
+    [3, 4],
+    [0, 6],
+  ].forEach(([dx, dy]: GameValue = {}): GameValue => {
+    game.ctx.beginPath();
+    game.ctx.arc(top.x + dx * s, top.y + dy * s, 3 * s, 0, 6.3);
+    game.ctx.fill();
+  });
+  game.ctx.lineCap = 'butt';
+}
+
+export function drawUmbrellaProp(it?: GameValue): GameValue {
+  const s: GameValue = isoScale();
+  box(it.x, it.y, 3, 3, 62, '#ecf0f1');
+  const c: GameValue = isoProject(it.x, it.y, 62);
+  for (let i: GameValue = 0; i < 8; i++) {
+    game.ctx.fillStyle = i % 2 ? '#ffffff' : '#e74c3c';
+    game.ctx.beginPath();
+    game.ctx.moveTo(c.x, c.y - 10 * s);
+    game.ctx.ellipse(
+      c.x,
+      c.y,
+      38 * s,
+      18 * s,
+      0,
+      (i / 8) * Math.PI * 2,
+      ((i + 1) / 8) * Math.PI * 2,
+    );
+    game.ctx.closePath();
+    game.ctx.fill();
+  }
+  game.ctx.strokeStyle = 'rgba(0,0,0,0.2)';
+  game.ctx.beginPath();
+  game.ctx.ellipse(c.x, c.y, 38 * s, 18 * s, 0, 0, 6.3);
+  game.ctx.stroke();
+}
+
+export function drawSunbedProp(it?: GameValue): GameValue {
+  box(it.x, it.y + 4, it.w, it.h - 8, 9, '#ecf0f1');
+  const cu: GameValue = box(it.x, it.y + 6, it.w - 4, it.h - 18, 3, '#3498db', { z0: 9 });
+  onFace(cu, 'top', (W?: GameValue, H?: GameValue): GameValue => {
+    game.ctx.fillStyle = '#ffffff';
+    for (let u: GameValue = 3; u < W; u += 8) game.ctx.fillRect(u, 0, 4, H);
+  });
+  box(it.x, it.y - it.h / 2 + 6, it.w - 4, 6, 16, '#3498db', { z0: 9 });
+}
+
+export function drawSandcastleProp(it?: GameValue): GameValue {
+  const c: GameValue = '#e8c27a';
+  box(it.x, it.y, it.w, it.h, 10, c);
+  [
+    [-1, -1],
+    [1, -1],
+    [-1, 1],
+  ].forEach(
+    ([sx, sy]: GameValue = {}): GameValue =>
+      box(it.x + sx * it.w * 0.35, it.y + sy * it.h * 0.35, 7, 7, 22, c),
+  );
+  box(it.x, it.y, 10, 10, 30, c);
+  box(it.x + it.w * 0.35, it.y + it.h * 0.35, 7, 7, 22, c);
+  const f: GameValue = isoProject(it.x, it.y, 30),
+    s: GameValue = isoScale();
+  game.ctx.strokeStyle = '#2d3436';
+  game.ctx.beginPath();
+  game.ctx.moveTo(f.x, f.y);
+  game.ctx.lineTo(f.x, f.y - 14 * s);
+  game.ctx.stroke();
+  game.ctx.fillStyle = '#e74c3c';
+  game.ctx.beginPath();
+  game.ctx.moveTo(f.x, f.y - 14 * s);
+  game.ctx.lineTo(f.x + 9 * s, f.y - 11 * s);
+  game.ctx.lineTo(f.x, f.y - 8 * s);
+  game.ctx.fill();
+}
+
+export function drawBallProp(it?: GameValue, t?: GameValue): GameValue {
+  const s: GameValue = isoScale(),
+    p: GameValue = isoProject(it.x, it.y, 7 + Math.abs(Math.sin(t * 2)) * 4);
+  ellipseShadow(it.x, it.y, 7, 3.5);
+  ['#e74c3c', '#ffffff', '#3498db', '#f1c40f'].forEach(
+    (c?: GameValue, i?: GameValue): GameValue => {
+      game.ctx.fillStyle = c;
+      game.ctx.beginPath();
+      game.ctx.moveTo(p.x, p.y);
+      game.ctx.arc(p.x, p.y, 7 * s, (i * Math.PI) / 2 + t, ((i + 1) * Math.PI) / 2 + t);
+      game.ctx.fill();
+    },
+  );
+}
+
+export function drawCraneProp(it?: GameValue, t?: GameValue): GameValue {
+  box(it.x, it.y, it.w, it.h, 12, '#7f8c8d');
+  const lattice: GameValue = (W?: GameValue, H?: GameValue): GameValue => {
+    game.ctx.strokeStyle = 'rgba(0,0,0,0.5)';
+    game.ctx.lineWidth = 0.8;
+    for (let v: GameValue = 0; v < H; v += 12) {
+      game.ctx.beginPath();
+      game.ctx.moveTo(0, v);
+      game.ctx.lineTo(W, v + 12);
+      game.ctx.moveTo(W, v);
+      game.ctx.lineTo(0, v + 12);
+      game.ctx.moveTo(0, v);
+      game.ctx.lineTo(W, v);
+      game.ctx.stroke();
+    }
+  };
+  const m: GameValue = box(it.x, it.y, 12, 12, 180, '#f1c40f', { z0: 12 });
+  onFace(m, 'left', lattice);
+  onFace(m, 'right', lattice);
+  box(it.x - 22, it.y, 36, 8, 8, '#f1c40f', { z0: 192 });
+  box(it.x - 34, it.y, 14, 14, 14, '#7f8c8d', { z0: 186 });
+  const cab: GameValue = box(it.x + 2, it.y + 4, 16, 14, 14, '#e67e22', { z0: 192 });
+  onFace(cab, 'left', (W?: GameValue, H?: GameValue): GameValue => {
+    game.ctx.fillStyle = '#d6eaf8';
+    game.ctx.fillRect(3, 3, W - 6, H / 2);
+  });
+  const jib: GameValue = box(it.x + 85, it.y, 160, 8, 8, '#f1c40f', { z0: 200 });
+  onFace(jib, 'left', lattice);
+  const sw: GameValue = Math.sin(t * 0.9) * 8;
+  const a: GameValue = isoProject(it.x + 140, it.y, 200),
+    b2: GameValue = isoProject(it.x + 140 + sw, it.y, 92);
+  game.ctx.strokeStyle = '#2d3436';
+  game.ctx.lineWidth = 1;
+  game.ctx.beginPath();
+  game.ctx.moveTo(a.x, a.y);
+  game.ctx.lineTo(b2.x, b2.y);
+  game.ctx.stroke();
+  const load: GameValue = box(it.x + 140 + sw, it.y, 20, 20, 12, '#b5523b', { z0: 80 });
+  onFace(load, 'left', brickPattern);
+}
+
+export function brickPattern(W?: GameValue, H?: GameValue): GameValue {
+  game.ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+  game.ctx.lineWidth = 0.8;
+  for (let v: GameValue = 0, r: GameValue = 0; v < H; v += 6, r++) {
+    game.ctx.beginPath();
+    game.ctx.moveTo(0, v);
+    game.ctx.lineTo(W, v);
+    game.ctx.stroke();
+    for (let u: GameValue = (r % 2) * 6; u < W; u += 12) {
+      game.ctx.beginPath();
+      game.ctx.moveTo(u, v);
+      game.ctx.lineTo(u, v + 6);
+      game.ctx.stroke();
+    }
+  }
+}
+
+export function drawBricksProp(it?: GameValue): GameValue {
+  const pal: GameValue = box(it.x, it.y, it.w, it.h, 7, '#a0784e');
+  onFace(pal, 'left', (W?: GameValue, H?: GameValue): GameValue => {
+    game.ctx.fillStyle = 'rgba(0,0,0,0.4)';
+    for (let u: GameValue = 4; u < W; u += 14) game.ctx.fillRect(u, 2, 6, H - 3);
+  });
+  const st: GameValue = box(it.x, it.y, it.w - 6, it.h - 6, 30, '#b5523b', { z0: 7 });
+  onFace(st, 'left', brickPattern);
+  onFace(st, 'right', brickPattern);
+}
+
+export function drawMixerProp(it?: GameValue, t?: GameValue): GameValue {
+  box(it.x, it.y, it.w, it.h * 0.6, 14, '#e67e22');
+  const c: GameValue = isoProject(it.x, it.y, 34),
+    s: GameValue = isoScale();
+  game.ctx.save();
+  game.ctx.translate(c.x, c.y);
+  game.ctx.rotate(-0.5);
+  const g: GameValue = game.ctx.createLinearGradient(-20 * s, 0, 20 * s, 0);
+  g.addColorStop(0, '#f39c12');
+  g.addColorStop(1, '#ca6f1e');
+  game.ctx.fillStyle = g;
+  game.ctx.beginPath();
+  game.ctx.ellipse(0, 0, 22 * s, 15 * s, 0, 0, 6.3);
+  game.ctx.fill();
+  game.ctx.strokeStyle = 'rgba(0,0,0,0.35)';
+  game.ctx.lineWidth = 2;
+  const r: GameValue = (t * 2) % (Math.PI * 2);
+  game.ctx.beginPath();
+  game.ctx.ellipse(0, 0, 22 * s * Math.abs(Math.cos(r)), 15 * s, 0, 0, 6.3);
+  game.ctx.stroke();
+  game.ctx.fillStyle = '#2d3436';
+  game.ctx.beginPath();
+  game.ctx.ellipse(18 * s, -2 * s, 5 * s, 8 * s, 0, 0, 6.3);
+  game.ctx.fill();
+  game.ctx.restore();
+}
+
+export function drawConeProp(it?: GameValue): GameValue {
+  const b: GameValue = isoProject(it.x, it.y, 0),
+    tp: GameValue = isoProject(it.x, it.y, 24),
+    s: GameValue = isoScale();
+  box(it.x, it.y, 12, 12, 2, '#2d3436');
+  game.ctx.fillStyle = '#ff7f27';
+  game.ctx.beginPath();
+  game.ctx.moveTo(tp.x, tp.y);
+  game.ctx.lineTo(b.x + 6 * s, b.y - 1);
+  game.ctx.lineTo(b.x - 6 * s, b.y - 1);
+  game.ctx.fill();
+  game.ctx.fillStyle = '#ffffff';
+  game.ctx.fillRect(b.x - 3.5 * s, b.y - 13 * s, 7 * s, 3 * s);
+}
+
+export function drawHospitalBedProp(it?: GameValue): GameValue {
+  const { x, y, w, h }: GameValue = it;
+  [
+    [-1, -1],
+    [1, -1],
+    [-1, 1],
+    [1, 1],
+  ].forEach(
+    ([sx, sy]: GameValue = {}): GameValue =>
+      box(x + sx * (w / 2 - 4), y + sy * (h / 2 - 4), 4, 4, 22, '#95a5a6'),
+  );
+  box(x, y - h / 2 + 3, w, 5, 46, '#bdc3c7');
+  box(x, y, w, h, 6, '#bdc3c7', { z0: 22 });
+  box(x, y, w - 6, h - 6, 7, '#ffffff', { z0: 28 });
+  box(x, y - h / 2 + 16, w * 0.6, 14, 6, '#ffffff', { z0: 35, edge: 'rgba(0,0,0,0.15)' });
+  const sh: GameValue = box(x, y + h * 0.15, w - 4, h * 0.6, 4, '#2ecc71', { z0: 34 });
+  onFace(sh, 'top', (W?: GameValue, _H?: GameValue): GameValue => {
+    game.ctx.fillStyle = '#7bed9f';
+    game.ctx.fillRect(0, 0, W, 5);
+  });
+}
+
+export function drawIvStandProp(it?: GameValue, _t?: GameValue): GameValue {
+  box(it.x, it.y, 12, 12, 2, '#7f8c8d');
+  box(it.x, it.y, 2, 2, 90, '#bdc3c7', { z0: 2 });
+  void box(it.x + 5, it.y, 8, 4, 16, '#d6eaf8', {
+    z0: 66,
+    left: 'rgba(214,234,248,0.85)',
+    right: 'rgba(174,214,241,0.85)',
+  });
+  const a: GameValue = isoProject(it.x + 5, it.y, 66),
+    b: GameValue = isoProject(it.x + 30, it.y + 20, 36);
+  game.ctx.strokeStyle = 'rgba(255,255,255,0.7)';
+  game.ctx.lineWidth = 1;
+  game.ctx.beginPath();
+  game.ctx.moveTo(a.x, a.y);
+  game.ctx.quadraticCurveTo(a.x + 10, a.y + 30, b.x, b.y);
+  game.ctx.stroke();
+}
+
+export function drawHeartMonitorProp(it?: GameValue, t?: GameValue): GameValue {
+  box(it.x, it.y, it.w, it.h, 40, '#95a5a6');
+  const scr: GameValue = box(it.x, it.y, it.w, it.h, 24, '#2d3436', { z0: 40 });
+  onFace(scr, 'left', (W?: GameValue, H?: GameValue): GameValue => {
+    game.ctx.fillStyle = '#071a0e';
+    game.ctx.fillRect(2, 2, W - 4, H - 4);
+    game.ctx.strokeStyle = '#2ecc71';
+    game.ctx.lineWidth = 1.2;
+    game.ctx.beginPath();
+    for (let u: GameValue = 2; u < W - 2; u++) {
+      const ph: GameValue = (u / (W - 4) + t * 0.8) % 1;
+      let v: GameValue = H / 2;
+      if (ph > 0.45 && ph < 0.5) v -= (ph - 0.45) * 160;
+      else if (ph >= 0.5 && ph < 0.55) v += (0.55 - ph) * 160 - 4;
+      u === 2 ? game.ctx.moveTo(u, v) : game.ctx.lineTo(u, v);
+    }
+    game.ctx.stroke();
+  });
+}
+
+export function drawMedCabinetProp(it?: GameValue): GameValue {
+  const b: GameValue = box(it.x, it.y, it.w, it.h, it.z, '#f5f6fa');
+  onFace(b, 'left', (W?: GameValue, H?: GameValue): GameValue => {
+    game.ctx.fillStyle = 'rgba(174,214,241,0.55)';
+    game.ctx.fillRect(4, 4, W / 2 - 6, H * 0.55);
+    game.ctx.fillRect(W / 2 + 2, 4, W / 2 - 6, H * 0.55);
+    const cols: GameValue = ['#e74c3c', '#3498db', '#f1c40f', '#2ecc71'];
+    for (let i: GameValue = 0; i < 8; i++) {
+      game.ctx.fillStyle = cols[i % 4];
+      game.ctx.fillRect(7 + ((i % 4) * (W - 14)) / 4, 8 + Math.floor(i / 4) * 22, 6, 12);
+    }
+    game.ctx.fillStyle = '#e74c3c';
+    game.ctx.fillRect(W / 2 - 3, H * 0.66, 6, 18);
+    game.ctx.fillRect(W / 2 - 9, H * 0.66 + 6, 18, 6);
+  });
+}
+
+export function drawChair(
+  x?: GameValue,
+  y?: GameValue,
+  color?: GameValue,
+  backSide: GameValue = 'y0',
+): GameValue {
+  box(x, y, 14, 14, 16, game.darken(color, 0.3));
+  box(x, y, 16, 16, 3, color, { z0: 16 });
+  if (backSide === 'y0') box(x, y - 7, 16, 3, 18, color, { z0: 19 });
+  else box(x - 7, y, 3, 16, 18, color, { z0: 19 });
+}
+
+export function drawWaitingChairsProp(it?: GameValue): GameValue {
+  for (let i: GameValue = 0; i < 3; i++)
+    drawChair(it.x - it.w / 2 + 14 + (i * (it.w - 28)) / 2, it.y, '#2e86de');
+}
+
+export function drawRestCounterProp(it?: GameValue): GameValue {
+  const b: GameValue = box(it.x, it.y, it.w, it.h, it.z - 5, '#8d5a3b');
+  onFace(b, 'left', (W?: GameValue, H?: GameValue): GameValue => {
+    woodGrain(W, H, 'rgba(0,0,0,0.2)', true, 12);
+    game.ctx.fillStyle = 'rgba(0,0,0,0.25)';
+    game.ctx.fillRect(0, H - 6, W, 6);
+  });
+  box(it.x, it.y, it.w + 6, it.h + 6, 5, '#ecf0f1', { z0: it.z - 5 });
+  [-0.3, 0, 0.3].forEach((k?: GameValue, i?: GameValue): GameValue => {
+    const d: GameValue = box(it.x + it.w * k, it.y, 18, 18, 3, '#ffffff', { z0: it.z });
+    onFace(d, 'top', (W?: GameValue, H?: GameValue): GameValue => {
+      game.ctx.fillStyle = ['#e17055', '#fdcb6e', '#00b894'][i];
+      game.ctx.beginPath();
+      game.ctx.ellipse(W / 2, H / 2, W * 0.3, H * 0.3, 0, 0, 6.3);
+      game.ctx.fill();
+    });
+  });
+}
+
+export function drawChefStoveProp(it?: GameValue, t?: GameValue): GameValue {
+  const b: GameValue = box(it.x, it.y, it.w, it.h, it.z - 4, '#b2bec3');
+  onFace(b, 'left', (W?: GameValue, H?: GameValue): GameValue => {
+    game.ctx.fillStyle = '#2d3436';
+    game.ctx.fillRect(5, 10, W - 10, H - 16);
+    game.ctx.fillStyle = 'rgba(255,120,0,0.3)';
+    game.ctx.fillRect(8, 13, W - 16, H - 22);
+  });
+  box(it.x, it.y, it.w, it.h, 4, '#2d3436', { z0: it.z - 4 });
+  const s: GameValue = isoScale();
+  [
+    [-0.2, -0.2],
+    [0.2, 0.2],
+  ].forEach(([kx, ky]: GameValue = {}, i?: GameValue): GameValue => {
+    const p: GameValue = isoProject(it.x + it.w * kx, it.y + it.h * ky, it.z);
+    for (let f: GameValue = 0; f < 5; f++) {
+      const fl: GameValue = 6 + Math.sin(t * 12 + f * 2 + i) * 3;
+      game.ctx.fillStyle = f % 2 ? 'rgba(255,200,0,0.9)' : 'rgba(255,90,0,0.9)';
+      game.ctx.beginPath();
+      game.ctx.moveTo(p.x + (f - 2) * 3 * s, p.y);
+      game.ctx.lineTo(p.x + (f - 2) * 3 * s + 1.5 * s, p.y - fl * s);
+      game.ctx.lineTo(p.x + (f - 2) * 3 * s + 3 * s, p.y);
+      game.ctx.fill();
+    }
+    const pan: GameValue = box(it.x + it.w * kx, it.y + it.h * ky, 18, 18, 7, '#636e72', {
+      z0: it.z + 4,
+    });
+    onFace(pan, 'top', (W?: GameValue, H?: GameValue): GameValue => {
+      game.ctx.fillStyle = i ? '#e17055' : '#fab1a0';
+      game.ctx.fillRect(2, 2, W - 4, H - 4);
+    });
+  });
+}
+
+export function drawDinnerTableProp(it?: GameValue): GameValue {
+  const { x, y, w, h }: GameValue = it;
+  drawChair(x, y - h / 2 - 2, '#a0522d');
+  box(x, y, 6, 6, 30, '#5d4037');
+  const top: GameValue = box(x, y, w, h, 8, '#ffffff', { z0: 28 });
+  onFace(top, 'left', (W?: GameValue, H?: GameValue): GameValue => {
+    game.ctx.strokeStyle = 'rgba(0,0,0,0.12)';
+    for (let u: GameValue = 6; u < W; u += 10) {
+      game.ctx.beginPath();
+      game.ctx.moveTo(u, 0);
+      game.ctx.lineTo(u, H);
+      game.ctx.stroke();
+    }
+  });
+  onFace(top, 'top', (W?: GameValue, H?: GameValue): GameValue => {
+    game.ctx.fillStyle = '#c0392b';
+    game.ctx.fillRect(W / 2 - 5, 0, 10, H);
+    [
+      [0.28, 0.3],
+      [0.72, 0.7],
+    ].forEach(([u, v]: GameValue = {}): GameValue => {
+      game.ctx.fillStyle = '#f5f6fa';
+      game.ctx.beginPath();
+      game.ctx.ellipse(W * u, H * v, 7, 7, 0, 0, 6.3);
+      game.ctx.fill();
+      game.ctx.strokeStyle = 'rgba(0,0,0,0.15)';
+      game.ctx.stroke();
+      game.ctx.fillStyle = '#e17055';
+      game.ctx.beginPath();
+      game.ctx.ellipse(W * u, H * v, 3.5, 3.5, 0, 0, 6.3);
+      game.ctx.fill();
+    });
+  });
+  box(x + w * 0.2, y - h * 0.15, 3, 3, 8, 'rgba(200,230,255,0.8)', {
+    z0: 36,
+    left: 'rgba(200,230,255,0.7)',
+    right: 'rgba(170,210,240,0.7)',
+  });
+  drawChair(x + w / 2 + 2, y, '#a0522d', 'x');
+}
+
+export function drawOfficeDeskProp(it?: GameValue, t?: GameValue): GameValue {
+  drawDesk({ x: it.x, y: it.y, w: it.w, h: it.h, z: it.z + 20, name: '' }, t);
+  box(it.x, it.y + it.h / 2 + 12, 16, 16, 18, '#2d3436');
+  box(it.x, it.y + it.h / 2 + 12, 18, 18, 4, '#34495e', { z0: 18 });
+  box(it.x, it.y + it.h / 2 + 20, 18, 3, 22, '#34495e', { z0: 22 });
+}
+
+export function drawArchiveProp(it?: GameValue): GameValue {
+  const b: GameValue = box(it.x, it.y, it.w, it.h, it.z, '#95a5a6');
+  onFace(b, 'left', (W?: GameValue, H?: GameValue): GameValue => {
+    for (let i: GameValue = 0; i < 4; i++) {
+      const v: GameValue = 3 + (i * (H - 6)) / 4;
+      game.ctx.strokeStyle = 'rgba(0,0,0,0.35)';
+      game.ctx.strokeRect(3, v, W - 6, (H - 6) / 4 - 3);
+      game.ctx.fillStyle = '#ecf0f1';
+      game.ctx.fillRect(W / 2 - 6, v + 4, 12, 5);
+      game.ctx.fillStyle = '#2d3436';
+      game.ctx.fillRect(W / 2 - 4, v + 12, 8, 2);
+    }
+  });
+}
+
+export function drawCoolerProp(it?: GameValue): GameValue {
+  const b: GameValue = box(it.x, it.y, it.w, it.h, it.z - 24, '#ecf0f1');
+  onFace(b, 'left', (W?: GameValue, _H?: GameValue): GameValue => {
+    game.ctx.fillStyle = '#0984e3';
+    game.ctx.fillRect(W / 2 - 4, 10, 3, 4);
+    game.ctx.fillStyle = '#d63031';
+    game.ctx.fillRect(W / 2 + 2, 10, 3, 4);
+  });
+  box(it.x, it.y, it.w * 0.8, it.h * 0.8, 24, '#74b9ff', {
+    z0: it.z - 24,
+    left: 'rgba(116,185,255,0.7)',
+    right: 'rgba(84,160,255,0.7)',
+    top: 'rgba(160,210,255,0.8)',
+  });
+}
+
+export function drawBarCounterProp(it?: GameValue): GameValue {
+  const b: GameValue = box(it.x, it.y, it.w, it.h, it.z - 5, '#4e342e');
+  onFace(b, 'left', (W?: GameValue, H?: GameValue): GameValue => {
+    for (let u: GameValue = 0; u < W; u += 10) {
+      game.ctx.fillStyle = u % 20 ? '#5d4037' : '#4e342e';
+      game.ctx.fillRect(u, 0, 10, H);
+    }
+    game.ctx.fillStyle = '#d4ac0d';
+    game.ctx.fillRect(0, H - 6, W, 2);
+  });
+  box(it.x, it.y, it.w + 8, it.h + 8, 5, '#212121', { z0: it.z - 5 });
+  [-0.3, -0.1, 0.1].forEach((k?: GameValue): GameValue => {
+    box(it.x + it.w * k, it.y - 4, 3, 3, 16, '#d4ac0d', { z0: it.z });
+    box(it.x + it.w * k + 3, it.y - 4, 6, 2, 2, '#d4ac0d', { z0: it.z + 13 });
+  });
+  box(it.x + it.w * 0.3, it.y + 4, 6, 6, 9, 'rgba(241,196,15,0.85)', {
+    z0: it.z,
+    left: 'rgba(241,196,15,0.8)',
+    right: 'rgba(214,170,10,0.8)',
+    top: '#ffffff',
+  });
+}
+
+export function drawStoolProp(it?: GameValue): GameValue {
+  box(it.x, it.y, 3, 3, 30, '#bdc3c7');
+  box(it.x, it.y, 10, 10, 2, '#7f8c8d');
+  const p: GameValue = isoProject(it.x, it.y, 32),
+    s: GameValue = isoScale();
+  game.ctx.fillStyle = '#c0392b';
+  game.ctx.beginPath();
+  game.ctx.ellipse(p.x, p.y, 9 * s, 4.5 * s, 0, 0, 6.3);
+  game.ctx.fill();
+  game.ctx.fillStyle = '#e74c3c';
+  game.ctx.beginPath();
+  game.ctx.ellipse(p.x, p.y - 1.5 * s, 9 * s, 4.5 * s, 0, 0, 6.3);
+  game.ctx.fill();
+}
+
+export function drawRoundTableProp(it?: GameValue): GameValue {
+  drawChair(it.x, it.y - it.h / 2 - 6, '#6d4c41');
+  box(it.x, it.y, 4, 4, 34, '#2d3436');
+  box(it.x, it.y, 18, 18, 2, '#2d3436');
+  const p: GameValue = isoProject(it.x, it.y, 36),
+    s: GameValue = isoScale();
+  game.ctx.fillStyle = '#5d4037';
+  game.ctx.beginPath();
+  game.ctx.ellipse(p.x, p.y + 2 * s, it.w * 0.75 * s, it.w * 0.38 * s, 0, 0, 6.3);
+  game.ctx.fill();
+  game.ctx.fillStyle = '#8d6e63';
+  game.ctx.beginPath();
+  game.ctx.ellipse(p.x, p.y, it.w * 0.75 * s, it.w * 0.38 * s, 0, 0, 6.3);
+  game.ctx.fill();
+  game.ctx.fillStyle = 'rgba(241,196,15,0.9)';
+  game.ctx.fillRect(p.x - 6 * s, p.y - 9 * s, 4 * s, 8 * s);
+  game.ctx.fillStyle = '#ffffff';
+  game.ctx.fillRect(p.x - 6 * s, p.y - 10 * s, 4 * s, 2 * s);
+  drawChair(it.x + it.w / 2 + 6, it.y, '#6d4c41', 'x');
+}
+
+export function drawJukeboxProp(it?: GameValue, t?: GameValue): GameValue {
+  const b: GameValue = box(it.x, it.y, it.w, it.h, it.z, '#8e44ad');
+  onFace(b, 'left', (W?: GameValue, H?: GameValue): GameValue => {
+    const hue: GameValue = (t * 60) % 360;
+    const g: GameValue = game.ctx.createLinearGradient(0, 0, W, 0);
+    g.addColorStop(0, `hsl(${hue},90%,60%)`);
+    g.addColorStop(1, `hsl(${(hue + 90) % 360},90%,60%)`);
+    game.ctx.fillStyle = g;
+    game.ctx.fillRect(3, 3, W - 6, H * 0.45);
+    game.ctx.fillStyle = '#2d3436';
+    game.ctx.fillRect(5, H * 0.55, W - 10, H * 0.3);
+    game.ctx.fillStyle = '#f1c40f';
+    for (let i: GameValue = 0; i < 4; i++) game.ctx.fillRect(7 + (i * (W - 14)) / 4, H * 0.6, 3, 3);
+  });
+}
+
+export function drawTableProp(it?: GameValue): GameValue {
+  drawChair(it.x, it.y - it.h / 2 - 4, '#a0522d');
+  [
+    [-1, -1],
+    [1, -1],
+    [-1, 1],
+    [1, 1],
+  ].forEach(
+    ([sx, sy]: GameValue = {}): GameValue =>
+      box(it.x + sx * (it.w / 2 - 4), it.y + sy * (it.h / 2 - 4), 4, 4, 28, '#6d4c41'),
+  );
+  const top: GameValue = box(it.x, it.y, it.w, it.h, 4, '#c8a27a', { z0: 28 });
+  onFace(top, 'top', (W?: GameValue, H?: GameValue): GameValue => {
+    woodGrain(W, H, 'rgba(0,0,0,0.1)', false, 4);
+    game.ctx.fillStyle = '#ecf0f1';
+    game.ctx.beginPath();
+    game.ctx.ellipse(W / 2, H / 2, 9, 7, 0, 0, 6.3);
+    game.ctx.fill();
+    [
+      ['#e74c3c', -3, -1],
+      ['#f1c40f', 2, 1],
+      ['#27ae60', 0, -3],
+    ].forEach(([c, du, dv]: GameValue = {}): GameValue => {
+      game.ctx.fillStyle = c;
+      game.ctx.beginPath();
+      game.ctx.arc(W / 2 + du, H / 2 + dv, 2.6, 0, 6.3);
+      game.ctx.fill();
+    });
+  });
+  drawChair(it.x + it.w / 2 + 4, it.y, '#a0522d', 'x');
+}
+
+export function drawConsoleProp(it?: GameValue): GameValue {
+  const b: GameValue = box(it.x, it.y, it.w, it.h, 34, '#6d4c41');
+  onFace(b, 'left', (W?: GameValue, H?: GameValue): GameValue => {
+    woodGrain(W, H, 'rgba(0,0,0,0.2)');
+    game.ctx.strokeStyle = 'rgba(0,0,0,0.35)';
+    game.ctx.strokeRect(3, 3, W / 2 - 4, H / 2);
+    game.ctx.strokeRect(W / 2 + 1, 3, W / 2 - 4, H / 2);
+  });
+  box(it.x - it.w * 0.25, it.y, 8, 8, 16, '#2980b9', { z0: 34 });
+  const p: GameValue = isoProject(it.x - it.w * 0.25, it.y, 52),
+    s: GameValue = isoScale();
+  ['#ff6b81', '#feca57', '#ff9ff3'].forEach((c?: GameValue, i?: GameValue): GameValue => {
+    game.ctx.fillStyle = c;
+    game.ctx.beginPath();
+    game.ctx.arc(p.x + (i - 1) * 4 * s, p.y - (i % 2) * 3 * s, 3 * s, 0, 6.3);
+    game.ctx.fill();
+  });
+  box(it.x + it.w * 0.2, it.y, 16, 10, 4, '#c0392b', { z0: 34 });
+  box(it.x + it.w * 0.2, it.y, 14, 9, 3, '#2980b9', { z0: 38 });
+}
+
+export function drawBathmatProp(it?: GameValue): GameValue {
+  const b: GameValue = box(it.x, it.y, it.w, it.h, 1.5, '#81ecec', { edge: 'rgba(0,0,0,0.12)' });
+  onFace(b, 'top', (W?: GameValue, H?: GameValue): GameValue => {
+    game.ctx.fillStyle = 'rgba(255,255,255,0.35)';
+    for (let u: GameValue = 3; u < W; u += 6) game.ctx.fillRect(u, 2, 2, H - 4);
+  });
+}
+
+export function drawDjBoothProp(it?: GameValue, t?: GameValue): GameValue {
+  const b: GameValue = box(it.x, it.y, it.w, it.h, 34, '#1e1e2f', {
+    edge: 'rgba(255,255,255,0.15)',
+  });
+  onFace(b, 'left', (W?: GameValue, H?: GameValue): GameValue => {
+    for (let i: GameValue = 0; i < 10; i++) {
+      game.ctx.fillStyle = `hsl(${(t * 120 + i * 36) % 360},90%,${40 + 30 * Math.abs(Math.sin(t * 6 + i))}%)`;
+      game.ctx.fillRect(4 + (i * (W - 8)) / 10, H * 0.3, (W - 8) / 10 - 2, H * 0.4);
+    }
+  });
+  const top: GameValue = box(it.x, it.y, it.w - 6, it.h - 6, 4, '#2d2d44', { z0: 34 });
+  onFace(top, 'top', (W?: GameValue, H?: GameValue): GameValue => {
+    [W * 0.28, W * 0.72].forEach((cx?: GameValue, k?: GameValue): GameValue => {
+      const r: GameValue = Math.min(H * 0.42, W * 0.18);
+      game.ctx.fillStyle = '#111';
+      game.ctx.beginPath();
+      game.ctx.arc(cx, H / 2, r, 0, 6.3);
+      game.ctx.fill();
+      game.ctx.strokeStyle = `hsl(${(t * 90 + k * 120) % 360},90%,60%)`;
+      game.ctx.lineWidth = 1;
+      const a: GameValue = t * 5 + k;
+      game.ctx.beginPath();
+      game.ctx.moveTo(cx, H / 2);
+      game.ctx.lineTo(cx + Math.cos(a) * r, H / 2 + Math.sin(a) * r);
+      game.ctx.stroke();
+    });
+    game.ctx.fillStyle = '#e84393';
+    game.ctx.fillRect(W / 2 - 3, 3, 6, H - 6);
+  });
+}
+
+export function drawSpeakerProp(it?: GameValue, t?: GameValue): GameValue {
+  const b: GameValue = box(it.x, it.y, it.w, it.h, it.z || 70, '#1a1a1a', {
+    edge: 'rgba(255,255,255,0.1)',
+  });
+  onFace(b, 'left', (W?: GameValue, H?: GameValue): GameValue => {
+    const k: GameValue = 1 + 0.1 * Math.sin(t * 9 + it.x);
+    [
+      [H * 0.3, W * 0.28],
+      [H * 0.68, W * 0.4],
+    ].forEach(([cy, r]: GameValue = {}): GameValue => {
+      game.ctx.fillStyle = '#3a3a3a';
+      game.ctx.beginPath();
+      game.ctx.arc(W / 2, cy, r * k, 0, 6.3);
+      game.ctx.fill();
+      game.ctx.fillStyle = '#0a0a0a';
+      game.ctx.beginPath();
+      game.ctx.arc(W / 2, cy, r * 0.45 * k, 0, 6.3);
+      game.ctx.fill();
+    });
+  });
+}
+
+export function drawDiscoBallProp(it?: GameValue, t?: GameValue): GameValue {
+  const top: GameValue = isoProject(it.x, it.y, 230),
+    p: GameValue = isoProject(it.x, it.y, it.z || 115),
+    r: GameValue = 15 * isoScale();
+  game.ctx.strokeStyle = '#999';
+  game.ctx.lineWidth = 1;
+  game.ctx.beginPath();
+  game.ctx.moveTo(top.x, top.y);
+  game.ctx.lineTo(p.x, p.y - r);
+  game.ctx.stroke();
+  const g: GameValue = game.ctx.createRadialGradient(
+    p.x - r * 0.3,
+    p.y - r * 0.3,
+    r * 0.1,
+    p.x,
+    p.y,
+    r,
+  );
+  g.addColorStop(0, '#ffffff');
+  g.addColorStop(1, '#7f8fa6');
+  game.ctx.fillStyle = g;
+  game.ctx.beginPath();
+  game.ctx.arc(p.x, p.y, r, 0, 6.3);
+  game.ctx.fill();
+  for (let i: GameValue = 0; i < 16; i++) {
+    const a: GameValue = i * 2.4 + t * 1.5,
+      d: GameValue = r * (0.2 + (0.7 * ((i * 37) % 10)) / 10);
+    game.ctx.fillStyle = `hsl(${(t * 200 + i * 40) % 360},100%,${65 + 25 * Math.sin(t * 8 + i)}%)`;
+    game.ctx.fillRect(p.x + Math.cos(a) * d - 1.5, p.y + Math.sin(a) * d * 0.9 - 1.5, 3, 3);
+  }
+}
+
+// ---- Cimitero: lapidi dei giocatori deceduti
+export function drawGraveProp(it?: GameValue): GameValue {
+  const flowers: GameValue = isoScale();
+  box(it.x, it.y + 9, 18, 14, 3, '#6b4f3a', { edge: 'rgba(0,0,0,0.2)' });
+  const FL: GameValue = ['#ff6b81', '#feca57', '#ffffff', '#a29bfe', '#ff9ff3']; // un fiore per ogni persona che l'ha visitata
+  for (let i: GameValue = 0, n: GameValue = Math.min(10, it.visitors || 0); i < n; i++) {
+    const q: GameValue = isoProject(it.x - 7 + (i % 5) * 3.5, it.y + 9 + (i < 5 ? 3 : 8), 6);
+    game.ctx.fillStyle = '#2e7d32';
+    game.ctx.fillRect(q.x - 0.5, q.y, 1, 3 * flowers);
+    game.ctx.fillStyle = FL[i % FL.length];
+    game.ctx.beginPath();
+    game.ctx.arc(q.x, q.y, 2 * flowers, 0, 6.3);
+    game.ctx.fill();
+  }
+  box(it.x, it.y, 22, 6, 4, '#7f8c8d');
+  if (it.style === 1) {
+    // croce
+    box(it.x, it.y, 5, 4, 34, '#b2bec3', { z0: 4 });
+    box(it.x, it.y, 18, 4, 5, '#b2bec3', { z0: 20 });
+  } else {
+    const wide: GameValue = it.style === 2;
+    const st: GameValue = box(it.x, it.y, wide ? 20 : 16, 5, wide ? 22 : 28, '#b2bec3', { z0: 4 });
+    box(it.x, it.y, wide ? 18 : 14, 5, 3, '#cfd8dc', { z0: wide ? 26 : 32 });
+    onFace(st, 'left', (W?: GameValue, H?: GameValue): GameValue => {
+      game.ctx.fillStyle = '#4b5558';
+      game.ctx.textAlign = 'center';
+      game.ctx.font = 'bold 5px serif';
+      game.ctx.fillText('R.I.P', W / 2, H * 0.34);
+      game.ctx.fillRect(W / 2 - 0.6, H * 0.5, 1.2, H * 0.3);
+      game.ctx.fillRect(W / 2 - 2, H * 0.58, 4, 1.1);
+    });
+  }
+}
+
+export function drawMemorialProp(it?: GameValue): GameValue {
+  box(it.x, it.y, 46, 16, 5, '#636e72');
+  const st: GameValue = box(it.x, it.y, 38, 12, 44, '#2d3436', { z0: 5, top: '#4b5558' });
+  onFace(st, 'left', (W?: GameValue, H?: GameValue): GameValue => {
+    game.ctx.fillStyle = '#dfe6e9';
+    game.ctx.textAlign = 'center';
+    game.ctx.font = 'bold 6px serif';
+    game.ctx.fillText('IN MEMORIA', W / 2, H * 0.3);
+    game.ctx.font = '5px serif';
+    game.ctx.fillText("di chi non ce l'ha fatta", W / 2, H * 0.48);
+    game.ctx.fillRect(W / 2 - 0.7, H * 0.58, 1.4, H * 0.28);
+    game.ctx.fillRect(W / 2 - 3, H * 0.66, 6, 1.3);
+  });
+}
+
+export function rebuildGraveyard(val?: GameValue): GameValue {
+  game.graveList = Object.keys(val || {})
+    .map((id?: GameValue): GameValue => Object.assign({ id }, val[id]))
+    .filter((g?: GameValue): GameValue => g && g.name)
+    .sort((a?: GameValue, b?: GameValue): GameValue => (b.deadAt || 0) - (a.deadAt || 0));
+  const cols: GameValue = [-150, -110, -70, 70, 110, 150],
+    rows: GameValue = [40, 0, -40, -80, -120];
+  const props: GameValue = [
+    {
+      kind: 'memorial',
+      x: 0,
+      y: -138,
+      w: 46,
+      h: 16,
+      z: 62,
+      label: '📜 Registro dei defunti',
+      who: 'registro',
+      name: 'Registro',
+    },
+    { kind: 'tree', x: -168, y: -146, w: 16, h: 16, size: 1.1, z: 90 },
+    { kind: 'tree', x: 168, y: -146, w: 16, h: 16, size: 1, z: 85 },
+    { kind: 'streetlamp', x: -35, y: 105, w: 8, h: 8 },
+    { kind: 'streetlamp', x: 35, y: 105, w: 8, h: 8 },
+    { kind: 'bench', x: -110, y: 108, w: 50, h: 16 },
+    { kind: 'bench', x: 110, y: 108, w: 50, h: 16 },
+  ];
+  game.graveMap = { memorial: props[0] };
+  game.graveList
+    .slice(0, cols.length * rows.length)
+    .forEach((g?: GameValue, i?: GameValue): GameValue => {
+      const d: GameValue = g.deadAt ? new Date(g.deadAt).toLocaleDateString('it-IT') : '';
+      const o: GameValue = {
+        kind: 'grave',
+        x: cols[i % cols.length],
+        y: rows[Math.floor(i / cols.length)],
+        w: 22,
+        h: 8,
+        z: 40,
+        style: nameHash(g.id || g.name) % 3,
+        label: '🪦 ' + g.name,
+        who: g.name,
+        name: g.name,
+        days: g.days,
+        deadAt: g.deadAt,
+        date: d,
+        id: g.id,
+        lived: g.lived,
+        epitaph: g.epitaph || '',
+        visitors: Object.keys(g.visitors || {}).length,
+        hasVisited: !!(g.visitors && g.visitors[game.myPlayerId]),
+      };
+      props.push(o);
+      game.graveMap['grave_' + i] = o;
+    });
+  game.ENV_PROPS.CIMITERO = props;
+  if (game.activeEnvironment === 'CIMITERO')
+    game.currentRoomTitle = `Cimitero 🪦 (${game.graveList.length} ${game.graveList.length === 1 ? 'lapide' : 'lapidi'})`;
+}
+
+export async function showGraveInfo(item?: GameValue): Promise<GameValue> {
+  if (item.kind === 'memorial') {
+    const lines: GameValue = game.graveList
+      .slice(0, 40)
+      .map(
+        (g?: GameValue): GameValue =>
+          `🪦 ${g.name} — ${typeof g.lived === 'number' ? fmtDuration(g.lived) : 'giorno ' + (g.days || '?')}${g.deadAt ? ' · ' + new Date(g.deadAt).toLocaleDateString('it-IT') : ''}`,
+      );
+    openDialog({
+      title: `📜 Registro dei defunti (${game.graveList.length})`,
+      text: lines.join('\n') || 'Nessuno è ancora morto. Prenditi cura del tuo personaggio!',
+      buttons: [{ label: 'Chiudi', value: null, color: '#57606f' }],
+    });
+    return;
+  }
+  const lived: GameValue =
+    typeof item.lived === 'number'
+      ? `Ha vissuto ${fmtDuration(item.lived)}.`
+      : `Ha vissuto fino al giorno ${item.days || '?'}.`;
+  const text: GameValue =
+    (item.epitaph ? `« ${item.epitaph} »\n\n` : 'Riposa in pace.\n\n') +
+    lived +
+    (item.date ? `\nÈ morto il ${item.date}.` : '') +
+    (item.visitors
+      ? `\n\n💐 ${item.visitors} ${item.visitors === 1 ? 'persona ha lasciato' : 'persone hanno lasciato'} dei fiori.`
+      : '');
+  const buttons: GameValue = [{ label: 'Chiudi', value: null, color: '#57606f' }];
+  if (!item.hasVisited)
+    buttons.push({ label: '💐 Lascia dei fiori (5 €)', value: 'flowers', color: '#e84393' });
+  const res: GameValue = await openDialog({ title: `🪦 ${item.who}`, text, buttons });
+  if (res.action === 'flowers') {
+    if (game.moneyLevel < 5) {
+      toast('Non hai abbastanza soldi: servono 5 € in cassaforte.');
+      return;
+    }
+    game.moneyLevel -= 5;
+    try {
+      game.db.ref(`sims_graveyard/${item.id}/visitors/${game.myPlayerId}`).set(game.myData.nick);
+    } catch (e: GameValue) {}
+    toast(`💐 Hai lasciato dei fiori per ${item.who}`);
+  }
+}
+
+export async function openEpitaph(..._args: GameValue[]): Promise<GameValue> {
+  const res: GameValue = await openDialog({
+    title: '🪦 Il tuo epitaffio',
+    text:
+      'Cosa vuoi che sia scritto sulla tua lapide, quando morirai? Gli altri giocatori potranno leggerlo.' +
+      (game.epitaph ? `\n\nAttuale: « ${game.epitaph} »` : ''),
+    input: { placeholder: 'Es. «Ho sempre avuto fame»', maxLength: 60 },
+    buttons: [
+      { label: 'Annulla', value: null, color: '#57606f' },
+      { label: 'Salva', value: 'ok', color: '#2ed573' },
+    ],
+  });
+  if (res.action === 'ok') {
+    game.epitaph = res.value.slice(0, 60);
+    saveGame(true);
+    toast(game.epitaph ? '🪦 Epitaffio salvato' : '🪦 Epitaffio rimosso');
+  }
+}

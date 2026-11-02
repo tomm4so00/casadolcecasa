@@ -1,0 +1,1762 @@
+{
+  "repository": "tomm4so00/casadolcecasa4",
+  "commit": "8f15c85353196c899edd41770e953900cb0d081d",
+  "file": "index.html",
+  "version": 8,
+  "functions": [
+    {
+      "name": "createLocalDb",
+      "module": "local-database",
+      "line": 461
+    },
+    {
+      "name": "itemById",
+      "module": "character",
+      "line": 609
+    },
+    {
+      "name": "ownsItem",
+      "module": "character",
+      "line": 610
+    },
+    {
+      "name": "lookString",
+      "module": "character",
+      "line": 611
+    },
+    {
+      "name": "parseLook",
+      "module": "character",
+      "line": 612
+    },
+    {
+      "name": "resolveLook",
+      "module": "character",
+      "line": 618
+    },
+    {
+      "name": "legacyLook",
+      "module": "character",
+      "line": 625
+    },
+    {
+      "name": "botLook",
+      "module": "character",
+      "line": 635
+    },
+    {
+      "name": "parseBody",
+      "module": "character",
+      "line": 673
+    },
+    {
+      "name": "bodyFromName",
+      "module": "character",
+      "line": 686
+    },
+    {
+      "name": "currentBody",
+      "module": "character",
+      "line": 691
+    },
+    {
+      "name": "myLook",
+      "module": "character",
+      "line": 692
+    },
+    {
+      "name": "freeRoomsInApt",
+      "module": "character",
+      "line": 742
+    },
+    {
+      "name": "aptLabel",
+      "module": "character",
+      "line": 747
+    },
+    {
+      "name": "sfx",
+      "module": "audio",
+      "line": 778
+    },
+    {
+      "name": "chordNotes",
+      "module": "audio",
+      "line": 828
+    },
+    {
+      "name": "musicParse",
+      "module": "audio",
+      "line": 867
+    },
+    {
+      "name": "musicFor",
+      "module": "audio",
+      "line": 876
+    },
+    {
+      "name": "musicWave",
+      "module": "audio",
+      "line": 884
+    },
+    {
+      "name": "musicBus",
+      "module": "audio",
+      "line": 891
+    },
+    {
+      "name": "mNote",
+      "module": "audio",
+      "line": 896
+    },
+    {
+      "name": "mDrum",
+      "module": "audio",
+      "line": 904
+    },
+    {
+      "name": "musicStep",
+      "module": "audio",
+      "line": 920
+    },
+    {
+      "name": "musicWant",
+      "module": "audio",
+      "line": 940
+    },
+    {
+      "name": "musicTick",
+      "module": "audio",
+      "line": 944
+    },
+    {
+      "name": "musicUnlock",
+      "module": "audio",
+      "line": 960
+    },
+    {
+      "name": "updateMusicButton",
+      "module": "audio",
+      "line": 967
+    },
+    {
+      "name": "toggleMusic",
+      "module": "audio",
+      "line": 972
+    },
+    {
+      "name": "updateSoundButton",
+      "module": "audio",
+      "line": 987
+    },
+    {
+      "name": "toggleSound",
+      "module": "audio",
+      "line": 992
+    },
+    {
+      "name": "relaxWith",
+      "module": "missions",
+      "line": 1000
+    },
+    {
+      "name": "getWealth",
+      "module": "missions",
+      "line": 1020
+    },
+    {
+      "name": "updateMissionHud",
+      "module": "missions",
+      "line": 1024
+    },
+    {
+      "name": "checkMissions",
+      "module": "missions",
+      "line": 1031
+    },
+    {
+      "name": "openMissions",
+      "module": "missions",
+      "line": 1048
+    },
+    {
+      "name": "fmtDuration",
+      "module": "missions",
+      "line": 1058
+    },
+    {
+      "name": "openLeaderboard",
+      "module": "missions",
+      "line": 1065
+    },
+    {
+      "name": "toast",
+      "module": "missions",
+      "line": 1101
+    },
+    {
+      "name": "hashPin",
+      "module": "saves",
+      "line": 1116
+    },
+    {
+      "name": "hasRoom",
+      "module": "saves",
+      "line": 1122
+    },
+    {
+      "name": "syncVaultFromServer",
+      "module": "saves",
+      "line": 1126
+    },
+    {
+      "name": "isMyRoomNow",
+      "module": "saves",
+      "line": 1146
+    },
+    {
+      "name": "withTimeout",
+      "module": "saves",
+      "line": 1150
+    },
+    {
+      "name": "buildSaveData",
+      "module": "saves",
+      "line": 1154
+    },
+    {
+      "name": "applySave",
+      "module": "saves",
+      "line": 1179
+    },
+    {
+      "name": "saveGame",
+      "module": "saves",
+      "line": 1223
+    },
+    {
+      "name": "catchUpOffline",
+      "module": "saves",
+      "line": 1239
+    },
+    {
+      "name": "loadGame",
+      "module": "saves",
+      "line": 1272
+    },
+    {
+      "name": "getMyRoomMap",
+      "module": "saves",
+      "line": 1299
+    },
+    {
+      "name": "publishRoomLayout",
+      "module": "saves",
+      "line": 1310
+    },
+    {
+      "name": "normalizeRooms",
+      "module": "saves",
+      "line": 1324
+    },
+    {
+      "name": "claimRoom",
+      "module": "saves",
+      "line": 1334
+    },
+    {
+      "name": "syncMyPinFromRoom",
+      "module": "saves",
+      "line": 1358
+    },
+    {
+      "name": "presenceAlive",
+      "module": "saves",
+      "line": 1373
+    },
+    {
+      "name": "startPresence",
+      "module": "saves",
+      "line": 1383
+    },
+    {
+      "name": "watchGameVersion",
+      "module": "saves",
+      "line": 1423
+    },
+    {
+      "name": "reloadForUpdate",
+      "module": "saves",
+      "line": 1435
+    },
+    {
+      "name": "openDialog",
+      "module": "interface",
+      "line": 1440
+    },
+    {
+      "name": "openChat",
+      "module": "interface",
+      "line": 1480
+    },
+    {
+      "name": "showIntro",
+      "module": "interface",
+      "line": 1501
+    },
+    {
+      "name": "openProfile",
+      "module": "interface",
+      "line": 1518
+    },
+    {
+      "name": "switchToCode",
+      "module": "interface",
+      "line": 1532
+    },
+    {
+      "name": "restoreFromCode",
+      "module": "interface",
+      "line": 1544
+    },
+    {
+      "name": "resizeCanvas",
+      "module": "interface",
+      "line": 1665
+    },
+    {
+      "name": "startGame",
+      "module": "interface",
+      "line": 1672
+    },
+    {
+      "name": "writeGrave",
+      "module": "interface",
+      "line": 1722
+    },
+    {
+      "name": "reapAbsentPlayers",
+      "module": "needs",
+      "line": 1731
+    },
+    {
+      "name": "die",
+      "module": "needs",
+      "line": 1763
+    },
+    {
+      "name": "showDeathScreen",
+      "module": "needs",
+      "line": 1786
+    },
+    {
+      "name": "escapeHtmlSafe",
+      "module": "needs",
+      "line": 1813
+    },
+    {
+      "name": "faint",
+      "module": "needs",
+      "line": 1815
+    },
+    {
+      "name": "tickNeeds",
+      "module": "needs",
+      "line": 1838
+    },
+    {
+      "name": "drugLevel",
+      "module": "needs",
+      "line": 1857
+    },
+    {
+      "name": "drugRate",
+      "module": "needs",
+      "line": 1862
+    },
+    {
+      "name": "drugApply",
+      "module": "needs",
+      "line": 1871
+    },
+    {
+      "name": "updateDrugHud",
+      "module": "needs",
+      "line": 1882
+    },
+    {
+      "name": "openDealer",
+      "module": "needs",
+      "line": 1891
+    },
+    {
+      "name": "drugTake",
+      "module": "needs",
+      "line": 1905
+    },
+    {
+      "name": "updateSocialPanel",
+      "module": "needs",
+      "line": 1938
+    },
+    {
+      "name": "sendSocial",
+      "module": "social",
+      "line": 1958
+    },
+    {
+      "name": "saySocial",
+      "module": "social",
+      "line": 1963
+    },
+    {
+      "name": "socDo",
+      "module": "social",
+      "line": 1965
+    },
+    {
+      "name": "drainInbox",
+      "module": "social",
+      "line": 2009
+    },
+    {
+      "name": "startInbox",
+      "module": "social",
+      "line": 2021
+    },
+    {
+      "name": "handleSocial",
+      "module": "social",
+      "line": 2025
+    },
+    {
+      "name": "hash01",
+      "module": "business",
+      "line": 2070
+    },
+    {
+      "name": "mktLog",
+      "module": "business",
+      "line": 2076
+    },
+    {
+      "name": "mktPrice",
+      "module": "business",
+      "line": 2082
+    },
+    {
+      "name": "bizSpark",
+      "module": "business",
+      "line": 2094
+    },
+    {
+      "name": "bizBuild",
+      "module": "business",
+      "line": 2103
+    },
+    {
+      "name": "bizUpdate",
+      "module": "business",
+      "line": 2118
+    },
+    {
+      "name": "openBizSite",
+      "module": "business",
+      "line": 2136
+    },
+    {
+      "name": "bizInvest",
+      "module": "business",
+      "line": 2142
+    },
+    {
+      "name": "bizWithdraw",
+      "module": "business",
+      "line": 2156
+    },
+    {
+      "name": "chatColor",
+      "module": "chat",
+      "line": 2180
+    },
+    {
+      "name": "chatUnread",
+      "module": "chat",
+      "line": 2181
+    },
+    {
+      "name": "updateChatBadge",
+      "module": "chat",
+      "line": 2182
+    },
+    {
+      "name": "markChatRead",
+      "module": "chat",
+      "line": 2187
+    },
+    {
+      "name": "renderChat",
+      "module": "chat",
+      "line": 2193
+    },
+    {
+      "name": "openGlobalChat",
+      "module": "chat",
+      "line": 2213
+    },
+    {
+      "name": "closeGlobalChat",
+      "module": "chat",
+      "line": 2220
+    },
+    {
+      "name": "sendChat",
+      "module": "chat",
+      "line": 2221
+    },
+    {
+      "name": "startChat",
+      "module": "chat",
+      "line": 2240
+    },
+    {
+      "name": "coffeeLeftMs",
+      "module": "needs",
+      "line": 2263
+    },
+    {
+      "name": "useCoffee",
+      "module": "needs",
+      "line": 2264
+    },
+    {
+      "name": "drawCoffeeMachine",
+      "module": "needs",
+      "line": 2274
+    },
+    {
+      "name": "updateNotifyButton",
+      "module": "needs",
+      "line": 2302
+    },
+    {
+      "name": "sendNotify",
+      "module": "needs",
+      "line": 2303
+    },
+    {
+      "name": "toggleNotify",
+      "module": "needs",
+      "line": 2307
+    },
+    {
+      "name": "checkAlerts",
+      "module": "needs",
+      "line": 2331
+    },
+    {
+      "name": "updateNeeds",
+      "module": "needs",
+      "line": 2358
+    },
+    {
+      "name": "promptSetSafePin",
+      "module": "needs",
+      "line": 2433
+    },
+    {
+      "name": "changeSafePin",
+      "module": "world",
+      "line": 2456
+    },
+    {
+      "name": "setupControls",
+      "module": "world",
+      "line": 2474
+    },
+    {
+      "name": "moveFurnitureToPointer",
+      "module": "world",
+      "line": 2554
+    },
+    {
+      "name": "startFurnitureDrag",
+      "module": "world",
+      "line": 2565
+    },
+    {
+      "name": "setFurniturePosition",
+      "module": "world",
+      "line": 2573
+    },
+    {
+      "name": "isKeyActive",
+      "module": "world",
+      "line": 2578
+    },
+    {
+      "name": "updateKeyboardMovement",
+      "module": "world",
+      "line": 2582
+    },
+    {
+      "name": "toggleSprint",
+      "module": "world",
+      "line": 2598
+    },
+    {
+      "name": "getCurrentFurnitureMap",
+      "module": "world",
+      "line": 2603
+    },
+    {
+      "name": "checkProximity",
+      "module": "world",
+      "line": 2628
+    },
+    {
+      "name": "handleObjectInteract",
+      "module": "world",
+      "line": 2839
+    },
+    {
+      "name": "handleSafeInteraction",
+      "module": "world",
+      "line": 2999
+    },
+    {
+      "name": "doActivity",
+      "module": "world",
+      "line": 3052
+    },
+    {
+      "name": "openFurnitureShopModal",
+      "module": "world",
+      "line": 3113
+    },
+    {
+      "name": "buyFurnitureItem",
+      "module": "world",
+      "line": 3136
+    },
+    {
+      "name": "handleJobMenuAction",
+      "module": "world",
+      "line": 3158
+    },
+    {
+      "name": "showJobAgencySelection",
+      "module": "world",
+      "line": 3187
+    },
+    {
+      "name": "continueCurrentJob",
+      "module": "world",
+      "line": 3193
+    },
+    {
+      "name": "chooseOrGoToJob",
+      "module": "world",
+      "line": 3204
+    },
+    {
+      "name": "mgFlash",
+      "module": "jobs",
+      "line": 3290
+    },
+    {
+      "name": "mgScore",
+      "module": "jobs",
+      "line": 3295
+    },
+    {
+      "name": "mgRating",
+      "module": "jobs",
+      "line": 3300
+    },
+    {
+      "name": "mgMultiplier",
+      "module": "jobs",
+      "line": 3301
+    },
+    {
+      "name": "mgHud",
+      "module": "jobs",
+      "line": 3303
+    },
+    {
+      "name": "mgSpawnTask",
+      "module": "jobs",
+      "line": 3311
+    },
+    {
+      "name": "mgStart",
+      "module": "jobs",
+      "line": 3334
+    },
+    {
+      "name": "mgStop",
+      "module": "jobs",
+      "line": 3343
+    },
+    {
+      "name": "mgTick",
+      "module": "jobs",
+      "line": 3347
+    },
+    {
+      "name": "mgButtonText",
+      "module": "jobs",
+      "line": 3349
+    },
+    {
+      "name": "mgInteract",
+      "module": "jobs",
+      "line": 3353
+    },
+    {
+      "name": "drawWorkItem",
+      "module": "jobs",
+      "line": 3379
+    },
+    {
+      "name": "drawWorkTarget",
+      "module": "jobs",
+      "line": 3388
+    },
+    {
+      "name": "drawTargetRing",
+      "module": "jobs",
+      "line": 3392
+    },
+    {
+      "name": "mgAddDrawables",
+      "module": "jobs",
+      "line": 3400
+    },
+    {
+      "name": "updateShift",
+      "module": "jobs",
+      "line": 3421
+    },
+    {
+      "name": "openComputerShopModal",
+      "module": "jobs",
+      "line": 3454
+    },
+    {
+      "name": "drawAvatarPreview",
+      "module": "character",
+      "line": 3459
+    },
+    {
+      "name": "startPreviewLoop",
+      "module": "character",
+      "line": 3475
+    },
+    {
+      "name": "itemSwatch",
+      "module": "character",
+      "line": 3489
+    },
+    {
+      "name": "renderTabs",
+      "module": "character",
+      "line": 3498
+    },
+    {
+      "name": "openClothesShop",
+      "module": "character",
+      "line": 3513
+    },
+    {
+      "name": "previewShopLook",
+      "module": "character",
+      "line": 3521
+    },
+    {
+      "name": "renderClothesShop",
+      "module": "character",
+      "line": 3529
+    },
+    {
+      "name": "buyClothing",
+      "module": "character",
+      "line": 3550
+    },
+    {
+      "name": "wardrobeOpenAmount",
+      "module": "character",
+      "line": 3566
+    },
+    {
+      "name": "openWardrobe",
+      "module": "character",
+      "line": 3573
+    },
+    {
+      "name": "closeWardrobe",
+      "module": "character",
+      "line": 3584
+    },
+    {
+      "name": "openWardrobeModal",
+      "module": "character",
+      "line": 3591
+    },
+    {
+      "name": "renderWardrobe",
+      "module": "character",
+      "line": 3601
+    },
+    {
+      "name": "equipItem",
+      "module": "character",
+      "line": 3628
+    },
+    {
+      "name": "returnHomeFromActivity",
+      "module": "character",
+      "line": 3637
+    },
+    {
+      "name": "handleSubAction",
+      "module": "character",
+      "line": 3645
+    },
+    {
+      "name": "startMovingFurniture",
+      "module": "character",
+      "line": 3660
+    },
+    {
+      "name": "placeFurniture",
+      "module": "character",
+      "line": 3672
+    },
+    {
+      "name": "closeModal",
+      "module": "render/primitives",
+      "line": 3681
+    },
+    {
+      "name": "isoProject",
+      "module": "render/primitives",
+      "line": 3684
+    },
+    {
+      "name": "isoScale",
+      "module": "render/primitives",
+      "line": 3699
+    },
+    {
+      "name": "rnd",
+      "module": "render/primitives",
+      "line": 3704
+    },
+    {
+      "name": "toRgb",
+      "module": "render/primitives",
+      "line": 3710
+    },
+    {
+      "name": "mixColor",
+      "module": "render/primitives",
+      "line": 3724
+    },
+    {
+      "name": "shadeColor",
+      "module": "render/primitives",
+      "line": 3731
+    },
+    {
+      "name": "poly",
+      "module": "render/primitives",
+      "line": 3735
+    },
+    {
+      "name": "setPlane",
+      "module": "render/primitives",
+      "line": 3745
+    },
+    {
+      "name": "resetPlane",
+      "module": "render/objects",
+      "line": 3751
+    },
+    {
+      "name": "box",
+      "module": "render/objects",
+      "line": 3754
+    },
+    {
+      "name": "onFace",
+      "module": "render/objects",
+      "line": 3766
+    },
+    {
+      "name": "woodGrain",
+      "module": "render/objects",
+      "line": 3775
+    },
+    {
+      "name": "softShadow",
+      "module": "render/objects",
+      "line": 3786
+    },
+    {
+      "name": "ellipseShadow",
+      "module": "render/objects",
+      "line": 3795
+    },
+    {
+      "name": "isLux",
+      "module": "render/objects",
+      "line": 3803
+    },
+    {
+      "name": "gameClockText",
+      "module": "render/objects",
+      "line": 3805
+    },
+    {
+      "name": "drawBed",
+      "module": "render/objects",
+      "line": 3811
+    },
+    {
+      "name": "drawShirtShape",
+      "module": "render/objects",
+      "line": 3836
+    },
+    {
+      "name": "drawWardrobe",
+      "module": "render/objects",
+      "line": 3853
+    },
+    {
+      "name": "drawDesk",
+      "module": "render/objects",
+      "line": 3905
+    },
+    {
+      "name": "drawNightstand",
+      "module": "render/objects",
+      "line": 3928
+    },
+    {
+      "name": "drawLamp",
+      "module": "render/objects",
+      "line": 3946
+    },
+    {
+      "name": "drawSofa",
+      "module": "render/objects",
+      "line": 3959
+    },
+    {
+      "name": "drawTV",
+      "module": "render/objects",
+      "line": 3980
+    },
+    {
+      "name": "drawPlant",
+      "module": "render/objects",
+      "line": 4005
+    },
+    {
+      "name": "drawSafe",
+      "module": "render/objects",
+      "line": 4035
+    },
+    {
+      "name": "drawStove",
+      "module": "render/objects",
+      "line": 4051
+    },
+    {
+      "name": "drawFridge",
+      "module": "render/objects",
+      "line": 4084
+    },
+    {
+      "name": "drawToilet",
+      "module": "render/objects",
+      "line": 4106
+    },
+    {
+      "name": "drawSink",
+      "module": "render/objects",
+      "line": 4116
+    },
+    {
+      "name": "drawShower",
+      "module": "render/objects",
+      "line": 4131
+    },
+    {
+      "name": "drawCounter",
+      "module": "render/objects",
+      "line": 4160
+    },
+    {
+      "name": "drawShelf",
+      "module": "render/objects",
+      "line": 4172
+    },
+    {
+      "name": "drawExitMat",
+      "module": "render/objects",
+      "line": 4188
+    },
+    {
+      "name": "drawSaloonDoor",
+      "module": "render/objects",
+      "line": 4196
+    },
+    {
+      "name": "drawCourtyardDoor",
+      "module": "render/objects",
+      "line": 4222
+    },
+    {
+      "name": "drawClothesRack",
+      "module": "render/objects",
+      "line": 4241
+    },
+    {
+      "name": "drawDisplayShelf",
+      "module": "render/objects",
+      "line": 4259
+    },
+    {
+      "name": "drawGlassesStand",
+      "module": "render/objects",
+      "line": 4284
+    },
+    {
+      "name": "drawBoutiqueCounter",
+      "module": "render/objects",
+      "line": 4298
+    },
+    {
+      "name": "drawBoutiqueItem",
+      "module": "render/objects",
+      "line": 4313
+    },
+    {
+      "name": "drawMannequinProp",
+      "module": "render/objects",
+      "line": 4320
+    },
+    {
+      "name": "drawFurnitureByKind",
+      "module": "render/objects",
+      "line": 4332
+    },
+    {
+      "name": "drawMapItem",
+      "module": "render/objects",
+      "line": 4338
+    },
+    {
+      "name": "drawTreeProp",
+      "module": "render/objects",
+      "line": 4355
+    },
+    {
+      "name": "drawFountainProp",
+      "module": "render/objects",
+      "line": 4370
+    },
+    {
+      "name": "drawBenchProp",
+      "module": "render/objects",
+      "line": 4404
+    },
+    {
+      "name": "drawStreetLampProp",
+      "module": "render/objects",
+      "line": 4412
+    },
+    {
+      "name": "drawFlowersProp",
+      "module": "render/objects",
+      "line": 4420
+    },
+    {
+      "name": "drawPalmProp",
+      "module": "render/objects",
+      "line": 4432
+    },
+    {
+      "name": "drawUmbrellaProp",
+      "module": "render/objects",
+      "line": 4448
+    },
+    {
+      "name": "drawSunbedProp",
+      "module": "render/objects",
+      "line": 4461
+    },
+    {
+      "name": "drawSandcastleProp",
+      "module": "render/objects",
+      "line": 4468
+    },
+    {
+      "name": "drawBallProp",
+      "module": "render/objects",
+      "line": 4479
+    },
+    {
+      "name": "drawCraneProp",
+      "module": "render/objects",
+      "line": 4488
+    },
+    {
+      "name": "brickPattern",
+      "module": "render/objects",
+      "line": 4509
+    },
+    {
+      "name": "drawBricksProp",
+      "module": "render/objects",
+      "line": 4517
+    },
+    {
+      "name": "drawMixerProp",
+      "module": "render/objects",
+      "line": 4524
+    },
+    {
+      "name": "drawConeProp",
+      "module": "render/objects",
+      "line": 4537
+    },
+    {
+      "name": "drawHospitalBedProp",
+      "module": "render/objects",
+      "line": 4545
+    },
+    {
+      "name": "drawIvStandProp",
+      "module": "render/objects",
+      "line": 4556
+    },
+    {
+      "name": "drawHeartMonitorProp",
+      "module": "render/objects",
+      "line": 4564
+    },
+    {
+      "name": "drawMedCabinetProp",
+      "module": "render/objects",
+      "line": 4580
+    },
+    {
+      "name": "drawChair",
+      "module": "render/objects",
+      "line": 4590
+    },
+    {
+      "name": "drawWaitingChairsProp",
+      "module": "render/objects",
+      "line": 4597
+    },
+    {
+      "name": "drawRestCounterProp",
+      "module": "render/objects",
+      "line": 4601
+    },
+    {
+      "name": "drawChefStoveProp",
+      "module": "render/objects",
+      "line": 4611
+    },
+    {
+      "name": "drawDinnerTableProp",
+      "module": "render/objects",
+      "line": 4628
+    },
+    {
+      "name": "drawOfficeDeskProp",
+      "module": "render/objects",
+      "line": 4646
+    },
+    {
+      "name": "drawArchiveProp",
+      "module": "render/objects",
+      "line": 4653
+    },
+    {
+      "name": "drawCoolerProp",
+      "module": "render/objects",
+      "line": 4665
+    },
+    {
+      "name": "drawBarCounterProp",
+      "module": "render/objects",
+      "line": 4671
+    },
+    {
+      "name": "drawStoolProp",
+      "module": "render/objects",
+      "line": 4685
+    },
+    {
+      "name": "drawRoundTableProp",
+      "module": "render/objects",
+      "line": 4693
+    },
+    {
+      "name": "drawJukeboxProp",
+      "module": "render/objects",
+      "line": 4705
+    },
+    {
+      "name": "drawTableProp",
+      "module": "render/objects",
+      "line": 4716
+    },
+    {
+      "name": "drawConsoleProp",
+      "module": "render/objects",
+      "line": 4728
+    },
+    {
+      "name": "drawBathmatProp",
+      "module": "render/objects",
+      "line": 4738
+    },
+    {
+      "name": "drawDjBoothProp",
+      "module": "render/objects",
+      "line": 4745
+    },
+    {
+      "name": "drawSpeakerProp",
+      "module": "render/objects",
+      "line": 4761
+    },
+    {
+      "name": "drawDiscoBallProp",
+      "module": "render/objects",
+      "line": 4771
+    },
+    {
+      "name": "drawGraveProp",
+      "module": "render/objects",
+      "line": 4786
+    },
+    {
+      "name": "drawMemorialProp",
+      "module": "render/objects",
+      "line": 4810
+    },
+    {
+      "name": "rebuildGraveyard",
+      "module": "render/objects",
+      "line": 4835
+    },
+    {
+      "name": "showGraveInfo",
+      "module": "render/objects",
+      "line": 4856
+    },
+    {
+      "name": "openEpitaph",
+      "module": "render/objects",
+      "line": 4875
+    },
+    {
+      "name": "getEnvStyle",
+      "module": "render/scenes",
+      "line": 5065
+    },
+    {
+      "name": "skyColors",
+      "module": "render/scenes",
+      "line": 5079
+    },
+    {
+      "name": "drawSky",
+      "module": "render/scenes",
+      "line": 5087
+    },
+    {
+      "name": "drawFloorPattern",
+      "module": "render/scenes",
+      "line": 5122
+    },
+    {
+      "name": "wallWindow",
+      "module": "render/scenes",
+      "line": 5253
+    },
+    {
+      "name": "wallPainting",
+      "module": "render/scenes",
+      "line": 5272
+    },
+    {
+      "name": "wallClock",
+      "module": "render/scenes",
+      "line": 5282
+    },
+    {
+      "name": "wallShelf",
+      "module": "render/scenes",
+      "line": 5293
+    },
+    {
+      "name": "wallCabinets",
+      "module": "render/scenes",
+      "line": 5301
+    },
+    {
+      "name": "wallMirror",
+      "module": "render/scenes",
+      "line": 5312
+    },
+    {
+      "name": "wallTowels",
+      "module": "render/scenes",
+      "line": 5320
+    },
+    {
+      "name": "wallNeon",
+      "module": "render/scenes",
+      "line": 5328
+    },
+    {
+      "name": "wallBottles",
+      "module": "render/scenes",
+      "line": 5338
+    },
+    {
+      "name": "wallPoster",
+      "module": "render/scenes",
+      "line": 5350
+    },
+    {
+      "name": "wallLogo",
+      "module": "render/scenes",
+      "line": 5357
+    },
+    {
+      "name": "wallCross",
+      "module": "render/scenes",
+      "line": 5362
+    },
+    {
+      "name": "wallMenu",
+      "module": "render/scenes",
+      "line": 5368
+    },
+    {
+      "name": "wallWhiteboard",
+      "module": "render/scenes",
+      "line": 5376
+    },
+    {
+      "name": "paintWallSurface",
+      "module": "render/scenes",
+      "line": 5390
+    },
+    {
+      "name": "wallPlane",
+      "module": "render/scenes",
+      "line": 5443
+    },
+    {
+      "name": "drawWalls",
+      "module": "render/scenes",
+      "line": 5448
+    },
+    {
+      "name": "drawDynamicWalls",
+      "module": "render/scenes",
+      "line": 5465
+    },
+    {
+      "name": "drawStaticScene",
+      "module": "render/scenes",
+      "line": 5478
+    },
+    {
+      "name": "drawDynamicFloor",
+      "module": "render/scenes",
+      "line": 5495
+    },
+    {
+      "name": "applyLighting",
+      "module": "render/scenes",
+      "line": 5527
+    },
+    {
+      "name": "drawLabel",
+      "module": "render/scenes",
+      "line": 5558
+    },
+    {
+      "name": "nameHash",
+      "module": "render/scenes",
+      "line": 5575
+    },
+    {
+      "name": "heartPath",
+      "module": "render/avatars",
+      "line": 5581
+    },
+    {
+      "name": "drawGlasses",
+      "module": "render/avatars",
+      "line": 5589
+    },
+    {
+      "name": "drawHat",
+      "module": "render/avatars",
+      "line": 5610
+    },
+    {
+      "name": "drawHairBack",
+      "module": "render/avatars",
+      "line": 5653
+    },
+    {
+      "name": "drawHairFront",
+      "module": "render/avatars",
+      "line": 5687
+    },
+    {
+      "name": "drawFace",
+      "module": "render/avatars",
+      "line": 5722
+    },
+    {
+      "name": "openCharacterCreator",
+      "module": "render/avatars",
+      "line": 5787
+    },
+    {
+      "name": "renderCreator",
+      "module": "render/avatars",
+      "line": 5801
+    },
+    {
+      "name": "randomizeCreator",
+      "module": "render/avatars",
+      "line": 5829
+    },
+    {
+      "name": "startCreatorLoop",
+      "module": "render/avatars",
+      "line": 5837
+    },
+    {
+      "name": "finishCreator",
+      "module": "render/avatars",
+      "line": 5848
+    },
+    {
+      "name": "startShower",
+      "module": "render/avatars",
+      "line": 5860
+    },
+    {
+      "name": "updateShower",
+      "module": "render/avatars",
+      "line": 5867
+    },
+    {
+      "name": "pillTag",
+      "module": "render/avatars",
+      "line": 5889
+    },
+    {
+      "name": "speechBubble",
+      "module": "render/avatars",
+      "line": 5901
+    },
+    {
+      "name": "drawNameTagWorld",
+      "module": "render/avatars",
+      "line": 5914
+    },
+    {
+      "name": "drawAvatarSleeping",
+      "module": "render/avatars",
+      "line": 5920
+    },
+    {
+      "name": "drawActor",
+      "module": "render/avatars",
+      "line": 5959
+    },
+    {
+      "name": "drawShowerWater",
+      "module": "render/avatars",
+      "line": 5965
+    },
+    {
+      "name": "drawPlayerAvatar",
+      "module": "render/avatars",
+      "line": 5999
+    },
+    {
+      "name": "getSolidObstacles",
+      "module": "engine",
+      "line": 6166
+    },
+    {
+      "name": "collidesAt",
+      "module": "engine",
+      "line": 6174
+    },
+    {
+      "name": "renderEnvironment",
+      "module": "engine",
+      "line": 6182
+    },
+    {
+      "name": "startLoop",
+      "module": "engine",
+      "line": 6358
+    }
+  ],
+  "fields": [
+    "firebaseConfig",
+    "GAME_VERSION",
+    "OFFLINE",
+    "LS_PREFIX",
+    "db",
+    "myPlayerId",
+    "onlinePlayers",
+    "activeEnvironment",
+    "currentRoomTitle",
+    "canvas",
+    "ctx",
+    "healthLevel",
+    "sleepLevel",
+    "hungerLevel",
+    "hygieneLevel",
+    "happinessLevel",
+    "vaultCache",
+    "legacyPocketMoney",
+    "vaultSynced",
+    "lastNoRoomToastAt",
+    "hasSetSafePin",
+    "safePinCode",
+    "activeJobKey",
+    "jobExperience",
+    "isSleeping",
+    "showerAnim",
+    "sleepK",
+    "showerFog",
+    "frameShowerActors",
+    "isOutsideMenuOpen",
+    "fridgeIsOpen",
+    "sleepGainedSinceLastHealthBoost",
+    "SLEEP_DEPLETION_SEC",
+    "SLEEP_RECOVERY_SEC",
+    "HUNGER_AWAKE_DEPLETION_SEC",
+    "HUNGER_SLEEP_DEPLETION_SEC",
+    "HYGIENE_DEPLETION_SEC",
+    "HEALTH_DAMAGE_SEC",
+    "hasFoodInInventory",
+    "foodIsCooked",
+    "shopCatalog",
+    "SLOTS",
+    "SLOT_INFO",
+    "OPTIONAL_SLOTS",
+    "DEFAULT_LOOK",
+    "ownedItems",
+    "equipped",
+    "botLooks",
+    "BODY_PARTS",
+    "BODY_KEYS",
+    "CREATOR_TABS",
+    "bodyString",
+    "OLD_SKIN_IDX",
+    "OLD_HAIR_IDX",
+    "myBody",
+    "bodyChosen",
+    "furnitureCatalog",
+    "ownedFurniture",
+    "playerPos",
+    "moveForward",
+    "moveRight",
+    "isSprinting",
+    "keysPressed",
+    "isMovingFurnitureMode",
+    "isDraggingFurniture",
+    "movingPropKey",
+    "activeTargetProp",
+    "APT_COUNT",
+    "ROOMS_PER_APT",
+    "TOTAL_ROOMS",
+    "APT_ENVS",
+    "currentApt",
+    "aptOfRoom",
+    "gRoomIdx",
+    "saloonTitle",
+    "blankRoom",
+    "roomsState",
+    "myAssignedRoomIdx",
+    "joystickTouchId",
+    "joystickOrigin",
+    "myData",
+    "pinPromptMoneyThreshold",
+    "theftAttempts",
+    "isWalking",
+    "remoteSmooth",
+    "SAVE_KEY",
+    "saveReady",
+    "gameStarted",
+    "currentRoomIdx",
+    "gameMinutes",
+    "GAME_MINUTES_PER_SEC",
+    "activeShift",
+    "SHIFT_SECONDS",
+    "mySay",
+    "mySayT",
+    "dialogResolve",
+    "HAPPINESS_DEPLETION_SEC",
+    "lastMoneyForSound",
+    "lastEnvForSound",
+    "relaxCooldownUntil",
+    "stats",
+    "missionIndex",
+    "audioCtx",
+    "soundOn",
+    "musicOn",
+    "MUSIC",
+    "NOTE_IX",
+    "midiOf",
+    "midiHz",
+    "MUSIC_TRACKS",
+    "MISSIONS",
+    "lastCloudSaveAt",
+    "lastCloudMoney",
+    "lastLayoutKey",
+    "serverOffset",
+    "presenceTrack",
+    "INTRO_PAGES",
+    "simulationBots",
+    "playerRoomFurniture",
+    "kitchenFurniture",
+    "bathroomFurniture",
+    "clothesStoreFurniture",
+    "storeFloorFurniture",
+    "saloonDoors",
+    "courtyardDoors",
+    "isDead",
+    "deadAt",
+    "bornAt",
+    "epitaph",
+    "ABSENT_DEATH_MS",
+    "ABSENT_DEATH_ESTIMATE_MS",
+    "lastNeedsWall",
+    "lastDangerToast",
+    "DRUG_PRICE",
+    "DRUG_DOSE",
+    "DRUG_EUPHORIA",
+    "DRUG_BASE",
+    "DRUG_PEAK",
+    "DRUG_HIGH_H",
+    "DRUG_TAPER_H",
+    "drug",
+    "drugWindowMs",
+    "discoMap",
+    "barMap",
+    "DISCO_LINES",
+    "DEALER_LINES",
+    "drugStock",
+    "SOC_RANGE",
+    "SOC_CD_MS",
+    "SOC_MSG_TTL",
+    "socCd",
+    "frameNear",
+    "socKey",
+    "socTarget",
+    "SOC_ACTIONS",
+    "socBusy",
+    "pick",
+    "socDone",
+    "socPending",
+    "BIZ",
+    "MKT_EPOCH",
+    "mktCache",
+    "mktZ",
+    "invest",
+    "bizById",
+    "bizValue",
+    "investedTotal",
+    "fmtEur",
+    "fmtPct",
+    "bizBuilt",
+    "CHAT_KEEP",
+    "CHAT_SHOW",
+    "CHAT_MAX_LEN",
+    "chatMsgs",
+    "chatInit",
+    "chatSeen",
+    "chatLastSend",
+    "chatReadT",
+    "chatHadRead",
+    "chatOpen",
+    "COFFEE_SLEEP",
+    "COFFEE_HEALTH",
+    "COFFEE_CD_MS",
+    "COFFEE_MIN_HEALTH",
+    "coffeeAt",
+    "coffeeBrewUntil",
+    "BASE_TITLE",
+    "notifyOn",
+    "ALERT_DEFS",
+    "alertLevel",
+    "wakeAlertSent",
+    "SKILL_PAY",
+    "MG",
+    "WORK_JOBS",
+    "previewRaf",
+    "shopState",
+    "wardrobeAnim",
+    "wardrobeSlot",
+    "viewOverride",
+    "_rgbCache",
+    "lighten",
+    "darken",
+    "FURNITURE_DRAW",
+    "discoRGB",
+    "DISCO_PRICE",
+    "DISCO_HAPPY",
+    "DISCO_SLEEP",
+    "PROP_DRAW",
+    "graveList",
+    "graveMap",
+    "ENV_PROPS",
+    "ENV_DECOR",
+    "ROOM_WALLS",
+    "ENV_STYLE",
+    "X0",
+    "X1",
+    "Y0",
+    "Y1",
+    "WALL_DECOR",
+    "WALL_DECOR_DYNAMIC",
+    "bgCache",
+    "lightCanvas",
+    "SKIN_TONES",
+    "HAIR_COLORS",
+    "creatorDraft",
+    "creatorTab",
+    "creatorResolve",
+    "creatorRaf",
+    "OUTDOOR_ENVS",
+    "BOT_LINES",
+    "lastTime",
+    "animClock"
+  ]
+}

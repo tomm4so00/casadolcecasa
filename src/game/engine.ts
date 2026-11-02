@@ -1,0 +1,369 @@
+import type { GameValue } from './context.js';
+import { canPlaySession } from './accounts.js';
+import { game } from './context.js';
+import { lifetime } from './runtime.js';
+import { checkProximity, getCurrentFurnitureMap, setFurniturePosition } from './world.js';
+import { drawActor, drawNameTagWorld, drawPlayerAvatar, updateShower } from './render/avatars.js';
+import {
+  applyLighting,
+  drawDynamicFloor,
+  drawDynamicWalls,
+  drawLabel,
+  drawSky,
+  drawStaticScene,
+  getEnvStyle,
+} from './render/scenes.js';
+import { box, drawMapItem, softShadow } from './render/objects.js';
+import { mgAddDrawables } from './jobs.js';
+import {
+  aptLabel,
+  botLook,
+  legacyLook,
+  myLook,
+  parseBody,
+  parseLook,
+  resolveLook,
+} from './character.js';
+import { presenceAlive } from './saves.js';
+import { tickNeeds, updateSocialPanel } from './needs.js';
+export function getSolidObstacles(..._args: GameValue[]): GameValue {
+  const extra: GameValue = (game.ENV_PROPS[game.activeEnvironment] || [])
+    .concat(game.ENV_DECOR[game.activeEnvironment] || [])
+    .filter((p?: GameValue): GameValue => p.solid !== false);
+  if (game.ENV_PROPS[game.activeEnvironment]) return extra;
+  if (game.activeEnvironment === 'SALOON') return extra;
+  let map: GameValue = getCurrentFurnitureMap();
+  return Object.keys(map)
+    .filter((k?: GameValue): GameValue => !k.startsWith('door') && k !== game.movingPropKey)
+    .map((k?: GameValue): GameValue => map[k])
+    .concat(extra);
+}
+
+export function collidesAt(x?: GameValue, y?: GameValue, obstacles?: GameValue): GameValue {
+  const r: GameValue = 9;
+  return obstacles.some(
+    (o?: GameValue): GameValue =>
+      x > o.x - o.w / 2 - r &&
+      x < o.x + o.w / 2 + r &&
+      y > o.y - o.h / 2 - r &&
+      y < o.y + o.h / 2 + r,
+  );
+}
+
+export function renderEnvironment(delta?: GameValue, animTime?: GameValue): GameValue {
+  if (!canPlaySession()) {
+    game.moveForward = game.moveRight = 0;
+    delta = 0;
+  }
+  const speed: GameValue = (game.isSprinting ? 220 : 130) * (game.sleepLevel < 20 ? 0.6 : 1); // stanco = più lento
+  let map: GameValue = getCurrentFurnitureMap();
+  // In modalità "Sposta Mobile" WASD/frecce/joystick muovono il mobile invece del personaggio
+  if (
+    game.isMovingFurnitureMode &&
+    game.movingPropKey &&
+    !game.isDraggingFurniture &&
+    map[game.movingPropKey] &&
+    (game.moveRight !== 0 || game.moveForward !== 0)
+  ) {
+    const obj: GameValue = map[game.movingPropKey];
+    setFurniturePosition(
+      obj,
+      obj.x + game.moveRight * 160 * delta,
+      obj.y - game.moveForward * 160 * delta,
+    );
+  }
+  game.isWalking = false;
+  // ---- animazioni: sonno e doccia
+  const sleepTarget: GameValue =
+    game.isSleeping && game.activeEnvironment === 'PLAYER_ROOM' && map.bed ? 1 : 0;
+  if (game.activeEnvironment !== 'PLAYER_ROOM' || !map.bed) game.sleepK = 0;
+  else
+    game.sleepK = Math.max(
+      0,
+      Math.min(
+        1,
+        game.sleepK + Math.max(-delta / 0.9, Math.min(delta / 0.9, sleepTarget - game.sleepK)),
+      ),
+    );
+  if (game.showerAnim && game.activeEnvironment !== 'BATHROOM') game.showerAnim = null;
+  if (game.showerAnim) updateShower(animTime);
+  if (
+    !game.isSleeping &&
+    game.sleepK < 0.01 &&
+    !game.showerAnim &&
+    !game.isMovingFurnitureMode &&
+    (game.moveRight !== 0 || game.moveForward !== 0)
+  ) {
+    const obstacles: GameValue = getSolidObstacles();
+    const stuck: GameValue = collidesAt(game.playerPos.x, game.playerPos.y, obstacles);
+    let nx: GameValue = Math.max(
+      -170,
+      Math.min(170, game.playerPos.x + game.moveRight * speed * delta),
+    );
+    let ny: GameValue = Math.max(
+      -150,
+      Math.min(150, game.playerPos.y - game.moveForward * speed * delta),
+    );
+    if (stuck || !collidesAt(nx, game.playerPos.y, obstacles)) game.playerPos.x = nx;
+    if (stuck || !collidesAt(game.playerPos.x, ny, obstacles)) game.playerPos.y = ny;
+    game.isWalking = true;
+  }
+  game.simulationBots.forEach((bot?: GameValue): GameValue => {
+    if (bot.env === game.activeEnvironment) {
+      bot.x += bot.vx * delta;
+      bot.y += bot.vy * delta;
+      if (bot.x > 120 || bot.x < -120) bot.vx *= -1;
+      if (bot.y > 120 || bot.y < -120) bot.vy *= -1;
+    }
+  });
+  const st: GameValue = getEnvStyle();
+  const hour: GameValue = (game.gameMinutes / 60) % 24;
+  if (st.outdoor) drawSky(hour, animTime);
+  drawStaticScene(st, hour);
+  drawDynamicFloor(st, animTime);
+  drawDynamicWalls(st, animTime);
+  // Tutto ciò che sta sul pavimento viene ordinato per profondità (chi è davanti copre chi è dietro)
+  const lights: GameValue = (st.lights || []).map(
+    (l?: GameValue): GameValue => Object.assign({}, l),
+  );
+  if (game.activeEnvironment === 'discoteca')
+    lights.forEach((l?: GameValue, i?: GameValue): GameValue => {
+      l.color = game.discoRGB((animTime * 70 + i * 120) % 360);
+      l.x += Math.sin(animTime * 1.3 + i * 2) * 50;
+      l.y += Math.cos(animTime * 1.1 + i) * 30;
+    });
+  let drawables: GameValue = [];
+  let labels: GameValue = [];
+  const addThing: GameValue = (
+    x?: GameValue,
+    y?: GameValue,
+    w?: GameValue,
+    h?: GameValue,
+    z?: GameValue,
+    label?: GameValue,
+    draw?: GameValue,
+    depthBias: GameValue = 0,
+  ): GameValue => {
+    drawables.push({ depth: x + y + depthBias, draw });
+    if (label) labels.push((): GameValue => drawLabel(label, x, y, w, h, z));
+  };
+  (game.ENV_PROPS[game.activeEnvironment] || [])
+    .concat(game.ENV_DECOR[game.activeEnvironment] || [])
+    .forEach((p?: GameValue): GameValue => {
+      const fn: GameValue = game.PROP_DRAW[p.kind];
+      addThing(
+        p.x,
+        p.y,
+        p.w,
+        p.h,
+        p.z || 50,
+        p.label,
+        (): GameValue => {
+          if (
+            !p.flat &&
+            !['tree', 'palm', 'ball', 'cone', 'stool', 'umbrella', 'streetlamp'].includes(p.kind)
+          )
+            softShadow(p.x, p.y, p.w, p.h);
+          if (fn) fn(p, animTime, lights);
+          else box(p.x, p.y, p.w, p.h, p.z || 40, '#888888');
+        },
+        p.flat ? -1e5 : 0,
+      );
+    });
+  if (game.MG.active && game.activeEnvironment === 'lavoro_' + game.MG.job)
+    mgAddDrawables(addThing, drawables, animTime);
+  if (!game.ENV_PROPS[game.activeEnvironment]) {
+    Object.keys(map).forEach((k?: GameValue): GameValue => {
+      const item: GameValue = map[k];
+      let label: GameValue = item.name;
+      if (game.activeEnvironment === 'SALOON' && item.roomIdx !== undefined) {
+        const gi: GameValue = game.gRoomIdx(item);
+        const room: GameValue = game.roomsState[gi];
+        label =
+          room && room.owner
+            ? gi === game.myAssignedRoomIdx
+              ? '🏠 La tua stanza'
+              : `🚪 Stanza di ${room.owner}`
+            : '🔒 Stanza Vuota';
+      }
+      if (game.activeEnvironment === 'CORTILE' && item.aptIdx !== undefined)
+        label = aptLabel(item.aptIdx);
+      const flat: GameValue = k === 'doorExit' || k === 'exitHouse';
+      addThing(
+        item.x,
+        item.y,
+        item.w,
+        item.h,
+        flat ? 12 : item.z || 60,
+        label,
+        (): GameValue => drawMapItem(k, item, animTime, lights),
+        flat ? -1e5 : 0,
+      );
+    });
+  }
+  const mySayNow: GameValue = game.mySay && Date.now() - game.mySayT < 6000 ? game.mySay : '';
+  game.frameShowerActors = [];
+  const showerProp: GameValue = map.shower;
+  const inCabin: GameValue = (x?: GameValue, y?: GameValue): GameValue =>
+    showerProp &&
+    Math.abs(x - showerProp.x) < showerProp.w / 2 - 8 &&
+    Math.abs(y - showerProp.y) < showerProp.h / 2 - 8;
+  if (game.showerAnim && inCabin(game.playerPos.x, game.playerPos.y)) {
+    const px: GameValue = game.playerPos.x,
+      py: GameValue = game.playerPos.y;
+    game.frameShowerActors.push({ x: px, y: py, look: myLook() });
+    labels.push((): GameValue => drawNameTagWorld(px, py, 92, game.myData.nick));
+  } else {
+    const ease: GameValue = game.sleepK * game.sleepK * (3 - 2 * game.sleepK);
+    const depth: GameValue =
+      game.playerPos.x +
+      game.playerPos.y +
+      ((map.bed ? map.bed.x + map.bed.y + 0.5 : game.playerPos.x + game.playerPos.y) -
+        (game.playerPos.x + game.playerPos.y)) *
+        ease;
+    drawables.push({
+      depth,
+      draw: (): GameValue =>
+        drawActor(
+          game.playerPos.x,
+          game.playerPos.y,
+          game.myData.nick,
+          animTime,
+          myLook(),
+          game.isWalking,
+          mySayNow,
+          game.sleepK,
+          map.bed,
+        ),
+    });
+  }
+  game.simulationBots.forEach((bot?: GameValue): GameValue => {
+    if (bot.env === game.activeEnvironment) {
+      if (!bot.nextSayAt || animTime > bot.nextSayAt) {
+        const L: GameValue = bot.dealer
+          ? game.DEALER_LINES
+          : bot.env === 'discoteca'
+            ? game.DISCO_LINES
+            : game.BOT_LINES;
+        bot.say = L[Math.floor(Math.random() * L.length)];
+        bot.sayUntil = animTime + 4;
+        bot.nextSayAt = animTime + 10 + Math.random() * 15;
+      }
+      const say: GameValue = animTime < bot.sayUntil ? bot.say : '';
+      drawables.push({
+        depth: bot.x + bot.y,
+        draw: (): GameValue =>
+          drawPlayerAvatar(bot.x, bot.y, bot.name, animTime, botLook(bot.name), true, say),
+      });
+    }
+  });
+  const now: GameValue = Date.now();
+  game.frameNear = [];
+  Object.keys(game.onlinePlayers).forEach((id?: GameValue): GameValue => {
+    if (id === game.myPlayerId) return;
+    let op: GameValue = game.onlinePlayers[id];
+    // Ignora giocatori senza battito recente (fantasmi rimasti nel DB)
+    if (!op || op.env !== game.activeEnvironment || !presenceAlive(id, op, now)) return;
+    // Ogni stanza privata è separata: vedi solo chi è nella tua stessa stanza
+    if (game.activeEnvironment === 'PLAYER_ROOM' && op.roomIdx !== game.currentRoomIdx) return;
+    // Salone, cucina e bagno esistono in ogni appartamento: vedi solo chi è nel tuo
+    if (game.APT_ENVS.includes(game.activeEnvironment) && (op.apt || 0) !== game.currentApt) return;
+    let s: GameValue =
+      game.remoteSmooth[id] ||
+      (game.remoteSmooth[id] = { x: op.x, y: op.y, sayT: op.sayT, sayShownAt: 0 });
+    // Il fumetto parte quando riceviamo un messaggio nuovo (evita problemi di orologi diversi)
+    if (op.sayT && op.sayT !== s.sayT) {
+      s.sayT = op.sayT;
+      s.sayShownAt = now;
+    }
+    const say: GameValue = op.say && now - s.sayShownAt < 6000 ? op.say : '';
+    let k: GameValue = Math.min(1, delta * 10);
+    let dx: GameValue = op.x - s.x,
+      dy: GameValue = op.y - s.y;
+    s.x += dx * k;
+    s.y += dy * k;
+    {
+      const dd: GameValue = Math.hypot(game.playerPos.x - s.x, game.playerPos.y - s.y);
+      if (dd < game.SOC_RANGE) game.frameNear.push({ id, name: op.name || 'Giocatore', d: dd });
+    }
+    let moving: GameValue = Math.hypot(dx, dy) > 1;
+    const lk: GameValue = (op.look || op.outfit + op.acc) + '|' + (op.body || '');
+    if (s.lookKey !== lk) {
+      s.lookKey = lk;
+      s.look = op.look ? resolveLook(parseLook(op.look)) : legacyLook(op);
+      const pb: GameValue = parseBody(op.body);
+      if (pb) s.look.body = pb;
+    }
+    const act: GameValue = op.act || '';
+    const sTarget: GameValue = act === 'sleep' && map.bed ? 1 : 0;
+    s.sleepK = Math.max(
+      0,
+      Math.min(
+        1,
+        (s.sleepK || 0) + Math.max(-delta / 0.9, Math.min(delta / 0.9, sTarget - (s.sleepK || 0))),
+      ),
+    );
+    if (act === 'shower' && inCabin(s.x, s.y)) {
+      const rx: GameValue = s.x,
+        ry: GameValue = s.y;
+      game.frameShowerActors.push({ x: rx, y: ry, look: s.look });
+      labels.push((): GameValue => drawNameTagWorld(rx, ry, 92, op.name));
+      return;
+    }
+    const sk: GameValue = s.sleepK;
+    const rd: GameValue =
+      s.x +
+      s.y +
+      ((map.bed ? map.bed.x + map.bed.y + 0.5 : s.x + s.y) - (s.x + s.y)) *
+        (sk * sk * (3 - 2 * sk));
+    drawables.push({
+      depth: rd,
+      draw: (): GameValue =>
+        drawActor(s.x, s.y, op.name, animTime, s.look, moving, say, sk, map.bed),
+    });
+  });
+  updateSocialPanel();
+  game.showerFog +=
+    ((game.frameShowerActors.length ? 1 : 0) - game.showerFog) * Math.min(1, delta * 1.5);
+  drawables
+    .sort((a?: GameValue, b?: GameValue): GameValue => a.depth - b.depth)
+    .forEach((d?: GameValue): GameValue => d.draw());
+  // Giorno e notte: le luci (lampade, lampioni, lampadari) illuminano il buio
+  let dark: GameValue = 0;
+  if (hour >= 20 || hour < 6) dark = 0.55;
+  else if (hour >= 18) dark = ((hour - 18) / 2) * 0.55;
+  else if (hour < 8) dark = ((8 - hour) / 2) * 0.55;
+  if (!game.OUTDOOR_ENVS.includes(game.activeEnvironment)) dark *= 0.8;
+  if (game.activeEnvironment === 'discoteca') dark = 0.6;
+  applyLighting(dark, lights, st);
+  labels.forEach((l?: GameValue): GameValue => l());
+  // Titolo stanza
+  game.ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
+  game.ctx.beginPath();
+  game.ctx.roundRect
+    ? game.ctx.roundRect(game.canvas.width / 2 - 120, 16, 240, 30, 15)
+    : game.ctx.rect(game.canvas.width / 2 - 120, 16, 240, 30);
+  game.ctx.fill();
+  game.ctx.fillStyle = '#fff';
+  game.ctx.font = 'bold 14px sans-serif';
+  game.ctx.textAlign = 'center';
+  game.ctx.shadowColor = 'rgba(0,0,0,0.7)';
+  game.ctx.shadowBlur = 6;
+  game.ctx.fillText(game.currentRoomTitle, game.canvas.width / 2, 36);
+  game.ctx.shadowBlur = 0;
+  checkProximity();
+}
+
+export function startLoop(..._args: GameValue[]): GameValue {
+  function animate(now?: GameValue): GameValue {
+    lifetime.requestAnimationFrame(animate);
+    let delta: GameValue = (now - game.lastTime) / 1000;
+    game.lastTime = now;
+    if (isNaN(delta) || delta > 0.1) delta = 0.016;
+    game.animClock += delta;
+    tickNeeds();
+    game.ctx.clearRect(0, 0, game.canvas.width, game.canvas.height);
+    renderEnvironment(delta, game.animClock);
+  }
+  lifetime.requestAnimationFrame(animate);
+}
