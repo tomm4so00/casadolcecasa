@@ -2093,7 +2093,7 @@ export const ENV_DECOR = {
     // - uno tra le due panchine e il suo gemello dall'altra parte della fontana,
     //   sullo stesso bordo del vialetto che va verso destra
     { kind: 'streetlamp', x: -240, y: -37, w: 8, h: 8 },
-    { kind: 'streetlamp', x: 240, y: -37, w: 8, h: 8 },
+    { kind: 'streetlamp', x: 195, y: -37, w: 8, h: 8 },
     // - sul vialetto che va dalla piazzetta della fontana alle 6 palazzine
     { kind: 'streetlamp', x: -36, y: -122, w: 8, h: 8 },
     { kind: 'streetlamp', x: 36, y: -122, w: 8, h: 8 },
