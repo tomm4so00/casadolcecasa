@@ -1,4 +1,5 @@
 import template from './view.html?raw';
+import { version } from '../../package.json';
 import { initializeGame } from './initialize.js';
 import { game } from './context.js';
 import { bindUiActions } from './ui-bindings.js';
@@ -11,6 +12,8 @@ export function mountLatestGame() {
   const root = document.getElementById('app');
   if (!root) throw new Error('Contenitore del gioco mancante');
   root.innerHTML = template;
+  const versionTag = document.getElementById('app-version');
+  if (versionTag) versionTag.textContent = 'v' + version;
   bindUiActions(root);
   initializeGame();
   importRefactoredSave(localStorage, game.session.LS_PREFIX);

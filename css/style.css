@@ -597,6 +597,18 @@ input[type='number'] {
   font-size: 0.9rem;
 }
 
+/* Numero di versione, piccolo in alto a destra */
+#app-version {
+  position: fixed;
+  top: 4px;
+  right: 8px;
+  z-index: 45;
+  font-size: 0.6rem;
+  color: rgba(255, 255, 255, 0.45);
+  pointer-events: none;
+  user-select: none;
+}
+
 /* Notifiche in-game (sostituiscono gli alert bloccanti) */
 #toast-container {
   position: fixed;
