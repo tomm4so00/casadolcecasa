@@ -1623,7 +1623,11 @@ export function drawSaloonDoor(key?: GameValue, it?: GameValue): GameValue {
   } else if (key === 'courtyard') sign = '🌳';
   else if (key === 'kitchen') sign = '🍳';
   else if (key === 'bathroom') sign = '🚿';
-  const b: GameValue = box(it.x, it.y, thinX ? 8 : it.w, thinX ? it.h : 8, 96, '#ecf0f1');
+  // La porta si disegna attaccata alla parete (o al bordo) più vicina, qualunque sia la misura della stanza
+  const T = 8;
+  const dx: number = thinX ? (it.x < 0 ? game.X0 + T / 2 : game.X1 - T / 2) : it.x;
+  const dy: number = thinX ? it.y : it.y < 0 ? game.Y0 + T / 2 : game.Y1 - T / 2;
+  const b: GameValue = box(dx, dy, thinX ? T : it.w, thinX ? it.h : T, 96, '#ecf0f1');
   onFace(b, thinX ? 'right' : 'left', (W?: GameValue, H?: GameValue): GameValue => {
     ctx.fillStyle = doorC;
     ctx.fillRect(5, 7, W - 10, H - 7);
