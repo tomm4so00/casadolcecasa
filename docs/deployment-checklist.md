@@ -9,20 +9,18 @@ Progetto Firebase: **casadolcecasa-6d92a**. Manteniamo il piano gratuito Spark.
       mantenendo il frontend attualmente online.
 - [x] Caricare il nuovo frontend nel ramo **feature/typescript-shared-market**,
       pronto da portare su main quando il mercato sarà attivo.
-- [ ] Preparare le regole aggiornate partendo da quelle attuali di Firebase.
+- [x] Preparare e provare le nuove regole, con accesso Google e salvataggi privati.
+- [ ] Pubblicare le nuove regole durante il passaggio al nuovo frontend.
 - [ ] Controllare il primo aggiornamento del mercato dopo la configurazione.
 - [ ] Portare il nuovo frontend su main e verificare la pubblicazione del sito.
 
 ## Cosa deve fare Tom Tom
 
-- [ ] **GitHub Pages:** in [Settings → Pages](https://github.com/tomm4so00/casadolcecasa/settings/pages),
+- [x] **GitHub Pages:** in [Settings → Pages](https://github.com/tomm4so00/casadolcecasa/settings/pages),
       selezionare **GitHub Actions** come Source.
-- [ ] **Accesso Google:** in Firebase → Authentication, abilitare Google come
+- [x] **Accesso Google:** in Firebase → Authentication, abilitare Google come
       metodo di accesso e aggiungere **tomm4so00.github.io** ai domini autorizzati.
-- [ ] **Database:** conservare una copia dei dati e delle regole attuali.
-      Passarci il JSON delle regole per preparare l'aggiornamento, poi pubblicare
-      le regole aggiornate che forniremo.
-- [ ] **Credenziale del mercato:** in Firebase → Impostazioni progetto → Account
+- [x] **Credenziale del mercato:** in Firebase → Impostazioni progetto → Account
       di servizio, generare una chiave privata Admin SDK. In GitHub → Settings →
       Secrets and variables → Actions → Secrets, creare
       **FIREBASE_MARKET_SERVICE_ACCOUNT** e inserirvi l'intero JSON della chiave.
@@ -44,3 +42,5 @@ Progetto Firebase: **casadolcecasa-6d92a**. Manteniamo il piano gratuito Spark.
 **Ordine:** prima carichiamo il processo del mercato; poi completiamo credenziale
 e regole Firebase; infine attiviamo il mercato e pubblichiamo il nuovo frontend.
 Gli aggiornamenti sono previsti ogni 15 minuti, con possibili ritardi di GitHub.
+Per i Sim precedenti, il gestore approva il collegamento a Google come descritto
+in [firebase-authentication.md](firebase-authentication.md).

@@ -80,6 +80,7 @@ export interface CharacterState {
   missionIndex: number;
 }
 export interface SessionState {
+  authUid: string | null;
   db: GameDatabase;
   OFFLINE: boolean;
   LS_PREFIX: string;

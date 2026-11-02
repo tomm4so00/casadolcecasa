@@ -13,6 +13,7 @@ import { box, onFace } from './render/objects.js';
 import { isoProject, isoScale } from './render/primitives.js';
 import { sfx } from './audio.js';
 export async function reapAbsentPlayers(..._args: GameValue[]): Promise<GameValue> {
+  if (!game.session.OFFLINE) return; // The trusted scheduled process handles other characters.
   let reaped: GameValue = [];
   try {
     await withTimeout(
@@ -93,7 +94,12 @@ export async function die(..._args: GameValue[]): Promise<GameValue> {
         const i: GameValue = rooms.findIndex(
           (r?: GameValue): GameValue => r.ownerId === game.session.myPlayerId,
         );
-        if (i !== -1) rooms[i] = { id: rooms[i].id, vaultMoney: 0 };
+        if (i !== -1)
+          rooms[i] = {
+            id: rooms[i].id,
+            vaultMoney: 0,
+            ...(rooms[i].pendingDeath ? { pendingDeath: rooms[i].pendingDeath } : {}),
+          };
         return rooms;
       }),
       8000,

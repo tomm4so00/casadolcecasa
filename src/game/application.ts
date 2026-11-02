@@ -8,6 +8,7 @@ import { toast } from './missions.js';
 import { lifetime, resetLifetime } from './runtime.js';
 import { importRefactoredSave } from './save-model.js';
 import { loginWithGoogle, releasePlayerSession } from './accounts.js';
+import { firebaseClient } from './runtime.js';
 export function mountLatestGame() {
   resetLifetime();
   const root = document.getElementById('app');
@@ -17,6 +18,9 @@ export function mountLatestGame() {
   initializeGame();
   importRefactoredSave(localStorage, game.session.LS_PREFIX);
   if (!game.session.OFFLINE) {
+    root.querySelector('#start-game-btn')?.classList.add('hidden');
+    const restore = root.querySelector('[data-action="restoreFromCode"]');
+    if (restore) restore.textContent = 'Collega un Sim già esistente';
     const setup = root.querySelector('#ui-setup-screen .card');
     const login = document.createElement('button');
     login.id = 'cloud-game-btn';
@@ -24,6 +28,20 @@ export function mountLatestGame() {
     login.textContent = 'Accedi con Google e gioca';
     login.style.marginTop = '10px';
     setup?.append(login);
+    const changeAccount = document.createElement('button');
+    changeAccount.type = 'button';
+    changeAccount.className = 'btn-link';
+    changeAccount.textContent = 'Cambia account Google';
+    setup?.append(changeAccount);
+    lifetime.listen(changeAccount, 'click', () => {
+      void firebaseClient
+        .auth()
+        .signOut()
+        .then(() => {
+          game.session.authUid = null;
+          toast('Ora puoi scegliere un altro account Google.');
+        });
+    });
     lifetime.listen(login, 'click', () => {
       login.disabled = true;
       void loginWithGoogle()
@@ -80,7 +98,7 @@ export function mountLatestGame() {
 export async function disposeLatestGame() {
   if (!lifetime.active) return;
   const reference =
-    game.session.db && game.session.myPlayerId
+    game.session.db && game.session.myPlayerId && (game.session.OFFLINE || game.session.authUid)
       ? game.session.db.ref('sims_online_players/' + game.session.myPlayerId)
       : null;
   for (const key of ['audioCtx', 'musicCtx']) {

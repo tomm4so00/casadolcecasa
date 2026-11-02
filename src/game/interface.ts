@@ -1,6 +1,6 @@
 import type { GameValue } from './context.js';
 import type { DialogOptions, DialogResult } from './models.js';
-import { acquirePlayerSession } from './accounts.js';
+import { acquirePlayerSession, authenticateWithGoogle, requestLegacyLink } from './accounts.js';
 import { game } from './context.js';
 import { lifetime, dom, browser } from './runtime.js';
 import {
@@ -118,19 +118,23 @@ export async function openProfile(..._args: GameValue[]): Promise<GameValue> {
   const res: GameValue = await openDialog({
     title: `👤 ${game.player.myData.nick}`,
     text:
-      `Il tuo codice personaggio è:\n${game.session.myPlayerId}\n\nSegnatelo! Serve per ritrovare i tuoi progressi su un altro telefono o computer.` +
+      (game.session.OFFLINE
+        ? `Il tuo codice personaggio è:\n${game.session.myPlayerId}`
+        : 'Il tuo Sim è collegato al tuo account Google. Per ritrovarlo su un altro dispositivo accedi con lo stesso account.') +
       (hasRoom()
         ? `\n\nLa tua stanza: n° ${(game.myAssignedRoomIdx ?? -1) + 1} (Appartamento ${game.aptOfRoom(game.myAssignedRoomIdx) + 1})`
         : '') +
       (game.session.OFFLINE
         ? '\n\n🧪 Sei in modalità prova: niente viene salvato sul server.'
         : ''),
-    input: { placeholder: 'Codice di un altro dispositivo…', maxLength: 30 },
+    input: game.session.OFFLINE
+      ? { placeholder: 'Codice di un altro dispositivo…', maxLength: 140 }
+      : null,
     buttons: [
       { label: 'Chiudi', value: null, color: '#57606f' },
       { label: '🎨 Aspetto', value: 'look', color: '#8e44ad' },
       { label: '🪦 Epitaffio', value: 'epitaph', color: '#636e72' },
-      { label: 'Usa codice', value: 'switch', color: '#e67e22' },
+      ...(game.session.OFFLINE ? [{ label: 'Usa codice', value: 'switch', color: '#e67e22' }] : []),
     ],
   });
   if (res.action === 'look') openCharacterCreator(false);
@@ -139,6 +143,10 @@ export async function openProfile(..._args: GameValue[]): Promise<GameValue> {
 }
 
 export function switchToCode(code?: GameValue): GameValue {
+  if (!game.session.OFFLINE) {
+    toast('Il Sim online si apre con il tuo account Google.');
+    return false;
+  }
   code = (code || '').trim();
   if (!/^player_[a-z0-9]{4,20}$/.test(code)) {
     toast('❌ Codice non valido (es. player_ab12cd3)');
@@ -155,16 +163,25 @@ export function switchToCode(code?: GameValue): GameValue {
 }
 
 export async function restoreFromCode(..._args: GameValue[]): Promise<GameValue> {
+  if (!game.session.OFFLINE) await authenticateWithGoogle();
   const res: GameValue = await openDialog({
-    title: '🔑 Recupera personaggio',
-    text: "Inserisci il codice personaggio che trovi nel profilo (👤) sull'altro dispositivo.",
-    input: { placeholder: 'player_…', maxLength: 30 },
+    title: game.session.OFFLINE ? '🔑 Recupera personaggio' : 'Collega un Sim precedente',
+    text: game.session.OFFLINE
+      ? "Inserisci il codice personaggio che trovi nel profilo (👤) sull'altro dispositivo."
+      : 'Inserisci il codice del Sim precedente. Il gestore verificherà il collegamento al tuo account Google; il codice da solo non permette di accedere al personaggio.',
+    input: { placeholder: 'player_…', maxLength: 140 },
     buttons: [
       { label: 'Annulla', value: null, color: '#57606f' },
       { label: 'Recupera', value: 'ok', color: '#2ed573' },
     ],
   });
-  if (res.action === 'ok') switchToCode(res.value);
+  if (res.action === 'ok') {
+    if (game.session.OFFLINE) switchToCode(res.value);
+    else {
+      await requestLegacyLink(res.value);
+      toast('Richiesta inviata. Il gestore può ora collegare il Sim al tuo account Google.', 6000);
+    }
+  }
 }
 
 export function resizeCanvas(..._args: GameValue[]): GameValue {

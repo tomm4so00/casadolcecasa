@@ -130,19 +130,6 @@ export async function sendChat(..._args: GameValue[]): Promise<GameValue> {
     return;
   }
   game.player.stats.chats = (game.player.stats.chats || 0) + 1;
-  if (Math.random() < 0.1) {
-    // ogni tanto elimina i messaggi più vecchi
-    game.session.db.ref('sims_chat').once('value', (s?: GameValue): GameValue => {
-      const ks: GameValue = Object.keys(s.val() || {}).sort();
-      if (ks.length > game.CHAT_KEEP) {
-        const upd: GameValue = {};
-        ks.slice(0, ks.length - game.CHAT_KEEP + 100).forEach((k?: GameValue): GameValue => {
-          upd[k] = null;
-        });
-        game.session.db.ref('sims_chat').update(upd);
-      }
-    });
-  }
 }
 
 export function startChat(..._args: GameValue[]): GameValue {

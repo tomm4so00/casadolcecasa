@@ -66,12 +66,18 @@ Le regole del database reale rimangono gestite separatamente; `firebase.json`
 non include un comando di pubblicazione delle vecchie regole del prototipo.
 La compatibilità con i dati esistenti non equivale a un audit delle regole in uso.
 
-Il codice personaggio continua a funzionare. Il pulsante **Accedi con Google e
-gioca** aggiunge un collegamento fra account e codice esistente in
-`sims_accounts/{uid}`; non sostituisce l'identificativo e non sposta stanza o soldi.
-Per usarlo occorre abilitare Google in Firebase Authentication e autorizzare
-il dominio di pubblicazione. Se il provider non è abilitato, l'accesso tramite
-nome/codice rimane disponibile come nella v8.
+L'accesso online richiede **Google**, senza password separata del gioco. Ogni
+account è collegato a un Sim; i salvataggi locali online sono separati per
+personaggio. Per i Sim v8 precedenti, il codice permette di richiedere un
+collegamento al gestore, senza accedere automaticamente ai progressi altrui.
+Le copie locali precedenti sono conservate.
+
+Il file `firebase/database.rules.proposed.json` contiene la politica con accesso
+Google obbligatorio e salvataggi privati. Procedura, collegamenti dei vecchi Sim
+e limiti delle meccaniche condivise sono in
+[docs/firebase-authentication.md](docs/firebase-authentication.md).
+La proposta va pubblicata insieme alla nuova versione; non viene distribuita
+automaticamente da `firebase.json`.
 
 Un blocco in `sims_sessions/{playerId}` e Web Locks impediscono di aprire lo stesso
 personaggio contemporaneamente in due sessioni di questo client. Il blocco cloud

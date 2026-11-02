@@ -413,7 +413,13 @@ export async function claimRoom(..._args: GameValue[]): Promise<GameValue> {
         if (idx === -1) return rooms;
         let old: GameValue = rooms[idx];
         let base: GameValue =
-          old.ownerId === game.session.myPlayerId ? old : { id: old.id, vaultMoney: 0 };
+          old.ownerId === game.session.myPlayerId
+            ? old
+            : {
+                id: old.id,
+                vaultMoney: 0,
+                ...(old.pendingDeath ? { pendingDeath: old.pendingDeath } : {}),
+              };
         rooms[idx] = Object.assign({}, base, {
           owner: game.player.myData.nick,
           ownerId: game.session.myPlayerId,
@@ -508,10 +514,6 @@ export function startPresence(..._args: GameValue[]): GameValue {
 
 export function watchGameVersion(..._args: GameValue[]): GameValue {
   const ref: GameValue = game.session.db.ref('sims_meta/version');
-  ref.transaction(
-    (v?: GameValue): GameValue =>
-      typeof v === 'number' && v >= game.GAME_VERSION ? undefined : game.GAME_VERSION,
-  );
   ref.on('value', (s?: GameValue): GameValue => {
     const v: GameValue = s.val();
     if (typeof v === 'number' && v > game.GAME_VERSION) {

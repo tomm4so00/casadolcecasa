@@ -134,6 +134,7 @@ export function initializeGame() {
     'player_' + Math.random().toString(36).substring(2, 9);
   localStorage.setItem(prefix + 'sims_device_id', playerId);
   game.session = {
+    authUid: null,
     OFFLINE: offline,
     LS_PREFIX: prefix,
     SAVE_KEY: prefix + 'sims_save_v1',
