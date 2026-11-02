@@ -1796,11 +1796,13 @@ export const SALOON_DOORS = {
   },
 };
 
+// Cortile largo 960×440: al centro i 4 appartamenti di sempre sulla parete di fondo,
+// nell'ala sinistra altri 4 (per ora solo facciate), nell'ala destra il razzo dell'evento.
 export const COURTYARD_DOORS = {
-  doorApt0: { x: -135, y: -170, w: 56, h: 10, z: 110, name: 'Appartamento 1', aptIdx: 0 },
-  doorApt1: { x: -45, y: -170, w: 56, h: 10, z: 110, name: 'Appartamento 2', aptIdx: 1 },
-  doorApt2: { x: 45, y: -170, w: 56, h: 10, z: 110, name: 'Appartamento 3', aptIdx: 2 },
-  doorApt3: { x: 135, y: -170, w: 56, h: 10, z: 110, name: 'Appartamento 4', aptIdx: 3 },
+  doorApt0: { x: -135, y: -210, w: 56, h: 10, z: 110, name: 'Appartamento 1', aptIdx: 0 },
+  doorApt1: { x: -45, y: -210, w: 56, h: 10, z: 110, name: 'Appartamento 2', aptIdx: 1 },
+  doorApt2: { x: 45, y: -210, w: 56, h: 10, z: 110, name: 'Appartamento 3', aptIdx: 2 },
+  doorApt3: { x: 135, y: -210, w: 56, h: 10, z: 110, name: 'Appartamento 4', aptIdx: 3 },
 };
 
 export { BUSINESSES as BIZ } from '../../../shared/market.js';
@@ -2044,15 +2046,33 @@ export const ENV_PROPS = {
 
 export const ENV_DECOR = {
   CORTILE: [
-    { kind: 'tree', x: -155, y: -70, w: 18, h: 18, size: 1.1, z: 90 },
-    { kind: 'tree', x: 155, y: -70, w: 18, h: 18, size: 1.05, z: 90 },
-    { kind: 'tree', x: -155, y: 95, w: 16, h: 16, size: 0.9, z: 80 },
-    { kind: 'tree', x: 155, y: 95, w: 16, h: 16, size: 0.9, z: 80 },
+    // centro: fontana, panchine e alberi
+    { kind: 'tree', x: -155, y: -100, w: 18, h: 18, size: 1.1, z: 90 },
+    { kind: 'tree', x: 155, y: -100, w: 18, h: 18, size: 1.05, z: 90 },
+    { kind: 'tree', x: -155, y: 120, w: 16, h: 16, size: 0.9, z: 80 },
+    { kind: 'tree', x: 155, y: 120, w: 16, h: 16, size: 0.9, z: 80 },
     { kind: 'fountain', x: 0, y: 0, w: 70, h: 70, label: 'Fontana ⛲', z: 60 },
-    { kind: 'bench', x: -95, y: 55, w: 50, h: 16 },
-    { kind: 'bench', x: 95, y: 55, w: 50, h: 16 },
-    { kind: 'streetlamp', x: -75, y: -65, w: 8, h: 8 },
-    { kind: 'streetlamp', x: 75, y: -65, w: 8, h: 8 },
+    { kind: 'bench', x: -95, y: 70, w: 50, h: 16 },
+    { kind: 'bench', x: 95, y: 70, w: 50, h: 16 },
+    { kind: 'streetlamp', x: -75, y: -100, w: 8, h: 8 },
+    { kind: 'streetlamp', x: 75, y: -100, w: 8, h: 8 },
+    // confini tra il centro e le ali
+    { kind: 'tree', x: -230, y: -60, w: 16, h: 16, size: 0.95, z: 85 },
+    { kind: 'tree', x: -230, y: 150, w: 16, h: 16, size: 1, z: 85 },
+    { kind: 'tree', x: 230, y: -60, w: 16, h: 16, size: 0.95, z: 85 },
+    { kind: 'tree', x: 230, y: 150, w: 16, h: 16, size: 1, z: 85 },
+    // ala sinistra: appartamenti 5-8 sulla parete di sinistra (ancora da collegare)
+    { kind: 'aptFacade', x: -470, y: -150, w: 14, h: 84, z: 170, aptNo: 5, side: 'left' },
+    { kind: 'aptFacade', x: -470, y: -50, w: 14, h: 84, z: 170, aptNo: 6, side: 'left' },
+    { kind: 'aptFacade', x: -470, y: 50, w: 14, h: 84, z: 170, aptNo: 7, side: 'left' },
+    { kind: 'aptFacade', x: -470, y: 150, w: 14, h: 84, z: 170, aptNo: 8, side: 'left' },
+    { kind: 'streetlamp', x: -390, y: -100, w: 8, h: 8 },
+    { kind: 'streetlamp', x: -390, y: 100, w: 8, h: 8 },
+    { kind: 'bench', x: -330, y: 0, w: 16, h: 50 },
+    // ala destra: il razzo dell'evento e il suo cartello
+    { kind: 'rocket', x: 370, y: -40, w: 90, h: 90, z: 290, label: 'Razzo 🚀' },
+    { kind: 'moonSign', x: 300, y: 90, w: 96, h: 6, z: 60 },
+    { kind: 'streetlamp', x: 290, y: -160, w: 8, h: 8 },
   ],
   SALOON: [
     { kind: 'plant', x: -168, y: -160, w: 26, h: 26, z: 60 },
