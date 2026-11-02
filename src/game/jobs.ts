@@ -194,23 +194,24 @@ export function mgInteract(item?: GameValue, key?: GameValue): GameValue {
 
 // --- disegno nell'ambiente
 export function drawWorkItem(o?: GameValue, t?: GameValue): GameValue {
+  const ctx = game.view.ctx;
   const s: GameValue = isoScale(),
     bob: GameValue = Math.sin(t * 3 + o.x * 0.05) * 1.8;
   ellipseShadow(o.x, o.y, 11, 6, 0.28);
   const p: GameValue = isoProject(o.x, o.y, 14 + bob);
-  game.view.ctx.fillStyle = 'rgba(255,255,255,0.82)';
-  game.view.ctx.strokeStyle = 'rgba(0,0,0,0.25)';
-  game.view.ctx.lineWidth = 1.5;
-  game.view.ctx.beginPath();
-  game.view.ctx.arc(p.x, p.y, 17 * s, 0, 6.3);
-  game.view.ctx.fill();
-  game.view.ctx.stroke();
-  game.view.ctx.font = `${Math.round(26 * s)}px serif`;
-  game.view.ctx.textAlign = 'center';
-  game.view.ctx.textBaseline = 'middle';
-  game.view.ctx.fillStyle = '#000';
-  game.view.ctx.fillText(o.item.e, p.x, p.y + 1);
-  game.view.ctx.textBaseline = 'alphabetic';
+  ctx.fillStyle = 'rgba(255,255,255,0.82)';
+  ctx.strokeStyle = 'rgba(0,0,0,0.25)';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.arc(p.x, p.y, 17 * s, 0, 6.3);
+  ctx.fill();
+  ctx.stroke();
+  ctx.font = `${Math.round(26 * s)}px serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = '#000';
+  ctx.fillText(o.item.e, p.x, p.y + 1);
+  ctx.textBaseline = 'alphabetic';
 }
 
 export function drawWorkTarget(tg?: GameValue): GameValue {
@@ -221,20 +222,21 @@ export function drawWorkTarget(tg?: GameValue): GameValue {
 }
 
 export function drawTargetRing(tg?: GameValue, t?: GameValue): GameValue {
+  const ctx = game.view.ctx;
   const s: GameValue = isoScale(),
     pulse: GameValue = 1 + Math.sin(t * 4) * 0.08,
     c: GameValue = isoProject(tg.x, tg.y, 0);
   const rx: GameValue = (Math.max(tg.w, 36) * 0.5 + 18) * s * pulse * 0.87,
     ry: GameValue = rx * 0.5;
-  game.view.ctx.save();
-  game.view.ctx.lineWidth = 3 * s;
-  game.view.ctx.strokeStyle = 'rgba(254,202,87,0.95)';
-  game.view.ctx.fillStyle = 'rgba(254,202,87,0.18)';
-  game.view.ctx.beginPath();
-  game.view.ctx.ellipse(c.x, c.y, rx, ry, 0, 0, 6.3);
-  game.view.ctx.fill();
-  game.view.ctx.stroke();
-  game.view.ctx.restore();
+  ctx.save();
+  ctx.lineWidth = 3 * s;
+  ctx.strokeStyle = 'rgba(254,202,87,0.95)';
+  ctx.fillStyle = 'rgba(254,202,87,0.18)';
+  ctx.beginPath();
+  ctx.ellipse(c.x, c.y, rx, ry, 0, 0, 6.3);
+  ctx.fill();
+  ctx.stroke();
+  ctx.restore();
 }
 
 // Freccia sopra il punto di consegna: resta visibile anche quando un mobile alto copre il cerchio.

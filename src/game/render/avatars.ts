@@ -54,25 +54,12 @@ function lensShine(x: number, y: number, s: number): void {
 }
 
 export function heartPath(cx?: GameValue, cy?: GameValue, r?: GameValue): GameValue {
-  game.view.ctx.beginPath();
-  game.view.ctx.moveTo(cx, cy + r * 0.9);
-  game.view.ctx.bezierCurveTo(
-    cx - r * 1.5,
-    cy - r * 0.2,
-    cx - r * 0.6,
-    cy - r * 1.3,
-    cx,
-    cy - r * 0.35,
-  );
-  game.view.ctx.bezierCurveTo(
-    cx + r * 0.6,
-    cy - r * 1.3,
-    cx + r * 1.5,
-    cy - r * 0.2,
-    cx,
-    cy + r * 0.9,
-  );
-  game.view.ctx.closePath();
+  const ctx = game.view.ctx;
+  ctx.beginPath();
+  ctx.moveTo(cx, cy + r * 0.9);
+  ctx.bezierCurveTo(cx - r * 1.5, cy - r * 0.2, cx - r * 0.6, cy - r * 1.3, cx, cy - r * 0.35);
+  ctx.bezierCurveTo(cx + r * 0.6, cy - r * 1.3, cx + r * 1.5, cy - r * 0.2, cx, cy + r * 0.9);
+  ctx.closePath();
 }
 
 export function drawGlasses(head?: GameValue, s?: GameValue, gl?: GameValue): GameValue {
@@ -661,90 +648,71 @@ export function drawHairBack(
   style?: GameValue,
   hair?: GameValue,
 ): GameValue {
+  const ctx = game.view.ctx;
   const hx: GameValue = head.x,
     hy: GameValue = head.y;
-  game.view.ctx.fillStyle = hair;
-  game.view.ctx.strokeStyle = 'rgba(0,0,0,0.28)';
-  game.view.ctx.lineWidth = 0.8;
+  ctx.fillStyle = hair;
+  ctx.strokeStyle = 'rgba(0,0,0,0.28)';
+  ctx.lineWidth = 0.8;
   if (style === 2) {
     // lunghi
-    game.view.ctx.beginPath();
-    game.view.ctx.moveTo(hx - 9.8 * s, hy - 2 * s);
-    game.view.ctx.lineTo(hx - 11 * s, hy + 14 * s);
-    game.view.ctx.quadraticCurveTo(hx, hy + 19 * s, hx + 11 * s, hy + 14 * s);
-    game.view.ctx.lineTo(hx + 9.8 * s, hy - 2 * s);
-    game.view.ctx.closePath();
-    game.view.ctx.fill();
-    game.view.ctx.stroke();
-    game.view.ctx.strokeStyle = game.darken(hair, 0.25);
-    game.view.ctx.lineWidth = 0.8 * s;
+    ctx.beginPath();
+    ctx.moveTo(hx - 9.8 * s, hy - 2 * s);
+    ctx.lineTo(hx - 11 * s, hy + 14 * s);
+    ctx.quadraticCurveTo(hx, hy + 19 * s, hx + 11 * s, hy + 14 * s);
+    ctx.lineTo(hx + 9.8 * s, hy - 2 * s);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.strokeStyle = game.darken(hair, 0.25);
+    ctx.lineWidth = 0.8 * s;
     [-5, 0, 5].forEach((dx?: GameValue): GameValue => {
-      game.view.ctx.beginPath();
-      game.view.ctx.moveTo(hx + dx * s, hy + 6 * s);
-      game.view.ctx.lineTo(hx + dx * 1.15 * s, hy + 16 * s);
-      game.view.ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(hx + dx * s, hy + 6 * s);
+      ctx.lineTo(hx + dx * 1.15 * s, hy + 16 * s);
+      ctx.stroke();
     });
   } else if (style === 6) {
     // caschetto
-    game.view.ctx.beginPath();
-    game.view.ctx.moveTo(hx - 10 * s, hy - 3 * s);
-    game.view.ctx.lineTo(hx - 10.6 * s, hy + 7 * s);
-    game.view.ctx.quadraticCurveTo(hx, hy + 11.5 * s, hx + 10.6 * s, hy + 7 * s);
-    game.view.ctx.lineTo(hx + 10 * s, hy - 3 * s);
-    game.view.ctx.closePath();
-    game.view.ctx.fill();
-    game.view.ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(hx - 10 * s, hy - 3 * s);
+    ctx.lineTo(hx - 10.6 * s, hy + 7 * s);
+    ctx.quadraticCurveTo(hx, hy + 11.5 * s, hx + 10.6 * s, hy + 7 * s);
+    ctx.lineTo(hx + 10 * s, hy - 3 * s);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
   } else if (style === 3) {
     // coda di cavallo
-    game.view.ctx.beginPath();
-    game.view.ctx.moveTo(hx + 7 * s, hy - 3.5 * s);
-    game.view.ctx.bezierCurveTo(
-      hx + 17 * s,
-      hy - 3 * s,
-      hx + 20 * s,
-      hy + 8 * s,
-      hx + 13 * s,
-      hy + 16 * s,
-    );
-    game.view.ctx.bezierCurveTo(
-      hx + 14.5 * s,
-      hy + 8 * s,
-      hx + 10 * s,
-      hy + 3 * s,
-      hx + 6 * s,
-      hy + 2 * s,
-    );
-    game.view.ctx.closePath();
-    game.view.ctx.fill();
-    game.view.ctx.stroke();
-    game.view.ctx.fillStyle = '#e74c3c';
-    game.view.ctx.beginPath();
-    game.view.ctx.arc(hx + 9.2 * s, hy - 1.4 * s, 1.5 * s, 0, 6.3);
-    game.view.ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(hx + 7 * s, hy - 3.5 * s);
+    ctx.bezierCurveTo(hx + 17 * s, hy - 3 * s, hx + 20 * s, hy + 8 * s, hx + 13 * s, hy + 16 * s);
+    ctx.bezierCurveTo(hx + 14.5 * s, hy + 8 * s, hx + 10 * s, hy + 3 * s, hx + 6 * s, hy + 2 * s);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = '#e74c3c';
+    ctx.beginPath();
+    ctx.arc(hx + 9.2 * s, hy - 1.4 * s, 1.5 * s, 0, 6.3);
+    ctx.fill();
   } else if (style === 4) {
     // afro
     for (let i: GameValue = 0; i < 10; i++) {
       const a: GameValue = (i / 10) * Math.PI * 2;
-      game.view.ctx.beginPath();
-      game.view.ctx.arc(
-        hx + Math.cos(a) * 9.6 * s,
-        hy - 2 * s + Math.sin(a) * 9.6 * s,
-        5.2 * s,
-        0,
-        6.3,
-      );
-      game.view.ctx.fill();
-      game.view.ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(hx + Math.cos(a) * 9.6 * s, hy - 2 * s + Math.sin(a) * 9.6 * s, 5.2 * s, 0, 6.3);
+      ctx.fill();
+      ctx.stroke();
     }
-    game.view.ctx.beginPath();
-    game.view.ctx.arc(hx, hy - 2 * s, 11 * s, 0, 6.3);
-    game.view.ctx.fill();
+    ctx.beginPath();
+    ctx.arc(hx, hy - 2 * s, 11 * s, 0, 6.3);
+    ctx.fill();
   } else if (style === 7) {
     // chignon
-    game.view.ctx.beginPath();
-    game.view.ctx.arc(hx, hy - 12 * s, 4.8 * s, 0, 6.3);
-    game.view.ctx.fill();
-    game.view.ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(hx, hy - 12 * s, 4.8 * s, 0, 6.3);
+    ctx.fill();
+    ctx.stroke();
   }
 }
 
@@ -754,6 +722,7 @@ export function drawHairFront(
   style?: GameValue,
   hair?: GameValue,
 ): GameValue {
+  const ctx = game.view.ctx;
   if (style === 1 || style === 5) {
     /* rasati / cresta: base rasata sotto */
   }
@@ -773,45 +742,45 @@ export function drawHairFront(
   else if (style === 2) {
     // lunghi: frangia + ciocche ai lati
     cap(3.6);
-    game.view.ctx.fillStyle = hair;
+    ctx.fillStyle = hair;
     [-1, 1].forEach((sg?: GameValue): GameValue => {
-      game.view.ctx.beginPath();
-      game.view.ctx.roundRect
-        ? game.view.ctx.roundRect(hx + sg * 8.3 * s - 1.6 * s, hy - 3 * s, 3.2 * s, 12 * s, 1.6 * s)
-        : game.view.ctx.rect(hx + sg * 8.3 * s - 1.6 * s, hy - 3 * s, 3.2 * s, 12 * s);
-      game.view.ctx.fill();
+      ctx.beginPath();
+      ctx.roundRect
+        ? ctx.roundRect(hx + sg * 8.3 * s - 1.6 * s, hy - 3 * s, 3.2 * s, 12 * s, 1.6 * s)
+        : ctx.rect(hx + sg * 8.3 * s - 1.6 * s, hy - 3 * s, 3.2 * s, 12 * s);
+      ctx.fill();
     });
   } else if (style === 3) cap(5);
   else if (style === 4) cap(7.5);
   else if (style === 5) {
     // cresta
     cap(6, 0.3);
-    game.view.ctx.fillStyle = hair;
-    game.view.ctx.strokeStyle = 'rgba(0,0,0,0.3)';
-    game.view.ctx.lineWidth = 0.8;
-    game.view.ctx.beginPath();
-    game.view.ctx.moveTo(hx - 4 * s, hy - 7.5 * s);
-    game.view.ctx.lineTo(hx - 5.2 * s, hy - 16 * s);
-    game.view.ctx.lineTo(hx - 1.6 * s, hy - 11 * s);
-    game.view.ctx.lineTo(hx, hy - 19.5 * s);
-    game.view.ctx.lineTo(hx + 1.8 * s, hy - 11 * s);
-    game.view.ctx.lineTo(hx + 5.2 * s, hy - 16 * s);
-    game.view.ctx.lineTo(hx + 4 * s, hy - 7.5 * s);
-    game.view.ctx.closePath();
-    game.view.ctx.fill();
-    game.view.ctx.stroke();
+    ctx.fillStyle = hair;
+    ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+    ctx.lineWidth = 0.8;
+    ctx.beginPath();
+    ctx.moveTo(hx - 4 * s, hy - 7.5 * s);
+    ctx.lineTo(hx - 5.2 * s, hy - 16 * s);
+    ctx.lineTo(hx - 1.6 * s, hy - 11 * s);
+    ctx.lineTo(hx, hy - 19.5 * s);
+    ctx.lineTo(hx + 1.8 * s, hy - 11 * s);
+    ctx.lineTo(hx + 5.2 * s, hy - 16 * s);
+    ctx.lineTo(hx + 4 * s, hy - 7.5 * s);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
   } else if (style === 6) cap(3.8);
   else if (style === 7) cap(5.5);
   else if (style === 8) {
     // ciuffo
     cap(5.5);
-    game.view.ctx.fillStyle = hair;
-    game.view.ctx.strokeStyle = 'rgba(0,0,0,0.25)';
-    game.view.ctx.lineWidth = 0.8;
-    game.view.ctx.beginPath();
-    game.view.ctx.ellipse(hx + 2.5 * s, hy - 10 * s, 7.5 * s, 4 * s, -0.3, 0, 6.3);
-    game.view.ctx.fill();
-    game.view.ctx.stroke();
+    ctx.fillStyle = hair;
+    ctx.strokeStyle = 'rgba(0,0,0,0.25)';
+    ctx.lineWidth = 0.8;
+    ctx.beginPath();
+    ctx.ellipse(hx + 2.5 * s, hy - 10 * s, 7.5 * s, 4 * s, -0.3, 0, 6.3);
+    ctx.fill();
+    ctx.stroke();
   }
 }
 
@@ -823,6 +792,7 @@ export function drawFace(
   animTime?: GameValue,
   hsh?: GameValue,
 ): GameValue {
+  const ctx = game.view.ctx;
   const hx: GameValue = head.x,
     hy: GameValue = head.y,
     ey: GameValue = hy + 1 * s;
@@ -831,31 +801,31 @@ export function drawFace(
   const beardOn: GameValue = bd.beard >= 3;
   // barba (sotto bocca e occhi)
   if (bd.beard >= 3) {
-    game.view.ctx.fillStyle = hair;
-    game.view.ctx.globalAlpha = bd.beard === 3 ? 0.4 : 1;
-    game.view.ctx.beginPath();
-    game.view.ctx.arc(hx, hy, 9.1 * s, Math.PI * 0.08, Math.PI * 0.92);
-    game.view.ctx.quadraticCurveTo(hx, hy + 4.2 * s, hx + 8.8 * s, hy + 2.3 * s);
-    game.view.ctx.fill();
-    game.view.ctx.globalAlpha = 1;
+    ctx.fillStyle = hair;
+    ctx.globalAlpha = bd.beard === 3 ? 0.4 : 1;
+    ctx.beginPath();
+    ctx.arc(hx, hy, 9.1 * s, Math.PI * 0.08, Math.PI * 0.92);
+    ctx.quadraticCurveTo(hx, hy + 4.2 * s, hx + 8.8 * s, hy + 2.3 * s);
+    ctx.fill();
+    ctx.globalAlpha = 1;
   }
   if (bd.beard === 2) {
-    game.view.ctx.fillStyle = hair;
-    game.view.ctx.beginPath();
-    game.view.ctx.ellipse(hx, hy + 7 * s, 1.9 * s, 2.3 * s, 0, 0, 6.3);
-    game.view.ctx.fill();
+    ctx.fillStyle = hair;
+    ctx.beginPath();
+    ctx.ellipse(hx, hy + 7 * s, 1.9 * s, 2.3 * s, 0, 0, 6.3);
+    ctx.fill();
   }
   // sopracciglia
-  game.view.ctx.strokeStyle = game.darken(hair, 0.3);
-  game.view.ctx.lineWidth = 1 * s;
-  game.view.ctx.lineCap = 'round';
+  ctx.strokeStyle = game.darken(hair, 0.3);
+  ctx.lineWidth = 1 * s;
+  ctx.lineCap = 'round';
   [-1, 1].forEach((sg?: GameValue): GameValue => {
     const ex: GameValue = hx + sg * 3.2 * s,
       lift: GameValue = bd.eyeShape === 3 ? 0.9 : 0.2;
-    game.view.ctx.beginPath();
-    game.view.ctx.moveTo(ex - sg * 1.8 * s, ey - (2.9 + lift) * s);
-    game.view.ctx.lineTo(ex + sg * 1.8 * s, ey - 3.1 * s);
-    game.view.ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(ex - sg * 1.8 * s, ey - (2.9 + lift) * s);
+    ctx.lineTo(ex + sg * 1.8 * s, ey - 3.1 * s);
+    ctx.stroke();
   });
   // occhi
   const shape: GameValue = [
@@ -867,57 +837,57 @@ export function drawFace(
   [-1, 1].forEach((sg?: GameValue): GameValue => {
     const ex: GameValue = hx + sg * 3.2 * s;
     if (blink) {
-      game.view.ctx.strokeStyle = '#2d3436';
-      game.view.ctx.lineWidth = 1;
-      game.view.ctx.beginPath();
-      game.view.ctx.moveTo(ex - 1.6 * s, ey);
-      game.view.ctx.lineTo(ex + 1.6 * s, ey);
-      game.view.ctx.stroke();
+      ctx.strokeStyle = '#2d3436';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(ex - 1.6 * s, ey);
+      ctx.lineTo(ex + 1.6 * s, ey);
+      ctx.stroke();
       return;
     }
-    game.view.ctx.fillStyle = '#ffffff';
-    game.view.ctx.strokeStyle = 'rgba(0,0,0,0.5)';
-    game.view.ctx.lineWidth = 0.7;
-    game.view.ctx.beginPath();
-    game.view.ctx.ellipse(ex, ey, shape[0] * s, shape[1] * s, 0, 0, 6.3);
-    game.view.ctx.fill();
-    game.view.ctx.stroke();
-    game.view.ctx.fillStyle = eyeC;
-    game.view.ctx.beginPath();
-    game.view.ctx.arc(ex, ey + 0.1 * s, Math.min(shape[2], shape[1]) * s, 0, 6.3);
-    game.view.ctx.fill();
-    game.view.ctx.fillStyle = '#111';
-    game.view.ctx.beginPath();
-    game.view.ctx.arc(ex, ey + 0.1 * s, shape[2] * 0.5 * s, 0, 6.3);
-    game.view.ctx.fill();
-    game.view.ctx.fillStyle = 'rgba(255,255,255,0.95)';
-    game.view.ctx.beginPath();
-    game.view.ctx.arc(ex + 0.5 * s, ey - 0.5 * s, 0.4 * s, 0, 6.3);
-    game.view.ctx.fill();
+    ctx.fillStyle = '#ffffff';
+    ctx.strokeStyle = 'rgba(0,0,0,0.5)';
+    ctx.lineWidth = 0.7;
+    ctx.beginPath();
+    ctx.ellipse(ex, ey, shape[0] * s, shape[1] * s, 0, 0, 6.3);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = eyeC;
+    ctx.beginPath();
+    ctx.arc(ex, ey + 0.1 * s, Math.min(shape[2], shape[1]) * s, 0, 6.3);
+    ctx.fill();
+    ctx.fillStyle = '#111';
+    ctx.beginPath();
+    ctx.arc(ex, ey + 0.1 * s, shape[2] * 0.5 * s, 0, 6.3);
+    ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.95)';
+    ctx.beginPath();
+    ctx.arc(ex + 0.5 * s, ey - 0.5 * s, 0.4 * s, 0, 6.3);
+    ctx.fill();
     if (bd.eyeShape === 2) {
-      game.view.ctx.strokeStyle = '#2d3436';
-      game.view.ctx.lineWidth = 1.1;
-      game.view.ctx.beginPath();
-      game.view.ctx.ellipse(ex, ey, shape[0] * s, shape[1] * s, 0, Math.PI, Math.PI * 2);
-      game.view.ctx.stroke();
+      ctx.strokeStyle = '#2d3436';
+      ctx.lineWidth = 1.1;
+      ctx.beginPath();
+      ctx.ellipse(ex, ey, shape[0] * s, shape[1] * s, 0, Math.PI, Math.PI * 2);
+      ctx.stroke();
     }
     if (bd.eyeShape === 3) {
-      game.view.ctx.strokeStyle = '#2d3436';
-      game.view.ctx.lineWidth = 1.1;
-      game.view.ctx.beginPath();
-      game.view.ctx.moveTo(ex + sg * shape[0] * s, ey);
-      game.view.ctx.lineTo(ex + sg * (shape[0] + 1.4) * s, ey - 1 * s);
-      game.view.ctx.stroke();
+      ctx.strokeStyle = '#2d3436';
+      ctx.lineWidth = 1.1;
+      ctx.beginPath();
+      ctx.moveTo(ex + sg * shape[0] * s, ey);
+      ctx.lineTo(ex + sg * (shape[0] + 1.4) * s, ey - 1 * s);
+      ctx.stroke();
     }
   });
   // guance e lentiggini
-  game.view.ctx.fillStyle = 'rgba(255,120,120,0.35)';
-  game.view.ctx.beginPath();
-  game.view.ctx.arc(hx - 5.5 * s, hy + 3.5 * s, 1.8 * s, 0, 6.3);
-  game.view.ctx.arc(hx + 5.5 * s, hy + 3.5 * s, 1.8 * s, 0, 6.3);
-  game.view.ctx.fill();
+  ctx.fillStyle = 'rgba(255,120,120,0.35)';
+  ctx.beginPath();
+  ctx.arc(hx - 5.5 * s, hy + 3.5 * s, 1.8 * s, 0, 6.3);
+  ctx.arc(hx + 5.5 * s, hy + 3.5 * s, 1.8 * s, 0, 6.3);
+  ctx.fill();
   if (bd.freckles) {
-    game.view.ctx.fillStyle = 'rgba(140,80,40,0.6)';
+    ctx.fillStyle = 'rgba(140,80,40,0.6)';
     [
       [-5.6, 2.4],
       [-4.3, 3.4],
@@ -926,52 +896,52 @@ export function drawFace(
       [4.3, 3.4],
       [6.3, 3.6],
     ].forEach(([dx, dy]: GameValue = {}): GameValue => {
-      game.view.ctx.beginPath();
-      game.view.ctx.arc(hx + dx * s, hy + dy * s, 0.5 * s, 0, 6.3);
-      game.view.ctx.fill();
+      ctx.beginPath();
+      ctx.arc(hx + dx * s, hy + dy * s, 0.5 * s, 0, 6.3);
+      ctx.fill();
     });
   }
   // baffi
   if (bd.beard === 1 || bd.beard === 2 || bd.beard === 4) {
-    game.view.ctx.fillStyle = hair;
+    ctx.fillStyle = hair;
     [-1, 1].forEach((sg?: GameValue): GameValue => {
-      game.view.ctx.beginPath();
-      game.view.ctx.ellipse(hx + sg * 2 * s, hy + 3 * s, 2.3 * s, 0.9 * s, sg * 0.3, 0, 6.3);
-      game.view.ctx.fill();
+      ctx.beginPath();
+      ctx.ellipse(hx + sg * 2 * s, hy + 3 * s, 2.3 * s, 0.9 * s, sg * 0.3, 0, 6.3);
+      ctx.fill();
     });
   }
   // bocca
   const mc: GameValue = beardOn ? '#e8a598' : '#6d3a2a';
-  game.view.ctx.lineWidth = 1;
+  ctx.lineWidth = 1;
   if (bd.mouth === 0) {
-    game.view.ctx.strokeStyle = mc;
-    game.view.ctx.beginPath();
-    game.view.ctx.arc(hx, hy + 3.5 * s, 2.2 * s, 0.2, Math.PI - 0.2);
-    game.view.ctx.stroke();
+    ctx.strokeStyle = mc;
+    ctx.beginPath();
+    ctx.arc(hx, hy + 3.5 * s, 2.2 * s, 0.2, Math.PI - 0.2);
+    ctx.stroke();
   } else if (bd.mouth === 1) {
-    game.view.ctx.strokeStyle = mc;
-    game.view.ctx.beginPath();
-    game.view.ctx.moveTo(hx - 1.6 * s, hy + 5.4 * s);
-    game.view.ctx.lineTo(hx + 1.6 * s, hy + 5.4 * s);
-    game.view.ctx.stroke();
+    ctx.strokeStyle = mc;
+    ctx.beginPath();
+    ctx.moveTo(hx - 1.6 * s, hy + 5.4 * s);
+    ctx.lineTo(hx + 1.6 * s, hy + 5.4 * s);
+    ctx.stroke();
   } else if (bd.mouth === 2) {
-    game.view.ctx.fillStyle = '#7b241c';
-    game.view.ctx.beginPath();
-    game.view.ctx.arc(hx, hy + 4 * s, 2.7 * s, 0, Math.PI);
-    game.view.ctx.closePath();
-    game.view.ctx.fill();
-    game.view.ctx.fillStyle = '#ffffff';
-    game.view.ctx.fillRect(hx - 2.2 * s, hy + 4 * s, 4.4 * s, 0.9 * s);
-    game.view.ctx.fillStyle = '#e6798c';
-    game.view.ctx.beginPath();
-    game.view.ctx.ellipse(hx, hy + 6 * s, 1.3 * s, 0.7 * s, 0, 0, 6.3);
-    game.view.ctx.fill();
+    ctx.fillStyle = '#7b241c';
+    ctx.beginPath();
+    ctx.arc(hx, hy + 4 * s, 2.7 * s, 0, Math.PI);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(hx - 2.2 * s, hy + 4 * s, 4.4 * s, 0.9 * s);
+    ctx.fillStyle = '#e6798c';
+    ctx.beginPath();
+    ctx.ellipse(hx, hy + 6 * s, 1.3 * s, 0.7 * s, 0, 0, 6.3);
+    ctx.fill();
   } else {
-    game.view.ctx.strokeStyle = '#c0392b';
-    game.view.ctx.lineWidth = 1.6 * s;
-    game.view.ctx.beginPath();
-    game.view.ctx.arc(hx, hy + 3.5 * s, 2.2 * s, 0.2, Math.PI - 0.2);
-    game.view.ctx.stroke();
+    ctx.strokeStyle = '#c0392b';
+    ctx.lineWidth = 1.6 * s;
+    ctx.beginPath();
+    ctx.arc(hx, hy + 3.5 * s, 2.2 * s, 0.2, Math.PI - 0.2);
+    ctx.stroke();
   }
 }
 
@@ -1130,38 +1100,36 @@ export function updateShower(now?: GameValue): GameValue {
 }
 
 export function pillTag(cx?: GameValue, ny?: GameValue, name?: GameValue): GameValue {
+  const ctx = game.view.ctx;
   if (!name) return;
-  game.view.ctx.font = 'bold 10px sans-serif';
-  game.view.ctx.textAlign = 'center';
-  const nw: GameValue = Math.min(90, game.view.ctx.measureText(name).width + 14);
-  game.view.ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
-  game.view.ctx.beginPath();
-  game.view.ctx.roundRect
-    ? game.view.ctx.roundRect(cx - nw / 2, ny, nw, 16, 8)
-    : game.view.ctx.rect(cx - nw / 2, ny, nw, 16);
-  game.view.ctx.fill();
-  game.view.ctx.fillStyle = '#fff';
-  game.view.ctx.fillText(name, cx, ny + 11.5, nw - 8);
+  ctx.font = 'bold 10px sans-serif';
+  ctx.textAlign = 'center';
+  const nw: GameValue = Math.min(90, ctx.measureText(name).width + 14);
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+  ctx.beginPath();
+  ctx.roundRect ? ctx.roundRect(cx - nw / 2, ny, nw, 16, 8) : ctx.rect(cx - nw / 2, ny, nw, 16);
+  ctx.fill();
+  ctx.fillStyle = '#fff';
+  ctx.fillText(name, cx, ny + 11.5, nw - 8);
 }
 
 export function speechBubble(cx?: GameValue, by?: GameValue, text?: GameValue): GameValue {
+  const ctx = game.view.ctx;
   if (!text) return;
-  game.view.ctx.font = '12px sans-serif';
-  game.view.ctx.textAlign = 'center';
-  const bw: GameValue = Math.min(180, game.view.ctx.measureText(text).width) + 16;
-  game.view.ctx.fillStyle = '#fff';
-  game.view.ctx.beginPath();
-  game.view.ctx.roundRect
-    ? game.view.ctx.roundRect(cx - bw / 2, by, bw, 22, 10)
-    : game.view.ctx.rect(cx - bw / 2, by, bw, 22);
-  game.view.ctx.fill();
-  game.view.ctx.beginPath();
-  game.view.ctx.moveTo(cx - 5, by + 22);
-  game.view.ctx.lineTo(cx + 5, by + 22);
-  game.view.ctx.lineTo(cx, by + 29);
-  game.view.ctx.fill();
-  game.view.ctx.fillStyle = '#111';
-  game.view.ctx.fillText(text, cx, by + 15, 180);
+  ctx.font = '12px sans-serif';
+  ctx.textAlign = 'center';
+  const bw: GameValue = Math.min(180, ctx.measureText(text).width) + 16;
+  ctx.fillStyle = '#fff';
+  ctx.beginPath();
+  ctx.roundRect ? ctx.roundRect(cx - bw / 2, by, bw, 22, 10) : ctx.rect(cx - bw / 2, by, bw, 22);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(cx - 5, by + 22);
+  ctx.lineTo(cx + 5, by + 22);
+  ctx.lineTo(cx, by + 29);
+  ctx.fill();
+  ctx.fillStyle = '#111';
+  ctx.fillText(text, cx, by + 15, 180);
 }
 
 export function drawNameTagWorld(
@@ -1185,6 +1153,7 @@ export function drawAvatarSleeping(
   k?: GameValue,
   bed?: GameValue,
 ): GameValue {
+  const ctx = game.view.ctx;
   const s: GameValue = isoScale(),
     e: GameValue = k * k * (3 - 2 * k);
   const bedRot: number = bed.rot || 0;
@@ -1198,24 +1167,24 @@ export function drawAvatarSleeping(
   const lieAngle = Math.atan2((toHead.x - toHead.y) * 0.866, -(toHead.x + toHead.y) * 0.5);
   const rot: GameValue = lieAngle * e;
   const pv: GameValue = isoProject(tx, ty, 0);
-  game.view.ctx.save();
-  game.view.ctx.translate(pv.x, pv.y - lift * s);
-  game.view.ctx.rotate(rot);
-  game.view.ctx.translate(-pv.x, -pv.y);
+  ctx.save();
+  ctx.translate(pv.x, pv.y - lift * s);
+  ctx.rotate(rot);
+  ctx.translate(-pv.x, -pv.y);
   drawPlayerAvatar(tx, ty, '', animTime, look, false, '', { noShadow: e > 0.05 });
-  game.view.ctx.restore();
+  ctx.restore();
   if (e > 0.05 && e < 1) {
     // ombra a terra mentre salta sul letto
     const g: GameValue = isoProject(tx, ty, 0);
-    game.view.ctx.fillStyle = 'rgba(0,0,0,' + 0.3 * (1 - e) + ')';
-    game.view.ctx.beginPath();
-    game.view.ctx.ellipse(g.x, g.y, 13 * s, 6.5 * s, 0, 0, 6.3);
-    game.view.ctx.fill();
+    ctx.fillStyle = 'rgba(0,0,0,' + 0.3 * (1 - e) + ')';
+    ctx.beginPath();
+    ctx.ellipse(g.x, g.y, 13 * s, 6.5 * s, 0, 0, 6.3);
+    ctx.fill();
   }
   if (e > 0.9) {
     // la coperta copre le gambe
     const col: GameValue = bed.color || '#5f27cd';
-    game.view.ctx.globalAlpha = Math.min(1, (e - 0.9) / 0.1);
+    ctx.globalAlpha = Math.min(1, (e - 0.9) / 0.1);
     // la coperta è girata insieme al letto
     withFurnitureRotation(bed, () => {
       const bl: GameValue = box(bed.x, bed.y + bed.h * 0.22, bed.w - 8, bed.h * 0.5, 8, col, {
@@ -1223,13 +1192,13 @@ export function drawAvatarSleeping(
         top: bed.topColor || game.lighten(col, 0.15),
       });
       onFace(bl, 'top', (W?: GameValue, H?: GameValue): GameValue => {
-        game.view.ctx.fillStyle = 'rgba(255,255,255,0.13)';
-        for (let i: GameValue = 4; i < W; i += 14) game.view.ctx.fillRect(i, 0, 5, H);
-        game.view.ctx.fillStyle = 'rgba(255,255,255,0.55)';
-        game.view.ctx.fillRect(0, 0, W, 6);
+        ctx.fillStyle = 'rgba(255,255,255,0.13)';
+        for (let i: GameValue = 4; i < W; i += 14) ctx.fillRect(i, 0, 5, H);
+        ctx.fillStyle = 'rgba(255,255,255,0.55)';
+        ctx.fillRect(0, 0, W, 6);
       });
     });
-    game.view.ctx.globalAlpha = 1;
+    ctx.globalAlpha = 1;
   }
   const hs: GameValue = {
     x: pv.x + Math.sin(rot) * 58 * s,
@@ -1237,19 +1206,19 @@ export function drawAvatarSleeping(
   };
   if (k > 0.95) {
     // Z che salgono dalla testa
-    game.view.ctx.textAlign = 'center';
+    ctx.textAlign = 'center';
     for (let i: GameValue = 0; i < 3; i++) {
       const ph: GameValue = (animTime * 0.45 + i / 3) % 1;
-      game.view.ctx.globalAlpha = Math.sin(Math.PI * ph) * 0.9;
-      game.view.ctx.fillStyle = '#cfe3ff';
-      game.view.ctx.font = 'bold ' + (10 + ph * 10) * s + 'px sans-serif';
-      game.view.ctx.fillText(
+      ctx.globalAlpha = Math.sin(Math.PI * ph) * 0.9;
+      ctx.fillStyle = '#cfe3ff';
+      ctx.font = 'bold ' + (10 + ph * 10) * s + 'px sans-serif';
+      ctx.fillText(
         'Z',
         hs.x + 12 * s + ph * 18 * s + Math.sin(animTime * 2 + i) * 3,
         hs.y - 8 * s - ph * 34 * s,
       );
     }
-    game.view.ctx.globalAlpha = 1;
+    ctx.globalAlpha = 1;
   }
   pillTag(hs.x, hs.y - 30 * s, name);
   // il pensiero di chi dorme si disegna dopo il buio della notte, di lato (vedi drawSleepThoughts)
@@ -1274,11 +1243,12 @@ export function drawActor(
 
 // Acqua, bolle di sapone e vapore dentro il box doccia
 export function drawShowerWater(it?: GameValue, t?: GameValue, occ?: GameValue): GameValue {
+  const ctx = game.view.ctx;
   const s: GameValue = isoScale();
   const hx: GameValue = it.x - it.w / 2 + 22,
     hy: GameValue = it.y - it.h / 2 + 12,
     hz: GameValue = it.z - 12;
-  game.view.ctx.lineCap = 'round';
+  ctx.lineCap = 'round';
   occ.forEach((a?: GameValue): GameValue => {
     for (let i: GameValue = 0; i < 44; i++) {
       const ph: GameValue = (t * 1.5 + i * 0.381) % 1;
@@ -1296,27 +1266,19 @@ export function drawShowerWater(it?: GameValue, t?: GameValue, occ?: GameValue):
       };
       const A: GameValue = pt(ph),
         B: GameValue = pt(Math.max(0, ph - 0.09));
-      game.view.ctx.strokeStyle = 'rgba(41,128,200,' + (0.55 + 0.4 * (1 - ph)) + ')';
-      game.view.ctx.lineWidth = 1.7 * s;
-      game.view.ctx.beginPath();
-      game.view.ctx.moveTo(B.x, B.y);
-      game.view.ctx.lineTo(A.x, A.y);
-      game.view.ctx.stroke();
+      ctx.strokeStyle = 'rgba(41,128,200,' + (0.55 + 0.4 * (1 - ph)) + ')';
+      ctx.lineWidth = 1.7 * s;
+      ctx.beginPath();
+      ctx.moveTo(B.x, B.y);
+      ctx.lineTo(A.x, A.y);
+      ctx.stroke();
       if (ph > 0.9) {
         const g: GameValue = isoProject(tx, ty, 6);
-        game.view.ctx.strokeStyle = 'rgba(41,128,200,0.7)';
-        game.view.ctx.lineWidth = 0.9 * s;
-        game.view.ctx.beginPath();
-        game.view.ctx.ellipse(
-          g.x,
-          g.y,
-          (3 + (ph - 0.9) * 40) * s,
-          (1.5 + (ph - 0.9) * 20) * s,
-          0,
-          0,
-          6.3,
-        );
-        game.view.ctx.stroke();
+        ctx.strokeStyle = 'rgba(41,128,200,0.7)';
+        ctx.lineWidth = 0.9 * s;
+        ctx.beginPath();
+        ctx.ellipse(g.x, g.y, (3 + (ph - 0.9) * 40) * s, (1.5 + (ph - 0.9) * 20) * s, 0, 0, 6.3);
+        ctx.stroke();
       }
     }
     for (let i: GameValue = 0; i < 7; i++) {
@@ -1327,20 +1289,20 @@ export function drawShowerWater(it?: GameValue, t?: GameValue, occ?: GameValue):
         14 + ph * 60,
       );
       const r: GameValue = (2 + (i % 3)) * s;
-      game.view.ctx.fillStyle = 'rgba(190,230,250,' + 0.45 * (1 - ph) + ')';
-      game.view.ctx.strokeStyle = 'rgba(70,160,220,' + 0.9 * (1 - ph) + ')';
-      game.view.ctx.lineWidth = 0.9 * s;
-      game.view.ctx.beginPath();
-      game.view.ctx.arc(p.x, p.y, r, 0, 6.3);
-      game.view.ctx.fill();
-      game.view.ctx.stroke();
-      game.view.ctx.fillStyle = 'rgba(255,255,255,' + 1 * (1 - ph) + ')';
-      game.view.ctx.beginPath();
-      game.view.ctx.arc(p.x - r * 0.35, p.y - r * 0.35, r * 0.25, 0, 6.3);
-      game.view.ctx.fill();
+      ctx.fillStyle = 'rgba(190,230,250,' + 0.45 * (1 - ph) + ')';
+      ctx.strokeStyle = 'rgba(70,160,220,' + 0.9 * (1 - ph) + ')';
+      ctx.lineWidth = 0.9 * s;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, r, 0, 6.3);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = 'rgba(255,255,255,' + 1 * (1 - ph) + ')';
+      ctx.beginPath();
+      ctx.arc(p.x - r * 0.35, p.y - r * 0.35, r * 0.25, 0, 6.3);
+      ctx.fill();
     }
   });
-  game.view.ctx.lineCap = 'butt';
+  ctx.lineCap = 'butt';
 }
 
 // Maglie a maniche corte o senza maniche; tutte le altre hanno le maniche lunghe.

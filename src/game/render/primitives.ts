@@ -73,18 +73,19 @@ export function poly(
   stroke?: GameValue,
   lw: GameValue = 1,
 ): GameValue {
-  game.view.ctx.beginPath();
-  game.view.ctx.moveTo(pts[0].x, pts[0].y);
-  for (let i: GameValue = 1; i < pts.length; i++) game.view.ctx.lineTo(pts[i].x, pts[i].y);
-  game.view.ctx.closePath();
+  const ctx = game.view.ctx;
+  ctx.beginPath();
+  ctx.moveTo(pts[0].x, pts[0].y);
+  for (let i: GameValue = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+  ctx.closePath();
   if (fill) {
-    game.view.ctx.fillStyle = fill;
-    game.view.ctx.fill();
+    ctx.fillStyle = fill;
+    ctx.fill();
   }
   if (stroke) {
-    game.view.ctx.strokeStyle = stroke;
-    game.view.ctx.lineWidth = lw;
-    game.view.ctx.stroke();
+    ctx.strokeStyle = stroke;
+    ctx.lineWidth = lw;
+    ctx.stroke();
   }
 }
 

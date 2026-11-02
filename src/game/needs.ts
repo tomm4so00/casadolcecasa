@@ -348,24 +348,25 @@ export function useCoffee(..._args: GameValue[]): GameValue {
 }
 
 export function drawCoffeeMachine(it?: GameValue, t?: GameValue): GameValue {
+  const ctx = game.view.ctx;
   const brewing: GameValue = performance.now() < game.coffeeBrewUntil;
   box(it.x, it.y, it.w + 14, it.h + 6, 28, '#8d6e63'); // piano d'appoggio
   const b: GameValue = box(it.x, it.y - 3, it.w, it.h - 10, 36, '#2d3436', { z0: 28 });
   onFace(b, 'left', (W?: GameValue, H?: GameValue): GameValue => {
-    game.view.ctx.fillStyle = '#111';
-    game.view.ctx.fillRect(3, 3, W - 6, H * 0.28);
-    game.view.ctx.fillStyle = brewing ? '#fdcb6e' : '#55efc4';
-    game.view.ctx.fillRect(5, 5, (W - 10) * (brewing ? 0.9 : 0.4), 3);
-    game.view.ctx.fillStyle = '#b2bec3';
+    ctx.fillStyle = '#111';
+    ctx.fillRect(3, 3, W - 6, H * 0.28);
+    ctx.fillStyle = brewing ? '#fdcb6e' : '#55efc4';
+    ctx.fillRect(5, 5, (W - 10) * (brewing ? 0.9 : 0.4), 3);
+    ctx.fillStyle = '#b2bec3';
     [0.25, 0.5, 0.75].forEach((u?: GameValue): GameValue => {
-      game.view.ctx.beginPath();
-      game.view.ctx.arc(W * u, H * 0.42, 2.2, 0, 6.3);
-      game.view.ctx.fill();
+      ctx.beginPath();
+      ctx.arc(W * u, H * 0.42, 2.2, 0, 6.3);
+      ctx.fill();
     });
-    game.view.ctx.fillStyle = '#636e72';
-    game.view.ctx.fillRect(W * 0.38, H * 0.52, W * 0.24, H * 0.1);
-    game.view.ctx.fillStyle = '#1e272e';
-    game.view.ctx.fillRect(3, H * 0.86, W - 6, H * 0.1);
+    ctx.fillStyle = '#636e72';
+    ctx.fillRect(W * 0.38, H * 0.52, W * 0.24, H * 0.1);
+    ctx.fillStyle = '#1e272e';
+    ctx.fillRect(3, H * 0.86, W - 6, H * 0.1);
   });
   const fy: GameValue = it.y - 3 + (it.h - 10) / 2 + 3;
   box(it.x, fy, 9, 9, 7, '#ecf0f1', { z0: 28, edge: 'rgba(0,0,0,0.25)' }); // tazzina
@@ -374,16 +375,10 @@ export function drawCoffeeMachine(it?: GameValue, t?: GameValue): GameValue {
       s: GameValue = isoScale();
     for (let i: GameValue = 0; i < 3; i++) {
       const ph: GameValue = (t * 0.8 + i / 3) % 1;
-      game.view.ctx.fillStyle = `rgba(255,255,255,${0.55 * (1 - ph)})`;
-      game.view.ctx.beginPath();
-      game.view.ctx.arc(
-        p.x + Math.sin(ph * 6 + i) * 3 * s,
-        p.y - ph * 24 * s,
-        (2.5 + ph * 4) * s,
-        0,
-        6.3,
-      );
-      game.view.ctx.fill();
+      ctx.fillStyle = `rgba(255,255,255,${0.55 * (1 - ph)})`;
+      ctx.beginPath();
+      ctx.arc(p.x + Math.sin(ph * 6 + i) * 3 * s, p.y - ph * 24 * s, (2.5 + ph * 4) * s, 0, 6.3);
+      ctx.fill();
     }
   }
 }

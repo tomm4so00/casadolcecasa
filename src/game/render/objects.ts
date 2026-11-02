@@ -197,29 +197,31 @@ export function woodGrain(
   vertical: GameValue = false,
   n: GameValue = 6,
 ): GameValue {
-  game.view.ctx.strokeStyle = color;
-  game.view.ctx.lineWidth = 0.7;
-  game.view.ctx.beginPath();
+  const ctx = game.view.ctx;
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 0.7;
+  ctx.beginPath();
   for (let i: GameValue = 1; i < n; i++) {
     if (vertical) {
       const u: GameValue = (W * i) / n;
-      game.view.ctx.moveTo(u, 0);
-      game.view.ctx.bezierCurveTo(u + 1.5, H * 0.3, u - 1.5, H * 0.65, u, H);
+      ctx.moveTo(u, 0);
+      ctx.bezierCurveTo(u + 1.5, H * 0.3, u - 1.5, H * 0.65, u, H);
     } else {
       const t: GameValue = (H * i) / n;
-      game.view.ctx.moveTo(0, t);
-      game.view.ctx.bezierCurveTo(W * 0.3, t + 1.2, W * 0.65, t - 1.2, W, t);
+      ctx.moveTo(0, t);
+      ctx.bezierCurveTo(W * 0.3, t + 1.2, W * 0.65, t - 1.2, W, t);
     }
   }
-  game.view.ctx.stroke();
+  ctx.stroke();
 }
 
 export function softShadow(x?: GameValue, y?: GameValue, w?: GameValue, h?: GameValue): GameValue {
+  const ctx = game.view.ctx;
   setPlane([x - w / 2, y - h / 2, 0], [1, 0, 0], [0, 1, 0]);
-  game.view.ctx.fillStyle = 'rgba(0,0,0,0.13)';
-  game.view.ctx.fillRect(-2, -2, w + 12, h + 12);
-  game.view.ctx.fillStyle = 'rgba(0,0,0,0.14)';
-  game.view.ctx.fillRect(1, 1, w + 5, h + 5);
+  ctx.fillStyle = 'rgba(0,0,0,0.13)';
+  ctx.fillRect(-2, -2, w + 12, h + 12);
+  ctx.fillStyle = 'rgba(0,0,0,0.14)';
+  ctx.fillRect(1, 1, w + 5, h + 5);
   resetPlane();
 }
 
@@ -230,12 +232,13 @@ export function ellipseShadow(
   ry?: GameValue,
   a: GameValue = 0.28,
 ): GameValue {
+  const ctx = game.view.ctx;
   const p: GameValue = isoProject(x, y, 0),
     s: GameValue = isoScale();
-  game.view.ctx.fillStyle = `rgba(0,0,0,${a})`;
-  game.view.ctx.beginPath();
-  game.view.ctx.ellipse(p.x, p.y, rx * s, ry * s, 0, 0, Math.PI * 2);
-  game.view.ctx.fill();
+  ctx.fillStyle = `rgba(0,0,0,${a})`;
+  ctx.beginPath();
+  ctx.ellipse(p.x, p.y, rx * s, ry * s, 0, 0, Math.PI * 2);
+  ctx.fill();
 }
 
 export function isLux(it?: GameValue): GameValue {
@@ -253,6 +256,7 @@ export function gameClockText(..._args: GameValue[]): GameValue {
 
 // ---------------------------------------------------------------- MOBILI DELLA STANZA
 export function drawBed(it?: GameValue): GameValue {
+  const ctx = game.view.ctx;
   const Z: GameValue = it.zb || 0,
     lux: GameValue = isLux(it),
     pre = isPremium(it);
@@ -260,28 +264,28 @@ export function drawBed(it?: GameValue): GameValue {
   const { x, y, w, h }: GameValue = it;
   const hb: GameValue = box(x, y - h / 2 + 4, w, 8, lux ? 54 : pre ? 50 : 44, frameC, { z0: Z });
   onFace(hb, 'left', (W?: GameValue, H?: GameValue): GameValue => {
-    game.view.ctx.fillStyle = game.darken(frameC, 0.18);
-    game.view.ctx.fillRect(5, 6, W - 10, H - 16);
+    ctx.fillStyle = game.darken(frameC, 0.18);
+    ctx.fillRect(5, 6, W - 10, H - 16);
     if (pre) {
       // testiera imbottita capitonné con profilo argentato
-      game.view.ctx.fillStyle = game.darken(it.color, 0.1);
-      game.view.ctx.fillRect(6, 7, W - 12, H - 18);
-      game.view.ctx.fillStyle = 'rgba(0,0,0,0.35)';
+      ctx.fillStyle = game.darken(it.color, 0.1);
+      ctx.fillRect(6, 7, W - 12, H - 18);
+      ctx.fillStyle = 'rgba(0,0,0,0.35)';
       for (let i = 1; i < 6; i++)
         for (let j = 1; j < 3; j++) {
-          game.view.ctx.beginPath();
-          game.view.ctx.arc(6 + ((W - 12) * i) / 6, 7 + ((H - 18) * j) / 3, 1.1, 0, 6.3);
-          game.view.ctx.fill();
+          ctx.beginPath();
+          ctx.arc(6 + ((W - 12) * i) / 6, 7 + ((H - 18) * j) / 3, 1.1, 0, 6.3);
+          ctx.fill();
         }
-      game.view.ctx.strokeStyle = '#dfe6e9';
-      game.view.ctx.lineWidth = 1;
-      game.view.ctx.strokeRect(6, 7, W - 12, H - 18);
+      ctx.strokeStyle = '#dfe6e9';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(6, 7, W - 12, H - 18);
       return;
     }
     if (lux) {
-      game.view.ctx.strokeStyle = '#fff3b0';
-      game.view.ctx.lineWidth = 1.5;
-      game.view.ctx.strokeRect(8, 9, W - 16, H - 22);
+      ctx.strokeStyle = '#fff3b0';
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(8, 9, W - 16, H - 22);
     }
     woodGrain(W, H, 'rgba(0,0,0,0.15)');
   });
@@ -315,8 +319,8 @@ export function drawBed(it?: GameValue): GameValue {
   };
   onFace(bl, 'top', (W?: GameValue, H?: GameValue): GameValue => {
     stripes(W, H);
-    game.view.ctx.fillStyle = 'rgba(255,255,255,0.55)';
-    game.view.ctx.fillRect(0, 0, W, 7);
+    ctx.fillStyle = 'rgba(255,255,255,0.55)';
+    ctx.fillRect(0, 0, W, 7);
   });
   onFace(bl, 'left', stripes);
 }
@@ -329,45 +333,47 @@ export function drawShirtShape(
   color?: GameValue,
   kind?: GameValue,
 ): GameValue {
-  game.view.ctx.fillStyle = color;
-  game.view.ctx.beginPath();
+  const ctx = game.view.ctx;
+  ctx.fillStyle = color;
+  ctx.beginPath();
   if (kind === 'pants') {
-    game.view.ctx.moveTo(cx - w / 2, top);
-    game.view.ctx.lineTo(cx + w / 2, top);
-    game.view.ctx.lineTo(cx + w / 2, top + h);
-    game.view.ctx.lineTo(cx + 1.2, top + h);
-    game.view.ctx.lineTo(cx, top + h * 0.32);
-    game.view.ctx.lineTo(cx - 1.2, top + h);
-    game.view.ctx.lineTo(cx - w / 2, top + h);
+    ctx.moveTo(cx - w / 2, top);
+    ctx.lineTo(cx + w / 2, top);
+    ctx.lineTo(cx + w / 2, top + h);
+    ctx.lineTo(cx + 1.2, top + h);
+    ctx.lineTo(cx, top + h * 0.32);
+    ctx.lineTo(cx - 1.2, top + h);
+    ctx.lineTo(cx - w / 2, top + h);
   } else {
-    game.view.ctx.moveTo(cx - w * 0.28, top);
-    game.view.ctx.lineTo(cx - w * 0.7, top + h * 0.18);
-    game.view.ctx.lineTo(cx - w * 0.55, top + h * 0.4);
-    game.view.ctx.lineTo(cx - w * 0.36, top + h * 0.3);
-    game.view.ctx.lineTo(cx - w * 0.36, top + h);
-    game.view.ctx.lineTo(cx + w * 0.36, top + h);
-    game.view.ctx.lineTo(cx + w * 0.36, top + h * 0.3);
-    game.view.ctx.lineTo(cx + w * 0.55, top + h * 0.4);
-    game.view.ctx.lineTo(cx + w * 0.7, top + h * 0.18);
-    game.view.ctx.lineTo(cx + w * 0.28, top);
+    ctx.moveTo(cx - w * 0.28, top);
+    ctx.lineTo(cx - w * 0.7, top + h * 0.18);
+    ctx.lineTo(cx - w * 0.55, top + h * 0.4);
+    ctx.lineTo(cx - w * 0.36, top + h * 0.3);
+    ctx.lineTo(cx - w * 0.36, top + h);
+    ctx.lineTo(cx + w * 0.36, top + h);
+    ctx.lineTo(cx + w * 0.36, top + h * 0.3);
+    ctx.lineTo(cx + w * 0.55, top + h * 0.4);
+    ctx.lineTo(cx + w * 0.7, top + h * 0.18);
+    ctx.lineTo(cx + w * 0.28, top);
   }
-  game.view.ctx.closePath();
-  game.view.ctx.fill();
-  game.view.ctx.strokeStyle = 'rgba(0,0,0,0.3)';
-  game.view.ctx.lineWidth = 0.6;
-  game.view.ctx.stroke();
-  game.view.ctx.strokeStyle = '#95a5a6';
-  game.view.ctx.lineWidth = 0.8;
-  game.view.ctx.beginPath();
-  game.view.ctx.moveTo(cx - w * 0.3, top);
-  game.view.ctx.lineTo(cx, top - 3);
-  game.view.ctx.lineTo(cx + w * 0.3, top);
-  game.view.ctx.moveTo(cx, top - 3);
-  game.view.ctx.lineTo(cx, top - 5);
-  game.view.ctx.stroke();
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+  ctx.lineWidth = 0.6;
+  ctx.stroke();
+  ctx.strokeStyle = '#95a5a6';
+  ctx.lineWidth = 0.8;
+  ctx.beginPath();
+  ctx.moveTo(cx - w * 0.3, top);
+  ctx.lineTo(cx, top - 3);
+  ctx.lineTo(cx + w * 0.3, top);
+  ctx.moveTo(cx, top - 3);
+  ctx.lineTo(cx, top - 5);
+  ctx.stroke();
 }
 
 export function drawWardrobe(it?: GameValue): GameValue {
+  const ctx = game.view.ctx;
   const Z: GameValue = it.zb || 0,
     lux: GameValue = isLux(it);
   const pre = isPremium(it);
@@ -378,12 +384,12 @@ export function drawWardrobe(it?: GameValue): GameValue {
     woodGrain(W, H, 'rgba(0,0,0,0.13)', true, 9);
     if (openK > 0.02) {
       // interno: ripiano, appendiabiti e i vestiti che possiedi
-      game.view.ctx.fillStyle = '#2b1d14';
-      game.view.ctx.fillRect(4, 6, W - 8, H - 18);
-      game.view.ctx.fillStyle = 'rgba(255,230,180,' + 0.12 * openK + ')';
-      game.view.ctx.fillRect(4, 6, W - 8, H - 18);
-      game.view.ctx.fillStyle = '#b2bec3';
-      game.view.ctx.fillRect(6, 16, W - 12, 2);
+      ctx.fillStyle = '#2b1d14';
+      ctx.fillRect(4, 6, W - 8, H - 18);
+      ctx.fillStyle = 'rgba(255,230,180,' + 0.12 * openK + ')';
+      ctx.fillRect(4, 6, W - 8, H - 18);
+      ctx.fillStyle = '#b2bec3';
+      ctx.fillRect(6, 16, W - 12, 2);
       const clothes: GameValue = game.shopCatalog
         .filter(
           (i?: GameValue): GameValue => (i.slot === 'top' || i.slot === 'pants') && ownsItem(i.id),
@@ -400,31 +406,31 @@ export function drawWardrobe(it?: GameValue): GameValue {
             g.slot === 'pants' ? 'pants' : 'top',
           ),
       );
-      game.view.ctx.fillStyle = '#4e342e';
-      game.view.ctx.fillRect(4, H - 30, W - 8, 3);
+      ctx.fillStyle = '#4e342e';
+      ctx.fillRect(4, H - 30, W - 8, 3);
       game.shopCatalog
         .filter((i?: GameValue): GameValue => i.slot === 'shoes' && ownsItem(i.id))
         .slice(0, 4)
         .forEach((g?: GameValue, i?: GameValue): GameValue => {
-          game.view.ctx.fillStyle = g.color;
-          game.view.ctx.fillRect(8 + i * 16, H - 20, 10, 5);
+          ctx.fillStyle = g.color;
+          ctx.fillRect(8 + i * 16, H - 20, 10, 5);
         });
     } else {
-      game.view.ctx.strokeStyle = 'rgba(0,0,0,0.4)';
-      game.view.ctx.lineWidth = 1.2;
-      game.view.ctx.strokeRect(4, 6, W / 2 - 6, H - 18);
-      game.view.ctx.strokeRect(W / 2 + 2, 6, W / 2 - 6, H - 18);
+      ctx.strokeStyle = 'rgba(0,0,0,0.4)';
+      ctx.lineWidth = 1.2;
+      ctx.strokeRect(4, 6, W / 2 - 6, H - 18);
+      ctx.strokeRect(W / 2 + 2, 6, W / 2 - 6, H - 18);
       if (lux || pre) {
-        game.view.ctx.strokeStyle = lux ? '#e5c158' : '#c8ccd0';
-        game.view.ctx.strokeRect(9, 13, W / 2 - 16, H - 32);
-        game.view.ctx.strokeRect(W / 2 + 7, 13, W / 2 - 16, H - 32);
+        ctx.strokeStyle = lux ? '#e5c158' : '#c8ccd0';
+        ctx.strokeRect(9, 13, W / 2 - 16, H - 32);
+        ctx.strokeRect(W / 2 + 7, 13, W / 2 - 16, H - 32);
       }
-      game.view.ctx.fillStyle = lux ? '#f1c40f' : pre ? '#dfe6e9' : '#2d3436';
-      game.view.ctx.fillRect(W / 2 - 6, H * 0.42, 2.5, 16);
-      game.view.ctx.fillRect(W / 2 + 3.5, H * 0.42, 2.5, 16);
+      ctx.fillStyle = lux ? '#f1c40f' : pre ? '#dfe6e9' : '#2d3436';
+      ctx.fillRect(W / 2 - 6, H * 0.42, 2.5, 16);
+      ctx.fillRect(W / 2 + 3.5, H * 0.42, 2.5, 16);
     }
-    game.view.ctx.fillStyle = 'rgba(0,0,0,0.3)';
-    game.view.ctx.fillRect(0, H - 10, W, 10);
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    ctx.fillRect(0, H - 10, W, 10);
   });
   onFace(
     b,
@@ -432,8 +438,8 @@ export function drawWardrobe(it?: GameValue): GameValue {
     (W?: GameValue, H?: GameValue): GameValue => woodGrain(W, H, 'rgba(0,0,0,0.13)', true, 5),
   );
   onFace(b, 'top', (W?: GameValue, H?: GameValue): GameValue => {
-    game.view.ctx.fillStyle = 'rgba(255,255,255,0.08)';
-    game.view.ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = 'rgba(255,255,255,0.08)';
+    ctx.fillRect(0, 0, W, H);
   });
   // ante aperte: con l'armadio ruotato vanno disegnate dopo le altre parti
   if (openK > 0.02)
@@ -474,6 +480,7 @@ export function drawWardrobe(it?: GameValue): GameValue {
 }
 
 export function drawDesk(it?: GameValue, t?: GameValue): GameValue {
+  const ctx = game.view.ctx;
   const Z: GameValue = it.zb || 0,
     lux: GameValue = isLux(it);
   const { x, y, w, h }: GameValue = it;
@@ -500,8 +507,8 @@ export function drawDesk(it?: GameValue, t?: GameValue): GameValue {
     ['left', 'right', 'back', 'west'].forEach(
       (f?: GameValue): GameValue =>
         onFace(top, f, (W?: GameValue, H?: GameValue): GameValue => {
-          game.view.ctx.fillStyle = `hsl(${(t * 90) % 360},90%,60%)`;
-          game.view.ctx.fillRect(0, H - 2, W, 2);
+          ctx.fillStyle = `hsl(${(t * 90) % 360},90%,60%)`;
+          ctx.fillRect(0, H - 2, W, 2);
         }),
     );
   const tz: GameValue = Z + deskH + 5;
@@ -510,14 +517,14 @@ export function drawDesk(it?: GameValue, t?: GameValue): GameValue {
     z0: tz + 6,
   });
   onFace(mon, 'left', (W?: GameValue, H?: GameValue): GameValue => {
-    const g: GameValue = game.view.ctx.createLinearGradient(0, 0, W, H);
+    const g: GameValue = ctx.createLinearGradient(0, 0, W, H);
     g.addColorStop(0, lux ? '#6c5ce7' : pre ? '#00b894' : '#0984e3');
     g.addColorStop(1, lux ? '#00cec9' : pre ? '#81ecec' : '#74b9ff');
-    game.view.ctx.fillStyle = g;
-    game.view.ctx.fillRect(2, 2, W - 4, H - 4);
-    game.view.ctx.fillStyle = 'rgba(255,255,255,0.65)';
+    ctx.fillStyle = g;
+    ctx.fillRect(2, 2, W - 4, H - 4);
+    ctx.fillStyle = 'rgba(255,255,255,0.65)';
     for (let i: GameValue = 0; i < 4; i++)
-      game.view.ctx.fillRect(5, 5 + i * 5, (W - 14) * (0.35 + 0.5 * rnd(i + 3)), 1.5);
+      ctx.fillRect(5, 5 + i * 5, (W - 14) * (0.35 + 0.5 * rnd(i + 3)), 1.5);
   });
   box(x, y + h * 0.12, w * 0.45, 10, 2, '#dfe6e9', { z0: tz });
   box(x + w * 0.32, y + h * 0.1, 6, 8, 2, '#dfe6e9', { z0: tz });
@@ -530,6 +537,7 @@ export function drawDesk(it?: GameValue, t?: GameValue): GameValue {
 }
 
 export function drawNightstand(it?: GameValue): GameValue {
+  const ctx = game.view.ctx;
   const Z: GameValue = it.zb || 0,
     lux: GameValue = isLux(it);
   const pre = isPremium(it);
@@ -537,31 +545,32 @@ export function drawNightstand(it?: GameValue): GameValue {
   const b: GameValue = box(it.x, it.y, it.w, it.h, it.z, c, { z0: Z });
   onFace(b, 'left', (W?: GameValue, H?: GameValue): GameValue => {
     if (lux) {
-      game.view.ctx.strokeStyle = 'rgba(120,120,140,0.25)';
-      game.view.ctx.beginPath();
-      game.view.ctx.moveTo(2, H * 0.2);
-      game.view.ctx.bezierCurveTo(W * 0.4, H * 0.5, W * 0.6, H * 0.1, W, H * 0.6);
-      game.view.ctx.stroke();
+      ctx.strokeStyle = 'rgba(120,120,140,0.25)';
+      ctx.beginPath();
+      ctx.moveTo(2, H * 0.2);
+      ctx.bezierCurveTo(W * 0.4, H * 0.5, W * 0.6, H * 0.1, W, H * 0.6);
+      ctx.stroke();
     } else woodGrain(W, H, 'rgba(0,0,0,0.15)', false, 4);
-    game.view.ctx.strokeStyle = 'rgba(0,0,0,0.35)';
-    game.view.ctx.lineWidth = 1;
-    game.view.ctx.strokeRect(3, 3, W - 6, H / 2 - 4);
-    game.view.ctx.strokeRect(3, H / 2 + 1, W - 6, H / 2 - 6);
-    game.view.ctx.fillStyle = lux ? '#d4ac0d' : pre ? '#dfe6e9' : '#2d3436';
-    game.view.ctx.fillRect(W / 2 - 3, H / 4 - 1, 6, 2.5);
-    game.view.ctx.fillRect(W / 2 - 3, H * 0.75 - 2, 6, 2.5);
+    ctx.strokeStyle = 'rgba(0,0,0,0.35)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(3, 3, W - 6, H / 2 - 4);
+    ctx.strokeRect(3, H / 2 + 1, W - 6, H / 2 - 6);
+    ctx.fillStyle = lux ? '#d4ac0d' : pre ? '#dfe6e9' : '#2d3436';
+    ctx.fillRect(W / 2 - 3, H / 4 - 1, 6, 2.5);
+    ctx.fillRect(W / 2 - 3, H * 0.75 - 2, 6, 2.5);
   });
   if (!it.zb) {
     const ck: GameValue = box(it.x, it.y, 14, 7, 8, '#2d3436', { z0: Z + it.z });
     onFace(ck, 'left', (_W?: GameValue, H?: GameValue): GameValue => {
-      game.view.ctx.fillStyle = '#ff4757';
-      game.view.ctx.font = 'bold 5px monospace';
-      game.view.ctx.fillText(gameClockText(), 1, H - 2);
+      ctx.fillStyle = '#ff4757';
+      ctx.font = 'bold 5px monospace';
+      ctx.fillText(gameClockText(), 1, H - 2);
     });
   }
 }
 
 export function drawLamp(it?: GameValue, _t?: GameValue, lights?: GameValue): GameValue {
+  const ctx = game.view.ctx;
   const Z: GameValue = it.zb || 0,
     lux: GameValue = isLux(it);
   box(it.x, it.y, it.w * 0.7, it.h * 0.7, 3, '#2d3436', { z0: Z });
@@ -573,11 +582,11 @@ export function drawLamp(it?: GameValue, _t?: GameValue, lights?: GameValue): Ga
     edge: 'rgba(0,0,0,0.15)',
   });
   onFace(sh, 'left', (W?: GameValue, H?: GameValue): GameValue => {
-    const g: GameValue = game.view.ctx.createLinearGradient(0, 0, 0, H);
+    const g: GameValue = ctx.createLinearGradient(0, 0, 0, H);
     g.addColorStop(0, 'rgba(255,240,180,0)');
     g.addColorStop(1, 'rgba(255,214,120,0.55)');
-    game.view.ctx.fillStyle = g;
-    game.view.ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, W, H);
   });
   if (lights && !it.zb)
     lights.push({
@@ -590,6 +599,7 @@ export function drawLamp(it?: GameValue, _t?: GameValue, lights?: GameValue): Ga
 }
 
 export function drawSofa(it?: GameValue): GameValue {
+  const ctx = game.view.ctx;
   const Z: GameValue = it.zb || 0,
     lux: GameValue = isLux(it);
   const pre = isPremium(it);
@@ -607,25 +617,25 @@ export function drawSofa(it?: GameValue): GameValue {
   const back: GameValue = box(x, y - h / 2 + 6, w, 12, it.z, game.darken(c, 0.05), { z0: Zs });
   onFace(back, 'left', (W?: GameValue, _H?: GameValue): GameValue => {
     if (lux || pre) {
-      game.view.ctx.fillStyle = lux ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.35)';
+      ctx.fillStyle = lux ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.35)';
       for (let i: GameValue = 0; i < 4; i++)
         for (let j: GameValue = 0; j < 2; j++) {
-          game.view.ctx.beginPath();
-          game.view.ctx.arc((W * (i + 0.5)) / 4, 6 + j * 8, 1.2, 0, 6.3);
-          game.view.ctx.fill();
+          ctx.beginPath();
+          ctx.arc((W * (i + 0.5)) / 4, 6 + j * 8, 1.2, 0, 6.3);
+          ctx.fill();
         }
     }
   });
   box(x - w / 2 + arm / 2, y + 4, arm, h - 8, it.z * 0.65, c, { z0: Zs });
   const seat: GameValue = box(x, y + 5, w - arm * 2, h - 14, it.z * 0.45, c, { z0: Zs });
   onFace(seat, 'top', (W?: GameValue, H?: GameValue): GameValue => {
-    game.view.ctx.strokeStyle = 'rgba(0,0,0,0.25)';
-    game.view.ctx.lineWidth = 1;
+    ctx.strokeStyle = 'rgba(0,0,0,0.25)';
+    ctx.lineWidth = 1;
     for (let i: GameValue = 1; i < 3; i++) {
-      game.view.ctx.beginPath();
-      game.view.ctx.moveTo((W * i) / 3, 0);
-      game.view.ctx.lineTo((W * i) / 3, H);
-      game.view.ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo((W * i) / 3, 0);
+      ctx.lineTo((W * i) / 3, H);
+      ctx.stroke();
     }
   });
   if (!it.zb)
@@ -642,6 +652,7 @@ export function drawSofa(it?: GameValue): GameValue {
 }
 
 export function drawTV(it?: GameValue, t?: GameValue, lights?: GameValue): GameValue {
+  const ctx = game.view.ctx;
   const Z: GameValue = it.zb || 0,
     lux: GameValue = isLux(it);
   const { x, y, w, h }: GameValue = it;
@@ -651,9 +662,9 @@ export function drawTV(it?: GameValue, t?: GameValue, lights?: GameValue): GameV
     z0: Z,
   });
   onFace(stand, 'left', (W?: GameValue, H?: GameValue): GameValue => {
-    game.view.ctx.strokeStyle = 'rgba(255,255,255,0.14)';
-    game.view.ctx.strokeRect(3, 3, W / 2 - 5, H - 6);
-    game.view.ctx.strokeRect(W / 2 + 2, 3, W / 2 - 5, H - 6);
+    ctx.strokeStyle = 'rgba(255,255,255,0.14)';
+    ctx.strokeRect(3, 3, W / 2 - 5, H - 6);
+    ctx.strokeRect(W / 2 + 2, 3, W / 2 - 5, H - 6);
   });
   box(x, y - 4, 6, 4, 4, '#222', { z0: Z + standH });
   const scr: GameValue = box(
@@ -669,22 +680,22 @@ export function drawTV(it?: GameValue, t?: GameValue, lights?: GameValue): GameV
   );
   onFace(scr, 'left', (W?: GameValue, H?: GameValue): GameValue => {
     const hue: GameValue = (t * 35) % 360;
-    const g: GameValue = game.view.ctx.createLinearGradient(0, 0, W, H);
+    const g: GameValue = ctx.createLinearGradient(0, 0, W, H);
     g.addColorStop(0, `hsl(${hue},70%,48%)`);
     g.addColorStop(1, `hsl(${(hue + 120) % 360},70%,32%)`);
-    game.view.ctx.fillStyle = g;
-    game.view.ctx.fillRect(1.5, 1.5, W - 3, H - 3);
-    game.view.ctx.fillStyle = 'rgba(255,255,255,0.85)';
-    game.view.ctx.beginPath();
-    game.view.ctx.arc(W * (0.3 + 0.4 * ((t * 0.05) % 1)), H * 0.32, H * 0.12, 0, 6.3);
-    game.view.ctx.fill();
-    game.view.ctx.fillStyle = 'rgba(0,0,0,0.35)';
-    game.view.ctx.beginPath();
-    game.view.ctx.moveTo(1.5, H - 1.5);
-    game.view.ctx.quadraticCurveTo(W * 0.3, H * 0.4, W * 0.62, H - 1.5);
-    game.view.ctx.fill();
-    game.view.ctx.fillStyle = 'rgba(255,255,255,0.08)';
-    game.view.ctx.fillRect(1.5, 1.5, W * 0.35, H - 3);
+    ctx.fillStyle = g;
+    ctx.fillRect(1.5, 1.5, W - 3, H - 3);
+    ctx.fillStyle = 'rgba(255,255,255,0.85)';
+    ctx.beginPath();
+    ctx.arc(W * (0.3 + 0.4 * ((t * 0.05) % 1)), H * 0.32, H * 0.12, 0, 6.3);
+    ctx.fill();
+    ctx.fillStyle = 'rgba(0,0,0,0.35)';
+    ctx.beginPath();
+    ctx.moveTo(1.5, H - 1.5);
+    ctx.quadraticCurveTo(W * 0.3, H * 0.4, W * 0.62, H - 1.5);
+    ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.08)';
+    ctx.fillRect(1.5, 1.5, W * 0.35, H - 3);
   });
   if (lights && !it.zb)
     lights.push({
@@ -696,6 +707,7 @@ export function drawTV(it?: GameValue, t?: GameValue, lights?: GameValue): GameV
 }
 
 export function drawPlant(it?: GameValue, t?: GameValue): GameValue {
+  const ctx = game.view.ctx;
   const Z: GameValue = it.zb || 0,
     lux: GameValue = isLux(it),
     s: GameValue = isoScale();
@@ -710,7 +722,7 @@ export function drawPlant(it?: GameValue, t?: GameValue): GameValue {
       [7, -2, 8],
       [0, -7, 6],
     ].forEach(([dx, dy, r]: GameValue = {}, _i?: GameValue): GameValue => {
-      const g: GameValue = game.view.ctx.createRadialGradient(
+      const g: GameValue = ctx.createRadialGradient(
         top.x + dx * s - 2,
         top.y + dy * s - 3,
         1,
@@ -720,23 +732,23 @@ export function drawPlant(it?: GameValue, t?: GameValue): GameValue {
       );
       g.addColorStop(0, '#76d7a1');
       g.addColorStop(1, '#117a65');
-      game.view.ctx.fillStyle = g;
-      game.view.ctx.beginPath();
-      game.view.ctx.ellipse(top.x + dx * s, top.y + dy * s, r * 1.4 * s, r * 0.8 * s, 0, 0, 6.3);
-      game.view.ctx.fill();
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.ellipse(top.x + dx * s, top.y + dy * s, r * 1.4 * s, r * 0.8 * s, 0, 0, 6.3);
+      ctx.fill();
     });
     return;
   }
   if (isPremium(it)) {
     const vase: GameValue = box(it.x, it.y, sz * 0.7, sz * 0.7, 16, '#ecf0f1', { z0: Z });
     onFace(vase, 'left', (W?: GameValue, H?: GameValue): GameValue => {
-      game.view.ctx.fillStyle = '#2e86de';
-      game.view.ctx.fillRect(0, H * 0.35, W, 2.5);
-      game.view.ctx.fillRect(0, H * 0.6, W, 1.2);
+      ctx.fillStyle = '#2e86de';
+      ctx.fillRect(0, H * 0.35, W, 2.5);
+      ctx.fillRect(0, H * 0.6, W, 1.2);
     });
     onFace(vase, 'right', (W?: GameValue, H?: GameValue): GameValue => {
-      game.view.ctx.fillStyle = '#2e86de';
-      game.view.ctx.fillRect(0, H * 0.35, W, 2.5);
+      ctx.fillStyle = '#2e86de';
+      ctx.fillRect(0, H * 0.35, W, 2.5);
     });
     top = isoProject(it.x, it.y, Z + 16);
     const kk: GameValue = (it.z / 55) * s;
@@ -745,26 +757,26 @@ export function drawPlant(it?: GameValue, t?: GameValue): GameValue {
       const len = (20 + rnd(i + 11) * 10) * kk;
       const cx = top.x + Math.cos(a) * len * 0.55,
         cy = top.y + Math.sin(a) * len * 0.55;
-      game.view.ctx.strokeStyle = '#145a32';
-      game.view.ctx.lineWidth = 1 * kk;
-      game.view.ctx.beginPath();
-      game.view.ctx.moveTo(top.x, top.y);
-      game.view.ctx.lineTo(cx, cy);
-      game.view.ctx.stroke();
-      game.view.ctx.fillStyle = i % 2 ? '#1e8449' : '#239b56';
-      game.view.ctx.beginPath();
-      game.view.ctx.ellipse(cx, cy, len * 0.38, 6 * kk, a, 0, 6.3);
-      game.view.ctx.fill();
+      ctx.strokeStyle = '#145a32';
+      ctx.lineWidth = 1 * kk;
+      ctx.beginPath();
+      ctx.moveTo(top.x, top.y);
+      ctx.lineTo(cx, cy);
+      ctx.stroke();
+      ctx.fillStyle = i % 2 ? '#1e8449' : '#239b56';
+      ctx.beginPath();
+      ctx.ellipse(cx, cy, len * 0.38, 6 * kk, a, 0, 6.3);
+      ctx.fill();
       // tagli tipici delle foglie di monstera
-      game.view.ctx.strokeStyle = 'rgba(255,255,255,0.35)';
-      game.view.ctx.lineWidth = 0.8;
+      ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+      ctx.lineWidth = 0.8;
       for (const f of [-0.5, 0, 0.5]) {
         const px = cx + Math.cos(a) * len * 0.15 * f,
           py = cy + Math.sin(a) * len * 0.15 * f;
-        game.view.ctx.beginPath();
-        game.view.ctx.moveTo(px, py);
-        game.view.ctx.lineTo(px + Math.cos(a + 1.4) * 4 * kk, py + Math.sin(a + 1.4) * 4 * kk);
-        game.view.ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(px, py);
+        ctx.lineTo(px + Math.cos(a + 1.4) * 4 * kk, py + Math.sin(a + 1.4) * 4 * kk);
+        ctx.stroke();
       }
     }
     return;
@@ -779,21 +791,21 @@ export function drawPlant(it?: GameValue, t?: GameValue): GameValue {
     { z0: Z },
   );
   onFace(pot, 'left', (W?: GameValue, _H?: GameValue): GameValue => {
-    game.view.ctx.fillStyle = 'rgba(255,255,255,0.18)';
-    game.view.ctx.fillRect(0, 0, W, 3);
+    ctx.fillStyle = 'rgba(255,255,255,0.18)';
+    ctx.fillRect(0, 0, W, 3);
   });
   onFace(pot, 'top', (W?: GameValue, H?: GameValue): GameValue => {
-    game.view.ctx.fillStyle = '#3e2723';
-    game.view.ctx.fillRect(1.5, 1.5, W - 3, H - 3);
+    ctx.fillStyle = '#3e2723';
+    ctx.fillRect(1.5, 1.5, W - 3, H - 3);
   });
   top = isoProject(it.x, it.y, Z + pot.d);
   const k: GameValue = (it.z / 55) * s;
   for (let i: GameValue = 0; i < 8; i++) {
     const a: GameValue = -Math.PI / 2 + (i - 3.5) * 0.32 + Math.sin(t * 1.4 + i) * 0.04;
     const len: GameValue = (16 + rnd(i + 2) * 10) * k;
-    game.view.ctx.fillStyle = i % 2 ? '#2e8b57' : '#3cb371';
-    game.view.ctx.beginPath();
-    game.view.ctx.ellipse(
+    ctx.fillStyle = i % 2 ? '#2e8b57' : '#3cb371';
+    ctx.beginPath();
+    ctx.ellipse(
       top.x + Math.cos(a) * len * 0.5,
       top.y + Math.sin(a) * len * 0.5,
       len * 0.55,
@@ -802,62 +814,64 @@ export function drawPlant(it?: GameValue, t?: GameValue): GameValue {
       0,
       6.3,
     );
-    game.view.ctx.fill();
+    ctx.fill();
   }
 }
 
 export function drawSafe(it?: GameValue): GameValue {
+  const ctx = game.view.ctx;
   const Z: GameValue = it.zb || 0;
   const b: GameValue = box(it.x, it.y, it.w, it.h, it.z, '#4b5563', { z0: Z });
   onFace(b, 'left', (W?: GameValue, H?: GameValue): GameValue => {
-    const g: GameValue = game.view.ctx.createLinearGradient(0, 0, W, H);
+    const g: GameValue = ctx.createLinearGradient(0, 0, W, H);
     g.addColorStop(0, '#7b8794');
     g.addColorStop(1, '#3a4250');
-    game.view.ctx.fillStyle = g;
-    game.view.ctx.fillRect(4, 4, W - 8, H - 8);
-    game.view.ctx.strokeStyle = 'rgba(0,0,0,0.55)';
-    game.view.ctx.lineWidth = 1;
-    game.view.ctx.strokeRect(4, 4, W - 8, H - 8);
-    game.view.ctx.fillStyle = '#e5e7eb';
-    game.view.ctx.beginPath();
-    game.view.ctx.arc(W * 0.45, H * 0.45, 7, 0, 6.3);
-    game.view.ctx.fill();
-    game.view.ctx.strokeStyle = '#111';
-    game.view.ctx.beginPath();
-    game.view.ctx.arc(W * 0.45, H * 0.45, 4.5, 0, 6.3);
-    game.view.ctx.stroke();
-    game.view.ctx.beginPath();
-    game.view.ctx.moveTo(W * 0.45, H * 0.45);
-    game.view.ctx.lineTo(W * 0.45 + 4, H * 0.45 - 3);
-    game.view.ctx.stroke();
-    game.view.ctx.fillStyle = '#cbd5e1';
-    game.view.ctx.fillRect(W * 0.76, H * 0.32, 3, 13);
-    game.view.ctx.fillStyle = '#1f2937';
-    game.view.ctx.fillRect(5, H * 0.2, 2, 6);
-    game.view.ctx.fillRect(5, H * 0.7, 2, 6);
+    ctx.fillStyle = g;
+    ctx.fillRect(4, 4, W - 8, H - 8);
+    ctx.strokeStyle = 'rgba(0,0,0,0.55)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(4, 4, W - 8, H - 8);
+    ctx.fillStyle = '#e5e7eb';
+    ctx.beginPath();
+    ctx.arc(W * 0.45, H * 0.45, 7, 0, 6.3);
+    ctx.fill();
+    ctx.strokeStyle = '#111';
+    ctx.beginPath();
+    ctx.arc(W * 0.45, H * 0.45, 4.5, 0, 6.3);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(W * 0.45, H * 0.45);
+    ctx.lineTo(W * 0.45 + 4, H * 0.45 - 3);
+    ctx.stroke();
+    ctx.fillStyle = '#cbd5e1';
+    ctx.fillRect(W * 0.76, H * 0.32, 3, 13);
+    ctx.fillStyle = '#1f2937';
+    ctx.fillRect(5, H * 0.2, 2, 6);
+    ctx.fillRect(5, H * 0.7, 2, 6);
   });
 }
 
 export function drawStove(it?: GameValue): GameValue {
+  const ctx = game.view.ctx;
   const cooking: GameValue = game.player.hasFoodInInventory || game.player.foodIsCooked;
   const b: GameValue = box(it.x, it.y, it.w, it.h, it.z - 4, '#ecf0f1');
   onFace(b, 'left', (W?: GameValue, H?: GameValue): GameValue => {
-    game.view.ctx.fillStyle = '#2d3436';
-    game.view.ctx.fillRect(6, 12, W - 12, H - 20);
-    game.view.ctx.fillStyle = `rgba(255,140,0,${game.player.foodIsCooked ? 0.35 : 0.08})`;
-    game.view.ctx.fillRect(9, 15, W - 18, H - 26);
-    game.view.ctx.fillStyle = '#b2bec3';
-    game.view.ctx.fillRect(8, 6, W - 16, 3);
+    ctx.fillStyle = '#2d3436';
+    ctx.fillRect(6, 12, W - 12, H - 20);
+    ctx.fillStyle = `rgba(255,140,0,${game.player.foodIsCooked ? 0.35 : 0.08})`;
+    ctx.fillRect(9, 15, W - 18, H - 26);
+    ctx.fillStyle = '#b2bec3';
+    ctx.fillRect(8, 6, W - 16, 3);
     for (let i: GameValue = 0; i < 4; i++) {
-      game.view.ctx.fillStyle = '#636e72';
-      game.view.ctx.beginPath();
-      game.view.ctx.arc(10 + (i * (W - 20)) / 3, 3, 1.6, 0, 6.3);
-      game.view.ctx.fill();
+      ctx.fillStyle = '#636e72';
+      ctx.beginPath();
+      ctx.arc(10 + (i * (W - 20)) / 3, 3, 1.6, 0, 6.3);
+      ctx.fill();
     }
   });
   onFace(b, 'right', (W?: GameValue, H?: GameValue): GameValue => {
-    game.view.ctx.strokeStyle = 'rgba(0,0,0,0.2)';
-    game.view.ctx.strokeRect(4, 6, W - 8, H - 12);
+    ctx.strokeStyle = 'rgba(0,0,0,0.2)';
+    ctx.strokeRect(4, 6, W - 8, H - 12);
   });
   const top: GameValue = box(it.x, it.y, it.w, it.h, 4, '#2d3436', { z0: it.z - 4 });
   onFace(top, 'top', (W?: GameValue, H?: GameValue): GameValue => {
@@ -867,15 +881,15 @@ export function drawStove(it?: GameValue): GameValue {
       [0.28, 0.72],
       [0.72, 0.72],
     ].forEach(([u, v]: GameValue = {}, i?: GameValue): GameValue => {
-      game.view.ctx.strokeStyle =
+      ctx.strokeStyle =
         cooking && i === 2 ? `rgba(255,${90 + Math.random() * 60},0,0.95)` : '#636e72';
-      game.view.ctx.lineWidth = 2;
-      game.view.ctx.beginPath();
-      game.view.ctx.arc(W * u, H * v, W * 0.12, 0, 6.3);
-      game.view.ctx.stroke();
-      game.view.ctx.beginPath();
-      game.view.ctx.arc(W * u, H * v, W * 0.05, 0, 6.3);
-      game.view.ctx.stroke();
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(W * u, H * v, W * 0.12, 0, 6.3);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(W * u, H * v, W * 0.05, 0, 6.3);
+      ctx.stroke();
     });
   });
   if (cooking) {
@@ -883,8 +897,8 @@ export function drawStove(it?: GameValue): GameValue {
       z0: it.z,
     });
     onFace(pot, 'top', (W?: GameValue, H?: GameValue): GameValue => {
-      game.view.ctx.fillStyle = game.player.foodIsCooked ? '#e17055' : '#fdcb6e';
-      game.view.ctx.fillRect(2, 2, W - 4, H - 4);
+      ctx.fillStyle = game.player.foodIsCooked ? '#e17055' : '#fdcb6e';
+      ctx.fillRect(2, 2, W - 4, H - 4);
     });
     if (game.player.foodIsCooked) {
       const p: GameValue = isoProject(it.x - it.w * 0.22, it.y + it.h * 0.22, it.z + 14),
@@ -892,16 +906,10 @@ export function drawStove(it?: GameValue): GameValue {
         tt: GameValue = performance.now() / 1000;
       for (let i: GameValue = 0; i < 3; i++) {
         const ph: GameValue = (tt * 0.6 + i / 3) % 1;
-        game.view.ctx.fillStyle = `rgba(255,255,255,${0.5 * (1 - ph)})`;
-        game.view.ctx.beginPath();
-        game.view.ctx.arc(
-          p.x + Math.sin(ph * 6 + i) * 4 * s,
-          p.y - ph * 30 * s,
-          (3 + ph * 5) * s,
-          0,
-          6.3,
-        );
-        game.view.ctx.fill();
+        ctx.fillStyle = `rgba(255,255,255,${0.5 * (1 - ph)})`;
+        ctx.beginPath();
+        ctx.arc(p.x + Math.sin(ph * 6 + i) * 4 * s, p.y - ph * 30 * s, (3 + ph * 5) * s, 0, 6.3);
+        ctx.fill();
       }
     }
   }
@@ -1434,50 +1442,53 @@ export function drawFridge(it?: GameValue): GameValue {
 }
 
 export function drawToilet(it?: GameValue): GameValue {
+  const ctx = game.view.ctx;
   const tank: GameValue = box(it.x, it.y - it.h / 2 + 8, it.w * 0.8, 14, 42, '#ffffff');
   onFace(tank, 'top', (W?: GameValue, H?: GameValue): GameValue => {
-    game.view.ctx.fillStyle = '#b2bec3';
-    game.view.ctx.fillRect(W / 2 - 4, H / 2 - 1.5, 8, 3);
+    ctx.fillStyle = '#b2bec3';
+    ctx.fillRect(W / 2 - 4, H / 2 - 1.5, 8, 3);
   });
   const base: GameValue = box(it.x, it.y + 6, it.w * 0.55, it.h * 0.58, 18, '#f5f6fa');
   onFace(base, 'top', (W?: GameValue, H?: GameValue): GameValue => {
-    game.view.ctx.fillStyle = '#dcdde1';
-    game.view.ctx.beginPath();
-    game.view.ctx.ellipse(W / 2, H / 2, W / 2, H / 2, 0, 0, 6.3);
-    game.view.ctx.fill();
-    game.view.ctx.fillStyle = '#9ad0f5';
-    game.view.ctx.beginPath();
-    game.view.ctx.ellipse(W / 2, H / 2, W / 3.3, H / 3.3, 0, 0, 6.3);
-    game.view.ctx.fill();
+    ctx.fillStyle = '#dcdde1';
+    ctx.beginPath();
+    ctx.ellipse(W / 2, H / 2, W / 2, H / 2, 0, 0, 6.3);
+    ctx.fill();
+    ctx.fillStyle = '#9ad0f5';
+    ctx.beginPath();
+    ctx.ellipse(W / 2, H / 2, W / 3.3, H / 3.3, 0, 0, 6.3);
+    ctx.fill();
   });
 }
 
 export function drawSink(it?: GameValue): GameValue {
+  const ctx = game.view.ctx;
   const cab: GameValue = box(it.x, it.y, it.w, it.h, it.z - 5, it.color || '#0984e3');
   onFace(cab, 'left', (W?: GameValue, H?: GameValue): GameValue => {
-    game.view.ctx.strokeStyle = 'rgba(255,255,255,0.35)';
-    game.view.ctx.strokeRect(3, 3, W / 2 - 4, H - 6);
-    game.view.ctx.strokeRect(W / 2 + 1, 3, W / 2 - 4, H - 6);
-    game.view.ctx.fillStyle = '#dfe6e9';
-    game.view.ctx.fillRect(W / 2 - 5, H * 0.3, 2, 8);
-    game.view.ctx.fillRect(W / 2 + 3, H * 0.3, 2, 8);
+    ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+    ctx.strokeRect(3, 3, W / 2 - 4, H - 6);
+    ctx.strokeRect(W / 2 + 1, 3, W / 2 - 4, H - 6);
+    ctx.fillStyle = '#dfe6e9';
+    ctx.fillRect(W / 2 - 5, H * 0.3, 2, 8);
+    ctx.fillRect(W / 2 + 3, H * 0.3, 2, 8);
   });
   const top: GameValue = box(it.x, it.y, it.w + 4, it.h + 4, 5, '#f5f6fa', { z0: it.z - 5 });
   onFace(top, 'top', (W?: GameValue, H?: GameValue): GameValue => {
-    game.view.ctx.fillStyle = '#c8d6e5';
-    game.view.ctx.beginPath();
-    game.view.ctx.ellipse(W / 2, H / 2 + 2, W * 0.32, H * 0.3, 0, 0, 6.3);
-    game.view.ctx.fill();
-    game.view.ctx.fillStyle = '#74b9ff';
-    game.view.ctx.beginPath();
-    game.view.ctx.ellipse(W / 2, H / 2 + 3, W * 0.22, H * 0.18, 0, 0, 6.3);
-    game.view.ctx.fill();
+    ctx.fillStyle = '#c8d6e5';
+    ctx.beginPath();
+    ctx.ellipse(W / 2, H / 2 + 2, W * 0.32, H * 0.3, 0, 0, 6.3);
+    ctx.fill();
+    ctx.fillStyle = '#74b9ff';
+    ctx.beginPath();
+    ctx.ellipse(W / 2, H / 2 + 3, W * 0.22, H * 0.18, 0, 0, 6.3);
+    ctx.fill();
   });
   box(it.x, it.y - it.h / 2 + 5, 4, 4, 12, '#b2bec3', { z0: it.z });
   box(it.x, it.y - it.h / 2 + 9, 4, 9, 3, '#b2bec3', { z0: it.z + 9 });
 }
 
 export function drawShower(it?: GameValue, t?: GameValue): GameValue {
+  const ctx = game.view.ctx;
   const sc: GameValue = isoScale();
   box(it.x, it.y, it.w, it.h, 6, '#dfe6e9');
   const H: GameValue = it.z;
@@ -1486,10 +1497,10 @@ export function drawShower(it?: GameValue, t?: GameValue): GameValue {
   const occ: GameValue = game.frameShowerActors;
   if (occ.length) {
     occ.forEach((a?: GameValue): GameValue => {
-      game.view.ctx.save();
-      game.view.ctx.translate(0, -6 * sc);
+      ctx.save();
+      ctx.translate(0, -6 * sc);
       drawPlayerAvatar(a.x, a.y, '', t, a.look, false, '');
-      game.view.ctx.restore();
+      ctx.restore();
     });
     drawShowerWater(it, t, occ);
   }
@@ -1504,17 +1515,17 @@ export function drawShower(it?: GameValue, t?: GameValue): GameValue {
     (f?: GameValue): GameValue =>
       onFace(glass, f, (W?: GameValue, Hh?: GameValue): GameValue => {
         if (game.showerFog > 0.01) {
-          game.view.ctx.fillStyle = 'rgba(235,245,250,' + 0.5 * game.showerFog + ')';
-          game.view.ctx.fillRect(0, 0, W, Hh);
+          ctx.fillStyle = 'rgba(235,245,250,' + 0.5 * game.showerFog + ')';
+          ctx.fillRect(0, 0, W, Hh);
         }
-        game.view.ctx.strokeStyle = 'rgba(255,255,255,0.45)';
-        game.view.ctx.lineWidth = 2;
-        game.view.ctx.beginPath();
-        game.view.ctx.moveTo(W * 0.15, Hh * 0.25);
-        game.view.ctx.lineTo(W * 0.4, Hh * 0.08);
-        game.view.ctx.moveTo(W * 0.2, Hh * 0.45);
-        game.view.ctx.lineTo(W * 0.55, Hh * 0.18);
-        game.view.ctx.stroke();
+        ctx.strokeStyle = 'rgba(255,255,255,0.45)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(W * 0.15, Hh * 0.25);
+        ctx.lineTo(W * 0.4, Hh * 0.08);
+        ctx.moveTo(W * 0.2, Hh * 0.45);
+        ctx.lineTo(W * 0.55, Hh * 0.18);
+        ctx.stroke();
       }),
   );
   if (game.showerFog > 0.01) {
@@ -1526,33 +1537,34 @@ export function drawShower(it?: GameValue, t?: GameValue): GameValue {
         it.y + Math.cos(t * 0.6 + i * 1.7) * 10,
         40 + ph * 110,
       );
-      game.view.ctx.fillStyle =
-        'rgba(245,250,255,' + game.showerFog * 0.4 * Math.sin(Math.PI * ph) + ')';
-      game.view.ctx.beginPath();
-      game.view.ctx.arc(p.x, p.y, (9 + ph * 16) * sc, 0, 6.3);
-      game.view.ctx.fill();
+      ctx.fillStyle = 'rgba(245,250,255,' + game.showerFog * 0.4 * Math.sin(Math.PI * ph) + ')';
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, (9 + ph * 16) * sc, 0, 6.3);
+      ctx.fill();
     }
   }
 }
 
 export function drawCounter(it?: GameValue): GameValue {
+  const ctx = game.view.ctx;
   const b: GameValue = box(it.x, it.y, it.w, it.h, it.z - 5, it.color || '#d35400');
   onFace(b, 'left', (W?: GameValue, H?: GameValue): GameValue => {
     woodGrain(W, H, 'rgba(0,0,0,0.15)', true, 10);
-    game.view.ctx.fillStyle = 'rgba(255,255,255,0.9)';
-    game.view.ctx.font = 'bold 9px sans-serif';
-    game.view.ctx.textAlign = 'center';
-    game.view.ctx.fillText('CASSA', W / 2, H / 2 + 3);
+    ctx.fillStyle = 'rgba(255,255,255,0.9)';
+    ctx.font = 'bold 9px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('CASSA', W / 2, H / 2 + 3);
   });
   box(it.x, it.y, it.w + 6, it.h + 6, 5, '#f5f6fa', { z0: it.z - 5 });
   const reg: GameValue = box(it.x + it.w * 0.28, it.y, 22, 16, 12, '#2d3436', { z0: it.z });
   onFace(reg, 'left', (W?: GameValue, _H?: GameValue): GameValue => {
-    game.view.ctx.fillStyle = '#55efc4';
-    game.view.ctx.fillRect(3, 2, W - 6, 5);
+    ctx.fillStyle = '#55efc4';
+    ctx.fillRect(3, 2, W - 6, 5);
   });
 }
 
 export function drawShelf(it?: GameValue, t?: GameValue): GameValue {
+  const ctx = game.view.ctx;
   const plat: GameValue = box(it.x, it.y, it.w, it.h, 12, '#f5f6fa');
   // Espone il prossimo acquisto (standard → pregiato → lusso); col lusso già preso mostra quello.
   const def: GameValue =
@@ -1560,12 +1572,12 @@ export function drawShelf(it?: GameValue, t?: GameValue): GameValue {
     tiersOf(game.furnitureCatalog, it.category).at(-1);
   if (!def) return;
   onFace(plat, 'left', (W?: GameValue, H?: GameValue): GameValue => {
-    game.view.ctx.fillStyle = { std: '#ff4757', premium: '#8e44ad', lux: '#f1c40f' }[tierOf(def)];
-    game.view.ctx.fillRect(W / 2 - 13, 2, 26, H - 4);
-    game.view.ctx.fillStyle = '#fff';
-    game.view.ctx.font = 'bold 7px sans-serif';
-    game.view.ctx.textAlign = 'center';
-    game.view.ctx.fillText(def.price + '€', W / 2, H - 4);
+    ctx.fillStyle = { std: '#ff4757', premium: '#8e44ad', lux: '#f1c40f' }[tierOf(def)];
+    ctx.fillRect(W / 2 - 13, 2, 26, H - 4);
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 7px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(def.price + '€', W / 2, H - 4);
   });
   const pd: GameValue = def.propData;
   const k: GameValue = Math.min((it.w - 8) / pd.w, (it.h - 8) / pd.h, 1);
@@ -1581,22 +1593,24 @@ export function drawShelf(it?: GameValue, t?: GameValue): GameValue {
 }
 
 export function drawExitMat(it?: GameValue, text?: GameValue): GameValue {
+  const ctx = game.view.ctx;
   const b: GameValue = box(it.x, it.y - 10, Math.max(it.w, 64), 28, 2, '#7a2828', {
     edge: 'rgba(0,0,0,0.3)',
   });
   onFace(b, 'top', (W?: GameValue, H?: GameValue): GameValue => {
-    game.view.ctx.strokeStyle = 'rgba(255,255,255,0.4)';
-    game.view.ctx.setLineDash([3, 2]);
-    game.view.ctx.strokeRect(3, 3, W - 6, H - 6);
-    game.view.ctx.setLineDash([]);
-    game.view.ctx.fillStyle = '#fff';
-    game.view.ctx.font = 'bold 8px sans-serif';
-    game.view.ctx.textAlign = 'center';
-    game.view.ctx.fillText(text, W / 2, H / 2 + 3);
+    ctx.strokeStyle = 'rgba(255,255,255,0.4)';
+    ctx.setLineDash([3, 2]);
+    ctx.strokeRect(3, 3, W - 6, H - 6);
+    ctx.setLineDash([]);
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 8px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(text, W / 2, H / 2 + 3);
   });
 }
 
 export function drawSaloonDoor(key?: GameValue, it?: GameValue): GameValue {
+  const ctx = game.view.ctx;
   const thinX: GameValue = it.w < it.h;
   let doorC: GameValue = '#8d5a3b',
     sign: GameValue = '';
@@ -1611,60 +1625,62 @@ export function drawSaloonDoor(key?: GameValue, it?: GameValue): GameValue {
   else if (key === 'bathroom') sign = '🚿';
   const b: GameValue = box(it.x, it.y, thinX ? 8 : it.w, thinX ? it.h : 8, 96, '#ecf0f1');
   onFace(b, thinX ? 'right' : 'left', (W?: GameValue, H?: GameValue): GameValue => {
-    game.view.ctx.fillStyle = doorC;
-    game.view.ctx.fillRect(5, 7, W - 10, H - 7);
+    ctx.fillStyle = doorC;
+    ctx.fillRect(5, 7, W - 10, H - 7);
     woodGrain(W, H, 'rgba(0,0,0,0.12)', true, 6);
-    game.view.ctx.strokeStyle = 'rgba(0,0,0,0.28)';
-    game.view.ctx.lineWidth = 1;
-    game.view.ctx.strokeRect(9, 13, W - 18, H * 0.3);
-    game.view.ctx.strokeRect(9, H * 0.48, W - 18, H * 0.42);
-    game.view.ctx.fillStyle = '#f1c40f';
-    game.view.ctx.beginPath();
-    game.view.ctx.arc(W - 11, H * 0.55, 2.2, 0, 6.3);
-    game.view.ctx.fill();
+    ctx.strokeStyle = 'rgba(0,0,0,0.28)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(9, 13, W - 18, H * 0.3);
+    ctx.strokeRect(9, H * 0.48, W - 18, H * 0.42);
+    ctx.fillStyle = '#f1c40f';
+    ctx.beginPath();
+    ctx.arc(W - 11, H * 0.55, 2.2, 0, 6.3);
+    ctx.fill();
     if (sign) {
-      game.view.ctx.fillStyle = 'rgba(255,255,255,0.92)';
-      game.view.ctx.fillRect(W / 2 - 8, 15, 16, 12);
-      game.view.ctx.fillStyle = '#2d3436';
-      game.view.ctx.font = 'bold 9px sans-serif';
-      game.view.ctx.textAlign = 'center';
-      game.view.ctx.fillText(sign, W / 2, 24.5);
+      ctx.fillStyle = 'rgba(255,255,255,0.92)';
+      ctx.fillRect(W / 2 - 8, 15, 16, 12);
+      ctx.fillStyle = '#2d3436';
+      ctx.font = 'bold 9px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(sign, W / 2, 24.5);
     }
   });
 }
 
 // Ingresso di un appartamento visto dal cortile: facciata con finestre e porta
 export function drawCourtyardDoor(_key?: GameValue, it?: GameValue): GameValue {
+  const ctx = game.view.ctx;
   const mine: GameValue = hasRoom() && game.aptOfRoom(game.myAssignedRoomIdx) === it.aptIdx;
   const full: GameValue = freeRoomsInApt(it.aptIdx) === 0;
   const doorC: GameValue = mine ? '#2e86de' : full ? '#7f8c8d' : '#27ae60';
   const b: GameValue = box(it.x, it.y, 64, 10, 118, '#cdbfa8');
   onFace(b, 'left', (W?: GameValue, H?: GameValue): GameValue => {
-    game.view.ctx.fillStyle = '#6d4c41';
-    game.view.ctx.fillRect(0, 0, W, 5);
-    game.view.ctx.fillStyle = 'rgba(135,206,235,0.9)';
-    game.view.ctx.fillRect(W * 0.1, H * 0.14, W * 0.2, H * 0.2);
-    game.view.ctx.fillRect(W * 0.7, H * 0.14, W * 0.2, H * 0.2);
-    game.view.ctx.fillStyle = doorC;
-    game.view.ctx.fillRect(W * 0.3, H * 0.42, W * 0.4, H * 0.58);
-    game.view.ctx.strokeStyle = 'rgba(0,0,0,0.28)';
-    game.view.ctx.lineWidth = 1;
-    game.view.ctx.strokeRect(W * 0.34, H * 0.47, W * 0.32, H * 0.2);
-    game.view.ctx.strokeRect(W * 0.34, H * 0.72, W * 0.32, H * 0.22);
-    game.view.ctx.fillStyle = '#f1c40f';
-    game.view.ctx.beginPath();
-    game.view.ctx.arc(W * 0.64, H * 0.75, 1.8, 0, 6.3);
-    game.view.ctx.fill();
-    game.view.ctx.fillStyle = 'rgba(255,255,255,0.95)';
-    game.view.ctx.fillRect(W / 2 - 9, H * 0.3, 18, 11);
-    game.view.ctx.fillStyle = '#2d3436';
-    game.view.ctx.font = 'bold 8px sans-serif';
-    game.view.ctx.textAlign = 'center';
-    game.view.ctx.fillText('A' + (it.aptIdx + 1), W / 2, H * 0.3 + 8.5);
+    ctx.fillStyle = '#6d4c41';
+    ctx.fillRect(0, 0, W, 5);
+    ctx.fillStyle = 'rgba(135,206,235,0.9)';
+    ctx.fillRect(W * 0.1, H * 0.14, W * 0.2, H * 0.2);
+    ctx.fillRect(W * 0.7, H * 0.14, W * 0.2, H * 0.2);
+    ctx.fillStyle = doorC;
+    ctx.fillRect(W * 0.3, H * 0.42, W * 0.4, H * 0.58);
+    ctx.strokeStyle = 'rgba(0,0,0,0.28)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(W * 0.34, H * 0.47, W * 0.32, H * 0.2);
+    ctx.strokeRect(W * 0.34, H * 0.72, W * 0.32, H * 0.22);
+    ctx.fillStyle = '#f1c40f';
+    ctx.beginPath();
+    ctx.arc(W * 0.64, H * 0.75, 1.8, 0, 6.3);
+    ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.95)';
+    ctx.fillRect(W / 2 - 9, H * 0.3, 18, 11);
+    ctx.fillStyle = '#2d3436';
+    ctx.font = 'bold 8px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('A' + (it.aptIdx + 1), W / 2, H * 0.3 + 8.5);
   });
 }
 
 export function drawClothesRack(it?: GameValue): GameValue {
+  const ctx = game.view.ctx;
   const { x, y, w, z }: GameValue = it;
   const items: GameValue = game.shopCatalog.filter(
     (i?: GameValue): GameValue => i.slot === it.slot && !i.starter,
@@ -1684,28 +1700,29 @@ export function drawClothesRack(it?: GameValue): GameValue {
       it.slot === 'pants' ? 'pants' : 'top',
     );
     if (g.style === 'stripes') {
-      game.view.ctx.fillStyle = g.color2;
-      for (let v: GameValue = 8; v < 27; v += 4) game.view.ctx.fillRect(3, v, 10, 1.5);
+      ctx.fillStyle = g.color2;
+      for (let v: GameValue = 8; v < 27; v += 4) ctx.fillRect(3, v, 10, 1.5);
     }
     resetPlane();
   });
   box(x + w / 2 - 3, y, 4, 4, z, '#b2bec3', { z0: 3 });
   const sign: GameValue = box(x, y + 8, 22, 2, 10, '#ffffff', { z0: 3 });
   onFace(sign, 'left', (W?: GameValue, H?: GameValue): GameValue => {
-    game.view.ctx.fillStyle = '#e84393';
-    game.view.ctx.font = 'bold 6px sans-serif';
-    game.view.ctx.textAlign = 'center';
-    game.view.ctx.fillText(game.SLOT_INFO[it.slot].label.toUpperCase(), W / 2, H - 3);
+    ctx.fillStyle = '#e84393';
+    ctx.font = 'bold 6px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(game.SLOT_INFO[it.slot].label.toUpperCase(), W / 2, H - 3);
   });
 }
 
 export function drawDisplayShelf(it?: GameValue, _t?: GameValue): GameValue {
+  const ctx = game.view.ctx;
   const { x, y, w, h }: GameValue = it;
   void box(x, y - h / 2 + 2, w, 4, it.z + 26, '#f5f6fa');
   const low: GameValue = box(x, y + 2, w, h - 4, it.z * 0.45, '#ffffff');
   onFace(low, 'left', (W?: GameValue, _H?: GameValue): GameValue => {
-    game.view.ctx.fillStyle = '#e84393';
-    game.view.ctx.fillRect(0, 2, W, 3);
+    ctx.fillStyle = '#e84393';
+    ctx.fillRect(0, 2, W, 3);
   });
   box(x, y - 2, w, h - 10, 3, '#dfe6e9', { z0: it.z + 6 });
   const items: GameValue = game.shopCatalog.filter(
@@ -1724,10 +1741,10 @@ export function drawDisplayShelf(it?: GameValue, _t?: GameValue): GameValue {
       box(gx + 3, gy + 1, 5, 10, 4, g.color, { z0: gz });
     } else {
       const hp: GameValue = isoProject(gx, gy, gz + 7);
-      game.view.ctx.fillStyle = '#ced6e0';
-      game.view.ctx.beginPath();
-      game.view.ctx.arc(hp.x, hp.y, 6 * s, 0, 6.3);
-      game.view.ctx.fill();
+      ctx.fillStyle = '#ced6e0';
+      ctx.beginPath();
+      ctx.arc(hp.x, hp.y, 6 * s, 0, 6.3);
+      ctx.fill();
       box(gx, gy, 3, 3, 2, '#a4b0be', { z0: gz });
       drawHat({ x: hp.x, y: hp.y + 1 * s }, s * 0.66, g);
     }
@@ -1735,10 +1752,11 @@ export function drawDisplayShelf(it?: GameValue, _t?: GameValue): GameValue {
 }
 
 export function drawGlassesStand(it?: GameValue, _t?: GameValue): GameValue {
+  const ctx = game.view.ctx;
   const b: GameValue = box(it.x, it.y, it.w, it.h, it.z - 18, '#ffffff');
   onFace(b, 'left', (W?: GameValue, _H?: GameValue): GameValue => {
-    game.view.ctx.fillStyle = '#e84393';
-    game.view.ctx.fillRect(0, 3, W, 2.5);
+    ctx.fillStyle = '#e84393';
+    ctx.fillRect(0, 3, W, 2.5);
   });
   const items: GameValue = game.shopCatalog.filter(
     (i?: GameValue): GameValue => i.slot === 'glasses',
@@ -1748,29 +1766,30 @@ export function drawGlassesStand(it?: GameValue, _t?: GameValue): GameValue {
     const gx: GameValue = it.x - it.w / 2 + 7 + (i * (it.w - 14)) / Math.max(1, items.length - 1);
     box(gx, it.y, 3, 3, 8, '#a4b0be', { z0: it.z - 18 });
     const hp: GameValue = isoProject(gx, it.y, it.z - 2);
-    game.view.ctx.fillStyle = '#ced6e0';
-    game.view.ctx.beginPath();
-    game.view.ctx.arc(hp.x, hp.y, 7 * s, 0, 6.3);
-    game.view.ctx.fill();
+    ctx.fillStyle = '#ced6e0';
+    ctx.beginPath();
+    ctx.arc(hp.x, hp.y, 7 * s, 0, 6.3);
+    ctx.fill();
     drawGlasses({ x: hp.x, y: hp.y - 1 * s }, s * 0.8, g);
   });
 }
 
 export function drawBoutiqueCounter(it?: GameValue): GameValue {
+  const ctx = game.view.ctx;
   const b: GameValue = box(it.x, it.y, it.w, it.h, it.z - 5, '#e84393');
   onFace(b, 'left', (W?: GameValue, H?: GameValue): GameValue => {
-    game.view.ctx.fillStyle = 'rgba(255,255,255,0.18)';
-    for (let u: GameValue = 6; u < W; u += 12) game.view.ctx.fillRect(u, 0, 4, H);
-    game.view.ctx.fillStyle = '#ffffff';
-    game.view.ctx.font = 'bold 9px sans-serif';
-    game.view.ctx.textAlign = 'center';
-    game.view.ctx.fillText('BOUTIQUE', W / 2, H / 2 + 3);
+    ctx.fillStyle = 'rgba(255,255,255,0.18)';
+    for (let u: GameValue = 6; u < W; u += 12) ctx.fillRect(u, 0, 4, H);
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 9px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('BOUTIQUE', W / 2, H / 2 + 3);
   });
   box(it.x, it.y, it.w + 6, it.h + 6, 5, '#ffffff', { z0: it.z - 5 });
   const reg: GameValue = box(it.x + it.w * 0.28, it.y, 22, 16, 12, '#2d3436', { z0: it.z });
   onFace(reg, 'left', (W?: GameValue, _H?: GameValue): GameValue => {
-    game.view.ctx.fillStyle = '#fd79a8';
-    game.view.ctx.fillRect(3, 2, W - 6, 5);
+    ctx.fillStyle = '#fd79a8';
+    ctx.fillRect(3, 2, W - 6, 5);
   });
   [
     ['#ffffff', -0.3],
@@ -1778,11 +1797,11 @@ export function drawBoutiqueCounter(it?: GameValue): GameValue {
   ].forEach(([c, k]: GameValue = {}): GameValue => {
     const bag: GameValue = box(it.x + it.w * k, it.y, 14, 8, 16, c, { z0: it.z });
     onFace(bag, 'left', (W?: GameValue, _H?: GameValue): GameValue => {
-      game.view.ctx.strokeStyle = '#2d3436';
-      game.view.ctx.lineWidth = 1;
-      game.view.ctx.beginPath();
-      game.view.ctx.arc(W / 2, 0, 4, Math.PI, 0);
-      game.view.ctx.stroke();
+      ctx.strokeStyle = '#2d3436';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.arc(W / 2, 0, 4, Math.PI, 0);
+      ctx.stroke();
     });
   });
 }
@@ -2013,6 +2032,7 @@ function drawPineTree(it: GameValue, t: GameValue, k: GameValue): void {
 }
 
 export function drawFountainProp(it?: GameValue, t?: GameValue): GameValue {
+  const ctx = game.view.ctx;
   const b: GameValue = box(it.x, it.y, it.w, it.h, 16, '#b8b2a7');
   const stones: GameValue = (W?: GameValue, H?: GameValue): GameValue => {
     game.view.ctx.strokeStyle = 'rgba(0,0,0,0.18)';
@@ -2031,57 +2051,52 @@ export function drawFountainProp(it?: GameValue, t?: GameValue): GameValue {
   onFace(b, 'left', stones);
   onFace(b, 'right', stones);
   onFace(b, 'top', (W?: GameValue, H?: GameValue): GameValue => {
-    const g: GameValue = game.view.ctx.createLinearGradient(0, 0, W, H);
+    const g: GameValue = ctx.createLinearGradient(0, 0, W, H);
     g.addColorStop(0, '#2f80c0');
     g.addColorStop(1, '#5dade2');
-    game.view.ctx.fillStyle = g;
-    game.view.ctx.fillRect(6, 6, W - 12, H - 12);
+    ctx.fillStyle = g;
+    ctx.fillRect(6, 6, W - 12, H - 12);
     for (let i: GameValue = 0; i < 3; i++) {
       const r: GameValue = (t * 10 + i * 10) % 30;
-      game.view.ctx.strokeStyle = `rgba(255,255,255,${Math.max(0, 0.55 - r / 55)})`;
-      game.view.ctx.lineWidth = 1;
-      game.view.ctx.beginPath();
-      game.view.ctx.ellipse(W / 2, H / 2, r, r, 0, 0, 6.3);
-      game.view.ctx.stroke();
+      ctx.strokeStyle = `rgba(255,255,255,${Math.max(0, 0.55 - r / 55)})`;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.ellipse(W / 2, H / 2, r, r, 0, 0, 6.3);
+      ctx.stroke();
     }
   });
   box(it.x, it.y, 10, 10, 32, '#d5d0c6', { z0: 16 });
   const bowl: GameValue = box(it.x, it.y, 28, 28, 5, '#cfc8bb', { z0: 46 });
   onFace(bowl, 'top', (W?: GameValue, H?: GameValue): GameValue => {
-    game.view.ctx.fillStyle = '#5dade2';
-    game.view.ctx.fillRect(3, 3, W - 6, H - 6);
+    ctx.fillStyle = '#5dade2';
+    ctx.fillRect(3, 3, W - 6, H - 6);
   });
   const top: GameValue = isoProject(it.x, it.y, 58),
     s: GameValue = isoScale();
-  game.view.ctx.strokeStyle = 'rgba(210,240,255,0.85)';
-  game.view.ctx.lineWidth = 1.5;
+  ctx.strokeStyle = 'rgba(210,240,255,0.85)';
+  ctx.lineWidth = 1.5;
   for (let i: GameValue = 0; i < 6; i++) {
     const a: GameValue = (i / 6) * Math.PI * 2 + t * 0.4;
     const dx: GameValue = Math.cos(a) * 20 * s,
       dy: GameValue = Math.sin(a) * 10 * s;
-    game.view.ctx.beginPath();
-    game.view.ctx.moveTo(top.x, top.y);
-    game.view.ctx.quadraticCurveTo(
-      top.x + dx * 0.5,
-      top.y - 14 * s,
-      top.x + dx,
-      top.y + 18 * s + dy,
-    );
-    game.view.ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(top.x, top.y);
+    ctx.quadraticCurveTo(top.x + dx * 0.5, top.y - 14 * s, top.x + dx, top.y + 18 * s + dy);
+    ctx.stroke();
   }
-  game.view.ctx.fillStyle = 'rgba(230,248,255,0.9)';
+  ctx.fillStyle = 'rgba(230,248,255,0.9)';
   for (let i: GameValue = 0; i < 10; i++) {
     const ph: GameValue = (t * 1.3 + i * 0.1) % 1,
       a: GameValue = i * 2.4;
-    game.view.ctx.beginPath();
-    game.view.ctx.arc(
+    ctx.beginPath();
+    ctx.arc(
       top.x + Math.cos(a) * 20 * s * ph,
       top.y - 10 * s + ph * ph * 30 * s + Math.sin(a) * 6 * s * ph,
       1.2 * s,
       0,
       6.3,
     );
-    game.view.ctx.fill();
+    ctx.fill();
   }
 }
 
@@ -2103,6 +2118,7 @@ export function drawStreetLampProp(it?: GameValue, _t?: GameValue, lights?: Game
 }
 
 export function drawFlowersProp(it?: GameValue): GameValue {
+  const ctx = game.view.ctx;
   void box(it.x, it.y, it.w, it.h, 4, '#5d4037', { edge: 'rgba(0,0,0,0.2)' });
   const cols: GameValue = ['#ff6b81', '#feca57', '#ff9ff3', '#ffffff', '#ff4757', '#a29bfe'];
   const s: GameValue = isoScale();
@@ -2111,20 +2127,21 @@ export function drawFlowersProp(it?: GameValue): GameValue {
       py: GameValue = it.y - it.h / 2 + 4 + rnd(i * 3 + it.y) * (it.h - 8);
     const base: GameValue = isoProject(px, py, 4),
       tip: GameValue = isoProject(px, py, 10 + rnd(i) * 6);
-    game.view.ctx.strokeStyle = '#2e7d32';
-    game.view.ctx.lineWidth = 1;
-    game.view.ctx.beginPath();
-    game.view.ctx.moveTo(base.x, base.y);
-    game.view.ctx.lineTo(tip.x, tip.y);
-    game.view.ctx.stroke();
-    game.view.ctx.fillStyle = cols[i % cols.length];
-    game.view.ctx.beginPath();
-    game.view.ctx.arc(tip.x, tip.y, 2.4 * s, 0, 6.3);
-    game.view.ctx.fill();
+    ctx.strokeStyle = '#2e7d32';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(base.x, base.y);
+    ctx.lineTo(tip.x, tip.y);
+    ctx.stroke();
+    ctx.fillStyle = cols[i % cols.length];
+    ctx.beginPath();
+    ctx.arc(tip.x, tip.y, 2.4 * s, 0, 6.3);
+    ctx.fill();
   }
 }
 
 export function drawPalmProp(it?: GameValue, t?: GameValue): GameValue {
+  const ctx = game.view.ctx;
   const s: GameValue = isoScale();
   ellipseShadow(it.x + 10, it.y + 10, 34, 16, 0.2);
   for (let i: GameValue = 0; i < 9; i++)
@@ -2137,51 +2154,44 @@ export function drawPalmProp(it?: GameValue, t?: GameValue): GameValue {
     const a: GameValue = (i / 8) * Math.PI * 2 + Math.sin(t + i) * 0.05;
     const ex: GameValue = top.x + Math.cos(a) * 38 * s,
       ey: GameValue = top.y + Math.sin(a) * 16 * s + 16 * s;
-    game.view.ctx.strokeStyle = i % 2 ? '#1e8449' : '#27ae60';
-    game.view.ctx.lineWidth = 6 * s;
-    game.view.ctx.lineCap = 'round';
-    game.view.ctx.beginPath();
-    game.view.ctx.moveTo(top.x, top.y);
-    game.view.ctx.quadraticCurveTo(top.x + Math.cos(a) * 24 * s, top.y - 12 * s, ex, ey);
-    game.view.ctx.stroke();
+    ctx.strokeStyle = i % 2 ? '#1e8449' : '#27ae60';
+    ctx.lineWidth = 6 * s;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(top.x, top.y);
+    ctx.quadraticCurveTo(top.x + Math.cos(a) * 24 * s, top.y - 12 * s, ex, ey);
+    ctx.stroke();
   }
-  game.view.ctx.fillStyle = '#6d4c41';
+  ctx.fillStyle = '#6d4c41';
   [
     [-3, 3],
     [3, 4],
     [0, 6],
   ].forEach(([dx, dy]: GameValue = {}): GameValue => {
-    game.view.ctx.beginPath();
-    game.view.ctx.arc(top.x + dx * s, top.y + dy * s, 3 * s, 0, 6.3);
-    game.view.ctx.fill();
+    ctx.beginPath();
+    ctx.arc(top.x + dx * s, top.y + dy * s, 3 * s, 0, 6.3);
+    ctx.fill();
   });
-  game.view.ctx.lineCap = 'butt';
+  ctx.lineCap = 'butt';
 }
 
 export function drawUmbrellaProp(it?: GameValue): GameValue {
+  const ctx = game.view.ctx;
   const s: GameValue = isoScale();
   box(it.x, it.y, 3, 3, 62, '#ecf0f1');
   const c: GameValue = isoProject(it.x, it.y, 62);
   for (let i: GameValue = 0; i < 8; i++) {
-    game.view.ctx.fillStyle = i % 2 ? '#ffffff' : '#e74c3c';
-    game.view.ctx.beginPath();
-    game.view.ctx.moveTo(c.x, c.y - 10 * s);
-    game.view.ctx.ellipse(
-      c.x,
-      c.y,
-      38 * s,
-      18 * s,
-      0,
-      (i / 8) * Math.PI * 2,
-      ((i + 1) / 8) * Math.PI * 2,
-    );
-    game.view.ctx.closePath();
-    game.view.ctx.fill();
+    ctx.fillStyle = i % 2 ? '#ffffff' : '#e74c3c';
+    ctx.beginPath();
+    ctx.moveTo(c.x, c.y - 10 * s);
+    ctx.ellipse(c.x, c.y, 38 * s, 18 * s, 0, (i / 8) * Math.PI * 2, ((i + 1) / 8) * Math.PI * 2);
+    ctx.closePath();
+    ctx.fill();
   }
-  game.view.ctx.strokeStyle = 'rgba(0,0,0,0.2)';
-  game.view.ctx.beginPath();
-  game.view.ctx.ellipse(c.x, c.y, 38 * s, 18 * s, 0, 0, 6.3);
-  game.view.ctx.stroke();
+  ctx.strokeStyle = 'rgba(0,0,0,0.2)';
+  ctx.beginPath();
+  ctx.ellipse(c.x, c.y, 38 * s, 18 * s, 0, 0, 6.3);
+  ctx.stroke();
 }
 
 export function drawSunbedProp(it?: GameValue): GameValue {
@@ -2195,6 +2205,7 @@ export function drawSunbedProp(it?: GameValue): GameValue {
 }
 
 export function drawSandcastleProp(it?: GameValue): GameValue {
+  const ctx = game.view.ctx;
   const c: GameValue = '#e8c27a';
   box(it.x, it.y, it.w, it.h, 10, c);
   [
@@ -2209,35 +2220,37 @@ export function drawSandcastleProp(it?: GameValue): GameValue {
   box(it.x + it.w * 0.35, it.y + it.h * 0.35, 7, 7, 22, c);
   const f: GameValue = isoProject(it.x, it.y, 30),
     s: GameValue = isoScale();
-  game.view.ctx.strokeStyle = '#2d3436';
-  game.view.ctx.beginPath();
-  game.view.ctx.moveTo(f.x, f.y);
-  game.view.ctx.lineTo(f.x, f.y - 14 * s);
-  game.view.ctx.stroke();
-  game.view.ctx.fillStyle = '#e74c3c';
-  game.view.ctx.beginPath();
-  game.view.ctx.moveTo(f.x, f.y - 14 * s);
-  game.view.ctx.lineTo(f.x + 9 * s, f.y - 11 * s);
-  game.view.ctx.lineTo(f.x, f.y - 8 * s);
-  game.view.ctx.fill();
+  ctx.strokeStyle = '#2d3436';
+  ctx.beginPath();
+  ctx.moveTo(f.x, f.y);
+  ctx.lineTo(f.x, f.y - 14 * s);
+  ctx.stroke();
+  ctx.fillStyle = '#e74c3c';
+  ctx.beginPath();
+  ctx.moveTo(f.x, f.y - 14 * s);
+  ctx.lineTo(f.x + 9 * s, f.y - 11 * s);
+  ctx.lineTo(f.x, f.y - 8 * s);
+  ctx.fill();
 }
 
 export function drawBallProp(it?: GameValue, t?: GameValue): GameValue {
+  const ctx = game.view.ctx;
   const s: GameValue = isoScale(),
     p: GameValue = isoProject(it.x, it.y, 7 + Math.abs(Math.sin(t * 2)) * 4);
   ellipseShadow(it.x, it.y, 7, 3.5);
   ['#e74c3c', '#ffffff', '#3498db', '#f1c40f'].forEach(
     (c?: GameValue, i?: GameValue): GameValue => {
-      game.view.ctx.fillStyle = c;
-      game.view.ctx.beginPath();
-      game.view.ctx.moveTo(p.x, p.y);
-      game.view.ctx.arc(p.x, p.y, 7 * s, (i * Math.PI) / 2 + t, ((i + 1) * Math.PI) / 2 + t);
-      game.view.ctx.fill();
+      ctx.fillStyle = c;
+      ctx.beginPath();
+      ctx.moveTo(p.x, p.y);
+      ctx.arc(p.x, p.y, 7 * s, (i * Math.PI) / 2 + t, ((i + 1) * Math.PI) / 2 + t);
+      ctx.fill();
     },
   );
 }
 
 export function drawCraneProp(it?: GameValue, t?: GameValue): GameValue {
+  const ctx = game.view.ctx;
   box(it.x, it.y, it.w, it.h, 12, '#7f8c8d');
   const lattice: GameValue = (W?: GameValue, H?: GameValue): GameValue => {
     game.view.ctx.strokeStyle = 'rgba(0,0,0,0.5)';
@@ -2260,37 +2273,38 @@ export function drawCraneProp(it?: GameValue, t?: GameValue): GameValue {
   box(it.x - 34, it.y, 14, 14, 14, '#7f8c8d', { z0: 186 });
   const cab: GameValue = box(it.x + 2, it.y + 4, 16, 14, 14, '#e67e22', { z0: 192 });
   onFace(cab, 'left', (W?: GameValue, H?: GameValue): GameValue => {
-    game.view.ctx.fillStyle = '#d6eaf8';
-    game.view.ctx.fillRect(3, 3, W - 6, H / 2);
+    ctx.fillStyle = '#d6eaf8';
+    ctx.fillRect(3, 3, W - 6, H / 2);
   });
   const jib: GameValue = box(it.x + 85, it.y, 160, 8, 8, '#f1c40f', { z0: 200 });
   onFace(jib, 'left', lattice);
   const sw: GameValue = Math.sin(t * 0.9) * 8;
   const a: GameValue = isoProject(it.x + 140, it.y, 200),
     b2: GameValue = isoProject(it.x + 140 + sw, it.y, 92);
-  game.view.ctx.strokeStyle = '#2d3436';
-  game.view.ctx.lineWidth = 1;
-  game.view.ctx.beginPath();
-  game.view.ctx.moveTo(a.x, a.y);
-  game.view.ctx.lineTo(b2.x, b2.y);
-  game.view.ctx.stroke();
+  ctx.strokeStyle = '#2d3436';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(a.x, a.y);
+  ctx.lineTo(b2.x, b2.y);
+  ctx.stroke();
   const load: GameValue = box(it.x + 140 + sw, it.y, 20, 20, 12, '#b5523b', { z0: 80 });
   onFace(load, 'left', brickPattern);
 }
 
 export function brickPattern(W?: GameValue, H?: GameValue): GameValue {
-  game.view.ctx.strokeStyle = 'rgba(255,255,255,0.35)';
-  game.view.ctx.lineWidth = 0.8;
+  const ctx = game.view.ctx;
+  ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+  ctx.lineWidth = 0.8;
   for (let v: GameValue = 0, r: GameValue = 0; v < H; v += 6, r++) {
-    game.view.ctx.beginPath();
-    game.view.ctx.moveTo(0, v);
-    game.view.ctx.lineTo(W, v);
-    game.view.ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(0, v);
+    ctx.lineTo(W, v);
+    ctx.stroke();
     for (let u: GameValue = (r % 2) * 6; u < W; u += 12) {
-      game.view.ctx.beginPath();
-      game.view.ctx.moveTo(u, v);
-      game.view.ctx.lineTo(u, v + 6);
-      game.view.ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(u, v);
+      ctx.lineTo(u, v + 6);
+      ctx.stroke();
     }
   }
 }
@@ -2307,45 +2321,47 @@ export function drawBricksProp(it?: GameValue): GameValue {
 }
 
 export function drawMixerProp(it?: GameValue, t?: GameValue): GameValue {
+  const ctx = game.view.ctx;
   box(it.x, it.y, it.w, it.h * 0.6, 14, '#e67e22');
   const c: GameValue = isoProject(it.x, it.y, 34),
     s: GameValue = isoScale();
-  game.view.ctx.save();
-  game.view.ctx.translate(c.x, c.y);
-  game.view.ctx.rotate(-0.5);
-  const g: GameValue = game.view.ctx.createLinearGradient(-20 * s, 0, 20 * s, 0);
+  ctx.save();
+  ctx.translate(c.x, c.y);
+  ctx.rotate(-0.5);
+  const g: GameValue = ctx.createLinearGradient(-20 * s, 0, 20 * s, 0);
   g.addColorStop(0, '#f39c12');
   g.addColorStop(1, '#ca6f1e');
-  game.view.ctx.fillStyle = g;
-  game.view.ctx.beginPath();
-  game.view.ctx.ellipse(0, 0, 22 * s, 15 * s, 0, 0, 6.3);
-  game.view.ctx.fill();
-  game.view.ctx.strokeStyle = 'rgba(0,0,0,0.35)';
-  game.view.ctx.lineWidth = 2;
+  ctx.fillStyle = g;
+  ctx.beginPath();
+  ctx.ellipse(0, 0, 22 * s, 15 * s, 0, 0, 6.3);
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(0,0,0,0.35)';
+  ctx.lineWidth = 2;
   const r: GameValue = (t * 2) % (Math.PI * 2);
-  game.view.ctx.beginPath();
-  game.view.ctx.ellipse(0, 0, 22 * s * Math.abs(Math.cos(r)), 15 * s, 0, 0, 6.3);
-  game.view.ctx.stroke();
-  game.view.ctx.fillStyle = '#2d3436';
-  game.view.ctx.beginPath();
-  game.view.ctx.ellipse(18 * s, -2 * s, 5 * s, 8 * s, 0, 0, 6.3);
-  game.view.ctx.fill();
-  game.view.ctx.restore();
+  ctx.beginPath();
+  ctx.ellipse(0, 0, 22 * s * Math.abs(Math.cos(r)), 15 * s, 0, 0, 6.3);
+  ctx.stroke();
+  ctx.fillStyle = '#2d3436';
+  ctx.beginPath();
+  ctx.ellipse(18 * s, -2 * s, 5 * s, 8 * s, 0, 0, 6.3);
+  ctx.fill();
+  ctx.restore();
 }
 
 export function drawConeProp(it?: GameValue): GameValue {
+  const ctx = game.view.ctx;
   const b: GameValue = isoProject(it.x, it.y, 0),
     tp: GameValue = isoProject(it.x, it.y, 24),
     s: GameValue = isoScale();
   box(it.x, it.y, 12, 12, 2, '#2d3436');
-  game.view.ctx.fillStyle = '#ff7f27';
-  game.view.ctx.beginPath();
-  game.view.ctx.moveTo(tp.x, tp.y);
-  game.view.ctx.lineTo(b.x + 6 * s, b.y - 1);
-  game.view.ctx.lineTo(b.x - 6 * s, b.y - 1);
-  game.view.ctx.fill();
-  game.view.ctx.fillStyle = '#ffffff';
-  game.view.ctx.fillRect(b.x - 3.5 * s, b.y - 13 * s, 7 * s, 3 * s);
+  ctx.fillStyle = '#ff7f27';
+  ctx.beginPath();
+  ctx.moveTo(tp.x, tp.y);
+  ctx.lineTo(b.x + 6 * s, b.y - 1);
+  ctx.lineTo(b.x - 6 * s, b.y - 1);
+  ctx.fill();
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(b.x - 3.5 * s, b.y - 13 * s, 7 * s, 3 * s);
 }
 
 export function drawHospitalBedProp(it?: GameValue): GameValue {
@@ -2371,6 +2387,7 @@ export function drawHospitalBedProp(it?: GameValue): GameValue {
 }
 
 export function drawIvStandProp(it?: GameValue, _t?: GameValue): GameValue {
+  const ctx = game.view.ctx;
   box(it.x, it.y, 12, 12, 2, '#7f8c8d');
   box(it.x, it.y, 2, 2, 90, '#bdc3c7', { z0: 2 });
   void box(it.x + 5, it.y, 8, 4, 16, '#d6eaf8', {
@@ -2380,48 +2397,50 @@ export function drawIvStandProp(it?: GameValue, _t?: GameValue): GameValue {
   });
   const a: GameValue = isoProject(it.x + 5, it.y, 66),
     b: GameValue = isoProject(it.x + 30, it.y + 20, 36);
-  game.view.ctx.strokeStyle = 'rgba(255,255,255,0.7)';
-  game.view.ctx.lineWidth = 1;
-  game.view.ctx.beginPath();
-  game.view.ctx.moveTo(a.x, a.y);
-  game.view.ctx.quadraticCurveTo(a.x + 10, a.y + 30, b.x, b.y);
-  game.view.ctx.stroke();
+  ctx.strokeStyle = 'rgba(255,255,255,0.7)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(a.x, a.y);
+  ctx.quadraticCurveTo(a.x + 10, a.y + 30, b.x, b.y);
+  ctx.stroke();
 }
 
 export function drawHeartMonitorProp(it?: GameValue, t?: GameValue): GameValue {
+  const ctx = game.view.ctx;
   box(it.x, it.y, it.w, it.h, 40, '#95a5a6');
   const scr: GameValue = box(it.x, it.y, it.w, it.h, 24, '#2d3436', { z0: 40 });
   onFace(scr, 'left', (W?: GameValue, H?: GameValue): GameValue => {
-    game.view.ctx.fillStyle = '#071a0e';
-    game.view.ctx.fillRect(2, 2, W - 4, H - 4);
-    game.view.ctx.strokeStyle = '#2ecc71';
-    game.view.ctx.lineWidth = 1.2;
-    game.view.ctx.beginPath();
+    ctx.fillStyle = '#071a0e';
+    ctx.fillRect(2, 2, W - 4, H - 4);
+    ctx.strokeStyle = '#2ecc71';
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
     for (let u: GameValue = 2; u < W - 2; u++) {
       const ph: GameValue = (u / (W - 4) + t * 0.8) % 1;
       let v: GameValue = H / 2;
       if (ph > 0.45 && ph < 0.5) v -= (ph - 0.45) * 160;
       else if (ph >= 0.5 && ph < 0.55) v += (0.55 - ph) * 160 - 4;
-      u === 2 ? game.view.ctx.moveTo(u, v) : game.view.ctx.lineTo(u, v);
+      u === 2 ? ctx.moveTo(u, v) : ctx.lineTo(u, v);
     }
-    game.view.ctx.stroke();
+    ctx.stroke();
   });
 }
 
 export function drawMedCabinetProp(it?: GameValue): GameValue {
+  const ctx = game.view.ctx;
   const b: GameValue = box(it.x, it.y, it.w, it.h, it.z, '#f5f6fa');
   onFace(b, 'left', (W?: GameValue, H?: GameValue): GameValue => {
-    game.view.ctx.fillStyle = 'rgba(174,214,241,0.55)';
-    game.view.ctx.fillRect(4, 4, W / 2 - 6, H * 0.55);
-    game.view.ctx.fillRect(W / 2 + 2, 4, W / 2 - 6, H * 0.55);
+    ctx.fillStyle = 'rgba(174,214,241,0.55)';
+    ctx.fillRect(4, 4, W / 2 - 6, H * 0.55);
+    ctx.fillRect(W / 2 + 2, 4, W / 2 - 6, H * 0.55);
     const cols: GameValue = ['#e74c3c', '#3498db', '#f1c40f', '#2ecc71'];
     for (let i: GameValue = 0; i < 8; i++) {
-      game.view.ctx.fillStyle = cols[i % 4];
-      game.view.ctx.fillRect(7 + ((i % 4) * (W - 14)) / 4, 8 + Math.floor(i / 4) * 22, 6, 12);
+      ctx.fillStyle = cols[i % 4];
+      ctx.fillRect(7 + ((i % 4) * (W - 14)) / 4, 8 + Math.floor(i / 4) * 22, 6, 12);
     }
-    game.view.ctx.fillStyle = '#e74c3c';
-    game.view.ctx.fillRect(W / 2 - 3, H * 0.66, 6, 18);
-    game.view.ctx.fillRect(W / 2 - 9, H * 0.66 + 6, 18, 6);
+    ctx.fillStyle = '#e74c3c';
+    ctx.fillRect(W / 2 - 3, H * 0.66, 6, 18);
+    ctx.fillRect(W / 2 - 9, H * 0.66 + 6, 18, 6);
   });
 }
 
@@ -2443,31 +2462,33 @@ export function drawWaitingChairsProp(it?: GameValue): GameValue {
 }
 
 export function drawRestCounterProp(it?: GameValue): GameValue {
+  const ctx = game.view.ctx;
   const b: GameValue = box(it.x, it.y, it.w, it.h, it.z - 5, '#8d5a3b');
   onFace(b, 'left', (W?: GameValue, H?: GameValue): GameValue => {
     woodGrain(W, H, 'rgba(0,0,0,0.2)', true, 12);
-    game.view.ctx.fillStyle = 'rgba(0,0,0,0.25)';
-    game.view.ctx.fillRect(0, H - 6, W, 6);
+    ctx.fillStyle = 'rgba(0,0,0,0.25)';
+    ctx.fillRect(0, H - 6, W, 6);
   });
   box(it.x, it.y, it.w + 6, it.h + 6, 5, '#ecf0f1', { z0: it.z - 5 });
   [-0.3, 0, 0.3].forEach((k?: GameValue, i?: GameValue): GameValue => {
     const d: GameValue = box(it.x + it.w * k, it.y, 18, 18, 3, '#ffffff', { z0: it.z });
     onFace(d, 'top', (W?: GameValue, H?: GameValue): GameValue => {
-      game.view.ctx.fillStyle = ['#e17055', '#fdcb6e', '#00b894'][i];
-      game.view.ctx.beginPath();
-      game.view.ctx.ellipse(W / 2, H / 2, W * 0.3, H * 0.3, 0, 0, 6.3);
-      game.view.ctx.fill();
+      ctx.fillStyle = ['#e17055', '#fdcb6e', '#00b894'][i];
+      ctx.beginPath();
+      ctx.ellipse(W / 2, H / 2, W * 0.3, H * 0.3, 0, 0, 6.3);
+      ctx.fill();
     });
   });
 }
 
 export function drawChefStoveProp(it?: GameValue, t?: GameValue): GameValue {
+  const ctx = game.view.ctx;
   const b: GameValue = box(it.x, it.y, it.w, it.h, it.z - 4, '#b2bec3');
   onFace(b, 'left', (W?: GameValue, H?: GameValue): GameValue => {
-    game.view.ctx.fillStyle = '#2d3436';
-    game.view.ctx.fillRect(5, 10, W - 10, H - 16);
-    game.view.ctx.fillStyle = 'rgba(255,120,0,0.3)';
-    game.view.ctx.fillRect(8, 13, W - 16, H - 22);
+    ctx.fillStyle = '#2d3436';
+    ctx.fillRect(5, 10, W - 10, H - 16);
+    ctx.fillStyle = 'rgba(255,120,0,0.3)';
+    ctx.fillRect(8, 13, W - 16, H - 22);
   });
   box(it.x, it.y, it.w, it.h, 4, '#2d3436', { z0: it.z - 4 });
   const s: GameValue = isoScale();
@@ -2478,54 +2499,55 @@ export function drawChefStoveProp(it?: GameValue, t?: GameValue): GameValue {
     const p: GameValue = isoProject(it.x + it.w * kx, it.y + it.h * ky, it.z);
     for (let f: GameValue = 0; f < 5; f++) {
       const fl: GameValue = 6 + Math.sin(t * 12 + f * 2 + i) * 3;
-      game.view.ctx.fillStyle = f % 2 ? 'rgba(255,200,0,0.9)' : 'rgba(255,90,0,0.9)';
-      game.view.ctx.beginPath();
-      game.view.ctx.moveTo(p.x + (f - 2) * 3 * s, p.y);
-      game.view.ctx.lineTo(p.x + (f - 2) * 3 * s + 1.5 * s, p.y - fl * s);
-      game.view.ctx.lineTo(p.x + (f - 2) * 3 * s + 3 * s, p.y);
-      game.view.ctx.fill();
+      ctx.fillStyle = f % 2 ? 'rgba(255,200,0,0.9)' : 'rgba(255,90,0,0.9)';
+      ctx.beginPath();
+      ctx.moveTo(p.x + (f - 2) * 3 * s, p.y);
+      ctx.lineTo(p.x + (f - 2) * 3 * s + 1.5 * s, p.y - fl * s);
+      ctx.lineTo(p.x + (f - 2) * 3 * s + 3 * s, p.y);
+      ctx.fill();
     }
     const pan: GameValue = box(it.x + it.w * kx, it.y + it.h * ky, 18, 18, 7, '#636e72', {
       z0: it.z + 4,
     });
     onFace(pan, 'top', (W?: GameValue, H?: GameValue): GameValue => {
-      game.view.ctx.fillStyle = i ? '#e17055' : '#fab1a0';
-      game.view.ctx.fillRect(2, 2, W - 4, H - 4);
+      ctx.fillStyle = i ? '#e17055' : '#fab1a0';
+      ctx.fillRect(2, 2, W - 4, H - 4);
     });
   });
 }
 
 export function drawDinnerTableProp(it?: GameValue): GameValue {
+  const ctx = game.view.ctx;
   const { x, y, w, h }: GameValue = it;
   drawChair(x, y - h / 2 - 2, '#a0522d');
   box(x, y, 6, 6, 30, '#5d4037');
   const top: GameValue = box(x, y, w, h, 8, '#ffffff', { z0: 28 });
   onFace(top, 'left', (W?: GameValue, H?: GameValue): GameValue => {
-    game.view.ctx.strokeStyle = 'rgba(0,0,0,0.12)';
+    ctx.strokeStyle = 'rgba(0,0,0,0.12)';
     for (let u: GameValue = 6; u < W; u += 10) {
-      game.view.ctx.beginPath();
-      game.view.ctx.moveTo(u, 0);
-      game.view.ctx.lineTo(u, H);
-      game.view.ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(u, 0);
+      ctx.lineTo(u, H);
+      ctx.stroke();
     }
   });
   onFace(top, 'top', (W?: GameValue, H?: GameValue): GameValue => {
-    game.view.ctx.fillStyle = '#c0392b';
-    game.view.ctx.fillRect(W / 2 - 5, 0, 10, H);
+    ctx.fillStyle = '#c0392b';
+    ctx.fillRect(W / 2 - 5, 0, 10, H);
     [
       [0.28, 0.3],
       [0.72, 0.7],
     ].forEach(([u, v]: GameValue = {}): GameValue => {
-      game.view.ctx.fillStyle = '#f5f6fa';
-      game.view.ctx.beginPath();
-      game.view.ctx.ellipse(W * u, H * v, 7, 7, 0, 0, 6.3);
-      game.view.ctx.fill();
-      game.view.ctx.strokeStyle = 'rgba(0,0,0,0.15)';
-      game.view.ctx.stroke();
-      game.view.ctx.fillStyle = '#e17055';
-      game.view.ctx.beginPath();
-      game.view.ctx.ellipse(W * u, H * v, 3.5, 3.5, 0, 0, 6.3);
-      game.view.ctx.fill();
+      ctx.fillStyle = '#f5f6fa';
+      ctx.beginPath();
+      ctx.ellipse(W * u, H * v, 7, 7, 0, 0, 6.3);
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(0,0,0,0.15)';
+      ctx.stroke();
+      ctx.fillStyle = '#e17055';
+      ctx.beginPath();
+      ctx.ellipse(W * u, H * v, 3.5, 3.5, 0, 0, 6.3);
+      ctx.fill();
     });
   });
   box(x + w * 0.2, y - h * 0.15, 3, 3, 8, 'rgba(200,230,255,0.8)', {
@@ -2544,27 +2566,29 @@ export function drawOfficeDeskProp(it?: GameValue, t?: GameValue): GameValue {
 }
 
 export function drawArchiveProp(it?: GameValue): GameValue {
+  const ctx = game.view.ctx;
   const b: GameValue = box(it.x, it.y, it.w, it.h, it.z, '#95a5a6');
   onFace(b, 'left', (W?: GameValue, H?: GameValue): GameValue => {
     for (let i: GameValue = 0; i < 4; i++) {
       const v: GameValue = 3 + (i * (H - 6)) / 4;
-      game.view.ctx.strokeStyle = 'rgba(0,0,0,0.35)';
-      game.view.ctx.strokeRect(3, v, W - 6, (H - 6) / 4 - 3);
-      game.view.ctx.fillStyle = '#ecf0f1';
-      game.view.ctx.fillRect(W / 2 - 6, v + 4, 12, 5);
-      game.view.ctx.fillStyle = '#2d3436';
-      game.view.ctx.fillRect(W / 2 - 4, v + 12, 8, 2);
+      ctx.strokeStyle = 'rgba(0,0,0,0.35)';
+      ctx.strokeRect(3, v, W - 6, (H - 6) / 4 - 3);
+      ctx.fillStyle = '#ecf0f1';
+      ctx.fillRect(W / 2 - 6, v + 4, 12, 5);
+      ctx.fillStyle = '#2d3436';
+      ctx.fillRect(W / 2 - 4, v + 12, 8, 2);
     }
   });
 }
 
 export function drawCoolerProp(it?: GameValue): GameValue {
+  const ctx = game.view.ctx;
   const b: GameValue = box(it.x, it.y, it.w, it.h, it.z - 24, '#ecf0f1');
   onFace(b, 'left', (W?: GameValue, _H?: GameValue): GameValue => {
-    game.view.ctx.fillStyle = '#0984e3';
-    game.view.ctx.fillRect(W / 2 - 4, 10, 3, 4);
-    game.view.ctx.fillStyle = '#d63031';
-    game.view.ctx.fillRect(W / 2 + 2, 10, 3, 4);
+    ctx.fillStyle = '#0984e3';
+    ctx.fillRect(W / 2 - 4, 10, 3, 4);
+    ctx.fillStyle = '#d63031';
+    ctx.fillRect(W / 2 + 2, 10, 3, 4);
   });
   box(it.x, it.y, it.w * 0.8, it.h * 0.8, 24, '#74b9ff', {
     z0: it.z - 24,
@@ -2575,14 +2599,15 @@ export function drawCoolerProp(it?: GameValue): GameValue {
 }
 
 export function drawBarCounterProp(it?: GameValue): GameValue {
+  const ctx = game.view.ctx;
   const b: GameValue = box(it.x, it.y, it.w, it.h, it.z - 5, '#4e342e');
   onFace(b, 'left', (W?: GameValue, H?: GameValue): GameValue => {
     for (let u: GameValue = 0; u < W; u += 10) {
-      game.view.ctx.fillStyle = u % 20 ? '#5d4037' : '#4e342e';
-      game.view.ctx.fillRect(u, 0, 10, H);
+      ctx.fillStyle = u % 20 ? '#5d4037' : '#4e342e';
+      ctx.fillRect(u, 0, 10, H);
     }
-    game.view.ctx.fillStyle = '#d4ac0d';
-    game.view.ctx.fillRect(0, H - 6, W, 2);
+    ctx.fillStyle = '#d4ac0d';
+    ctx.fillRect(0, H - 6, W, 2);
   });
   box(it.x, it.y, it.w + 8, it.h + 8, 5, '#212121', { z0: it.z - 5 });
   [-0.3, -0.1, 0.1].forEach((k?: GameValue): GameValue => {
@@ -2598,59 +2623,62 @@ export function drawBarCounterProp(it?: GameValue): GameValue {
 }
 
 export function drawStoolProp(it?: GameValue): GameValue {
+  const ctx = game.view.ctx;
   box(it.x, it.y, 3, 3, 30, '#bdc3c7');
   box(it.x, it.y, 10, 10, 2, '#7f8c8d');
   const p: GameValue = isoProject(it.x, it.y, 32),
     s: GameValue = isoScale();
-  game.view.ctx.fillStyle = '#c0392b';
-  game.view.ctx.beginPath();
-  game.view.ctx.ellipse(p.x, p.y, 9 * s, 4.5 * s, 0, 0, 6.3);
-  game.view.ctx.fill();
-  game.view.ctx.fillStyle = '#e74c3c';
-  game.view.ctx.beginPath();
-  game.view.ctx.ellipse(p.x, p.y - 1.5 * s, 9 * s, 4.5 * s, 0, 0, 6.3);
-  game.view.ctx.fill();
+  ctx.fillStyle = '#c0392b';
+  ctx.beginPath();
+  ctx.ellipse(p.x, p.y, 9 * s, 4.5 * s, 0, 0, 6.3);
+  ctx.fill();
+  ctx.fillStyle = '#e74c3c';
+  ctx.beginPath();
+  ctx.ellipse(p.x, p.y - 1.5 * s, 9 * s, 4.5 * s, 0, 0, 6.3);
+  ctx.fill();
 }
 
 export function drawRoundTableProp(it?: GameValue): GameValue {
+  const ctx = game.view.ctx;
   drawChair(it.x, it.y - it.h / 2 - 6, '#6d4c41');
   box(it.x, it.y, 4, 4, 34, '#2d3436');
   box(it.x, it.y, 18, 18, 2, '#2d3436');
   const p: GameValue = isoProject(it.x, it.y, 36),
     s: GameValue = isoScale();
-  game.view.ctx.fillStyle = '#5d4037';
-  game.view.ctx.beginPath();
-  game.view.ctx.ellipse(p.x, p.y + 2 * s, it.w * 0.75 * s, it.w * 0.38 * s, 0, 0, 6.3);
-  game.view.ctx.fill();
-  game.view.ctx.fillStyle = '#8d6e63';
-  game.view.ctx.beginPath();
-  game.view.ctx.ellipse(p.x, p.y, it.w * 0.75 * s, it.w * 0.38 * s, 0, 0, 6.3);
-  game.view.ctx.fill();
-  game.view.ctx.fillStyle = 'rgba(241,196,15,0.9)';
-  game.view.ctx.fillRect(p.x - 6 * s, p.y - 9 * s, 4 * s, 8 * s);
-  game.view.ctx.fillStyle = '#ffffff';
-  game.view.ctx.fillRect(p.x - 6 * s, p.y - 10 * s, 4 * s, 2 * s);
+  ctx.fillStyle = '#5d4037';
+  ctx.beginPath();
+  ctx.ellipse(p.x, p.y + 2 * s, it.w * 0.75 * s, it.w * 0.38 * s, 0, 0, 6.3);
+  ctx.fill();
+  ctx.fillStyle = '#8d6e63';
+  ctx.beginPath();
+  ctx.ellipse(p.x, p.y, it.w * 0.75 * s, it.w * 0.38 * s, 0, 0, 6.3);
+  ctx.fill();
+  ctx.fillStyle = 'rgba(241,196,15,0.9)';
+  ctx.fillRect(p.x - 6 * s, p.y - 9 * s, 4 * s, 8 * s);
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(p.x - 6 * s, p.y - 10 * s, 4 * s, 2 * s);
   drawChair(it.x + it.w / 2 + 6, it.y, '#6d4c41', 'x');
 }
 
 export function drawJukeboxProp(it?: GameValue, t?: GameValue): GameValue {
+  const ctx = game.view.ctx;
   const b: GameValue = box(it.x, it.y, it.w, it.h, it.z, '#8e44ad');
   onFace(b, 'left', (W?: GameValue, H?: GameValue): GameValue => {
     const hue: GameValue = (t * 60) % 360;
-    const g: GameValue = game.view.ctx.createLinearGradient(0, 0, W, 0);
+    const g: GameValue = ctx.createLinearGradient(0, 0, W, 0);
     g.addColorStop(0, `hsl(${hue},90%,60%)`);
     g.addColorStop(1, `hsl(${(hue + 90) % 360},90%,60%)`);
-    game.view.ctx.fillStyle = g;
-    game.view.ctx.fillRect(3, 3, W - 6, H * 0.45);
-    game.view.ctx.fillStyle = '#2d3436';
-    game.view.ctx.fillRect(5, H * 0.55, W - 10, H * 0.3);
-    game.view.ctx.fillStyle = '#f1c40f';
-    for (let i: GameValue = 0; i < 4; i++)
-      game.view.ctx.fillRect(7 + (i * (W - 14)) / 4, H * 0.6, 3, 3);
+    ctx.fillStyle = g;
+    ctx.fillRect(3, 3, W - 6, H * 0.45);
+    ctx.fillStyle = '#2d3436';
+    ctx.fillRect(5, H * 0.55, W - 10, H * 0.3);
+    ctx.fillStyle = '#f1c40f';
+    for (let i: GameValue = 0; i < 4; i++) ctx.fillRect(7 + (i * (W - 14)) / 4, H * 0.6, 3, 3);
   });
 }
 
 export function drawTableProp(it?: GameValue): GameValue {
+  const ctx = game.view.ctx;
   drawChair(it.x, it.y - it.h / 2 - 4, '#a0522d');
   [
     [-1, -1],
@@ -2664,40 +2692,41 @@ export function drawTableProp(it?: GameValue): GameValue {
   const top: GameValue = box(it.x, it.y, it.w, it.h, 4, '#c8a27a', { z0: 28 });
   onFace(top, 'top', (W?: GameValue, H?: GameValue): GameValue => {
     woodGrain(W, H, 'rgba(0,0,0,0.1)', false, 4);
-    game.view.ctx.fillStyle = '#ecf0f1';
-    game.view.ctx.beginPath();
-    game.view.ctx.ellipse(W / 2, H / 2, 9, 7, 0, 0, 6.3);
-    game.view.ctx.fill();
+    ctx.fillStyle = '#ecf0f1';
+    ctx.beginPath();
+    ctx.ellipse(W / 2, H / 2, 9, 7, 0, 0, 6.3);
+    ctx.fill();
     [
       ['#e74c3c', -3, -1],
       ['#f1c40f', 2, 1],
       ['#27ae60', 0, -3],
     ].forEach(([c, du, dv]: GameValue = {}): GameValue => {
-      game.view.ctx.fillStyle = c;
-      game.view.ctx.beginPath();
-      game.view.ctx.arc(W / 2 + du, H / 2 + dv, 2.6, 0, 6.3);
-      game.view.ctx.fill();
+      ctx.fillStyle = c;
+      ctx.beginPath();
+      ctx.arc(W / 2 + du, H / 2 + dv, 2.6, 0, 6.3);
+      ctx.fill();
     });
   });
   drawChair(it.x + it.w / 2 + 4, it.y, '#a0522d', 'x');
 }
 
 export function drawConsoleProp(it?: GameValue): GameValue {
+  const ctx = game.view.ctx;
   const b: GameValue = box(it.x, it.y, it.w, it.h, 34, '#6d4c41');
   onFace(b, 'left', (W?: GameValue, H?: GameValue): GameValue => {
     woodGrain(W, H, 'rgba(0,0,0,0.2)');
-    game.view.ctx.strokeStyle = 'rgba(0,0,0,0.35)';
-    game.view.ctx.strokeRect(3, 3, W / 2 - 4, H / 2);
-    game.view.ctx.strokeRect(W / 2 + 1, 3, W / 2 - 4, H / 2);
+    ctx.strokeStyle = 'rgba(0,0,0,0.35)';
+    ctx.strokeRect(3, 3, W / 2 - 4, H / 2);
+    ctx.strokeRect(W / 2 + 1, 3, W / 2 - 4, H / 2);
   });
   box(it.x - it.w * 0.25, it.y, 8, 8, 16, '#2980b9', { z0: 34 });
   const p: GameValue = isoProject(it.x - it.w * 0.25, it.y, 52),
     s: GameValue = isoScale();
   ['#ff6b81', '#feca57', '#ff9ff3'].forEach((c?: GameValue, i?: GameValue): GameValue => {
-    game.view.ctx.fillStyle = c;
-    game.view.ctx.beginPath();
-    game.view.ctx.arc(p.x + (i - 1) * 4 * s, p.y - (i % 2) * 3 * s, 3 * s, 0, 6.3);
-    game.view.ctx.fill();
+    ctx.fillStyle = c;
+    ctx.beginPath();
+    ctx.arc(p.x + (i - 1) * 4 * s, p.y - (i % 2) * 3 * s, 3 * s, 0, 6.3);
+    ctx.fill();
   });
   box(it.x + it.w * 0.2, it.y, 16, 10, 4, '#c0392b', { z0: 34 });
   box(it.x + it.w * 0.2, it.y, 14, 9, 3, '#2980b9', { z0: 38 });
@@ -2712,37 +2741,39 @@ export function drawBathmatProp(it?: GameValue): GameValue {
 }
 
 export function drawDjBoothProp(it?: GameValue, t?: GameValue): GameValue {
+  const ctx = game.view.ctx;
   const b: GameValue = box(it.x, it.y, it.w, it.h, 34, '#1e1e2f', {
     edge: 'rgba(255,255,255,0.15)',
   });
   onFace(b, 'left', (W?: GameValue, H?: GameValue): GameValue => {
     for (let i: GameValue = 0; i < 10; i++) {
-      game.view.ctx.fillStyle = `hsl(${(t * 120 + i * 36) % 360},90%,${40 + 30 * Math.abs(Math.sin(t * 6 + i))}%)`;
-      game.view.ctx.fillRect(4 + (i * (W - 8)) / 10, H * 0.3, (W - 8) / 10 - 2, H * 0.4);
+      ctx.fillStyle = `hsl(${(t * 120 + i * 36) % 360},90%,${40 + 30 * Math.abs(Math.sin(t * 6 + i))}%)`;
+      ctx.fillRect(4 + (i * (W - 8)) / 10, H * 0.3, (W - 8) / 10 - 2, H * 0.4);
     }
   });
   const top: GameValue = box(it.x, it.y, it.w - 6, it.h - 6, 4, '#2d2d44', { z0: 34 });
   onFace(top, 'top', (W?: GameValue, H?: GameValue): GameValue => {
     [W * 0.28, W * 0.72].forEach((cx?: GameValue, k?: GameValue): GameValue => {
       const r: GameValue = Math.min(H * 0.42, W * 0.18);
-      game.view.ctx.fillStyle = '#111';
-      game.view.ctx.beginPath();
-      game.view.ctx.arc(cx, H / 2, r, 0, 6.3);
-      game.view.ctx.fill();
-      game.view.ctx.strokeStyle = `hsl(${(t * 90 + k * 120) % 360},90%,60%)`;
-      game.view.ctx.lineWidth = 1;
+      ctx.fillStyle = '#111';
+      ctx.beginPath();
+      ctx.arc(cx, H / 2, r, 0, 6.3);
+      ctx.fill();
+      ctx.strokeStyle = `hsl(${(t * 90 + k * 120) % 360},90%,60%)`;
+      ctx.lineWidth = 1;
       const a: GameValue = t * 5 + k;
-      game.view.ctx.beginPath();
-      game.view.ctx.moveTo(cx, H / 2);
-      game.view.ctx.lineTo(cx + Math.cos(a) * r, H / 2 + Math.sin(a) * r);
-      game.view.ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(cx, H / 2);
+      ctx.lineTo(cx + Math.cos(a) * r, H / 2 + Math.sin(a) * r);
+      ctx.stroke();
     });
-    game.view.ctx.fillStyle = '#e84393';
-    game.view.ctx.fillRect(W / 2 - 3, 3, 6, H - 6);
+    ctx.fillStyle = '#e84393';
+    ctx.fillRect(W / 2 - 3, 3, 6, H - 6);
   });
 }
 
 export function drawSpeakerProp(it?: GameValue, t?: GameValue): GameValue {
+  const ctx = game.view.ctx;
   const b: GameValue = box(it.x, it.y, it.w, it.h, it.z || 70, '#1a1a1a', {
     edge: 'rgba(255,255,255,0.1)',
   });
@@ -2752,63 +2783,58 @@ export function drawSpeakerProp(it?: GameValue, t?: GameValue): GameValue {
       [H * 0.3, W * 0.28],
       [H * 0.68, W * 0.4],
     ].forEach(([cy, r]: GameValue = {}): GameValue => {
-      game.view.ctx.fillStyle = '#3a3a3a';
-      game.view.ctx.beginPath();
-      game.view.ctx.arc(W / 2, cy, r * k, 0, 6.3);
-      game.view.ctx.fill();
-      game.view.ctx.fillStyle = '#0a0a0a';
-      game.view.ctx.beginPath();
-      game.view.ctx.arc(W / 2, cy, r * 0.45 * k, 0, 6.3);
-      game.view.ctx.fill();
+      ctx.fillStyle = '#3a3a3a';
+      ctx.beginPath();
+      ctx.arc(W / 2, cy, r * k, 0, 6.3);
+      ctx.fill();
+      ctx.fillStyle = '#0a0a0a';
+      ctx.beginPath();
+      ctx.arc(W / 2, cy, r * 0.45 * k, 0, 6.3);
+      ctx.fill();
     });
   });
 }
 
 export function drawDiscoBallProp(it?: GameValue, t?: GameValue): GameValue {
+  const ctx = game.view.ctx;
   const top: GameValue = isoProject(it.x, it.y, 230),
     p: GameValue = isoProject(it.x, it.y, it.z || 115),
     r: GameValue = 15 * isoScale();
-  game.view.ctx.strokeStyle = '#999';
-  game.view.ctx.lineWidth = 1;
-  game.view.ctx.beginPath();
-  game.view.ctx.moveTo(top.x, top.y);
-  game.view.ctx.lineTo(p.x, p.y - r);
-  game.view.ctx.stroke();
-  const g: GameValue = game.view.ctx.createRadialGradient(
-    p.x - r * 0.3,
-    p.y - r * 0.3,
-    r * 0.1,
-    p.x,
-    p.y,
-    r,
-  );
+  ctx.strokeStyle = '#999';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(top.x, top.y);
+  ctx.lineTo(p.x, p.y - r);
+  ctx.stroke();
+  const g: GameValue = ctx.createRadialGradient(p.x - r * 0.3, p.y - r * 0.3, r * 0.1, p.x, p.y, r);
   g.addColorStop(0, '#ffffff');
   g.addColorStop(1, '#7f8fa6');
-  game.view.ctx.fillStyle = g;
-  game.view.ctx.beginPath();
-  game.view.ctx.arc(p.x, p.y, r, 0, 6.3);
-  game.view.ctx.fill();
+  ctx.fillStyle = g;
+  ctx.beginPath();
+  ctx.arc(p.x, p.y, r, 0, 6.3);
+  ctx.fill();
   for (let i: GameValue = 0; i < 16; i++) {
     const a: GameValue = i * 2.4 + t * 1.5,
       d: GameValue = r * (0.2 + (0.7 * ((i * 37) % 10)) / 10);
-    game.view.ctx.fillStyle = `hsl(${(t * 200 + i * 40) % 360},100%,${65 + 25 * Math.sin(t * 8 + i)}%)`;
-    game.view.ctx.fillRect(p.x + Math.cos(a) * d - 1.5, p.y + Math.sin(a) * d * 0.9 - 1.5, 3, 3);
+    ctx.fillStyle = `hsl(${(t * 200 + i * 40) % 360},100%,${65 + 25 * Math.sin(t * 8 + i)}%)`;
+    ctx.fillRect(p.x + Math.cos(a) * d - 1.5, p.y + Math.sin(a) * d * 0.9 - 1.5, 3, 3);
   }
 }
 
 // ---- Cimitero: lapidi dei giocatori deceduti
 export function drawGraveProp(it?: GameValue): GameValue {
+  const ctx = game.view.ctx;
   const flowers: GameValue = isoScale();
   box(it.x, it.y + 9, 18, 14, 3, '#6b4f3a', { edge: 'rgba(0,0,0,0.2)' });
   const FL: GameValue = ['#ff6b81', '#feca57', '#ffffff', '#a29bfe', '#ff9ff3']; // un fiore per ogni persona che l'ha visitata
   for (let i: GameValue = 0, n: GameValue = Math.min(10, it.visitors || 0); i < n; i++) {
     const q: GameValue = isoProject(it.x - 7 + (i % 5) * 3.5, it.y + 9 + (i < 5 ? 3 : 8), 6);
-    game.view.ctx.fillStyle = '#2e7d32';
-    game.view.ctx.fillRect(q.x - 0.5, q.y, 1, 3 * flowers);
-    game.view.ctx.fillStyle = FL[i % FL.length];
-    game.view.ctx.beginPath();
-    game.view.ctx.arc(q.x, q.y, 2 * flowers, 0, 6.3);
-    game.view.ctx.fill();
+    ctx.fillStyle = '#2e7d32';
+    ctx.fillRect(q.x - 0.5, q.y, 1, 3 * flowers);
+    ctx.fillStyle = FL[i % FL.length];
+    ctx.beginPath();
+    ctx.arc(q.x, q.y, 2 * flowers, 0, 6.3);
+    ctx.fill();
   }
   box(it.x, it.y, 22, 6, 4, '#7f8c8d');
   if (it.style === 1) {
@@ -2820,28 +2846,29 @@ export function drawGraveProp(it?: GameValue): GameValue {
     const st: GameValue = box(it.x, it.y, wide ? 20 : 16, 5, wide ? 22 : 28, '#b2bec3', { z0: 4 });
     box(it.x, it.y, wide ? 18 : 14, 5, 3, '#cfd8dc', { z0: wide ? 26 : 32 });
     onFace(st, 'left', (W?: GameValue, H?: GameValue): GameValue => {
-      game.view.ctx.fillStyle = '#4b5558';
-      game.view.ctx.textAlign = 'center';
-      game.view.ctx.font = 'bold 5px serif';
-      game.view.ctx.fillText('R.I.P', W / 2, H * 0.34);
-      game.view.ctx.fillRect(W / 2 - 0.6, H * 0.5, 1.2, H * 0.3);
-      game.view.ctx.fillRect(W / 2 - 2, H * 0.58, 4, 1.1);
+      ctx.fillStyle = '#4b5558';
+      ctx.textAlign = 'center';
+      ctx.font = 'bold 5px serif';
+      ctx.fillText('R.I.P', W / 2, H * 0.34);
+      ctx.fillRect(W / 2 - 0.6, H * 0.5, 1.2, H * 0.3);
+      ctx.fillRect(W / 2 - 2, H * 0.58, 4, 1.1);
     });
   }
 }
 
 export function drawMemorialProp(it?: GameValue): GameValue {
+  const ctx = game.view.ctx;
   box(it.x, it.y, 46, 16, 5, '#636e72');
   const st: GameValue = box(it.x, it.y, 38, 12, 44, '#2d3436', { z0: 5, top: '#4b5558' });
   onFace(st, 'left', (W?: GameValue, H?: GameValue): GameValue => {
-    game.view.ctx.fillStyle = '#dfe6e9';
-    game.view.ctx.textAlign = 'center';
-    game.view.ctx.font = 'bold 6px serif';
-    game.view.ctx.fillText('IN MEMORIA', W / 2, H * 0.3);
-    game.view.ctx.font = '5px serif';
-    game.view.ctx.fillText("di chi non ce l'ha fatta", W / 2, H * 0.48);
-    game.view.ctx.fillRect(W / 2 - 0.7, H * 0.58, 1.4, H * 0.28);
-    game.view.ctx.fillRect(W / 2 - 3, H * 0.66, 6, 1.3);
+    ctx.fillStyle = '#dfe6e9';
+    ctx.textAlign = 'center';
+    ctx.font = 'bold 6px serif';
+    ctx.fillText('IN MEMORIA', W / 2, H * 0.3);
+    ctx.font = '5px serif';
+    ctx.fillText("di chi non ce l'ha fatta", W / 2, H * 0.48);
+    ctx.fillRect(W / 2 - 0.7, H * 0.58, 1.4, H * 0.28);
+    ctx.fillRect(W / 2 - 3, H * 0.66, 6, 1.3);
   });
 }
 

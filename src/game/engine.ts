@@ -73,6 +73,7 @@ export function collidesAt(x?: GameValue, y?: GameValue, obstacles?: GameValue):
 }
 
 export function renderEnvironment(delta?: GameValue, animTime?: GameValue): GameValue {
+  const ctx = game.view.ctx;
   if (!canPlaySession()) {
     game.moveForward = game.moveRight = 0;
     delta = 0;
@@ -405,19 +406,19 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
   labels.forEach((l?: GameValue): GameValue => l());
   drawSleepThoughts();
   // Titolo stanza
-  game.view.ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
-  game.view.ctx.beginPath();
-  game.view.ctx.roundRect
-    ? game.view.ctx.roundRect(game.view.canvas.width / 2 - 120, 16, 240, 30, 15)
-    : game.view.ctx.rect(game.view.canvas.width / 2 - 120, 16, 240, 30);
-  game.view.ctx.fill();
-  game.view.ctx.fillStyle = '#fff';
-  game.view.ctx.font = 'bold 14px sans-serif';
-  game.view.ctx.textAlign = 'center';
-  game.view.ctx.shadowColor = 'rgba(0,0,0,0.7)';
-  game.view.ctx.shadowBlur = 6;
-  game.view.ctx.fillText(game.view.currentRoomTitle, game.view.canvas.width / 2, 36);
-  game.view.ctx.shadowBlur = 0;
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
+  ctx.beginPath();
+  ctx.roundRect
+    ? ctx.roundRect(game.view.canvas.width / 2 - 120, 16, 240, 30, 15)
+    : ctx.rect(game.view.canvas.width / 2 - 120, 16, 240, 30);
+  ctx.fill();
+  ctx.fillStyle = '#fff';
+  ctx.font = 'bold 14px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.shadowColor = 'rgba(0,0,0,0.7)';
+  ctx.shadowBlur = 6;
+  ctx.fillText(game.view.currentRoomTitle, game.view.canvas.width / 2, 36);
+  ctx.shadowBlur = 0;
   checkProximity();
 }
 

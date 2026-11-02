@@ -5,6 +5,7 @@ import { dom, lifetime } from './runtime.js';
 import { presenceAlive } from './saves.js';
 import { bodyFromName, legacyLook, parseBody, parseLook, resolveLook } from './character.js';
 import { drawPlayerAvatar } from './render/avatars.js';
+import { escapeHtmlSafe } from './needs.js';
 import { onlineVitals, type VitalKey } from './players-hud-rules.js';
 
 const FULL_KEY = 'sims_hud_full';
@@ -69,8 +70,6 @@ const VITAL_LABEL: Record<VitalKey, [string, string]> = {
   happiness: ['🙂 Felicità', '#ff6b6b'],
 };
 
-const esc = (s: string) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
-
 /** Posto del giocatore visto da me: il suo titolo "La tua stanza" è la stanza sua, non la mia. */
 function placeFor(op: GameValue, place: string): string {
   if (op.env === 'PLAYER_ROOM' && typeof op.roomIdx === 'number') {
@@ -95,8 +94,8 @@ function renderCard(op: GameValue, icon: HTMLElement): void {
     })
     .join('');
   card.innerHTML =
-    `<div class="pc-head"><span class="pc-name">${esc(String(op.name))}${status}</span><button type="button" class="pc-close" title="Chiudi">✕</button></div>` +
-    `<div class="pc-place">📍 ${esc(placeFor(op, v.place) || 'Posizione sconosciuta')}</div>` +
+    `<div class="pc-head"><span class="pc-name">${escapeHtmlSafe(String(op.name))}${status}</span><button type="button" class="pc-close" title="Chiudi">✕</button></div>` +
+    `<div class="pc-place">📍 ${escapeHtmlSafe(placeFor(op, v.place) || 'Posizione sconosciuta')}</div>` +
     rows;
   const list: HTMLElement = dom('players-online');
   card.style.left = list.offsetLeft + list.offsetWidth + 6 + 'px';

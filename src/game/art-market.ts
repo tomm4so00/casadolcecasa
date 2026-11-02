@@ -1,4 +1,5 @@
 import { notePersonality } from './personality.js';
+import { escapeHtmlSafe } from './needs.js';
 import type { GameValue } from './context.js';
 import { game } from './context.js';
 import { dom, lifetime } from './runtime.js';
@@ -109,7 +110,7 @@ function renderGallery(list: HTMLElement): void {
   }
   for (const item of items) {
     const mine = item.ownerId === game.session.myPlayerId;
-    const el = card(item.code, mine ? 'Il tuo quadro' : `di ${item.owner}`, [
+    const el = card(item.code, mine ? 'Il tuo quadro' : `di ${escapeHtmlSafe(item.owner)}`, [
       `💰 <b>${euro(item.listing.price)}</b>`,
     ]);
     if (!mine) el.appendChild(button('🛒 Compra', '#2ed573', () => void buyPainting(item)));

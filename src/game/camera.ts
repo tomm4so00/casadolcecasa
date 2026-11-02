@@ -36,8 +36,17 @@ function sceneExtent(): { u0: number; u1: number; v0: number; v1: number } {
   };
 }
 
-function clampAxis(c: number, lo: number, hi: number): number {
-  return lo > hi ? 0 : Math.max(lo, Math.min(hi, c)); // stanza più piccola dello schermo: resta centrata
+/** Fin dove può spostarsi la telecamera; [0, 0] su un asse dove la stanza sta tutta nello schermo. */
+export function cameraRange(s = cameraScale()): { u0: number; u1: number; v0: number; v1: number } {
+  const w = game.view.canvas.width / s,
+    h = game.view.canvas.height / s;
+  const e = sceneExtent();
+  const half = OFFSET_Y / s;
+  let [u0, u1] = [e.u0 + w / 2, e.u1 - w / 2];
+  let [v0, v1] = [e.v0 + h / 2 + half, e.v1 - h / 2 + half];
+  if (u0 > u1) u0 = u1 = 0; // stanza più stretta dello schermo: resta centrata
+  if (v0 > v1) v0 = v1 = 0;
+  return { u0, u1, v0, v1 };
 }
 
 /** Muove la telecamera verso il giocatore; al cambio di ambiente salta subito su di lui. */
@@ -65,8 +74,7 @@ export function updateCamera(delta: number): void {
     else if (cam.v - pv > dv) tv = pv + dv;
   }
   const k = snap ? 1 : 1 - Math.exp(-FOLLOW * delta);
-  const e = sceneExtent();
-  const half = OFFSET_Y / s;
-  cam.u = clampAxis(cam.u + (tu - cam.u) * k, e.u0 + w / 2, e.u1 - w / 2);
-  cam.v = clampAxis(cam.v + (tv - cam.v) * k, e.v0 + h / 2 + half, e.v1 - h / 2 + half);
+  const r = cameraRange(s);
+  cam.u = Math.max(r.u0, Math.min(r.u1, cam.u + (tu - cam.u) * k));
+  cam.v = Math.max(r.v0, Math.min(r.v1, cam.v + (tv - cam.v) * k));
 }
