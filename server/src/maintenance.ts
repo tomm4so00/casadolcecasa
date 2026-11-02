@@ -17,6 +17,14 @@ const record = (value: unknown): value is Record<string, unknown> =>
 
 /** Legacy absence/death handling belongs to the trusted process, not another player. */
 export async function maintainGame(database: MaintenanceDatabase, now: number): Promise<void> {
+  const accounts = (await database.ref('sims_accounts').get()).val();
+  const linkedPlayers = new Set(
+    record(accounts)
+      ? Object.values(accounts).flatMap((account) =>
+          record(account) && typeof account.playerId === 'string' ? [account.playerId] : [],
+        )
+      : [],
+  );
   const rooms = database.ref('sims_rooms_state');
   await rooms.get();
   let expired: { id: string; name: string; lastSeen: number }[] = [];
@@ -29,6 +37,7 @@ export async function maintainGame(database: MaintenanceDatabase, now: number): 
         !record(room) ||
         room.pendingDeath ||
         typeof room.ownerId !== 'string' ||
+        !linkedPlayers.has(room.ownerId) ||
         typeof room.lastSeen !== 'number' ||
         now - room.lastSeen <= 80 * 3600000
       )

@@ -60,6 +60,8 @@ La morte per lunga assenza e la pulizia della chat passano al processo
 amministrativo pianificato. Un giocatore non deve leggere i salvataggi privati
 degli altri per eseguire queste operazioni. La manutenzione conserva una ricevuta
 nelle stanze per riprendere un aggiornamento interrotto da un errore di rete.
+I Sim precedenti che non sono ancora stati collegati a Google sono esclusi dalla
+manutenzione automatica degli assenti, così restano conservati durante il passaggio.
 
 ## Configurazione del progetto
 

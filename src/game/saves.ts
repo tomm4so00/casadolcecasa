@@ -396,7 +396,7 @@ export async function claimRoom(..._args: GameValue[]): Promise<GameValue> {
   let claimed: GameValue = -1;
   const MONTH: GameValue = 30 * 24 * 3600 * 1000;
   try {
-    await withTimeout(
+    const result = await withTimeout(
       game.session.db.ref('sims_rooms_state').transaction((current?: GameValue): GameValue => {
         let rooms: GameValue = normalizeRooms(current);
         let idx: GameValue = rooms.findIndex(
@@ -404,7 +404,7 @@ export async function claimRoom(..._args: GameValue[]): Promise<GameValue> {
         );
         if (idx === -1) idx = rooms.findIndex((r?: GameValue): GameValue => !r.owner && !r.ownerId);
         // Stanze abbandonate da più di 30 giorni (e con cassaforte vuota) tornano libere
-        if (idx === -1)
+        if (idx === -1 && game.session.OFFLINE)
           idx = rooms.findIndex(
             (r?: GameValue): GameValue =>
               r.lastSeen && Date.now() - r.lastSeen > MONTH && !(r.vaultMoney > 0),
@@ -429,7 +429,9 @@ export async function claimRoom(..._args: GameValue[]): Promise<GameValue> {
       }),
       8000,
     );
+    if (!result?.committed) claimed = -1;
   } catch (e: GameValue) {
+    claimed = -1;
     console.warn('Assegnazione stanza fallita', e);
   }
   game.myAssignedRoomIdx = claimed;
