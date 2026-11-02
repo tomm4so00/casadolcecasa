@@ -2,13 +2,12 @@ import template from './view.html?raw';
 import { initializeGame } from './initialize.js';
 import { game } from './context.js';
 import { bindUiActions } from './ui-bindings.js';
-import { startGame } from './interface.js';
 import { saveGame } from './saves.js';
 import { toast } from './missions.js';
 import { lifetime, resetLifetime } from './runtime.js';
 import { importRefactoredSave } from './save-model.js';
-import { loginWithGoogle, releasePlayerSession } from './accounts.js';
-import { firebaseClient } from './runtime.js';
+import { releasePlayerSession } from './accounts.js';
+import { mountCloudSetup } from './cloud-setup.js';
 export function mountLatestGame() {
   resetLifetime();
   const root = document.getElementById('app');
@@ -17,46 +16,7 @@ export function mountLatestGame() {
   bindUiActions(root);
   initializeGame();
   importRefactoredSave(localStorage, game.session.LS_PREFIX);
-  if (!game.session.OFFLINE) {
-    root.querySelector('#start-game-btn')?.classList.add('hidden');
-    const restore = root.querySelector('[data-action="restoreFromCode"]');
-    if (restore) restore.textContent = 'Collega un Sim già esistente';
-    const setup = root.querySelector('#ui-setup-screen .card');
-    const login = document.createElement('button');
-    login.id = 'cloud-game-btn';
-    login.className = 'btn-primary';
-    login.textContent = 'Accedi con Google e gioca';
-    login.style.marginTop = '10px';
-    setup?.append(login);
-    const changeAccount = document.createElement('button');
-    changeAccount.type = 'button';
-    changeAccount.className = 'btn-link';
-    changeAccount.textContent = 'Cambia account Google';
-    setup?.append(changeAccount);
-    lifetime.listen(changeAccount, 'click', () => {
-      void firebaseClient
-        .auth()
-        .signOut()
-        .then(() => {
-          game.session.authUid = null;
-          toast('Ora puoi scegliere un altro account Google.');
-        });
-    });
-    lifetime.listen(login, 'click', () => {
-      login.disabled = true;
-      void loginWithGoogle()
-        .then((name) => {
-          const input = root.querySelector<HTMLInputElement>('#nickname');
-          const nick = input?.value.trim() || name;
-          localStorage.setItem(game.session.LS_PREFIX + 'sims_player_nick', nick.slice(0, 20));
-          return startGame();
-        })
-        .catch((error) => toast('Accesso Google non disponibile: ' + String(error), 6000))
-        .finally(() => {
-          login.disabled = false;
-        });
-    });
-  }
+  if (!game.session.OFFLINE) mountCloudSetup(root);
   const exit = document.createElement('button');
   exit.id = 'save-exit';
   exit.textContent = 'Salva ed esci';
@@ -65,7 +25,7 @@ export function mountLatestGame() {
   const status = document.createElement('span');
   status.id = 'save-status';
   status.className = 'save-status';
-  status.textContent = game.session.OFFLINE ? 'Modalità locale' : 'Modalità online';
+  status.textContent = game.session.OFFLINE ? 'ModalitÃ  locale' : 'ModalitÃ  online';
   root.append(status);
   lifetime.listen(exit, 'click', () => {
     void (async () => {

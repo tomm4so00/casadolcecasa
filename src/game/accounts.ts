@@ -4,7 +4,6 @@ import { game } from './context.js';
 import { lockCharacter } from '../storage/tab-lock.js';
 import { googlePlayerId, decodeAccountBinding, onlineSaveKey } from './account-model.js';
 import { decodeSaveV8 } from './save-model.js';
-import { openDialog } from './interface.js';
 
 let releaseTab: (() => void) | null = null;
 let sessionId: string | null = null;
@@ -102,51 +101,64 @@ export async function requestLegacyLink(playerId: string): Promise<void> {
     .set({ playerId, requestedAt: Date.now() });
 }
 
-// A new identity can only create its own deterministic ID. Existing Sims require an admin-approved link.
-export async function loginWithGoogle(): Promise<string> {
+export interface GoogleAccess {
+  uid: string;
+  name: string;
+  playerId: string | null;
+  pendingPlayerId: string | null;
+}
+
+// Signs in and reports whether this Google account already owns a Sim or is waiting for a link.
+export async function signInWithGoogleAccount(): Promise<GoogleAccess> {
   const user = await authenticateWithGoogle();
-  const ref = game.session.db.ref('sims_accounts/' + user.uid);
-  let binding = decodeAccountBinding((await ref.get()).val());
-  const legacy = localStorage.getItem('sims_save_v1');
-  if (!binding && legacy) {
-    let previous: unknown;
-    try {
-      previous = JSON.parse(legacy);
-    } catch {
-      previous = null;
-    }
-    if (decodeSaveV8(previous)) {
-      const choice = await openDialog({
-        title: 'Hai già un Sim su questo dispositivo',
-        text: 'Puoi richiedere il collegamento del Sim precedente al tuo account Google, oppure crearne uno nuovo. I progressi precedenti vengono conservati.',
-        buttons: [
-          { label: 'Crea un nuovo Sim', value: 'new' },
-          { label: 'Collega il Sim precedente', value: 'link' },
-        ],
-      });
-      if (choice.action !== 'new') {
-        await requestLegacyLink(game.session.myPlayerId);
-        throw new Error(
-          'Richiesta inviata al gestore. Il Sim precedente resta conservato in attesa del collegamento.',
-        );
-      }
-    }
+  const binding = decodeAccountBinding(
+    (await game.session.db.ref('sims_accounts/' + user.uid).get()).val(),
+  );
+  let pendingPlayerId: string | null = null;
+  if (!binding) {
+    const request = (await game.session.db.ref('sims_link_requests/' + user.uid).get()).val();
+    if (typeof request?.playerId === 'string') pendingPlayerId = request.playerId;
   }
-  if (!binding)
-    binding = decodeAccountBinding(
-      (
-        await ref.transaction((value) => value || { playerId: googlePlayerId(user.uid) })
-      ).snapshot.val(),
-    );
+  return {
+    uid: user.uid,
+    name: user.displayName || user.email || 'Giocatore',
+    playerId: binding?.playerId ?? null,
+    pendingPlayerId,
+  };
+}
+
+// Code of the Sim saved on this device before Google sign-in, if any.
+export function localLegacySimCode(): string | null {
+  const legacy = localStorage.getItem('sims_save_v1');
+  if (!legacy) return null;
+  try {
+    return decodeSaveV8(JSON.parse(legacy)) ? game.session.myPlayerId : null;
+  } catch {
+    return null;
+  }
+}
+
+// A new identity can only create its own deterministic ID. Existing Sims require an admin-approved link.
+export async function createGoogleSim(uid: string): Promise<string> {
+  const binding = decodeAccountBinding(
+    (
+      await game.session.db
+        .ref('sims_accounts/' + uid)
+        .transaction((value) => value || { playerId: googlePlayerId(uid) })
+    ).snapshot.val(),
+  );
   if (!binding) throw new Error('Profilo cloud non valido.');
-  const playerId = binding.playerId;
+  return binding.playerId;
+}
+
+export function useGoogleSim(uid: string, playerId: string): void {
+  const legacy = localStorage.getItem('sims_save_v1');
   const key = onlineSaveKey(playerId);
   if (playerId === game.session.myPlayerId && legacy && !localStorage.getItem(key))
     localStorage.setItem(key, legacy);
-  game.session.authUid = user.uid;
+  game.session.authUid = uid;
   game.session.myPlayerId = playerId;
   game.session.SAVE_KEY = key;
   localStorage.setItem('sims_device_id', playerId);
   localStorage.setItem('sims_adopt_nick', '1');
-  return user.displayName || user.email || 'Giocatore';
 }

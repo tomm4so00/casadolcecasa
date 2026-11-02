@@ -18,9 +18,13 @@ progressi di un altro account sullo stesso browser.
 
 ## Sim precedenti
 
-Il vecchio codice personaggio non è più una credenziale di accesso. Il pulsante
-**Collega un Sim già esistente** autentica con Google e registra una richiesta
-in `sims_link_requests/{uid}`. La richiesta non trasferisce il personaggio.
+Il vecchio codice personaggio non è più una credenziale di accesso. La schermata
+iniziale chiede solo **Accedi con Google**. Se l'account non ha ancora un Sim, il
+gioco chiede se il giocatore ne aveva già uno: con **No** crea il nuovo Sim dopo
+la scelta del nome; con **Sì** chiede il codice e registra una richiesta in
+`sims_link_requests/{uid}`. La richiesta non trasferisce il personaggio: finché
+il gestore non la approva, la schermata mostra la richiesta in attesa e permette
+di tornare indietro e creare un nuovo Sim.
 
 Il gestore verifica l'identità del proprietario e il Sim richiesto, controlla
 che non appartenga già a un altro account e conserva una copia degli eventuali

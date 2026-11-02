@@ -79,8 +79,10 @@ try {
   );
   assert.equal(denied.ok, false, 'a browser must not be able to change market quotes');
   await signIn(page);
-  await page.locator('#nickname').fill('Profilo cloud v8');
   await page.locator('#cloud-game-btn').click();
+  await page.locator('#setup-new-sim').click();
+  await page.locator('#setup-nickname').fill('Profilo cloud v8');
+  await page.locator('#setup-create-sim').click();
   await page
     .locator('#creator-modal')
     .getByRole('button', { name: /Conferma/ })
@@ -97,7 +99,6 @@ try {
   await page.getByText('Salvato sul cloud', { exact: true }).waitFor();
   await other.goto(url);
   await signIn(other);
-  await other.locator('#nickname').fill('Altro dispositivo');
   await other.locator('#cloud-game-btn').click();
   await other.getByText(/Questo personaggio è già aperto altrove/).waitFor();
   await page.locator('#save-exit').click();

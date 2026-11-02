@@ -231,6 +231,21 @@ input[type='number'] {
 .btn-primary:active {
   background: #ff6b81;
 }
+.btn-primary.btn-alt {
+  background: #57606f;
+  box-shadow: none;
+}
+.setup-text {
+  margin: 14px 0 6px;
+  color: #ddd;
+  line-height: 1.4;
+}
+.setup-hint {
+  margin: 8px 0 0;
+  color: #999;
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
 
 /* Interazioni tra giocatori */
 #social-panel {
