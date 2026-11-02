@@ -588,6 +588,20 @@ export function startPresence(..._args: GameValue[]): GameValue {
     if (key !== lastSentKey || now - lastSentAt > 5000) {
       payload.t = now + game.session.serverOffset;
       playerRef.set(payload);
+      // copia sul dispositivo dell'ultimo posto, per il rientro (vedi resumeLastSpot)
+      try {
+        localStorage.setItem(
+          game.session.LS_PREFIX + 'sims_last_spot',
+          JSON.stringify({
+            id: game.session.myPlayerId,
+            env: payload.env,
+            x: payload.x,
+            y: payload.y,
+            roomIdx: payload.roomIdx,
+            apt: payload.apt,
+          }),
+        );
+      } catch (e: GameValue) {}
       lastSentKey = key;
       lastSentAt = now;
     }

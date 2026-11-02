@@ -21,7 +21,7 @@ import {
 import { openCharacterCreator } from './render/avatars.js';
 import { openEpitaph, rebuildGraveyard } from './render/objects.js';
 import { checkMissions, toast } from './missions.js';
-import { setupControls } from './world.js';
+import { resumeLastSpot, setupControls } from './world.js';
 import { startLoop } from './engine.js';
 import { die, reapAbsentPlayers, showDeathScreen, updateNotifyButton } from './needs.js';
 import { updateSoundButton } from './audio.js';
@@ -227,6 +227,8 @@ export async function startGame(..._args: GameValue[]): Promise<GameValue> {
   reapAbsentPlayers();
   game.currentApt = hasRoom() ? game.aptOfRoom(game.myAssignedRoomIdx) : 0;
   game.view.currentRoomTitle = game.saloonTitle();
+  // si riparte dall'ultima posizione (chi dorme o è svenuto ha già il suo posto, qui sotto)
+  if (!game.player.isSleeping && !game.fainted) await resumeLastSpot();
   if (game.player.isSleeping && hasRoom()) {
     game.view.activeEnvironment = 'PLAYER_ROOM';
     game.currentRoomIdx = game.myAssignedRoomIdx;

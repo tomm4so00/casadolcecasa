@@ -13,7 +13,9 @@ import {
   isMyRoomNow,
   presenceAlive,
   saveGame,
+  withTimeout,
 } from './saves.js';
+import { applyRoomBounds } from './room-size.js';
 import { presenceState } from './presence-rules.js';
 import { openDialog } from './interface.js';
 import { relaxWith, toast } from './missions.js';
@@ -62,10 +64,34 @@ export async function changeSafePin(..._args: GameValue[]): Promise<GameValue> {
   toast('✅ Nuova combinazione salvata!');
 }
 
+/**
+ * Invio preme l'unico pulsante a schermo: quello del dialogo aperto, altrimenti dell'ultima finestra
+ * aperta, altrimenti delle azioni vicino al giocatore. Con più pulsanti non fa niente.
+ */
+function pressOnlyButton(): boolean {
+  const dialog: HTMLElement = dom('dialog-modal');
+  const open = [...document.querySelectorAll<HTMLElement>('.fullscreen-modal:not(.hidden)')];
+  const scope: HTMLElement | undefined = !dialog.classList.contains('hidden')
+    ? dialog
+    : open.at(-1) || dom('pop-interaction');
+  if (!scope || scope.classList.contains('hidden')) return false;
+  const buttons = [...scope.querySelectorAll<HTMLButtonElement>('button')].filter(
+    (b) => !b.disabled && !b.closest('.hidden') && b.getClientRects().length > 0,
+  );
+  if (buttons.length !== 1) return false;
+  buttons[0].click();
+  return true;
+}
+
 export function setupControls(..._args: GameValue[]): GameValue {
   lifetime.listen(browser, 'keydown', (e?: GameValue): GameValue => {
     if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) return;
     let k: GameValue = e.key.toLowerCase();
+    // (su un pulsante già selezionato Invio lo preme il browser da solo)
+    if (k === 'enter' && !e.repeat && e.target?.tagName !== 'BUTTON' && pressOnlyButton()) {
+      e.preventDefault();
+      return;
+    }
     if ((k === 'e' || k === ' ') && !e.repeat) {
       if (game.isMovingFurnitureMode) placeFurniture();
       else if (!dom('pop-interaction').classList.contains('hidden') && game.activeTargetProp)
@@ -527,6 +553,57 @@ export function spawnAtDoor(door: GameValue): void {
     Math.abs(door.x) > Math.abs(door.y)
       ? { x: door.x - Math.sign(door.x) * step, y: door.y }
       : { x: door.x, y: door.y - Math.sign(door.y) * step };
+}
+
+/**
+ * Al rientro riporta il giocatore dov'era: la sua ultima presenza online (che resta salvata anche
+ * quando esce) dice ambiente, stanza, appartamento e posizione; se non c'è (modalità prova, rete
+ * lenta) si usa la copia salvata sul dispositivo. Vale solo per i posti di casa
+ * (salone, cucina, bagno, cortile, stanze): lavori, gite e locali ripartono dal salone.
+ */
+export async function resumeLastSpot(): Promise<boolean> {
+  let op: GameValue = null;
+  try {
+    const snap: GameValue = await withTimeout(
+      game.session.db.ref('sims_online_players/' + game.session.myPlayerId).once('value'),
+      4000,
+    );
+    op = snap && snap.val();
+  } catch (e: GameValue) {}
+  if (!op)
+    try {
+      const local: GameValue = JSON.parse(
+        localStorage.getItem(game.session.LS_PREFIX + 'sims_last_spot') || 'null',
+      );
+      // sullo stesso dispositivo può giocare anche qualcun altro: vale solo la propria copia
+      if (local && local.id === game.session.myPlayerId) op = local;
+    } catch (e: GameValue) {}
+  if (!op || !Number.isFinite(op.x) || !Number.isFinite(op.y)) return false;
+  const env: string = op.env;
+  if (game.APT_ENVS.includes(env)) {
+    if (Number.isInteger(op.apt) && op.apt >= 0 && op.apt < game.APT_COUNT)
+      game.currentApt = op.apt;
+    game.view.currentRoomTitle =
+      env === 'SALOON'
+        ? game.saloonTitle()
+        : game.saloonDoors[env === 'KITCHEN' ? 'kitchen' : 'bathroom'].title || '';
+  } else if (env === 'CORTILE') {
+    game.view.currentRoomTitle = game.saloonDoors.courtyard.title || '';
+  } else if (env === 'PLAYER_ROOM') {
+    const room: GameValue = Number.isInteger(op.roomIdx) ? game.roomsState[op.roomIdx] : null;
+    if (!room || !room.owner) return false;
+    game.currentRoomIdx = op.roomIdx;
+    game.currentApt = game.aptOfRoom(op.roomIdx);
+    game.view.currentRoomTitle =
+      op.roomIdx === game.myAssignedRoomIdx ? 'La tua stanza 🏠' : `Stanza di ${room.owner}`;
+  } else return false;
+  game.view.activeEnvironment = env;
+  applyRoomBounds(env);
+  game.playerPos = {
+    x: Math.max(game.X0 + 30, Math.min(game.X1 - 30, op.x)),
+    y: Math.max(game.Y0 + 30, Math.min(game.Y1 - 30, op.y)),
+  };
+  return true;
 }
 
 // Ritorno al salone davanti alla porta da cui si esce: stanza, cucina, bagno o uscita di casa.
