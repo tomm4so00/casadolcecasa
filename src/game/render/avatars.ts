@@ -5,9 +5,54 @@ import { bodyFromName, currentBody, drawAvatarPreview, resolveLook } from '../ch
 import { sfx } from '../audio.js';
 import { saveGame } from '../saves.js';
 import { toast } from '../missions.js';
-import { isoProject, isoScale, rnd } from './primitives.js';
+import { isoProject, isoScale, rnd, rotateAround, toRgb } from './primitives.js';
 import { box, onFace } from './objects.js';
 import { nameHash } from './scenes.js';
+// ---------- piccoli aiuti per il disegno dei vestiti ----------
+type Pt = { x: number; y: number };
+const lerpPt = (a: Pt, b: Pt, k: number): Pt => ({
+  x: a.x + (b.x - a.x) * k,
+  y: a.y + (b.y - a.y) * k,
+});
+function seg(a: Pt, b: Pt, color: string, width: number): void {
+  const ctx = game.view.ctx;
+  ctx.strokeStyle = color;
+  ctx.lineWidth = width;
+  ctx.beginPath();
+  ctx.moveTo(a.x, a.y);
+  ctx.lineTo(b.x, b.y);
+  ctx.stroke();
+}
+function dot(x: number, y: number, r: number, color: string): void {
+  const ctx = game.view.ctx;
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.arc(x, y, r, 0, 6.3);
+  ctx.fill();
+}
+function starPath(cx: number, cy: number, r: number, inner = 0.45, points = 5): void {
+  const ctx = game.view.ctx;
+  ctx.beginPath();
+  for (let i = 0; i < points * 2; i++) {
+    const rr = i % 2 ? r * inner : r;
+    const a = -Math.PI / 2 + (i * Math.PI) / points;
+    const px = cx + Math.cos(a) * rr,
+      py = cy + Math.sin(a) * rr;
+    if (i === 0) ctx.moveTo(px, py);
+    else ctx.lineTo(px, py);
+  }
+  ctx.closePath();
+}
+function lensShine(x: number, y: number, s: number): void {
+  const ctx = game.view.ctx;
+  ctx.strokeStyle = 'rgba(255,255,255,0.7)';
+  ctx.lineWidth = 0.6 * s;
+  ctx.beginPath();
+  ctx.moveTo(x - 1.2 * s, y + 0.2 * s);
+  ctx.lineTo(x - 0.2 * s, y - 0.9 * s);
+  ctx.stroke();
+}
+
 export function heartPath(cx?: GameValue, cy?: GameValue, r?: GameValue): GameValue {
   game.view.ctx.beginPath();
   game.view.ctx.moveTo(cx, cy + r * 0.9);
@@ -32,146 +77,579 @@ export function heartPath(cx?: GameValue, cy?: GameValue, r?: GameValue): GameVa
 
 export function drawGlasses(head?: GameValue, s?: GameValue, gl?: GameValue): GameValue {
   if (!gl) return;
-  if (gl.style === 'round') {
-    game.view.ctx.strokeStyle = gl.color;
-    game.view.ctx.lineWidth = 1.1 * s;
-    [-3.4, 3.4].forEach((dx?: GameValue): GameValue => {
-      game.view.ctx.beginPath();
-      game.view.ctx.arc(head.x + dx * s, head.y + 1 * s, 2.8 * s, 0, 6.3);
-      game.view.ctx.stroke();
-    });
-    game.view.ctx.fillStyle = 'rgba(200,230,255,0.25)';
-    [-3.4, 3.4].forEach((dx?: GameValue): GameValue => {
-      game.view.ctx.beginPath();
-      game.view.ctx.arc(head.x + dx * s, head.y + 1 * s, 2.4 * s, 0, 6.3);
-      game.view.ctx.fill();
-    });
-    game.view.ctx.beginPath();
-    game.view.ctx.moveTo(head.x - 0.7 * s, head.y + 0.7 * s);
-    game.view.ctx.lineTo(head.x + 0.7 * s, head.y + 0.7 * s);
-    game.view.ctx.stroke();
-  } else if (gl.style === 'heart') {
-    game.view.ctx.fillStyle = gl.color;
-    [-3.5, 3.5].forEach((dx?: GameValue): GameValue => {
-      heartPath(head.x + dx * s, head.y + 1.2 * s, 3 * s);
-      game.view.ctx.fill();
-    });
-    game.view.ctx.fillStyle = 'rgba(255,255,255,0.55)';
-    [-4.4, 2.6].forEach((dx?: GameValue): GameValue => {
-      game.view.ctx.beginPath();
-      game.view.ctx.arc(head.x + dx * s, head.y + 0.2 * s, 0.7 * s, 0, 6.3);
-      game.view.ctx.fill();
-    });
-  } else {
-    game.view.ctx.fillStyle = gl.color || '#111';
-    game.view.ctx.fillRect(head.x - 7.5 * s, head.y - 0.5 * s, 15 * s, 1.4 * s);
-    game.view.ctx.fillRect(head.x - 6.5 * s, head.y - 0.5 * s, 5 * s, 3.4 * s);
-    game.view.ctx.fillRect(head.x + 1.5 * s, head.y - 0.5 * s, 5 * s, 3.4 * s);
-    game.view.ctx.fillStyle = 'rgba(120,200,255,0.55)';
-    game.view.ctx.fillRect(head.x - 6 * s, head.y, 2 * s, 1.2 * s);
-    game.view.ctx.fillRect(head.x + 2 * s, head.y, 2 * s, 1.2 * s);
+  const ctx = game.view.ctx;
+  const hx = head.x,
+    hy = head.y;
+  const ey = hy + 1 * s; // altezza degli occhi
+  const eyes = [-3.4, 3.4];
+  ctx.lineCap = 'round';
+  switch (gl.style) {
+    case 'round':
+      ctx.fillStyle = 'rgba(200,230,255,0.25)';
+      for (const dx of eyes) {
+        ctx.beginPath();
+        ctx.arc(hx + dx * s, ey, 2.4 * s, 0, 6.3);
+        ctx.fill();
+      }
+      ctx.strokeStyle = gl.color;
+      ctx.lineWidth = 1.1 * s;
+      for (const dx of eyes) {
+        ctx.beginPath();
+        ctx.arc(hx + dx * s, ey, 2.8 * s, 0, 6.3);
+        ctx.stroke();
+        lensShine(hx + dx * s, ey, s);
+      }
+      seg(
+        { x: hx - 0.7 * s, y: ey - 0.3 * s },
+        { x: hx + 0.7 * s, y: ey - 0.3 * s },
+        gl.color,
+        1 * s,
+      );
+      break;
+    case 'heart':
+      ctx.fillStyle = gl.color;
+      for (const dx of [-3.5, 3.5]) {
+        heartPath(hx + dx * s, ey + 0.2 * s, 3 * s);
+        ctx.fill();
+      }
+      ctx.strokeStyle = game.darken(gl.color, 0.35);
+      ctx.lineWidth = 0.6 * s;
+      for (const dx of [-3.5, 3.5]) {
+        heartPath(hx + dx * s, ey + 0.2 * s, 3 * s);
+        ctx.stroke();
+      }
+      dot(hx - 4.4 * s, ey - 0.8 * s, 0.7 * s, 'rgba(255,255,255,0.6)');
+      dot(hx + 2.6 * s, ey - 0.8 * s, 0.7 * s, 'rgba(255,255,255,0.6)');
+      break;
+    case 'square':
+      ctx.fillStyle = 'rgba(200,230,255,0.22)';
+      for (const dx of eyes) ctx.fillRect(hx + (dx - 2.8) * s, ey - 2 * s, 5.6 * s, 4.2 * s);
+      ctx.strokeStyle = gl.color;
+      ctx.lineWidth = 1.3 * s;
+      for (const dx of eyes) ctx.strokeRect(hx + (dx - 2.8) * s, ey - 2 * s, 5.6 * s, 4.2 * s);
+      seg(
+        { x: hx - 0.6 * s, y: ey - 0.8 * s },
+        { x: hx + 0.6 * s, y: ey - 0.8 * s },
+        gl.color,
+        1.1 * s,
+      );
+      for (const dx of eyes) lensShine(hx + dx * s, ey, s);
+      break;
+    case '3d':
+      ctx.fillStyle = '#f5f6fa';
+      ctx.fillRect(hx - 7.5 * s, ey - 2.4 * s, 15 * s, 4.8 * s);
+      ctx.fillStyle = 'rgba(231,76,60,0.85)';
+      ctx.fillRect(hx - 6.4 * s, ey - 1.6 * s, 5.2 * s, 3.2 * s);
+      ctx.fillStyle = 'rgba(0,206,201,0.85)';
+      ctx.fillRect(hx + 1.2 * s, ey - 1.6 * s, 5.2 * s, 3.2 * s);
+      ctx.strokeStyle = 'rgba(0,0,0,0.35)';
+      ctx.lineWidth = 0.5 * s;
+      ctx.strokeRect(hx - 7.5 * s, ey - 2.4 * s, 15 * s, 4.8 * s);
+      break;
+    case 'star':
+      for (const dx of [-3.6, 3.6]) {
+        starPath(hx + dx * s, ey, 3.6 * s);
+        ctx.fillStyle = gl.color;
+        ctx.fill();
+        ctx.strokeStyle = game.darken(gl.color, 0.35);
+        ctx.lineWidth = 0.6 * s;
+        ctx.stroke();
+        dot(hx + dx * s, ey, 1.5 * s, 'rgba(40,40,60,0.75)');
+        dot(hx + (dx - 0.5) * s, ey - 0.5 * s, 0.45 * s, 'rgba(255,255,255,0.8)');
+      }
+      break;
+    case 'cateye':
+      for (const side of [-1, 1]) {
+        const cx = hx + side * 3.4 * s;
+        ctx.beginPath();
+        ctx.moveTo(cx - side * 2.4 * s, ey + 1.6 * s);
+        ctx.quadraticCurveTo(cx - side * 2.8 * s, ey - 1.4 * s, cx, ey - 1.6 * s);
+        ctx.lineTo(cx + side * 3.6 * s, ey - 2.8 * s);
+        ctx.quadraticCurveTo(cx + side * 2.8 * s, ey + 1.8 * s, cx - side * 2.4 * s, ey + 1.6 * s);
+        ctx.closePath();
+        ctx.fillStyle = 'rgba(45,10,40,0.72)';
+        ctx.fill();
+        ctx.strokeStyle = gl.color;
+        ctx.lineWidth = 1.1 * s;
+        ctx.stroke();
+        lensShine(cx, ey, s);
+      }
+      seg(
+        { x: hx - 0.9 * s, y: ey - 0.6 * s },
+        { x: hx + 0.9 * s, y: ey - 0.6 * s },
+        gl.color,
+        0.9 * s,
+      );
+      break;
+    case 'aviator':
+      for (const side of [-1, 1]) {
+        const cx = hx + side * 3.5 * s;
+        const g = ctx.createLinearGradient(0, ey - 2 * s, 0, ey + 3 * s);
+        g.addColorStop(0, 'rgba(60,40,20,0.9)');
+        g.addColorStop(1, 'rgba(210,150,60,0.75)');
+        ctx.beginPath();
+        ctx.moveTo(cx - 2.8 * s, ey - 1.6 * s);
+        ctx.lineTo(cx + 2.8 * s, ey - 1.6 * s);
+        ctx.quadraticCurveTo(cx + 3 * s, ey + 3.4 * s, cx + side * 0.5 * s, ey + 3 * s);
+        ctx.quadraticCurveTo(cx - 3 * s, ey + 2.6 * s, cx - 2.8 * s, ey - 1.6 * s);
+        ctx.closePath();
+        ctx.fillStyle = g;
+        ctx.fill();
+        ctx.strokeStyle = gl.color;
+        ctx.lineWidth = 0.6 * s;
+        ctx.stroke();
+        lensShine(cx, ey + 0.3 * s, s);
+      }
+      seg(
+        { x: hx - 0.7 * s, y: ey - 1.6 * s },
+        { x: hx + 0.7 * s, y: ey - 1.6 * s },
+        gl.color,
+        0.6 * s,
+      );
+      seg(
+        { x: hx - 0.7 * s, y: ey - 0.2 * s },
+        { x: hx + 0.7 * s, y: ey - 0.2 * s },
+        gl.color,
+        0.5 * s,
+      );
+      break;
+    case 'goggles': {
+      ctx.fillStyle = gl.color2 || '#2d3436';
+      ctx.fillRect(hx - 9.2 * s, ey - 1.3 * s, 18.4 * s, 2.6 * s);
+      const g = ctx.createLinearGradient(hx - 7 * s, 0, hx + 7 * s, 0);
+      g.addColorStop(0, gl.color);
+      g.addColorStop(1, gl.color2 || '#6c5ce7');
+      ctx.beginPath();
+      ctx.roundRect
+        ? ctx.roundRect(hx - 7 * s, ey - 3 * s, 14 * s, 6 * s, 3 * s)
+        : ctx.rect(hx - 7 * s, ey - 3 * s, 14 * s, 6 * s);
+      ctx.fillStyle = g;
+      ctx.fill();
+      ctx.strokeStyle = '#1e272e';
+      ctx.lineWidth = 1 * s;
+      ctx.stroke();
+      seg(
+        { x: hx - 4.5 * s, y: ey + 1 * s },
+        { x: hx - 1.5 * s, y: ey - 2 * s },
+        'rgba(255,255,255,0.65)',
+        0.8 * s,
+      );
+      break;
+    }
+    case 'monocle':
+      ctx.fillStyle = 'rgba(200,230,255,0.25)';
+      ctx.beginPath();
+      ctx.arc(hx + 3.4 * s, ey, 2.7 * s, 0, 6.3);
+      ctx.fill();
+      ctx.strokeStyle = gl.color;
+      ctx.lineWidth = 1 * s;
+      ctx.stroke();
+      lensShine(hx + 3.4 * s, ey, s);
+      ctx.lineWidth = 0.45 * s;
+      ctx.setLineDash([0.9 * s, 0.6 * s]);
+      ctx.beginPath();
+      ctx.moveTo(hx + 5.2 * s, ey + 2 * s);
+      ctx.quadraticCurveTo(hx + 8 * s, ey + 8 * s, hx + 6 * s, ey + 13 * s);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      break;
+    default: {
+      // occhiali da sole
+      ctx.fillStyle = gl.color || '#111';
+      ctx.fillRect(hx - 7.5 * s, ey - 1.5 * s, 15 * s, 1.4 * s);
+      for (const dx of [-4, 4]) {
+        const g = ctx.createLinearGradient(0, ey - 1.5 * s, 0, ey + 2.4 * s);
+        g.addColorStop(0, '#111');
+        g.addColorStop(1, '#3d4a5c');
+        ctx.fillStyle = g;
+        ctx.beginPath();
+        ctx.moveTo(hx + (dx - 2.8) * s, ey - 1.5 * s);
+        ctx.lineTo(hx + (dx + 2.8) * s, ey - 1.5 * s);
+        ctx.quadraticCurveTo(hx + (dx + 2.6) * s, ey + 2.6 * s, hx + dx * s, ey + 2.4 * s);
+        ctx.quadraticCurveTo(hx + (dx - 2.6) * s, ey + 2.6 * s, hx + (dx - 2.8) * s, ey - 1.5 * s);
+        ctx.fill();
+        seg(
+          { x: hx + (dx - 1.6) * s, y: ey + 0.8 * s },
+          { x: hx + (dx - 0.4) * s, y: ey - 0.6 * s },
+          'rgba(120,200,255,0.6)',
+          0.6 * s,
+        );
+      }
+    }
   }
 }
 
+// Altezza del cappello sopra la testa, per spostare in alto la targhetta col nome.
+const HAT_TAG_HEIGHT: Record<string, number> = {
+  tophat: 40,
+  chef: 40,
+  party: 42,
+  santa: 37,
+  flowers: 34,
+};
+
 export function drawHat(head?: GameValue, s?: GameValue, hat?: GameValue): GameValue {
   if (!hat) return;
+  const ctx = game.view.ctx;
   const c: GameValue = hat.color;
+  const c2: GameValue = hat.color2 || '#ffffff';
+  const hx = head.x,
+    hy = head.y;
+  ctx.lineCap = 'round';
   switch (hat.style) {
-    case 'beanie':
-      game.view.ctx.fillStyle = c;
-      game.view.ctx.beginPath();
-      game.view.ctx.arc(head.x, head.y - 2.5 * s, 9.9 * s, Math.PI, Math.PI * 2);
-      game.view.ctx.fill();
-      game.view.ctx.strokeStyle = game.darken(c, 0.25);
-      game.view.ctx.lineWidth = 0.8 * s;
-      for (let i: GameValue = -3; i <= 3; i++) {
-        game.view.ctx.beginPath();
-        game.view.ctx.moveTo(head.x + i * 2.4 * s, head.y - 4 * s);
-        game.view.ctx.lineTo(head.x + i * 1.6 * s, head.y - 11 * s);
-        game.view.ctx.stroke();
-      }
-      game.view.ctx.fillStyle = game.darken(c, 0.2);
-      game.view.ctx.fillRect(head.x - 9.9 * s, head.y - 5 * s, 19.8 * s, 3.8 * s);
-      game.view.ctx.fillStyle = '#ffffff';
-      game.view.ctx.beginPath();
-      game.view.ctx.arc(head.x, head.y - 13 * s, 2.7 * s, 0, 6.3);
-      game.view.ctx.fill();
+    case 'beanie': {
+      const g = ctx.createLinearGradient(hx - 10 * s, 0, hx + 10 * s, 0);
+      g.addColorStop(0, game.lighten(c, 0.12));
+      g.addColorStop(1, game.darken(c, 0.15));
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.arc(hx, hy - 2.5 * s, 9.9 * s, Math.PI, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = game.darken(c, 0.25);
+      ctx.lineWidth = 0.8 * s;
+      for (let i = -3; i <= 3; i++)
+        seg(
+          { x: hx + i * 2.4 * s, y: hy - 4 * s },
+          { x: hx + i * 1.6 * s, y: hy - 11 * s },
+          game.darken(c, 0.25),
+          0.8 * s,
+        );
+      ctx.fillStyle = game.darken(c, 0.2);
+      ctx.fillRect(hx - 9.9 * s, hy - 5 * s, 19.8 * s, 3.8 * s);
+      for (let i = -4; i <= 4; i++)
+        seg(
+          { x: hx + i * 2.2 * s, y: hy - 4.6 * s },
+          { x: hx + i * 2.2 * s, y: hy - 1.6 * s },
+          game.darken(c, 0.32),
+          0.6 * s,
+        );
+      dot(hx, hy - 13 * s, 2.7 * s, '#ffffff');
+      dot(hx - 0.8 * s, hy - 13.8 * s, 1 * s, 'rgba(255,255,255,0.6)');
       break;
+    }
     case 'cowboy':
-      game.view.ctx.fillStyle = game.darken(c, 0.15);
-      game.view.ctx.beginPath();
-      game.view.ctx.ellipse(head.x, head.y - 5 * s, 15.5 * s, 4.3 * s, 0, 0, 6.3);
-      game.view.ctx.fill();
-      game.view.ctx.fillStyle = c;
-      game.view.ctx.beginPath();
-      game.view.ctx.moveTo(head.x - 7.5 * s, head.y - 6 * s);
-      game.view.ctx.quadraticCurveTo(
-        head.x - 8 * s,
-        head.y - 17 * s,
-        head.x - 2 * s,
-        head.y - 15 * s,
-      );
-      game.view.ctx.lineTo(head.x, head.y - 13 * s);
-      game.view.ctx.lineTo(head.x + 2 * s, head.y - 15 * s);
-      game.view.ctx.quadraticCurveTo(
-        head.x + 8 * s,
-        head.y - 17 * s,
-        head.x + 7.5 * s,
-        head.y - 6 * s,
-      );
-      game.view.ctx.closePath();
-      game.view.ctx.fill();
-      game.view.ctx.fillStyle = '#3e2723';
-      game.view.ctx.fillRect(head.x - 7.5 * s, head.y - 8.5 * s, 15 * s, 2.2 * s);
+      ctx.fillStyle = game.darken(c, 0.15);
+      ctx.beginPath();
+      ctx.ellipse(hx, hy - 5 * s, 15.5 * s, 4.3 * s, 0, 0, 6.3);
+      ctx.fill();
+      ctx.fillStyle = c;
+      ctx.beginPath();
+      ctx.moveTo(hx - 7.5 * s, hy - 6 * s);
+      ctx.quadraticCurveTo(hx - 8 * s, hy - 17 * s, hx - 2 * s, hy - 15 * s);
+      ctx.lineTo(hx, hy - 13 * s);
+      ctx.lineTo(hx + 2 * s, hy - 15 * s);
+      ctx.quadraticCurveTo(hx + 8 * s, hy - 17 * s, hx + 7.5 * s, hy - 6 * s);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = '#3e2723';
+      ctx.fillRect(hx - 7.5 * s, hy - 8.5 * s, 15 * s, 2.2 * s);
+      dot(hx + 4.5 * s, hy - 7.4 * s, 0.9 * s, '#dfe6e9');
       break;
     case 'tophat':
-      game.view.ctx.fillStyle = '#111111';
-      game.view.ctx.beginPath();
-      game.view.ctx.ellipse(head.x, head.y - 6 * s, 12.5 * s, 3.2 * s, 0, 0, 6.3);
-      game.view.ctx.fill();
-      game.view.ctx.fillRect(head.x - 7 * s, head.y - 26 * s, 14 * s, 20 * s);
-      game.view.ctx.beginPath();
-      game.view.ctx.ellipse(head.x, head.y - 26 * s, 7 * s, 2 * s, 0, 0, 6.3);
-      game.view.ctx.fillStyle = '#2d2d2d';
-      game.view.ctx.fill();
-      game.view.ctx.fillStyle = hat.color2 || '#c0392b';
-      game.view.ctx.fillRect(head.x - 7 * s, head.y - 11 * s, 14 * s, 3 * s);
-      game.view.ctx.fillStyle = 'rgba(255,255,255,0.14)';
-      game.view.ctx.fillRect(head.x - 5 * s, head.y - 25 * s, 2 * s, 13 * s);
+      ctx.fillStyle = '#111111';
+      ctx.beginPath();
+      ctx.ellipse(hx, hy - 6 * s, 12.5 * s, 3.2 * s, 0, 0, 6.3);
+      ctx.fill();
+      ctx.fillRect(hx - 7 * s, hy - 26 * s, 14 * s, 20 * s);
+      ctx.beginPath();
+      ctx.ellipse(hx, hy - 26 * s, 7 * s, 2 * s, 0, 0, 6.3);
+      ctx.fillStyle = '#2d2d2d';
+      ctx.fill();
+      ctx.fillStyle = hat.color2 || '#c0392b';
+      ctx.fillRect(hx - 7 * s, hy - 11 * s, 14 * s, 3 * s);
+      ctx.fillStyle = 'rgba(255,255,255,0.14)';
+      ctx.fillRect(hx - 5 * s, hy - 25 * s, 2 * s, 13 * s);
       break;
-    case 'crown':
-      game.view.ctx.fillStyle = '#f1c40f';
-      game.view.ctx.strokeStyle = '#b7950b';
-      game.view.ctx.lineWidth = 1;
-      game.view.ctx.beginPath();
-      game.view.ctx.moveTo(head.x - 8 * s, head.y - 7 * s);
-      game.view.ctx.lineTo(head.x - 8 * s, head.y - 16 * s);
-      game.view.ctx.lineTo(head.x - 4 * s, head.y - 11 * s);
-      game.view.ctx.lineTo(head.x, head.y - 18 * s);
-      game.view.ctx.lineTo(head.x + 4 * s, head.y - 11 * s);
-      game.view.ctx.lineTo(head.x + 8 * s, head.y - 16 * s);
-      game.view.ctx.lineTo(head.x + 8 * s, head.y - 7 * s);
-      game.view.ctx.closePath();
-      game.view.ctx.fill();
-      game.view.ctx.stroke();
-      game.view.ctx.fillStyle = '#e74c3c';
-      game.view.ctx.beginPath();
-      game.view.ctx.arc(head.x, head.y - 10 * s, 1.5 * s, 0, 6.3);
-      game.view.ctx.fill();
+    case 'crown': {
+      const g = ctx.createLinearGradient(0, hy - 18 * s, 0, hy - 7 * s);
+      g.addColorStop(0, '#fff3a0');
+      g.addColorStop(0.5, '#f1c40f');
+      g.addColorStop(1, '#b7950b');
+      ctx.fillStyle = g;
+      ctx.strokeStyle = '#9a7d0a';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(hx - 8 * s, hy - 7 * s);
+      ctx.lineTo(hx - 8 * s, hy - 16 * s);
+      ctx.lineTo(hx - 4 * s, hy - 11 * s);
+      ctx.lineTo(hx, hy - 18 * s);
+      ctx.lineTo(hx + 4 * s, hy - 11 * s);
+      ctx.lineTo(hx + 8 * s, hy - 16 * s);
+      ctx.lineTo(hx + 8 * s, hy - 7 * s);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      dot(hx, hy - 10 * s, 1.5 * s, '#e74c3c');
+      dot(hx - 5 * s, hy - 9 * s, 1 * s, '#0984e3');
+      dot(hx + 5 * s, hy - 9 * s, 1 * s, '#00b894');
+      for (const [px, py] of [
+        [-8, -16],
+        [0, -18],
+        [8, -16],
+      ])
+        dot(hx + px * s, hy + py * s, 1 * s, '#fff3a0');
       break;
+    }
+    case 'capback':
+      ctx.fillStyle = game.darken(c, 0.25);
+      ctx.beginPath();
+      ctx.ellipse(hx - 7 * s, hy - 6.5 * s, 6 * s, 1.8 * s, -0.5, 0, 6.3);
+      ctx.fill();
+      ctx.fillStyle = c;
+      ctx.beginPath();
+      ctx.arc(hx, hy - 3 * s, 9.6 * s, Math.PI, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = game.lighten(c, 0.15);
+      ctx.beginPath();
+      ctx.arc(hx, hy - 3 * s, 9.6 * s, Math.PI * 1.15, Math.PI * 1.45);
+      ctx.lineTo(hx, hy - 3 * s);
+      ctx.fill();
+      // apertura della regolazione sul davanti
+      ctx.fillStyle = 'rgba(0,0,0,0.35)';
+      ctx.beginPath();
+      ctx.arc(hx, hy - 3 * s, 2.6 * s, Math.PI, Math.PI * 2);
+      ctx.fill();
+      dot(hx, hy - 12.4 * s, 1.3 * s, game.darken(c, 0.2));
+      break;
+    case 'beret':
+      ctx.fillStyle = game.darken(c, 0.2);
+      ctx.fillRect(hx - 8.5 * s, hy - 7 * s, 17 * s, 2.4 * s);
+      ctx.fillStyle = c;
+      ctx.beginPath();
+      ctx.ellipse(hx + 1.5 * s, hy - 9 * s, 11.5 * s, 4.8 * s, -0.14, 0, 6.3);
+      ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.12)';
+      ctx.beginPath();
+      ctx.ellipse(hx - 1.5 * s, hy - 10.5 * s, 6 * s, 2 * s, -0.14, 0, 6.3);
+      ctx.fill();
+      seg(
+        { x: hx + 1.5 * s, y: hy - 13.5 * s },
+        { x: hx + 2.2 * s, y: hy - 16 * s },
+        game.darken(c, 0.2),
+        1.2 * s,
+      );
+      break;
+    case 'bucket':
+      ctx.fillStyle = game.darken(c, 0.12);
+      ctx.beginPath();
+      ctx.ellipse(hx, hy - 5.5 * s, 13 * s, 4 * s, 0, 0, 6.3);
+      ctx.fill();
+      ctx.strokeStyle = game.darken(c, 0.3);
+      ctx.lineWidth = 0.5 * s;
+      ctx.beginPath();
+      ctx.ellipse(hx, hy - 5.5 * s, 11 * s, 3.1 * s, 0, 0, 6.3);
+      ctx.stroke();
+      ctx.fillStyle = c;
+      ctx.beginPath();
+      ctx.moveTo(hx - 8 * s, hy - 6 * s);
+      ctx.lineTo(hx - 6.5 * s, hy - 14.5 * s);
+      ctx.quadraticCurveTo(hx, hy - 16 * s, hx + 6.5 * s, hy - 14.5 * s);
+      ctx.lineTo(hx + 8 * s, hy - 6 * s);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = game.darken(c, 0.2);
+      ctx.fillRect(hx - 7.7 * s, hy - 8.6 * s, 15.4 * s, 1.8 * s);
+      ctx.fillStyle = 'rgba(255,255,255,0.18)';
+      ctx.fillRect(hx - 5 * s, hy - 14 * s, 2 * s, 5 * s);
+      break;
+    case 'santa':
+      ctx.fillStyle = c;
+      ctx.beginPath();
+      ctx.moveTo(hx - 9 * s, hy - 5 * s);
+      ctx.quadraticCurveTo(hx - 6 * s, hy - 20 * s, hx + 6 * s, hy - 19 * s);
+      ctx.quadraticCurveTo(hx + 12 * s, hy - 17 * s, hx + 13 * s, hy - 10 * s);
+      ctx.quadraticCurveTo(hx + 9 * s, hy - 13 * s, hx + 9 * s, hy - 5 * s);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = 'rgba(0,0,0,0.15)';
+      ctx.beginPath();
+      ctx.moveTo(hx + 3 * s, hy - 18 * s);
+      ctx.quadraticCurveTo(hx + 10 * s, hy - 16 * s, hx + 13 * s, hy - 10 * s);
+      ctx.quadraticCurveTo(hx + 9 * s, hy - 13 * s, hx + 6 * s, hy - 12 * s);
+      ctx.fill();
+      ctx.fillStyle = '#f5f6fa';
+      ctx.beginPath();
+      ctx.roundRect
+        ? ctx.roundRect(hx - 10.5 * s, hy - 8 * s, 21 * s, 4.4 * s, 2.2 * s)
+        : ctx.rect(hx - 10.5 * s, hy - 8 * s, 21 * s, 4.4 * s);
+      ctx.fill();
+      dot(hx + 13 * s, hy - 9.5 * s, 2.6 * s, '#f5f6fa');
+      break;
+    case 'chef':
+      ctx.fillStyle = '#ffffff';
+      ctx.strokeStyle = '#ced6e0';
+      ctx.lineWidth = 0.6 * s;
+      for (const [px, py, r] of [
+        [-5, -17, 5.2],
+        [5, -17, 5.2],
+        [0, -21, 5.8],
+      ]) {
+        ctx.beginPath();
+        ctx.arc(hx + px * s, hy + py * s, r * s, 0, 6.3);
+        ctx.fill();
+        ctx.stroke();
+      }
+      ctx.fillRect(hx - 8 * s, hy - 15 * s, 16 * s, 9 * s);
+      ctx.strokeRect(hx - 8 * s, hy - 11 * s, 16 * s, 5 * s);
+      for (let i = -2; i <= 2; i++)
+        seg(
+          { x: hx + i * 2.8 * s, y: hy - 14 * s },
+          { x: hx + i * 2.8 * s, y: hy - 11.5 * s },
+          '#dfe4ea',
+          0.5 * s,
+        );
+      break;
+    case 'party': {
+      ctx.save();
+      ctx.beginPath();
+      ctx.moveTo(hx - 6 * s, hy - 7 * s);
+      ctx.lineTo(hx + 6 * s, hy - 7 * s);
+      ctx.lineTo(hx + 1 * s, hy - 25 * s);
+      ctx.closePath();
+      ctx.fillStyle = c;
+      ctx.fill();
+      ctx.clip();
+      ctx.fillStyle = c2;
+      for (let i = 0; i < 6; i++) {
+        ctx.beginPath();
+        ctx.moveTo(hx - 10 * s, hy - (6 + i * 4) * s);
+        ctx.lineTo(hx + 10 * s, hy - (10 + i * 4) * s);
+        ctx.lineTo(hx + 10 * s, hy - (11.5 + i * 4) * s);
+        ctx.lineTo(hx - 10 * s, hy - (7.5 + i * 4) * s);
+        ctx.fill();
+      }
+      ctx.restore();
+      for (let i = 0; i < 6; i++) {
+        const a = (i / 6) * Math.PI * 2;
+        seg(
+          { x: hx + 1 * s, y: hy - 25 * s },
+          { x: hx + 1 * s + Math.cos(a) * 2.6 * s, y: hy - 25 * s + Math.sin(a) * 2.6 * s },
+          i % 2 ? c2 : '#ff7675',
+          1 * s,
+        );
+      }
+      break;
+    }
+    case 'bandana':
+      ctx.fillStyle = c;
+      ctx.beginPath();
+      ctx.arc(hx, hy - 2 * s, 9.7 * s, Math.PI, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = game.darken(c, 0.2);
+      ctx.fillRect(hx - 9.7 * s, hy - 3.6 * s, 19.4 * s, 1.8 * s);
+      for (const [px, py] of [
+        [-5, -7],
+        [0, -9],
+        [5, -7],
+        [-2.5, -4.8],
+        [3, -5],
+      ])
+        dot(hx + px * s, hy + py * s, 0.7 * s, '#ffffff');
+      ctx.fillStyle = game.darken(c, 0.12);
+      ctx.beginPath();
+      ctx.moveTo(hx + 9 * s, hy - 3 * s);
+      ctx.lineTo(hx + 14 * s, hy - 1 * s);
+      ctx.lineTo(hx + 12 * s, hy + 2 * s);
+      ctx.closePath();
+      ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(hx + 9 * s, hy - 3 * s);
+      ctx.lineTo(hx + 13 * s, hy - 6 * s);
+      ctx.lineTo(hx + 14.5 * s, hy - 3 * s);
+      ctx.closePath();
+      ctx.fill();
+      break;
+    case 'flowers': {
+      const colors = [c2, '#fdcb6e', '#74b9ff', '#ffffff'];
+      for (let i = 0; i <= 8; i++) {
+        const a = Math.PI + 0.25 + (i / 8) * (Math.PI - 0.5);
+        const fx = hx + Math.cos(a) * 9 * s,
+          fy = hy - 2.5 * s + Math.sin(a) * 7 * s;
+        if (i % 2) {
+          ctx.fillStyle = c;
+          ctx.beginPath();
+          ctx.ellipse(fx, fy, 2 * s, 1 * s, a, 0, 6.3);
+          ctx.fill();
+          continue;
+        }
+        const col = colors[(i / 2) % colors.length];
+        for (let p = 0; p < 5; p++) {
+          const pa = (p / 5) * Math.PI * 2;
+          dot(fx + Math.cos(pa) * 1.4 * s, fy + Math.sin(pa) * 1.4 * s, 1.1 * s, col);
+        }
+        dot(fx, fy, 0.8 * s, '#f9ca24');
+      }
+      break;
+    }
+    case 'fedora':
+      ctx.fillStyle = game.darken(c, 0.18);
+      ctx.beginPath();
+      ctx.ellipse(hx, hy - 6 * s, 13.5 * s, 3.6 * s, 0, 0, 6.3);
+      ctx.fill();
+      ctx.fillStyle = c;
+      ctx.beginPath();
+      ctx.moveTo(hx - 7.4 * s, hy - 6 * s);
+      ctx.lineTo(hx - 6.8 * s, hy - 15 * s);
+      ctx.quadraticCurveTo(hx, hy - 12 * s, hx + 6.8 * s, hy - 15 * s);
+      ctx.lineTo(hx + 7.4 * s, hy - 6 * s);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = c2;
+      ctx.fillRect(hx - 7.3 * s, hy - 9.8 * s, 14.6 * s, 2.6 * s);
+      ctx.fillStyle = 'rgba(255,255,255,0.12)';
+      ctx.fillRect(hx - 5.5 * s, hy - 14 * s, 1.8 * s, 4 * s);
+      // piuma
+      ctx.fillStyle = '#e17055';
+      ctx.beginPath();
+      ctx.ellipse(hx + 6.8 * s, hy - 11 * s, 1.2 * s, 3.6 * s, 0.5, 0, 6.3);
+      ctx.fill();
+      break;
+    case 'headphones': {
+      ctx.strokeStyle = c;
+      ctx.lineWidth = 2.2 * s;
+      ctx.beginPath();
+      ctx.arc(hx, hy - 1 * s, 10.6 * s, Math.PI + 0.2, Math.PI * 2 - 0.2);
+      ctx.stroke();
+      ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+      ctx.lineWidth = 0.6 * s;
+      ctx.beginPath();
+      ctx.arc(hx, hy - 1 * s, 10.6 * s, Math.PI + 0.5, Math.PI * 1.5);
+      ctx.stroke();
+      for (const side of [-1, 1]) {
+        const cx = hx + side * 9.8 * s;
+        ctx.fillStyle = c;
+        ctx.beginPath();
+        ctx.ellipse(cx, hy + 0.5 * s, 2.8 * s, 4.2 * s, 0, 0, 6.3);
+        ctx.fill();
+        ctx.strokeStyle = c2;
+        ctx.lineWidth = 0.9 * s;
+        ctx.beginPath();
+        ctx.ellipse(cx, hy + 0.5 * s, 1.8 * s, 3 * s, 0, 0, 6.3);
+        ctx.stroke();
+      }
+      break;
+    }
     default: // cappellino da baseball
-      game.view.ctx.fillStyle = c;
-      game.view.ctx.beginPath();
-      game.view.ctx.arc(head.x, head.y - 3 * s, 9.6 * s, Math.PI, Math.PI * 2);
-      game.view.ctx.fill();
-      game.view.ctx.fillStyle = game.darken(c, 0.2);
-      game.view.ctx.beginPath();
-      game.view.ctx.ellipse(head.x + 7 * s, head.y - 3 * s, 7 * s, 2 * s, 0.15, 0, 6.3);
-      game.view.ctx.fill();
-      game.view.ctx.fillStyle = '#ffffff';
-      game.view.ctx.beginPath();
-      game.view.ctx.arc(head.x, head.y - 12.4 * s, 1.4 * s, 0, 6.3);
-      game.view.ctx.fill();
+      ctx.fillStyle = c;
+      ctx.beginPath();
+      ctx.arc(hx, hy - 3 * s, 9.6 * s, Math.PI, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = game.lighten(c, 0.15);
+      ctx.beginPath();
+      ctx.arc(hx, hy - 3 * s, 9.6 * s, Math.PI * 1.15, Math.PI * 1.45);
+      ctx.lineTo(hx, hy - 3 * s);
+      ctx.fill();
+      ctx.strokeStyle = game.darken(c, 0.25);
+      ctx.lineWidth = 0.5 * s;
+      ctx.beginPath();
+      ctx.moveTo(hx, hy - 12.6 * s);
+      ctx.lineTo(hx, hy - 3 * s);
+      ctx.stroke();
+      ctx.fillStyle = game.darken(c, 0.2);
+      ctx.beginPath();
+      ctx.ellipse(hx + 7 * s, hy - 3 * s, 7 * s, 2 * s, 0.15, 0, 6.3);
+      ctx.fill();
+      dot(hx, hy - 12.4 * s, 1.4 * s, '#ffffff');
   }
 }
 
@@ -709,11 +1187,13 @@ export function drawAvatarSleeping(
 ): GameValue {
   const s: GameValue = isoScale(),
     e: GameValue = k * k * (3 - 2 * k);
-  const footY: GameValue = bed.y + bed.h * 0.21;
-  const tx: GameValue = px + (bed.x - px) * e,
-    ty: GameValue = py + (footY - py) * e;
+  const bedRot: number = bed.rot || 0;
+  const foot = rotateAround(bed.x, bed.y + bed.h * 0.21, bed.x, bed.y, bedRot);
+  const tx: GameValue = px + (foot.x - px) * e,
+    ty: GameValue = py + (foot.y - py) * e;
   const lift: GameValue = 24 * e + Math.sin(Math.PI * k) * 12;
-  const rot: GameValue = (Math.PI / 3) * e;
+  // con il letto girato di un quarto, il personaggio si sdraia dall'altra parte
+  const rot: GameValue = (Math.PI / 3) * e * (bedRot % 2 ? -1 : 1);
   const pv: GameValue = isoProject(tx, ty, 0);
   game.view.ctx.save();
   game.view.ctx.translate(pv.x, pv.y - lift * s);
@@ -856,6 +1336,12 @@ export function drawShowerWater(it?: GameValue, t?: GameValue, occ?: GameValue):
   game.view.ctx.lineCap = 'butt';
 }
 
+// Maglie a maniche corte o senza maniche; tutte le altre hanno le maniche lunghe.
+const SHORT_SLEEVES = new Set(['plain', 'print', 'jersey', 'polo', 'hawaii', undefined]);
+// Capi lunghi che coprono la vita: niente cintura visibile.
+const LONG_TOPS = new Set(['hoodie', 'puffer', 'sweater', 'suit', 'tuxedo', 'jacket']);
+const BELT_PANTS = new Set(['jeans', 'ripped', 'cargo', 'plaid', 'camo']);
+
 export function drawPlayerAvatar(
   x?: GameValue,
   y?: GameValue,
@@ -867,6 +1353,7 @@ export function drawPlayerAvatar(
   opts: GameValue = null,
 ): GameValue {
   look = look || resolveLook({});
+  const ctx: GameValue = game.view.ctx;
   const s: GameValue = isoScale();
   const hsh: GameValue = nameHash(name);
   const mannequin: GameValue = !!look.mannequin;
@@ -875,13 +1362,14 @@ export function drawPlayerAvatar(
   const hair: GameValue = game.BODY_PARTS.hairColor.opts[bd.hairColor].c;
   const top: GameValue = look.top,
     pants: GameValue = look.pants,
-    shoes: GameValue = look.shoes;
+    shoes: GameValue = look.shoes,
+    neckItem: GameValue = look.neck || null;
   const g0: GameValue = isoProject(x, y, 0);
   if (!(opts && opts.noShadow)) {
-    game.view.ctx.fillStyle = 'rgba(0,0,0,0.3)';
-    game.view.ctx.beginPath();
-    game.view.ctx.ellipse(g0.x, g0.y, 13 * s, 6.5 * s, 0, 0, 6.3);
-    game.view.ctx.fill();
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    ctx.beginPath();
+    ctx.ellipse(g0.x, g0.y, 13 * s, 6.5 * s, 0, 0, 6.3);
+    ctx.fill();
   }
   const phase: GameValue = animTime * 11 + (hsh % 10);
   const swing: GameValue = moving ? Math.sin(phase) : 0;
@@ -895,252 +1383,721 @@ export function drawPlayerAvatar(
   const hip: GameValue = P(0, 0, 22 + bob),
     neck: GameValue = P(0, 0, 46 + bob),
     head: GameValue = P(0, 0, 58 + bob);
-  game.view.ctx.lineCap = 'round';
-  // ---- gambe e scarpe
-  const shorts: GameValue = pants.style === 'shorts';
-  const drawLeg: GameValue = (a?: GameValue, b?: GameValue, back?: GameValue): GameValue => {
-    const pc: GameValue = back ? game.darken(pants.color, 0.18) : pants.color;
-    const knee: GameValue = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
-    game.view.ctx.strokeStyle = pc;
-    game.view.ctx.lineWidth = (shorts ? 5.4 : 4.6) * s;
-    game.view.ctx.beginPath();
-    game.view.ctx.moveTo(a.x, a.y);
-    game.view.ctx.lineTo(shorts ? knee.x : b.x, shorts ? knee.y : b.y);
-    game.view.ctx.stroke();
-    if (shorts) {
-      game.view.ctx.strokeStyle = back ? game.darken(skin, 0.12) : skin;
-      game.view.ctx.lineWidth = 3.8 * s;
-      game.view.ctx.beginPath();
-      game.view.ctx.moveTo(knee.x, knee.y);
-      game.view.ctx.lineTo(b.x, b.y);
-      game.view.ctx.stroke();
-    }
-    if (pants.style === 'camo') {
-      game.view.ctx.fillStyle = pants.color2;
-      [0.2, 0.5, 0.75].forEach((k?: GameValue, i?: GameValue): GameValue => {
-        game.view.ctx.beginPath();
-        game.view.ctx.arc(
-          a.x + (b.x - a.x) * k + (i % 2 ? 1 : -1) * s,
-          a.y + (b.y - a.y) * k,
-          1.4 * s,
-          0,
-          6.3,
-        );
-        game.view.ctx.fill();
-      });
-    }
-    game.view.ctx.fillStyle = back ? game.darken(shoes.color, 0.2) : shoes.color;
-    game.view.ctx.beginPath();
-    game.view.ctx.ellipse(b.x + 1.5 * s, b.y, 3.6 * s, 2.1 * s, 0, 0, 6.3);
-    game.view.ctx.fill();
-    game.view.ctx.strokeStyle = 'rgba(0,0,0,0.35)';
-    game.view.ctx.lineWidth = 0.8;
-    game.view.ctx.stroke();
-  };
-  drawLeg(P(3, -3, 22 + bob), P(3 - swing * 5, -3 + swing * 5, 2), true);
-  drawLeg(P(-3, 3, 22 + bob), P(-3 + swing * 5, 3 - swing * 5, 2), false);
-  // ---- braccio dietro
   const tw: GameValue = 9.5 * s;
-  const sleeve: GameValue = top.color;
-  const armBack: GameValue = { x: neck.x + tw - 1 * s, y: neck.y + 3 * s },
-    handBack: GameValue = { x: hip.x + 11 * s - swing * 3 * s, y: hip.y + 1 * s };
-  game.view.ctx.strokeStyle = game.darken(sleeve, 0.3);
-  game.view.ctx.lineWidth = 3.6 * s;
-  game.view.ctx.beginPath();
-  game.view.ctx.moveTo(armBack.x, armBack.y);
-  game.view.ctx.lineTo(handBack.x, handBack.y);
-  game.view.ctx.stroke();
-  game.view.ctx.fillStyle = skin;
-  game.view.ctx.beginPath();
-  game.view.ctx.arc(handBack.x, handBack.y, 2.6 * s, 0, 6.3);
-  game.view.ctx.fill();
-  // ---- cappuccio (dietro al collo)
-  if (top.style === 'hoodie') {
-    game.view.ctx.fillStyle = game.darken(top.color, 0.2);
-    game.view.ctx.beginPath();
-    game.view.ctx.ellipse(neck.x + 1 * s, neck.y - 2 * s, 8 * s, 4.5 * s, 0, 0, 6.3);
-    game.view.ctx.fill();
-  }
-  // ---- busto con il motivo del capo
-  const torsoPath: GameValue = (): GameValue => {
-    game.view.ctx.beginPath();
-    game.view.ctx.moveTo(hip.x - 7.5 * s, hip.y + 2 * s);
-    game.view.ctx.lineTo(hip.x + 7.5 * s, hip.y + 2 * s);
-    game.view.ctx.lineTo(neck.x + tw, neck.y + 4 * s);
-    game.view.ctx.quadraticCurveTo(
-      neck.x + tw,
-      neck.y - 1 * s,
-      neck.x + tw - 4 * s,
-      neck.y - 1 * s,
-    );
-    game.view.ctx.lineTo(neck.x - tw + 4 * s, neck.y - 1 * s);
-    game.view.ctx.quadraticCurveTo(neck.x - tw, neck.y - 1 * s, neck.x - tw, neck.y + 4 * s);
-    game.view.ctx.closePath();
-  };
-  const grad: GameValue = game.view.ctx.createLinearGradient(neck.x - tw, 0, neck.x + tw, 0);
-  grad.addColorStop(0, game.lighten(top.color, 0.18));
-  grad.addColorStop(1, game.darken(top.color, 0.25));
-  torsoPath();
-  game.view.ctx.fillStyle = grad;
-  game.view.ctx.fill();
-  game.view.ctx.save();
-  torsoPath();
-  game.view.ctx.clip();
-  const c2: GameValue = top.color2 || '#ffffff';
-  const tx: GameValue = neck.x - tw,
-    tyTop: GameValue = neck.y - 1 * s,
+  const tyTop: GameValue = neck.y - 1 * s,
     tyBot: GameValue = hip.y + 2 * s,
-    tW: GameValue = tw * 2,
     tH: GameValue = tyBot - tyTop;
-  switch (top.style) {
-    case 'stripes':
-      game.view.ctx.fillStyle = c2;
-      for (let v: GameValue = tyTop + 2 * s; v < tyBot; v += 4 * s)
-        game.view.ctx.fillRect(tx, v, tW, 2 * s);
-      break;
-    case 'hawaii':
-      for (let i: GameValue = 0; i < 9; i++) {
-        const px: GameValue = tx + rnd(i) * tW,
-          py: GameValue = tyTop + rnd(i + 5) * tH;
-        game.view.ctx.fillStyle = i % 2 ? c2 : '#ffffff';
-        for (let p: GameValue = 0; p < 5; p++) {
-          game.view.ctx.beginPath();
-          game.view.ctx.arc(
-            px + Math.cos(p * 1.256) * 1.5 * s,
-            py + Math.sin(p * 1.256) * 1.5 * s,
-            1.1 * s,
+  ctx.lineCap = 'round';
+
+  // ---- zaino dietro la schiena (si vede ai lati del busto)
+  if (neckItem && neckItem.style === 'backpack') {
+    ctx.fillStyle = game.darken(neckItem.color, 0.15);
+    ctx.beginPath();
+    ctx.roundRect
+      ? ctx.roundRect(neck.x - tw - 2 * s, tyTop + 1 * s, (tw + 2 * s) * 2, tH * 0.8, 3 * s)
+      : ctx.rect(neck.x - tw - 2 * s, tyTop + 1 * s, (tw + 2 * s) * 2, tH * 0.8);
+    ctx.fill();
+  }
+
+  // ---- gambe, pantaloni e scarpe
+  const pStyle: GameValue = pants.style;
+  const bareFrom: number = pStyle === 'shorts' ? 0.5 : pStyle === 'skirt' ? 0.12 : 1;
+  const drawShoe = (b: Pt, back: boolean): void => {
+    const sc = back ? game.darken(shoes.color, 0.2) : shoes.color;
+    const sc2 = shoes.color2 || '#ffffff';
+    const fx = b.x + 1.5 * s,
+      fy = b.y;
+    const outline = 'rgba(0,0,0,0.35)';
+    const body = (rx: number, ry: number, oy = 0) => {
+      ctx.fillStyle = sc;
+      ctx.beginPath();
+      ctx.ellipse(fx, fy + oy, rx * s, ry * s, 0, 0, 6.3);
+      ctx.fill();
+      ctx.strokeStyle = outline;
+      ctx.lineWidth = 0.8;
+      ctx.stroke();
+    };
+    const sole = (color: string, h = 0.95) => {
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.ellipse(fx, fy + 1.1 * s, 3.9 * s, h * s, 0, 0, 6.3);
+      ctx.fill();
+    };
+    const laces = () => {
+      seg(
+        { x: fx - 1.4 * s, y: fy - 1.3 * s },
+        { x: fx - 0.2 * s, y: fy - 1.6 * s },
+        '#ffffff',
+        0.5 * s,
+      );
+      seg(
+        { x: fx - 0.6 * s, y: fy - 0.6 * s },
+        { x: fx + 0.6 * s, y: fy - 0.9 * s },
+        '#ffffff',
+        0.5 * s,
+      );
+    };
+    switch (shoes.style) {
+      case 'boots':
+        ctx.fillStyle = sc;
+        ctx.fillRect(b.x - 2.4 * s, b.y - 7 * s, 4.8 * s, 7 * s);
+        ctx.fillStyle = game.lighten(sc, 0.15);
+        ctx.fillRect(b.x - 2.4 * s, b.y - 7 * s, 4.8 * s, 1 * s);
+        body(3.9, 2.2);
+        sole(game.darken(shoes.color, 0.5), 0.8);
+        break;
+      case 'hightop':
+        ctx.fillStyle = sc;
+        ctx.fillRect(b.x - 2.2 * s, b.y - 4.6 * s, 4.4 * s, 4.6 * s);
+        body(3.7, 2.1);
+        sole('#f5f6fa');
+        seg({ x: fx - 2 * s, y: fy - 0.2 * s }, { x: fx + 2 * s, y: fy - 1 * s }, sc2, 0.7 * s);
+        for (let i = 0; i < 3; i++)
+          seg(
+            { x: b.x - 1 * s, y: b.y - (1.2 + i * 1.3) * s },
+            { x: b.x + 1 * s, y: b.y - (1.2 + i * 1.3) * s },
+            '#ffffff',
+            0.45 * s,
+          );
+        break;
+      case 'formal':
+        body(4, 1.9);
+        sole('#0b0b0b', 0.6);
+        ctx.fillStyle = 'rgba(255,255,255,0.45)';
+        ctx.beginPath();
+        ctx.ellipse(fx + 0.8 * s, fy - 0.8 * s, 1.6 * s, 0.45 * s, -0.1, 0, 6.3);
+        ctx.fill();
+        break;
+      case 'heels':
+        ctx.fillStyle = game.darken(shoes.color, 0.3);
+        ctx.fillRect(b.x - 1.6 * s, fy - 0.2 * s, 1.1 * s, 2.8 * s);
+        body(3.2, 1.6, -0.4);
+        dot(fx + 1.2 * s, fy - 0.9 * s, 0.5 * s, 'rgba(255,255,255,0.6)');
+        break;
+      case 'sandals':
+        ctx.fillStyle = game.darken(shoes.color, 0.25);
+        ctx.beginPath();
+        ctx.ellipse(fx, fy + 0.8 * s, 3.9 * s, 1.3 * s, 0, 0, 6.3);
+        ctx.fill();
+        ctx.fillStyle = back ? game.darken(skin, 0.12) : skin;
+        ctx.beginPath();
+        ctx.ellipse(fx, fy, 3.2 * s, 1.7 * s, 0, 0, 6.3);
+        ctx.fill();
+        seg({ x: fx - 2 * s, y: fy - 0.6 * s }, { x: fx + 0.6 * s, y: fy + 0.8 * s }, sc, 0.9 * s);
+        seg(
+          { x: fx + 0.6 * s, y: fy - 0.9 * s },
+          { x: fx + 2.2 * s, y: fy + 0.6 * s },
+          sc,
+          0.9 * s,
+        );
+        break;
+      case 'slippers':
+        for (const side of [-1, 1]) {
+          ctx.fillStyle = sc;
+          ctx.beginPath();
+          ctx.ellipse(
+            fx + (1.6 + side * 0.9) * s,
+            fy - 2.4 * s,
+            0.8 * s,
+            2 * s,
+            side * 0.3,
             0,
             6.3,
           );
-          game.view.ctx.fill();
+          ctx.fill();
+          ctx.fillStyle = '#ffeaa7';
+          ctx.beginPath();
+          ctx.ellipse(
+            fx + (1.6 + side * 0.9) * s,
+            fy - 2.3 * s,
+            0.35 * s,
+            1.3 * s,
+            side * 0.3,
+            0,
+            6.3,
+          );
+          ctx.fill();
         }
-        game.view.ctx.fillStyle = '#feca57';
-        game.view.ctx.beginPath();
-        game.view.ctx.arc(px, py, 0.8 * s, 0, 6.3);
-        game.view.ctx.fill();
+        body(4.3, 2.6);
+        ctx.fillStyle = game.lighten(shoes.color, 0.35);
+        ctx.beginPath();
+        ctx.ellipse(fx - 0.6 * s, fy + 0.2 * s, 2.4 * s, 1.3 * s, 0, 0, 6.3);
+        ctx.fill();
+        dot(fx + 1.2 * s, fy - 0.8 * s, 0.4 * s, '#2d3436');
+        dot(fx + 2.6 * s, fy - 0.8 * s, 0.4 * s, '#2d3436');
+        break;
+      case 'checker':
+        body(3.6, 2, -0.2);
+        ctx.save();
+        ctx.beginPath();
+        ctx.ellipse(fx, fy - 0.2 * s, 3.6 * s, 2 * s, 0, 0, 6.3);
+        ctx.clip();
+        ctx.fillStyle = sc2;
+        for (let i = 0; i < 6; i++)
+          for (let j = 0; j < 3; j++)
+            if ((i + j) % 2)
+              ctx.fillRect(fx + (i - 3) * 1.2 * s, fy + (j - 2) * 1.2 * s, 1.2 * s, 1.2 * s);
+        ctx.restore();
+        sole('#f5f6fa');
+        break;
+      default: {
+        // sneakers
+        body(3.6, 2, -0.2);
+        const white = toRgb(shoes.color).every((v: number) => v > 220);
+        sole(white ? '#ced6e0' : '#f5f6fa');
+        ctx.fillStyle = game.lighten(sc, 0.25);
+        ctx.beginPath();
+        ctx.ellipse(fx + 2 * s, fy - 0.1 * s, 1.4 * s, 1.2 * s, 0, 0, 6.3);
+        ctx.fill();
+        if (!white) laces();
+        else {
+          seg(
+            { x: fx - 1.4 * s, y: fy - 1.3 * s },
+            { x: fx - 0.2 * s, y: fy - 1.6 * s },
+            '#b2bec3',
+            0.5 * s,
+          );
+          seg(
+            { x: fx - 0.6 * s, y: fy - 0.6 * s },
+            { x: fx + 0.6 * s, y: fy - 0.9 * s },
+            '#b2bec3',
+            0.5 * s,
+          );
+        }
       }
+    }
+  };
+  const drawPantsPattern = (a: Pt, end: Pt, pc: string): void => {
+    const c2 = pants.color2 || game.darken(pants.color, 0.3);
+    const knee = lerpPt(a, end, 0.5);
+    switch (pStyle) {
+      case 'camo':
+        [0.2, 0.5, 0.75].forEach((k, i) => {
+          const p = lerpPt(a, end, k);
+          dot(p.x + (i % 2 ? 1 : -1) * s, p.y, 1.4 * s, c2);
+        });
+        break;
+      case 'jeans':
+      case 'ripped': {
+        const o = { x: 1.3 * s, y: 0 };
+        seg(
+          { x: a.x - o.x, y: a.y },
+          { x: end.x - o.x, y: end.y - 1 * s },
+          game.lighten(pc, 0.22),
+          0.45 * s,
+        );
+        if (pStyle === 'ripped') {
+          ctx.fillStyle = skin;
+          ctx.beginPath();
+          ctx.ellipse(knee.x, knee.y, 1.6 * s, 0.9 * s, 0, 0, 6.3);
+          ctx.fill();
+          for (const dy of [-0.5, 0.5])
+            seg(
+              { x: knee.x - 1.7 * s, y: knee.y + dy * s },
+              { x: knee.x + 1.7 * s, y: knee.y + dy * s },
+              'rgba(255,255,255,0.75)',
+              0.3 * s,
+            );
+          const thigh = lerpPt(a, end, 0.22);
+          seg(
+            { x: thigh.x - 1 * s, y: thigh.y },
+            { x: thigh.x + 1 * s, y: thigh.y },
+            'rgba(255,255,255,0.6)',
+            0.4 * s,
+          );
+        }
+        break;
+      }
+      case 'joggers':
+        seg({ x: a.x + 1.6 * s, y: a.y }, { x: end.x + 1.6 * s, y: end.y - 1.2 * s }, c2, 0.7 * s);
+        seg(lerpPt(a, end, 0.9), end, game.darken(pc, 0.25), 5 * s);
+        break;
+      case 'cargo':
+        ctx.fillStyle = c2;
+        ctx.fillRect(knee.x - 2.4 * s, knee.y - 3 * s, 3.4 * s, 3.6 * s);
+        seg(
+          { x: knee.x - 2.4 * s, y: knee.y - 3 * s },
+          { x: knee.x + 1 * s, y: knee.y - 3 * s },
+          game.darken(c2, 0.3),
+          0.8 * s,
+        );
+        break;
+      case 'plaid':
+        for (let k = 0.08; k < 0.98; k += 0.14) {
+          const p = lerpPt(a, end, k);
+          seg({ x: p.x - 2.2 * s, y: p.y }, { x: p.x + 2.2 * s, y: p.y }, c2, 0.6 * s);
+        }
+        seg(a, end, game.lighten(pc, 0.18), 0.5 * s);
+        break;
+      case 'sequin':
+        for (let i = 0; i < 7; i++) {
+          const p = lerpPt(a, end, 0.08 + i * 0.13);
+          const tw2 = 0.5 + 0.5 * Math.sin(animTime * 6 + i * 1.7 + (p.x > hip.x ? 2 : 0));
+          dot(
+            p.x + (i % 2 ? 1.1 : -1.1) * s,
+            p.y,
+            (0.5 + 0.4 * tw2) * s,
+            `rgba(255,250,210,${0.4 + 0.6 * tw2})`,
+          );
+        }
+        break;
+    }
+  };
+  const drawLeg = (a: Pt, b: Pt, back: boolean): void => {
+    const pc = back ? game.darken(pants.color, 0.18) : pants.color;
+    const cut = lerpPt(a, b, bareFrom);
+    if (bareFrom < 1) seg(cut, b, back ? game.darken(skin, 0.12) : skin, 3.8 * s);
+    if (pStyle !== 'skirt') {
+      const width =
+        pStyle === 'shorts' ? 5.4 : pStyle === 'cargo' || pStyle === 'joggers' ? 5 : 4.6;
+      seg(a, cut, pc, width * s);
+      drawPantsPattern(a, cut, pc);
+    }
+    drawShoe(b, back);
+  };
+  drawLeg(P(3, -3, 22 + bob), P(3 - swing * 5, -3 + swing * 5, 2), true);
+  drawLeg(P(-3, 3, 22 + bob), P(-3 + swing * 5, 3 - swing * 5, 2), false);
+  if (pStyle === 'skirt') {
+    const st = hip.y - 1 * s,
+      sb = hip.y + 9.5 * s;
+    const g = ctx.createLinearGradient(hip.x - 10 * s, 0, hip.x + 10 * s, 0);
+    g.addColorStop(0, game.lighten(pants.color, 0.15));
+    g.addColorStop(1, game.darken(pants.color, 0.25));
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.moveTo(hip.x - 7.5 * s, st);
+    ctx.lineTo(hip.x + 7.5 * s, st);
+    ctx.lineTo(hip.x + 10.5 * s, sb);
+    ctx.lineTo(hip.x - 10.5 * s, sb);
+    ctx.closePath();
+    ctx.fill();
+    for (let i = -3; i <= 3; i++)
+      seg(
+        { x: hip.x + i * 2 * s, y: st + 1 * s },
+        { x: hip.x + i * 2.9 * s, y: sb },
+        game.darken(pants.color, 0.25),
+        0.5 * s,
+      );
+    seg(
+      { x: hip.x - 10.5 * s, y: sb },
+      { x: hip.x + 10.5 * s, y: sb },
+      game.lighten(pants.color, 0.25),
+      0.6 * s,
+    );
+  }
+
+  // ---- braccia: manica lunga, corta o niente
+  const sleeveKind =
+    top.style === 'tank' ? 'none' : SHORT_SLEEVES.has(top.style) ? 'short' : 'long';
+  const drawArm = (from: Pt, to: Pt, back: boolean): void => {
+    const sc = back ? game.darken(top.color, 0.3) : game.darken(top.color, 0.08);
+    const sk = back ? game.darken(skin, 0.12) : skin;
+    const w = (top.style === 'puffer' ? 4.8 : 3.6) * s;
+    if (sleeveKind === 'none') seg(from, to, sk, 3 * s);
+    else if (sleeveKind === 'short') {
+      const m = lerpPt(from, to, 0.42);
+      seg(m, to, sk, 3 * s);
+      seg(from, m, sc, w);
+      if (top.style === 'jersey' || top.style === 'polo')
+        seg(lerpPt(from, to, 0.36), m, top.color2 || '#ffffff', w);
+    } else {
+      seg(from, to, sc, w);
+      const cuff =
+        top.style === 'suit' || top.style === 'tuxedo'
+          ? '#ffffff'
+          : top.style === 'vest'
+            ? game.darken(top.color, 0.12)
+            : game.darken(sc, 0.22);
+      seg(lerpPt(from, to, 0.86), lerpPt(from, to, 0.93), cuff, w);
+      if (top.style === 'sport') seg(from, to, top.color2, 0.9 * s);
+      if (top.style === 'puffer')
+        for (const k of [0.3, 0.6]) {
+          const p = lerpPt(from, to, k);
+          seg(
+            { x: p.x - 2 * s, y: p.y },
+            { x: p.x + 2 * s, y: p.y },
+            game.darken(sc, 0.18),
+            0.5 * s,
+          );
+        }
+    }
+    dot(to.x, to.y, 2.6 * s, sk);
+  };
+  drawArm(
+    { x: neck.x + tw - 1 * s, y: neck.y + 3 * s },
+    { x: hip.x + 11 * s - swing * 3 * s, y: hip.y + 1 * s },
+    true,
+  );
+
+  // ---- cappuccio (dietro al collo)
+  if (top.style === 'hoodie') {
+    ctx.fillStyle = game.darken(top.color, 0.2);
+    ctx.beginPath();
+    ctx.ellipse(neck.x + 1 * s, neck.y - 2 * s, 8 * s, 4.5 * s, 0, 0, 6.3);
+    ctx.fill();
+  }
+  // ---- busto con il motivo del capo
+  const torsoPath = (): void => {
+    ctx.beginPath();
+    ctx.moveTo(hip.x - 7.5 * s, hip.y + 2 * s);
+    ctx.lineTo(hip.x + 7.5 * s, hip.y + 2 * s);
+    ctx.lineTo(neck.x + tw, neck.y + 4 * s);
+    ctx.quadraticCurveTo(neck.x + tw, neck.y - 1 * s, neck.x + tw - 4 * s, neck.y - 1 * s);
+    ctx.lineTo(neck.x - tw + 4 * s, neck.y - 1 * s);
+    ctx.quadraticCurveTo(neck.x - tw, neck.y - 1 * s, neck.x - tw, neck.y + 4 * s);
+    ctx.closePath();
+  };
+  const grad = ctx.createLinearGradient(neck.x - tw, 0, neck.x + tw, 0);
+  grad.addColorStop(0, game.lighten(top.color, 0.18));
+  grad.addColorStop(1, game.darken(top.color, 0.25));
+  torsoPath();
+  ctx.fillStyle = grad;
+  ctx.fill();
+  ctx.save();
+  torsoPath();
+  ctx.clip();
+  const c2: GameValue = top.color2 || '#ffffff';
+  const tx: GameValue = neck.x - tw,
+    tW: GameValue = tw * 2;
+  const vNeck = (depth: number, color: string, half = 3.8) => {
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.moveTo(neck.x - half * s, tyTop);
+    ctx.lineTo(neck.x + half * s, tyTop);
+    ctx.lineTo(neck.x, tyTop + tH * depth);
+    ctx.fill();
+  };
+  const crewNeck = (color: string) => {
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1.1 * s;
+    ctx.beginPath();
+    ctx.arc(neck.x, tyTop, 3.4 * s, 0.15, Math.PI - 0.15);
+    ctx.stroke();
+  };
+  const buttons = (from: number, to: number, n: number, color = 'rgba(0,0,0,0.45)') => {
+    for (let i = 0; i < n; i++)
+      dot(neck.x, tyTop + tH * (from + ((to - from) * i) / Math.max(1, n - 1)), 0.7 * s, color);
+  };
+  switch (top.style) {
+    case 'stripes':
+      ctx.fillStyle = c2;
+      for (let v = tyTop + 2 * s; v < tyBot; v += 4 * s) ctx.fillRect(tx, v, tW, 2 * s);
+      crewNeck(game.darken(c2, 0.2));
+      break;
+    case 'hawaii':
+      for (let i = 0; i < 9; i++) {
+        const px = tx + rnd(i) * tW,
+          py = tyTop + rnd(i + 5) * tH;
+        for (let p = 0; p < 5; p++)
+          dot(
+            px + Math.cos(p * 1.256) * 1.5 * s,
+            py + Math.sin(p * 1.256) * 1.5 * s,
+            1.1 * s,
+            i % 2 ? c2 : '#ffffff',
+          );
+        dot(px, py, 0.8 * s, '#feca57');
+      }
+      vNeck(0.3, game.lighten(top.color, 0.2), 4.2);
+      buttons(0.4, 0.9, 3);
       break;
     case 'sport':
-      game.view.ctx.fillStyle = c2;
-      game.view.ctx.fillRect(tx + 2 * s, tyTop, 1.6 * s, tH);
-      game.view.ctx.fillRect(tx + tW - 3.6 * s, tyTop, 1.6 * s, tH);
-      game.view.ctx.fillStyle = 'rgba(255,255,255,0.75)';
-      game.view.ctx.fillRect(neck.x - 0.4 * s, tyTop, 0.8 * s, tH);
+      ctx.fillStyle = c2;
+      ctx.fillRect(tx + 2 * s, tyTop, 1.6 * s, tH);
+      ctx.fillRect(tx + tW - 3.6 * s, tyTop, 1.6 * s, tH);
+      ctx.fillStyle = 'rgba(255,255,255,0.75)';
+      ctx.fillRect(neck.x - 0.4 * s, tyTop, 0.8 * s, tH);
       break;
     case 'xmas': {
-      game.view.ctx.fillStyle = c2;
-      game.view.ctx.fillRect(tx, tyTop + tH * 0.3, tW, 1.3 * s);
-      game.view.ctx.fillRect(tx, tyTop + tH * 0.7, tW, 1.3 * s);
-      game.view.ctx.strokeStyle = '#27ae60';
-      game.view.ctx.lineWidth = 1.4 * s;
-      game.view.ctx.beginPath();
-      for (let u: GameValue = 0, i: GameValue = 0; u <= tW; u += 2.5 * s, i++) {
-        const vv: GameValue = tyTop + tH * 0.5 + (i % 2 ? -1.6 : 1.6) * s;
-        i === 0 ? game.view.ctx.moveTo(tx + u, vv) : game.view.ctx.lineTo(tx + u, vv);
+      ctx.fillStyle = c2;
+      ctx.fillRect(tx, tyTop + tH * 0.3, tW, 1.3 * s);
+      ctx.fillRect(tx, tyTop + tH * 0.7, tW, 1.3 * s);
+      ctx.strokeStyle = '#27ae60';
+      ctx.lineWidth = 1.4 * s;
+      ctx.beginPath();
+      for (let u = 0, i = 0; u <= tW; u += 2.5 * s, i++) {
+        const vv = tyTop + tH * 0.5 + (i % 2 ? -1.6 : 1.6) * s;
+        if (i === 0) ctx.moveTo(tx + u, vv);
+        else ctx.lineTo(tx + u, vv);
       }
-      game.view.ctx.stroke();
+      ctx.stroke();
+      for (let u = 2 * s; u < tW; u += 5 * s) dot(tx + u, tyTop + tH * 0.15, 0.8 * s, '#ffffff');
       break;
     }
     case 'suit':
-      game.view.ctx.fillStyle = '#ffffff';
-      game.view.ctx.beginPath();
-      game.view.ctx.moveTo(neck.x - 3.8 * s, tyTop);
-      game.view.ctx.lineTo(neck.x + 3.8 * s, tyTop);
-      game.view.ctx.lineTo(neck.x, tyTop + tH * 0.58);
-      game.view.ctx.fill();
-      game.view.ctx.fillStyle = c2;
-      game.view.ctx.beginPath();
-      game.view.ctx.moveTo(neck.x - 1.1 * s, tyTop + 0.8 * s);
-      game.view.ctx.lineTo(neck.x + 1.1 * s, tyTop + 0.8 * s);
-      game.view.ctx.lineTo(neck.x + 1.7 * s, tyTop + tH * 0.48);
-      game.view.ctx.lineTo(neck.x, tyTop + tH * 0.6);
-      game.view.ctx.lineTo(neck.x - 1.7 * s, tyTop + tH * 0.48);
-      game.view.ctx.closePath();
-      game.view.ctx.fill();
-      game.view.ctx.strokeStyle = 'rgba(0,0,0,0.4)';
-      game.view.ctx.lineWidth = 1;
-      game.view.ctx.beginPath();
-      game.view.ctx.moveTo(neck.x - 4 * s, tyTop);
-      game.view.ctx.lineTo(neck.x - 1 * s, tyTop + tH * 0.6);
-      game.view.ctx.moveTo(neck.x + 4 * s, tyTop);
-      game.view.ctx.lineTo(neck.x + 1 * s, tyTop + tH * 0.6);
-      game.view.ctx.stroke();
-      game.view.ctx.fillStyle = 'rgba(0,0,0,0.5)';
-      [0.72, 0.86].forEach((k?: GameValue): GameValue => {
-        game.view.ctx.beginPath();
-        game.view.ctx.arc(neck.x, tyTop + tH * k, 0.8 * s, 0, 6.3);
-        game.view.ctx.fill();
-      });
+    case 'tuxedo': {
+      vNeck(0.58, '#ffffff');
+      ctx.strokeStyle = 'rgba(0,0,0,0.4)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(neck.x - 4 * s, tyTop);
+      ctx.lineTo(neck.x - 1 * s, tyTop + tH * 0.6);
+      ctx.moveTo(neck.x + 4 * s, tyTop);
+      ctx.lineTo(neck.x + 1 * s, tyTop + tH * 0.6);
+      ctx.stroke();
+      // risvolti
+      ctx.fillStyle = top.style === 'tuxedo' ? '#2f3542' : game.lighten(top.color, 0.12);
+      for (const side of [-1, 1]) {
+        ctx.beginPath();
+        ctx.moveTo(neck.x + side * 4 * s, tyTop);
+        ctx.lineTo(neck.x + side * 6.5 * s, tyTop + tH * 0.2);
+        ctx.lineTo(neck.x + side * 1.2 * s, tyTop + tH * 0.6);
+        ctx.closePath();
+        ctx.fill();
+      }
+      if (top.style === 'suit') {
+        ctx.fillStyle = c2;
+        ctx.beginPath();
+        ctx.moveTo(neck.x - 1.1 * s, tyTop + 0.8 * s);
+        ctx.lineTo(neck.x + 1.1 * s, tyTop + 0.8 * s);
+        ctx.lineTo(neck.x + 1.7 * s, tyTop + tH * 0.48);
+        ctx.lineTo(neck.x, tyTop + tH * 0.6);
+        ctx.lineTo(neck.x - 1.7 * s, tyTop + tH * 0.48);
+        ctx.closePath();
+        ctx.fill();
+      } else {
+        buttons(0.25, 0.48, 3, '#2d3436');
+        ctx.fillStyle = '#111111';
+        ctx.beginPath();
+        ctx.moveTo(neck.x, tyTop + 1.6 * s);
+        ctx.lineTo(neck.x - 2.8 * s, tyTop + 0.4 * s);
+        ctx.lineTo(neck.x - 2.8 * s, tyTop + 2.8 * s);
+        ctx.closePath();
+        ctx.moveTo(neck.x, tyTop + 1.6 * s);
+        ctx.lineTo(neck.x + 2.8 * s, tyTop + 0.4 * s);
+        ctx.lineTo(neck.x + 2.8 * s, tyTop + 2.8 * s);
+        ctx.closePath();
+        ctx.fill();
+        // fazzoletto nel taschino
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(neck.x - 6.8 * s, tyTop + tH * 0.32, 2.4 * s, 1 * s);
+      }
+      buttons(0.72, 0.86, 2, 'rgba(0,0,0,0.5)');
       break;
+    }
     case 'jacket':
-      game.view.ctx.fillStyle = c2;
-      game.view.ctx.fillRect(neck.x - 2.6 * s, tyTop, 5.2 * s, tH);
-      game.view.ctx.strokeStyle = 'rgba(0,0,0,0.4)';
-      game.view.ctx.lineWidth = 1;
-      game.view.ctx.beginPath();
-      game.view.ctx.moveTo(neck.x - 2.6 * s, tyTop);
-      game.view.ctx.lineTo(neck.x - 2.6 * s, tyBot);
-      game.view.ctx.moveTo(neck.x + 2.6 * s, tyTop);
-      game.view.ctx.lineTo(neck.x + 2.6 * s, tyBot);
-      game.view.ctx.stroke();
-      game.view.ctx.fillStyle = game.lighten(top.color, 0.15);
-      game.view.ctx.beginPath();
-      game.view.ctx.moveTo(neck.x - 2.6 * s, tyTop);
-      game.view.ctx.lineTo(neck.x - 6.5 * s, tyTop);
-      game.view.ctx.lineTo(neck.x - 2.6 * s, tyTop + 5 * s);
-      game.view.ctx.fill();
-      game.view.ctx.beginPath();
-      game.view.ctx.moveTo(neck.x + 2.6 * s, tyTop);
-      game.view.ctx.lineTo(neck.x + 6.5 * s, tyTop);
-      game.view.ctx.lineTo(neck.x + 2.6 * s, tyTop + 5 * s);
-      game.view.ctx.fill();
+      ctx.fillStyle = c2;
+      ctx.fillRect(neck.x - 2.6 * s, tyTop, 5.2 * s, tH);
+      ctx.strokeStyle = 'rgba(0,0,0,0.4)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(neck.x - 2.6 * s, tyTop);
+      ctx.lineTo(neck.x - 2.6 * s, tyBot);
+      ctx.moveTo(neck.x + 2.6 * s, tyTop);
+      ctx.lineTo(neck.x + 2.6 * s, tyBot);
+      ctx.stroke();
+      ctx.fillStyle = game.lighten(top.color, 0.15);
+      for (const side of [-1, 1]) {
+        ctx.beginPath();
+        ctx.moveTo(neck.x + side * 2.6 * s, tyTop);
+        ctx.lineTo(neck.x + side * 6.5 * s, tyTop);
+        ctx.lineTo(neck.x + side * 2.6 * s, tyTop + 5 * s);
+        ctx.fill();
+      }
+      // taschini
+      ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+      ctx.lineWidth = 0.6 * s;
+      ctx.strokeRect(neck.x - 7 * s, tyTop + tH * 0.3, 3 * s, 2.6 * s);
+      ctx.strokeRect(neck.x + 4 * s, tyTop + tH * 0.3, 3 * s, 2.6 * s);
       break;
     case 'hoodie':
-      game.view.ctx.fillStyle = game.darken(top.color, 0.18);
-      game.view.ctx.fillRect(neck.x - 5 * s, tyTop + tH * 0.6, 10 * s, tH * 0.27);
-      game.view.ctx.strokeStyle = c2;
-      game.view.ctx.lineWidth = 0.9 * s;
-      game.view.ctx.beginPath();
-      game.view.ctx.moveTo(neck.x - 1.6 * s, tyTop);
-      game.view.ctx.lineTo(neck.x - 1.6 * s, tyTop + 6 * s);
-      game.view.ctx.moveTo(neck.x + 1.6 * s, tyTop);
-      game.view.ctx.lineTo(neck.x + 1.6 * s, tyTop + 6 * s);
-      game.view.ctx.stroke();
+      ctx.fillStyle = game.darken(top.color, 0.18);
+      ctx.fillRect(neck.x - 5 * s, tyTop + tH * 0.6, 10 * s, tH * 0.27);
+      ctx.strokeStyle = c2;
+      ctx.lineWidth = 0.9 * s;
+      ctx.beginPath();
+      ctx.moveTo(neck.x - 1.6 * s, tyTop);
+      ctx.lineTo(neck.x - 1.6 * s, tyTop + 6 * s);
+      ctx.moveTo(neck.x + 1.6 * s, tyTop);
+      ctx.lineTo(neck.x + 1.6 * s, tyTop + 6 * s);
+      ctx.stroke();
+      dot(neck.x - 1.6 * s, tyTop + 6.3 * s, 0.6 * s, c2);
+      dot(neck.x + 1.6 * s, tyTop + 6.3 * s, 0.6 * s, c2);
       break;
+    case 'print':
+      crewNeck(game.lighten(top.color, 0.25));
+      starPath(neck.x, tyTop + tH * 0.48, 4 * s);
+      ctx.fillStyle = c2;
+      ctx.fill();
+      ctx.strokeStyle = game.darken(c2, 0.35);
+      ctx.lineWidth = 0.5 * s;
+      ctx.stroke();
+      break;
+    case 'tank':
+      // spalle e scollo scoperti
+      ctx.fillStyle = skin;
+      ctx.fillRect(tx, tyTop - 1 * s, tW, 3.2 * s);
+      ctx.beginPath();
+      ctx.arc(neck.x, tyTop + 1.5 * s, 3.4 * s, 0, Math.PI);
+      ctx.fill();
+      ctx.fillStyle = top.color;
+      ctx.fillRect(neck.x - 5.6 * s, tyTop - 1 * s, 1.8 * s, 3.4 * s);
+      ctx.fillRect(neck.x + 3.8 * s, tyTop - 1 * s, 1.8 * s, 3.4 * s);
+      seg({ x: tx, y: tyTop + 2.6 * s }, { x: neck.x - 5.6 * s, y: tyTop + 2.6 * s }, c2, 0.6 * s);
+      seg(
+        { x: neck.x + 5.6 * s, y: tyTop + 2.6 * s },
+        { x: tx + tW, y: tyTop + 2.6 * s },
+        c2,
+        0.6 * s,
+      );
+      break;
+    case 'polo':
+      ctx.fillStyle = game.lighten(top.color, 0.12);
+      ctx.fillRect(neck.x - 1.2 * s, tyTop, 2.4 * s, tH * 0.35);
+      buttons(0.12, 0.3, 2, '#ffffff');
+      ctx.fillStyle = c2;
+      for (const side of [-1, 1]) {
+        ctx.beginPath();
+        ctx.moveTo(neck.x, tyTop + 0.6 * s);
+        ctx.lineTo(neck.x + side * 4.6 * s, tyTop - 0.6 * s);
+        ctx.lineTo(neck.x + side * 3.4 * s, tyTop + 2.6 * s);
+        ctx.closePath();
+        ctx.fill();
+      }
+      break;
+    case 'plaid':
+      for (let u = 0; u < tW; u += 4 * s) {
+        ctx.fillStyle = c2 + '99';
+        ctx.fillRect(tx + u, tyTop, 1.6 * s, tH);
+      }
+      for (let v = tyTop; v < tyBot; v += 4 * s) {
+        ctx.fillStyle = c2 + '77';
+        ctx.fillRect(tx, v, tW, 1.6 * s);
+      }
+      for (let u = 2.4 * s; u < tW; u += 4 * s) {
+        ctx.fillStyle = 'rgba(255,255,255,0.25)';
+        ctx.fillRect(tx + u, tyTop, 0.4 * s, tH);
+      }
+      vNeck(0.22, game.darken(top.color, 0.15), 3.6);
+      buttons(0.3, 0.92, 4, '#f5f6fa');
+      break;
+    case 'sweater':
+      for (let u = 1 * s; u < tW; u += 2 * s)
+        seg({ x: tx + u, y: tyTop }, { x: tx + u, y: tyBot }, 'rgba(0,0,0,0.1)', 0.5 * s);
+      ctx.fillStyle = game.darken(top.color, 0.15);
+      ctx.fillRect(tx, tyBot - 3 * s, tW, 3 * s);
+      break;
+    case 'jersey':
+      vNeck(0.18, c2, 3.4);
+      ctx.fillStyle = c2;
+      ctx.fillRect(tx, tyTop, 2.4 * s, tH);
+      ctx.fillRect(tx + tW - 2.4 * s, tyTop, 2.4 * s, tH);
+      ctx.font = `bold ${7 * s}px sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('10', neck.x, tyTop + tH * 0.55);
+      ctx.textBaseline = 'alphabetic';
+      break;
+    case 'vest':
+      vNeck(0.2, game.darken(top.color, 0.08), 3);
+      ctx.fillStyle = c2;
+      for (const side of [-1, 1]) {
+        ctx.beginPath();
+        ctx.moveTo(neck.x + side * 4.6 * s, tyTop - 1 * s);
+        ctx.lineTo(neck.x + side * tw * 1.2, tyTop - 1 * s);
+        ctx.lineTo(neck.x + side * tw * 1.2, tyBot);
+        ctx.lineTo(neck.x + side * 0.5 * s, tyBot);
+        ctx.lineTo(neck.x + side * 0.5 * s, tyTop + tH * 0.5);
+        ctx.closePath();
+        ctx.fill();
+      }
+      buttons(0.58, 0.92, 3, '#dfe6e9');
+      ctx.fillStyle = 'rgba(0,0,0,0.25)';
+      ctx.fillRect(neck.x - 6.4 * s, tyTop + tH * 0.62, 2.6 * s, 0.6 * s);
+      ctx.fillRect(neck.x + 3.8 * s, tyTop + tH * 0.62, 2.6 * s, 0.6 * s);
+      break;
+    case 'puffer':
+      for (let v = tyTop + 3 * s; v < tyBot; v += 3.4 * s) {
+        seg({ x: tx, y: v }, { x: tx + tW, y: v }, game.darken(top.color, 0.2), 0.6 * s);
+        seg(
+          { x: tx, y: v - 1.6 * s },
+          { x: tx + tW, y: v - 1.6 * s },
+          'rgba(255,255,255,0.18)',
+          0.9 * s,
+        );
+      }
+      seg({ x: neck.x, y: tyTop }, { x: neck.x, y: tyBot }, game.darken(top.color, 0.35), 0.7 * s);
+      dot(neck.x, tyTop + 2.5 * s, 0.8 * s, '#dfe6e9');
+      break;
+    default:
+      crewNeck(game.darken(top.color, 0.22));
   }
-  game.view.ctx.restore();
+  // pieghe e ombra verso il basso
+  const fold = ctx.createLinearGradient(0, tyTop, 0, tyBot);
+  fold.addColorStop(0, 'rgba(255,255,255,0.08)');
+  fold.addColorStop(1, 'rgba(0,0,0,0.14)');
+  ctx.fillStyle = fold;
+  ctx.fillRect(tx, tyTop, tW, tH);
+  ctx.restore();
   torsoPath();
-  game.view.ctx.strokeStyle = 'rgba(0,0,0,0.3)';
-  game.view.ctx.lineWidth = 1;
-  game.view.ctx.stroke();
-  game.view.ctx.fillStyle = 'rgba(0,0,0,0.28)';
-  game.view.ctx.fillRect(hip.x - 7.5 * s, hip.y - 1 * s, 15 * s, 3 * s);
-  // ---- braccio davanti
-  const armFront: GameValue = { x: neck.x - tw + 1 * s, y: neck.y + 3 * s },
-    handFront: GameValue = { x: hip.x - 11 * s + swing * 3 * s, y: hip.y + 1 * s };
-  game.view.ctx.strokeStyle = game.darken(sleeve, 0.08);
-  game.view.ctx.lineWidth = 3.6 * s;
-  game.view.ctx.beginPath();
-  game.view.ctx.moveTo(armFront.x, armFront.y);
-  game.view.ctx.lineTo(handFront.x, handFront.y);
-  game.view.ctx.stroke();
-  if (top.style === 'sport') {
-    game.view.ctx.strokeStyle = top.color2;
-    game.view.ctx.lineWidth = 0.9 * s;
-    game.view.ctx.beginPath();
-    game.view.ctx.moveTo(armFront.x, armFront.y);
-    game.view.ctx.lineTo(handFront.x, handFront.y);
-    game.view.ctx.stroke();
+  ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+  if (top.style === 'puffer') {
+    ctx.fillStyle = game.darken(top.color, 0.1);
+    ctx.beginPath();
+    ctx.roundRect
+      ? ctx.roundRect(neck.x - 5.5 * s, tyTop - 2.5 * s, 11 * s, 3.6 * s, 1.6 * s)
+      : ctx.rect(neck.x - 5.5 * s, tyTop - 2.5 * s, 11 * s, 3.6 * s);
+    ctx.fill();
   }
-  game.view.ctx.fillStyle = skin;
-  game.view.ctx.beginPath();
-  game.view.ctx.arc(handFront.x, handFront.y, 2.6 * s, 0, 6.3);
-  game.view.ctx.fill();
+
+  // ---- vita: orlo del capo lungo, oppure elastico e cintura dei pantaloni
+  if (LONG_TOPS.has(top.style) || pStyle === 'skirt') {
+    ctx.fillStyle = 'rgba(0,0,0,0.28)';
+    ctx.fillRect(hip.x - 7.5 * s, hip.y - 1 * s, 15 * s, 3 * s);
+  } else {
+    ctx.fillStyle = game.darken(pants.color, 0.08);
+    ctx.fillRect(hip.x - 7.5 * s, hip.y - 0.5 * s, 15 * s, 2.6 * s);
+    if (BELT_PANTS.has(pStyle)) {
+      ctx.fillStyle = '#3e2723';
+      ctx.fillRect(hip.x - 7.5 * s, hip.y + 0.1 * s, 15 * s, 1.4 * s);
+      ctx.fillStyle = '#d4af37';
+      ctx.fillRect(hip.x - 1.2 * s, hip.y - 0.2 * s, 2.4 * s, 2 * s);
+      ctx.fillStyle = '#3e2723';
+      ctx.fillRect(hip.x - 0.5 * s, hip.y + 0.3 * s, 1 * s, 1 * s);
+    } else if (pStyle === 'joggers') {
+      seg(
+        { x: hip.x - 0.6 * s, y: hip.y + 1.5 * s },
+        { x: hip.x - 1 * s, y: hip.y + 4 * s },
+        '#ffffff',
+        0.4 * s,
+      );
+      seg(
+        { x: hip.x + 0.6 * s, y: hip.y + 1.5 * s },
+        { x: hip.x + 1 * s, y: hip.y + 4 * s },
+        '#ffffff',
+        0.4 * s,
+      );
+    }
+  }
+
+  // ---- accessori sul davanti del busto
+  if (neckItem) drawNeckFront(neckItem, neck, tyTop, tH, tw, s);
+
+  // ---- braccio davanti
+  drawArm(
+    { x: neck.x - tw + 1 * s, y: neck.y + 3 * s },
+    { x: hip.x - 11 * s + swing * 3 * s, y: hip.y + 1 * s },
+    false,
+  );
+
   // ---- testa
   if (!mannequin) drawHairBack(head, s, bd.hairStyle, hair);
-  game.view.ctx.fillStyle = skin;
-  game.view.ctx.fillRect(neck.x - 2.5 * s, neck.y - 4 * s, 5 * s, 5 * s);
-  const hg: GameValue = game.view.ctx.createRadialGradient(
+  ctx.fillStyle = skin;
+  ctx.fillRect(neck.x - 2.5 * s, neck.y - 4 * s, 5 * s, 5 * s);
+  if (top.style === 'sweater') {
+    ctx.fillStyle = game.darken(top.color, 0.08);
+    ctx.fillRect(neck.x - 3.4 * s, neck.y - 4.4 * s, 6.8 * s, 5.4 * s);
+    for (let i = -1; i <= 1; i++)
+      seg(
+        { x: neck.x + i * 1.6 * s, y: neck.y - 4 * s },
+        { x: neck.x + i * 1.6 * s, y: neck.y + 0.6 * s },
+        'rgba(0,0,0,0.15)',
+        0.5 * s,
+      );
+  }
+  if (neckItem && neckItem.style === 'scarf') drawScarf(neckItem, neck, s);
+  const hg: GameValue = ctx.createRadialGradient(
     head.x - 3 * s,
     head.y - 3 * s,
     2 * s,
@@ -1150,52 +2107,192 @@ export function drawPlayerAvatar(
   );
   hg.addColorStop(0, game.lighten(skin, 0.15));
   hg.addColorStop(1, game.darken(skin, 0.12));
-  game.view.ctx.fillStyle = hg;
-  game.view.ctx.beginPath();
-  game.view.ctx.arc(head.x, head.y, 9 * s, 0, Math.PI * 2);
-  game.view.ctx.fill();
-  game.view.ctx.strokeStyle = 'rgba(0,0,0,0.3)';
-  game.view.ctx.lineWidth = 1;
-  game.view.ctx.stroke();
+  ctx.fillStyle = hg;
+  ctx.beginPath();
+  ctx.arc(head.x, head.y, 9 * s, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+  ctx.lineWidth = 1;
+  ctx.stroke();
   if (!mannequin) {
     drawFace(head, s, bd, hair, animTime, hsh);
     drawHairFront(head, s, bd.hairStyle, hair);
   }
   drawGlasses(head, s, look.glasses);
   drawHat(head, s, look.hat);
-  game.view.ctx.lineCap = 'butt';
+  ctx.lineCap = 'butt';
   if (name) {
-    game.view.ctx.font = 'bold 10px sans-serif';
-    game.view.ctx.textAlign = 'center';
-    const nw: GameValue = Math.min(90, game.view.ctx.measureText(name).width + 14);
-    const ny: GameValue = head.y - (look.hat && look.hat.style === 'tophat' ? 40 : 34) * s - 8;
-    game.view.ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
-    game.view.ctx.beginPath();
-    game.view.ctx.roundRect
-      ? game.view.ctx.roundRect(head.x - nw / 2, ny, nw, 16, 8)
-      : game.view.ctx.rect(head.x - nw / 2, ny, nw, 16);
-    game.view.ctx.fill();
-    game.view.ctx.fillStyle = '#fff';
-    game.view.ctx.fillText(name, head.x, ny + 11.5, nw - 8);
+    ctx.font = 'bold 10px sans-serif';
+    ctx.textAlign = 'center';
+    const nw: GameValue = Math.min(90, ctx.measureText(name).width + 14);
+    const ny: GameValue = head.y - ((look.hat && HAT_TAG_HEIGHT[look.hat.style]) || 34) * s - 8;
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+    ctx.beginPath();
+    ctx.roundRect
+      ? ctx.roundRect(head.x - nw / 2, ny, nw, 16, 8)
+      : ctx.rect(head.x - nw / 2, ny, nw, 16);
+    ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.fillText(name, head.x, ny + 11.5, nw - 8);
   }
   if (say) {
-    game.view.ctx.font = '12px sans-serif';
-    const bw: GameValue = Math.min(180, game.view.ctx.measureText(say).width) + 16;
+    ctx.font = '12px sans-serif';
+    const bw: GameValue = Math.min(180, ctx.measureText(say).width) + 16;
     const bx: GameValue = head.x - bw / 2,
       by: GameValue = head.y - 34 * s - 40;
-    game.view.ctx.fillStyle = '#fff';
-    game.view.ctx.beginPath();
-    game.view.ctx.roundRect
-      ? game.view.ctx.roundRect(bx, by, bw, 22, 10)
-      : game.view.ctx.rect(bx, by, bw, 22);
-    game.view.ctx.fill();
-    game.view.ctx.beginPath();
-    game.view.ctx.moveTo(head.x - 5, by + 22);
-    game.view.ctx.lineTo(head.x + 5, by + 22);
-    game.view.ctx.lineTo(head.x, by + 29);
-    game.view.ctx.fill();
-    game.view.ctx.fillStyle = '#111';
-    game.view.ctx.textAlign = 'center';
-    game.view.ctx.fillText(say, head.x, by + 15, 180);
+    ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    ctx.roundRect ? ctx.roundRect(bx, by, bw, 22, 10) : ctx.rect(bx, by, bw, 22);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(head.x - 5, by + 22);
+    ctx.lineTo(head.x + 5, by + 22);
+    ctx.lineTo(head.x, by + 29);
+    ctx.fill();
+    ctx.fillStyle = '#111';
+    ctx.textAlign = 'center';
+    ctx.fillText(say, head.x, by + 15, 180);
+  }
+}
+
+// Sciarpa avvolta al collo con un lembo che pende di lato.
+function drawScarf(it: GameValue, neck: Pt, s: number): void {
+  const ctx = game.view.ctx;
+  const c = it.color,
+    c2 = it.color2 || '#ffffff';
+  ctx.fillStyle = game.darken(c, 0.1);
+  ctx.fillRect(neck.x + 1.5 * s, neck.y - 1 * s, 3.4 * s, 11 * s);
+  ctx.fillStyle = c2;
+  ctx.fillRect(neck.x + 1.5 * s, neck.y + 5 * s, 3.4 * s, 1.2 * s);
+  ctx.fillRect(neck.x + 1.5 * s, neck.y + 7.4 * s, 3.4 * s, 1.2 * s);
+  for (let i = 0; i < 4; i++)
+    seg(
+      { x: neck.x + (1.9 + i * 0.9) * s, y: neck.y + 10 * s },
+      { x: neck.x + (1.9 + i * 0.9) * s, y: neck.y + 11.5 * s },
+      c,
+      0.4 * s,
+    );
+  ctx.fillStyle = c;
+  ctx.beginPath();
+  ctx.roundRect
+    ? ctx.roundRect(neck.x - 6 * s, neck.y - 4.5 * s, 12 * s, 4.6 * s, 2.2 * s)
+    : ctx.rect(neck.x - 6 * s, neck.y - 4.5 * s, 12 * s, 4.6 * s);
+  ctx.fill();
+  ctx.fillStyle = c2;
+  ctx.fillRect(neck.x - 2.5 * s, neck.y - 4.4 * s, 1.2 * s, 4.4 * s);
+  ctx.fillRect(neck.x + 1.5 * s, neck.y - 4.4 * s, 1.2 * s, 4.4 * s);
+}
+
+// Accessori sul petto: cravatta, papillon, collane, medaglia e spallacci dello zaino.
+function drawNeckFront(
+  it: GameValue,
+  neck: Pt,
+  tyTop: number,
+  tH: number,
+  tw: number,
+  s: number,
+): void {
+  const ctx = game.view.ctx;
+  const c = it.color,
+    c2 = it.color2 || '#ffffff';
+  switch (it.style) {
+    case 'tie':
+      ctx.fillStyle = '#ffffff';
+      for (const side of [-1, 1]) {
+        ctx.beginPath();
+        ctx.moveTo(neck.x, tyTop + 1.2 * s);
+        ctx.lineTo(neck.x + side * 3.6 * s, tyTop - 0.4 * s);
+        ctx.lineTo(neck.x + side * 2.6 * s, tyTop + 2.4 * s);
+        ctx.closePath();
+        ctx.fill();
+      }
+      ctx.fillStyle = c;
+      ctx.beginPath();
+      ctx.moveTo(neck.x - 1.2 * s, tyTop + 0.4 * s);
+      ctx.lineTo(neck.x + 1.2 * s, tyTop + 0.4 * s);
+      ctx.lineTo(neck.x + 0.8 * s, tyTop + 2.2 * s);
+      ctx.lineTo(neck.x + 1.8 * s, tyTop + tH * 0.7);
+      ctx.lineTo(neck.x, tyTop + tH * 0.8);
+      ctx.lineTo(neck.x - 1.8 * s, tyTop + tH * 0.7);
+      ctx.lineTo(neck.x - 0.8 * s, tyTop + 2.2 * s);
+      ctx.closePath();
+      ctx.fill();
+      for (let k = 0.25; k < 0.7; k += 0.15)
+        seg(
+          { x: neck.x - 1.4 * s, y: tyTop + tH * k + 1 * s },
+          { x: neck.x + 1.4 * s, y: tyTop + tH * k },
+          game.lighten(c, 0.3),
+          0.5 * s,
+        );
+      break;
+    case 'bowtie':
+      ctx.fillStyle = c;
+      for (const side of [-1, 1]) {
+        ctx.beginPath();
+        ctx.moveTo(neck.x, tyTop + 1.4 * s);
+        ctx.lineTo(neck.x + side * 3.4 * s, tyTop - 0.2 * s);
+        ctx.lineTo(neck.x + side * 3.4 * s, tyTop + 3 * s);
+        ctx.closePath();
+        ctx.fill();
+      }
+      dot(neck.x, tyTop + 1.4 * s, 1 * s, game.darken(c, 0.25));
+      dot(neck.x - 2.4 * s, tyTop + 0.6 * s, 0.4 * s, 'rgba(255,255,255,0.5)');
+      break;
+    case 'pearls':
+      for (let i = 0; i <= 12; i++) {
+        const a = 0.1 + (i / 12) * (Math.PI - 0.2);
+        const px = neck.x + Math.cos(a) * 5 * s,
+          py = tyTop + Math.sin(a) * 4.6 * s;
+        dot(px, py, 0.85 * s, c);
+        dot(px - 0.3 * s, py - 0.3 * s, 0.3 * s, '#ffffff');
+      }
+      break;
+    case 'chain':
+      ctx.strokeStyle = c;
+      ctx.lineWidth = 1.3 * s;
+      ctx.setLineDash([1.2 * s, 0.6 * s]);
+      ctx.beginPath();
+      ctx.arc(neck.x, tyTop - 1 * s, 6.2 * s, 0.25, Math.PI - 0.25);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      dot(neck.x, tyTop + 5.6 * s, 1.9 * s, c);
+      ctx.fillStyle = game.darken(c, 0.4);
+      ctx.font = `bold ${2.8 * s}px sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('$', neck.x, tyTop + 5.7 * s);
+      ctx.textBaseline = 'alphabetic';
+      break;
+    case 'medal':
+      ctx.fillStyle = c2;
+      ctx.beginPath();
+      ctx.moveTo(neck.x - 4.4 * s, tyTop - 0.4 * s);
+      ctx.lineTo(neck.x - 2.6 * s, tyTop - 0.4 * s);
+      ctx.lineTo(neck.x + 0.8 * s, tyTop + tH * 0.42);
+      ctx.lineTo(neck.x - 0.8 * s, tyTop + tH * 0.42);
+      ctx.closePath();
+      ctx.moveTo(neck.x + 4.4 * s, tyTop - 0.4 * s);
+      ctx.lineTo(neck.x + 2.6 * s, tyTop - 0.4 * s);
+      ctx.lineTo(neck.x - 0.8 * s, tyTop + tH * 0.42);
+      ctx.lineTo(neck.x + 0.8 * s, tyTop + tH * 0.42);
+      ctx.closePath();
+      ctx.fill();
+      dot(neck.x, tyTop + tH * 0.5, 2.6 * s, game.darken(c, 0.2));
+      dot(neck.x, tyTop + tH * 0.5, 2.1 * s, c);
+      starPath(neck.x, tyTop + tH * 0.5, 1.3 * s);
+      ctx.fillStyle = game.darken(c, 0.3);
+      ctx.fill();
+      break;
+    case 'backpack':
+      for (const side of [-1, 1])
+        seg(
+          { x: neck.x + side * 5 * s, y: tyTop },
+          { x: neck.x + side * (tw - 1.5 * s), y: tyTop + tH * 0.75 },
+          c2,
+          1.6 * s,
+        );
+      for (const side of [-1, 1])
+        dot(neck.x + side * 5.8 * s, tyTop + tH * 0.35, 0.6 * s, '#b2bec3');
+      break;
   }
 }

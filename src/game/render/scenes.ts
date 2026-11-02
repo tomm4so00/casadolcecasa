@@ -2,16 +2,24 @@ import type { GameValue } from '../context.js';
 import { game } from '../context.js';
 import { isoProject, isoScale, mixColor, poly, rnd, setPlane } from './primitives.js';
 import { resetPlane } from './objects.js';
+import { getMyRoomMap, isMyRoomNow } from '../saves.js';
+import { SAFE_SPOT } from '../room-layout.js';
+import {
+  PAINT_CELLS,
+  PAINT_H,
+  PAINT_PALETTE,
+  PAINT_W,
+  PAINTING_SLOTS,
+  decodePainting,
+  paintingKey,
+  roomPaintings,
+} from '../painting-rules.js';
 export function getEnvStyle(..._args: GameValue[]): GameValue {
   const st: GameValue = game.ENV_STYLE[game.view.activeEnvironment] || game.ENV_STYLE.SALOON;
   if (game.view.activeEnvironment === 'PLAYER_ROOM') {
+    // Ogni stanza ha il suo colore di parete; i quadri sono solo quelli dipinti dai giocatori.
     const idx: GameValue = game.currentRoomIdx || 0;
-    const deco: GameValue = JSON.parse(JSON.stringify(st.decor));
-    deco.left[1].seed = 5 + idx;
-    return Object.assign({}, st, {
-      wall: game.ROOM_WALLS[idx % game.ROOM_WALLS.length],
-      decor: deco,
-    });
+    return Object.assign({}, st, { wall: game.ROOM_WALLS[idx % game.ROOM_WALLS.length] });
   }
   return st;
 }
@@ -1044,4 +1052,174 @@ export function nameHash(str?: GameValue): GameValue {
   let h: GameValue = 7;
   for (const ch of String(str || '')) h = (h * 31 + ch.charCodeAt(0)) | 0;
   return Math.abs(h);
+}
+
+// Porta rotonda del caveau sulla parete della banca.
+export function wallVaultDoor(d?: GameValue): GameValue {
+  const ctx: GameValue = game.view.ctx;
+  const cx: number = d.u,
+    cy = 66,
+    r = 40;
+  ctx.fillStyle = '#5d6d7e';
+  ctx.beginPath();
+  ctx.arc(cx, cy, r + 6, 0, 6.3);
+  ctx.fill();
+  const g = ctx.createRadialGradient(cx - 12, cy - 14, 6, cx, cy, r);
+  g.addColorStop(0, '#d5dbdf');
+  g.addColorStop(1, '#7f8c8d');
+  ctx.fillStyle = g;
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, 6.3);
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(0,0,0,0.35)';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  // bulloni sul bordo
+  for (let i = 0; i < 16; i++) {
+    const a = (i / 16) * Math.PI * 2;
+    ctx.fillStyle = '#4b5563';
+    ctx.beginPath();
+    ctx.arc(cx + Math.cos(a) * (r - 5), cy + Math.sin(a) * (r - 5), 2, 0, 6.3);
+    ctx.fill();
+  }
+  // volante di apertura
+  ctx.strokeStyle = '#2d3436';
+  ctx.lineWidth = 3;
+  for (let i = 0; i < 3; i++) {
+    const a = (i / 3) * Math.PI;
+    ctx.beginPath();
+    ctx.moveTo(cx - Math.cos(a) * 18, cy - Math.sin(a) * 18);
+    ctx.lineTo(cx + Math.cos(a) * 18, cy + Math.sin(a) * 18);
+    ctx.stroke();
+  }
+  ctx.beginPath();
+  ctx.arc(cx, cy, 18, 0, 6.3);
+  ctx.stroke();
+  ctx.fillStyle = '#b08d57';
+  ctx.beginPath();
+  ctx.arc(cx, cy, 6, 0, 6.3);
+  ctx.fill();
+  // cerniere
+  ctx.fillStyle = '#4b5563';
+  ctx.fillRect(cx + r + 2, cy - 20, 7, 12);
+  ctx.fillRect(cx + r + 2, cy + 8, 7, 12);
+}
+
+// Quadro dipinto dal proprietario della stanza, appeso sulla parete di fondo.
+const paintingCache = new Map<string, HTMLCanvasElement>();
+function paintingImage(code: string): HTMLCanvasElement | null {
+  const cached = paintingCache.get(code);
+  if (cached) return cached;
+  const grid = decodePainting(code);
+  if (!grid) return null;
+  const cv = document.createElement('canvas');
+  cv.width = PAINT_W;
+  cv.height = PAINT_H;
+  const ctx = cv.getContext('2d');
+  if (!ctx) return null;
+  for (let i = 0; i < PAINT_CELLS; i++) {
+    ctx.fillStyle = PAINT_PALETTE[grid[i]];
+    ctx.fillRect(i % PAINT_W, Math.floor(i / PAINT_W), 1, 1);
+  }
+  if (paintingCache.size > 40) paintingCache.clear();
+  paintingCache.set(code, cv);
+  return cv;
+}
+
+export function wallRoomPainting(d?: GameValue): GameValue {
+  const room: GameValue = game.roomsState[game.currentRoomIdx ?? -1];
+  const hung = roomPaintings(room);
+  // Posizioni scelte dal proprietario: la sua mappa, oppure la disposizione pubblicata per i visitatori.
+  const map: GameValue = isMyRoomNow() ? getMyRoomMap() : room?.layout || {};
+  for (const slot of PAINTING_SLOTS) {
+    const code = hung[slot];
+    const key = paintingKey(slot);
+    const spot: GameValue = map[key] || game.playerRoomFurniture[key];
+    if (code && spot) drawHungPainting(d, code, spot);
+  }
+}
+
+function drawHungPainting(d: GameValue, code: string, spot: GameValue): void {
+  const img = paintingImage(code);
+  if (!img) return;
+  const side = spot.y <= -160 ? 'back' : 'left';
+  if (d.side !== side) return;
+  const center = side === 'back' ? spot.x + 200 : 180 - spot.y;
+  const ctx: GameValue = game.view.ctx;
+  const w = 64,
+    h = 48,
+    u = center - w / 2,
+    top = 20;
+  ctx.fillStyle = 'rgba(0,0,0,0.25)';
+  ctx.fillRect(u - 3, top - 2, w + 8, h + 8);
+  ctx.fillStyle = '#8d5524';
+  ctx.fillRect(u - 5, top - 5, w + 10, h + 10);
+  ctx.fillStyle = '#c9a227';
+  ctx.fillRect(u - 3, top - 3, w + 6, h + 6);
+  const smooth = ctx.imageSmoothingEnabled;
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(img, u, top, w, h);
+  ctx.imageSmoothingEnabled = smooth;
+  ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(u, top, w, h);
+}
+
+// Cassaforte incassata nella parete di sinistra.
+export function wallSafe(d?: GameValue, t?: GameValue): GameValue {
+  if (d.side !== 'left') return;
+  const ctx: GameValue = game.view.ctx;
+  const u = 180 - SAFE_SPOT.y,
+    size = 42,
+    left = u - size / 2,
+    top = 48;
+  // vano nel muro e telaio
+  ctx.fillStyle = 'rgba(0,0,0,0.35)';
+  ctx.fillRect(left - 5, top - 5, size + 10, size + 10);
+  ctx.fillStyle = '#4b5563';
+  ctx.fillRect(left - 3, top - 3, size + 6, size + 6);
+  const g = ctx.createLinearGradient(left, top, left + size, top + size);
+  g.addColorStop(0, '#9aa5b1');
+  g.addColorStop(1, '#4b5563');
+  ctx.fillStyle = g;
+  ctx.fillRect(left, top, size, size);
+  ctx.strokeStyle = 'rgba(0,0,0,0.45)';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(left + 3, top + 3, size - 6, size - 6);
+  // manopola con le tacche
+  const cx = left + size * 0.42,
+    cy = top + size * 0.5;
+  ctx.fillStyle = '#e5e7eb';
+  ctx.beginPath();
+  ctx.arc(cx, cy, 8, 0, 6.3);
+  ctx.fill();
+  ctx.strokeStyle = '#111827';
+  ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  ctx.arc(cx, cy, 5.5, 0, 6.3);
+  ctx.stroke();
+  for (let i = 0; i < 8; i++) {
+    const a = (i / 8) * Math.PI * 2;
+    ctx.beginPath();
+    ctx.moveTo(cx + Math.cos(a) * 6.5, cy + Math.sin(a) * 6.5);
+    ctx.lineTo(cx + Math.cos(a) * 8, cy + Math.sin(a) * 8);
+    ctx.stroke();
+  }
+  ctx.beginPath();
+  ctx.moveTo(cx, cy);
+  ctx.lineTo(cx + 4, cy - 3);
+  ctx.stroke();
+  // maniglia e cerniere
+  ctx.fillStyle = '#d1d5db';
+  ctx.fillRect(left + size * 0.76, top + size * 0.3, 3.5, size * 0.4);
+  ctx.fillStyle = '#1f2937';
+  ctx.fillRect(left + 1, top + size * 0.18, 2.5, 6);
+  ctx.fillRect(left + 1, top + size * 0.7, 2.5, 6);
+  // lucina: verde se la cassaforte ha un PIN, rossa altrimenti
+  const room: GameValue = game.roomsState[game.currentRoomIdx ?? -1];
+  const pulse = 0.6 + 0.4 * Math.sin((t || 0) * 3);
+  ctx.fillStyle = room?.pin ? `rgba(46,213,115,${pulse})` : `rgba(255,71,87,${pulse})`;
+  ctx.beginPath();
+  ctx.arc(left + size - 6, top + 6, 2, 0, 6.3);
+  ctx.fill();
 }

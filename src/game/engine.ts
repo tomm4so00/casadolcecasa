@@ -13,7 +13,7 @@ import {
   drawStaticScene,
   getEnvStyle,
 } from './render/scenes.js';
-import { box, drawMapItem, softShadow } from './render/objects.js';
+import { box, drawMapItem, drawSafeCorridor, softShadow } from './render/objects.js';
 import { mgAddDrawables } from './jobs.js';
 import {
   aptLabel,
@@ -26,6 +26,9 @@ import {
 } from './character.js';
 import { presenceAlive } from './saves.js';
 import { tickNeeds, updateSocialPanel } from './needs.js';
+import { footprintOf } from './render/primitives.js';
+import { overlapsCorridor } from './room-layout.js';
+import { approachKissPartner, drawKissHearts, kissActive } from './romance.js';
 export function getSolidObstacles(..._args: GameValue[]): GameValue {
   const extra: GameValue = (game.ENV_PROPS[game.view.activeEnvironment] || [])
     .concat(game.ENV_DECOR[game.view.activeEnvironment] || [])
@@ -34,8 +37,15 @@ export function getSolidObstacles(..._args: GameValue[]): GameValue {
   if (game.view.activeEnvironment === 'SALOON') return extra;
   let map: GameValue = getCurrentFurnitureMap();
   return Object.keys(map)
-    .filter((k?: GameValue): GameValue => !k.startsWith('door') && k !== game.movingPropKey)
-    .map((k?: GameValue): GameValue => map[k])
+    .filter(
+      (k?: GameValue): GameValue =>
+        !k.startsWith('door') && k !== game.movingPropKey && !map[k].wallItem,
+    )
+    .map((k?: GameValue): GameValue => footprintOf(map[k]))
+    .filter(
+      (o?: GameValue): GameValue =>
+        game.view.activeEnvironment !== 'PLAYER_ROOM' || !overlapsCorridor(o),
+    )
     .concat(extra);
 }
 
@@ -87,11 +97,13 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
     );
   if (game.showerAnim && game.view.activeEnvironment !== 'BATHROOM') game.showerAnim = null;
   if (game.showerAnim) updateShower(animTime);
+  if (kissActive()) approachKissPartner(delta);
   if (
     !game.player.isSleeping &&
     game.sleepK < 0.01 &&
     !game.showerAnim &&
     !game.isMovingFurnitureMode &&
+    !kissActive() &&
     (game.moveRight !== 0 || game.moveForward !== 0)
   ) {
     const obstacles: GameValue = getSolidObstacles();
@@ -121,6 +133,8 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
   if (st.outdoor) drawSky(hour, animTime);
   drawStaticScene(st, hour);
   drawDynamicFloor(st, animTime);
+  if (game.isMovingFurnitureMode && game.view.activeEnvironment === 'PLAYER_ROOM')
+    drawSafeCorridor(animTime);
   drawDynamicWalls(st, animTime);
   // Tutto ciò che sta sul pavimento viene ordinato per profondità (chi è davanti copre chi è dietro)
   const lights: GameValue = (st.lights || []).map(
@@ -236,6 +250,10 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
           map.bed,
         ),
     });
+    if (kissActive()) {
+      const since: number = game.kissAnim.start;
+      labels.push((): GameValue => drawKissHearts(game.playerPos.x, game.playerPos.y, since));
+    }
   }
   game.simulationBots.forEach((bot?: GameValue): GameValue => {
     if (bot.env === game.view.activeEnvironment) {
@@ -296,6 +314,11 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
       if (pb) s.look.body = pb;
     }
     const act: GameValue = op.act || '';
+    if (act === 'kiss') {
+      if (!s.kissSince) s.kissSince = performance.now();
+      const since: number = s.kissSince;
+      labels.push((): GameValue => drawKissHearts(s.x, s.y, since));
+    } else s.kissSince = 0;
     const sTarget: GameValue = act === 'sleep' && map.bed ? 1 : 0;
     s.sleepK = Math.max(
       0,

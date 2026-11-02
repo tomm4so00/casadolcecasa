@@ -12,6 +12,13 @@ export function isoProject(x?: GameValue, y?: GameValue, z?: GameValue): GameVal
     ? v.scale
     : Math.min(game.view.canvas.width / 450, game.view.canvas.height / 600, 1.2);
   const cy: GameValue = v ? v.cy : game.view.canvas.height / 2 + 55;
+  // Mobile ruotato: i suoi punti girano attorno al centro prima della proiezione.
+  const r = game.furnRot;
+  if (r && r.k) {
+    const p = rotateAround(x, y, r.cx, r.cy, r.k);
+    x = p.x;
+    y = p.y;
+  }
   let isoX: GameValue = (x - y) * 0.866 * scale;
   let isoY: GameValue = ((x + y) * 0.5 - z) * scale;
   return { x: cx + isoX, y: cy + isoY };
@@ -88,4 +95,33 @@ export function setPlane(o?: GameValue, u?: GameValue, v?: GameValue): GameValue
   const pu: GameValue = isoProject(o[0] + u[0], o[1] + u[1], o[2] + u[2]);
   const pv: GameValue = isoProject(o[0] + v[0], o[1] + v[1], o[2] + v[2]);
   game.view.ctx.setTransform(pu.x - p0.x, pu.y - p0.y, pv.x - p0.x, pv.y - p0.y, p0.x, p0.y);
+}
+
+// ---------------------------------------------------------------- ROTAZIONE DEI MOBILI
+// k = quarti di giro: 0 = davanti verso +y (com'era), 1 = verso +x, 2 = verso -y, 3 = verso -x.
+export function rotateAround(x: number, y: number, cx: number, cy: number, k: number) {
+  let dx = x - cx,
+    dy = y - cy;
+  for (let i = 0; i < ((k % 4) + 4) % 4; i++) {
+    const t = dx;
+    dx = dy;
+    dy = -t;
+  }
+  return { x: cx + dx, y: cy + dy };
+}
+
+/** Direzione (vettore) ruotata di k quarti di giro, con la stessa convenzione di rotateAround. */
+export function rotateVector(vx: number, vy: number, k: number) {
+  return rotateAround(vx, vy, 0, 0, k);
+}
+
+/** Punto del mobile in coordinate del mondo, tenendo conto della rotazione in corso. */
+export function worldPoint(x: number, y: number) {
+  const r = game.furnRot;
+  return r && r.k ? rotateAround(x, y, r.cx, r.cy, r.k) : { x, y };
+}
+
+/** Ingombro a terra: con un quarto di giro larghezza e profondità si scambiano. */
+export function footprintOf<T extends { w: number; h: number; rot?: number }>(item: T): T {
+  return (item.rot || 0) % 2 ? { ...item, w: item.h, h: item.w } : item;
 }

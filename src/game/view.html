@@ -35,8 +35,17 @@
     </div>
   </div>
   <div class="need-row">
-    <div class="need-info"><span>🔐 Cassaforte</span><span id="money-text">0 €</span></div>
-    <div class="bar-bg"><div id="money-bar-fill" class="bar-fill" style="width: 0%"></div></div>
+    <div class="need-info">
+      <span>💰 Soldi (cassaforte/banca)</span>
+    </div>
+    <div class="need-info money-amounts">
+      <span id="money-text" title="In cassaforte">🔐 0 €</span>
+      <span id="bank-text" title="In banca">🏦 0 €</span>
+    </div>
+    <div class="bar-bg money-split" title="Verde: cassaforte · Azzurro: banca">
+      <div id="money-bar-fill" class="bar-fill" style="width: 0%"></div>
+      <div id="bank-bar-fill" class="bar-fill" style="width: 0%"></div>
+    </div>
   </div>
   <div id="mission-text" data-action="openMissions" title="Apri le missioni">📋 Missioni</div>
 </div>
@@ -167,6 +176,24 @@
   >
     👗 Negozio di Vestiti
   </button>
+  <button
+    class="btn-pop btn-pop-furniture hidden"
+    id="btn-act-bank"
+    style="background: #1e3a5f"
+    data-action="doActivity"
+    data-args='["bank"]'
+  >
+    🏦 Banca
+  </button>
+  <button
+    class="btn-pop btn-pop-furniture hidden"
+    id="btn-act-art"
+    style="background: #e17055"
+    data-action="doActivity"
+    data-args='["art"]'
+  >
+    🎨 Laboratorio Artistico
+  </button>
   <button class="btn-pop btn-pop-exit hidden" id="btn-act-work" data-action="handleJobMenuAction">
     💼 Lavoro (Gestisci Carriera)
   </button>
@@ -197,10 +224,32 @@
 <button
   id="btn-place-furniture"
   class="btn-pop hidden"
-  style="position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); z-index: 60"
+  style="
+    position: absolute;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(calc(-100% - 6px));
+    z-index: 60;
+  "
   data-action="placeFurniture"
 >
   📌 Lascia Mobile
+</button>
+<button
+  id="btn-rotate-furniture"
+  class="btn-pop hidden"
+  style="
+    position: absolute;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(6px);
+    z-index: 60;
+    background: #6c5ce7;
+  "
+  data-action="rotateFurniture"
+  title="Ruota il mobile (tasto R)"
+>
+  🔄 Ruota (R)
 </button>
 <button id="btn-return-home" class="hidden" data-action="returnHomeFromActivity">
   🏡 Torna a Casa
@@ -312,7 +361,8 @@
     <!-- Sezione Scelta Lavoro (Primo accesso o Cambio Lavoro) -->
     <div id="job-choices-container">
       <p style="margin: 5px 0 15px 0; color: #aaa; font-size: 0.75rem">
-        Progressione: 0-29 turni (50€) | 30-59 turni (80€) | 60+ turni (120€)
+        Progressione: turni 1-30 (50€ + 1€/oggetto) | 31-60 (80€ + 2€/oggetto) | 61+ (120€ +
+        3€/oggetto)
       </p>
       <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 15px">
         <button
@@ -410,7 +460,7 @@
       >
         <div class="shop-item-info">
           <h4>🛋️ arredocasa.it</h4>
-          <p>Catalogo di mobili standard e di lusso</p>
+          <p>Catalogo di mobili standard, pregiati e di lusso</p>
         </div>
         <span>›</span>
       </button>
@@ -532,7 +582,7 @@
     <div class="browser-body">
       <h3 style="color: #e67e22; text-align: center">🛋️ Showroom Negozio di Mobili</h3>
       <p style="text-align: center; font-size: 0.8rem; color: #aaa; margin-bottom: 10px">
-        Acquista versioni Standard o di Lusso per arredare la tua stanza!
+        Acquista versioni Standard, Pregiate 💎 o di Lusso ✨ per arredare la tua stanza!
       </p>
       <div
         id="furniture-catalog-container"
@@ -613,6 +663,35 @@
       >
         🎨 Modifica aspetto</button
       ><button class="btn-primary" data-action="closeWardrobe">Chiudi l'armadio</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODALE LABORATORIO ARTISTICO: tela da dipingere -->
+<div id="paint-modal" class="fullscreen-modal hidden">
+  <div class="shop-panel paint-panel">
+    <div class="shop-head">
+      <h3>🎨 Dipingi il tuo quadro</h3>
+      <span class="shop-money paint-hint">Disegna con il mouse o con il dito</span>
+    </div>
+    <div class="paint-frame">
+      <canvas id="paint-canvas" width="400" height="300"></canvas>
+    </div>
+    <div id="paint-palette" class="paint-palette"></div>
+    <div class="paint-tools">
+      <button type="button" data-paint-tool="1">✏️ Fine</button>
+      <button type="button" data-paint-tool="2">🖌️ Medio</button>
+      <button type="button" data-paint-tool="4">🖌️ Grosso</button>
+      <button type="button" data-paint-tool="fill">💧 Riempi</button>
+      <button type="button" id="paint-undo">↩️ Annulla</button>
+      <button type="button" id="paint-clear">🧽 Ricomincia</button>
+    </div>
+    <div class="creator-actions">
+      <button class="btn-primary" type="button" style="background: #57606f" id="paint-cancel">
+        Esci senza salvare</button
+      ><button class="btn-primary" type="button" style="background: #2ed573" id="paint-done">
+        ✅ Quadro finito
+      </button>
     </div>
   </div>
 </div>

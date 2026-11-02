@@ -37,6 +37,7 @@ export interface SaveV8 {
   dead?: boolean;
   deadAt?: number;
   inventory?: { hasFood: boolean; foodCooked: boolean };
+  romance?: unknown;
 }
 
 export const isRecord = (value: unknown): value is Record<string, unknown> =>

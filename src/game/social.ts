@@ -5,6 +5,13 @@ import { lifetime } from './runtime.js';
 import { toast } from './missions.js';
 import { openDialog } from './interface.js';
 import { drugTake } from './needs.js';
+import {
+  noteRomanticAttention,
+  onKissAnswer,
+  onKissAsk,
+  onRomanceUnlocked,
+  tryKiss,
+} from './romance.js';
 export function sendSocial(tid?: GameValue, msg?: GameValue): GameValue {
   const key: GameValue = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
   msg.from = game.session.myPlayerId;
@@ -95,6 +102,8 @@ export async function socDo(act?: GameValue): Promise<GameValue> {
     }
     await sendSocial(t.id, { type: 'money_notice', amt });
     toast(`💶 Hai regalato ${amt} € a ${t.name}`);
+  } else if (act === 'kiss') {
+    await tryKiss(t);
   } else if (act === 'drug') {
     if (game.player.drugStock < 1) return;
     game.player.drugStock--;
@@ -145,10 +154,12 @@ export async function handleSocial(m?: GameValue): Promise<GameValue> {
     game.player.healthLevel = Math.min(100, game.player.healthLevel + 2);
     game.player.sleepLevel = Math.max(0, game.player.sleepLevel - 3);
     toast(`💬 ${who} ha chiacchierato con te (+felicità, +salute, −sonno)`, 3500);
+    noteRomanticAttention(m.from, who);
   } else if (m.type === 'praise' && !old) {
     game.player.happinessLevel = Math.min(100, game.player.happinessLevel + 6);
     game.player.healthLevel = Math.min(100, game.player.healthLevel + 2);
     toast(`😍 ${who} ti ha fatto un complimento! (+felicità, +salute)`, 3500);
+    noteRomanticAttention(m.from, who);
   } else if (m.type === 'insult' && !old) {
     game.player.happinessLevel = Math.max(0, game.player.happinessLevel - 6);
     toast(`🤬 ${who} ti ha insultato! (−felicità)`, 3500);
@@ -168,6 +179,12 @@ export async function handleSocial(m?: GameValue): Promise<GameValue> {
       if (!(await creditMoney(amt))) return;
       toast(`💶 ${who} ti ha regalato ${amt} €!`, 4000);
     }
+  } else if (m.type === 'romance') {
+    onRomanceUnlocked(m.from, who);
+  } else if (m.type === 'kissAsk') {
+    await onKissAsk(m, who);
+  } else if (m.type === 'kissYes' || m.type === 'kissNo') {
+    onKissAnswer(m, who, m.type === 'kissYes');
   } else if (m.type === 'drugReturn') {
     game.player.drugStock++;
     toast(`${who} ha rifiutato la dose: ti è tornata.`, 3500);

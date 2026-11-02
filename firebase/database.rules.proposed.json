@@ -302,6 +302,144 @@
             "glasses_heart": {
               ".validate": "newData.isBoolean()"
             },
+            "top_white": {
+              ".validate": "newData.isBoolean()"
+            },
+            "top_print": {
+              ".validate": "newData.isBoolean()"
+            },
+            "top_tank": {
+              ".validate": "newData.isBoolean()"
+            },
+            "top_polo": {
+              ".validate": "newData.isBoolean()"
+            },
+            "top_hoodie_pink": {
+              ".validate": "newData.isBoolean()"
+            },
+            "top_plaid": {
+              ".validate": "newData.isBoolean()"
+            },
+            "top_sweater": {
+              ".validate": "newData.isBoolean()"
+            },
+            "top_jersey": {
+              ".validate": "newData.isBoolean()"
+            },
+            "top_vest": {
+              ".validate": "newData.isBoolean()"
+            },
+            "top_puffer": {
+              ".validate": "newData.isBoolean()"
+            },
+            "top_tuxedo": {
+              ".validate": "newData.isBoolean()"
+            },
+            "pants_joggers": {
+              ".validate": "newData.isBoolean()"
+            },
+            "pants_skirt": {
+              ".validate": "newData.isBoolean()"
+            },
+            "pants_cargo": {
+              ".validate": "newData.isBoolean()"
+            },
+            "pants_plaid": {
+              ".validate": "newData.isBoolean()"
+            },
+            "pants_ripped": {
+              ".validate": "newData.isBoolean()"
+            },
+            "pants_sequin": {
+              ".validate": "newData.isBoolean()"
+            },
+            "shoes_sandals": {
+              ".validate": "newData.isBoolean()"
+            },
+            "shoes_slippers": {
+              ".validate": "newData.isBoolean()"
+            },
+            "shoes_rain": {
+              ".validate": "newData.isBoolean()"
+            },
+            "shoes_hightop": {
+              ".validate": "newData.isBoolean()"
+            },
+            "shoes_skate": {
+              ".validate": "newData.isBoolean()"
+            },
+            "hat_party": {
+              ".validate": "newData.isBoolean()"
+            },
+            "hat_bandana": {
+              ".validate": "newData.isBoolean()"
+            },
+            "hat_bucket": {
+              ".validate": "newData.isBoolean()"
+            },
+            "hat_capback": {
+              ".validate": "newData.isBoolean()"
+            },
+            "hat_beret": {
+              ".validate": "newData.isBoolean()"
+            },
+            "hat_santa": {
+              ".validate": "newData.isBoolean()"
+            },
+            "hat_chef": {
+              ".validate": "newData.isBoolean()"
+            },
+            "hat_flowers": {
+              ".validate": "newData.isBoolean()"
+            },
+            "hat_fedora": {
+              ".validate": "newData.isBoolean()"
+            },
+            "hat_headphones": {
+              ".validate": "newData.isBoolean()"
+            },
+            "glasses_3d": {
+              ".validate": "newData.isBoolean()"
+            },
+            "glasses_nerd": {
+              ".validate": "newData.isBoolean()"
+            },
+            "glasses_star": {
+              ".validate": "newData.isBoolean()"
+            },
+            "glasses_cat": {
+              ".validate": "newData.isBoolean()"
+            },
+            "glasses_aviator": {
+              ".validate": "newData.isBoolean()"
+            },
+            "glasses_ski": {
+              ".validate": "newData.isBoolean()"
+            },
+            "glasses_monocle": {
+              ".validate": "newData.isBoolean()"
+            },
+            "neck_tie": {
+              ".validate": "newData.isBoolean()"
+            },
+            "neck_bowtie": {
+              ".validate": "newData.isBoolean()"
+            },
+            "neck_scarf": {
+              ".validate": "newData.isBoolean()"
+            },
+            "neck_backpack": {
+              ".validate": "newData.isBoolean()"
+            },
+            "neck_medal": {
+              ".validate": "newData.isBoolean()"
+            },
+            "neck_pearls": {
+              ".validate": "newData.isBoolean()"
+            },
+            "neck_chain": {
+              ".validate": "newData.isBoolean()"
+            },
             "$other": {
               ".validate": false
             }
@@ -356,6 +494,30 @@
             "plant_lux": {
               ".validate": "newData.isBoolean()"
             },
+            "bed_pre": {
+              ".validate": "newData.isBoolean()"
+            },
+            "wardrobe_pre": {
+              ".validate": "newData.isBoolean()"
+            },
+            "nightstand_pre": {
+              ".validate": "newData.isBoolean()"
+            },
+            "desk_pre": {
+              ".validate": "newData.isBoolean()"
+            },
+            "lamp_pre": {
+              ".validate": "newData.isBoolean()"
+            },
+            "sofa_pre": {
+              ".validate": "newData.isBoolean()"
+            },
+            "tv_pre": {
+              ".validate": "newData.isBoolean()"
+            },
+            "plant_pre": {
+              ".validate": "newData.isBoolean()"
+            },
             "$other": {
               ".validate": false
             }
@@ -392,9 +554,12 @@
             "$other": {
               ".validate": false
             }
+          },
+          "bank": {
+            ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 9007199254740991"
           }
         },
-        ".validate": "(auth != null && auth.uid === 'market-publisher') || (((!data.child('ownerId').exists() && (!newData.child('ownerId').exists() || (newData.child('ownerId').val() === root.child('sims_accounts').child(auth.uid).child('playerId').val()))) || (data.child('ownerId').val() === newData.child('ownerId').val()) || ((data.child('ownerId').val() === root.child('sims_accounts').child(auth.uid).child('playerId').val()) && !newData.child('ownerId').exists())) && ((data.child('ownerId').val() === root.child('sims_accounts').child(auth.uid).child('playerId').val()) || (newData.child('ownerId').val() === root.child('sims_accounts').child(auth.uid).child('playerId').val()) || (newData.child('owner').val() === data.child('owner').val() && newData.child('lastSeen').val() === data.child('lastSeen').val() && newData.child('pin').val() === data.child('pin').val() && newData.child('economy/version').val() === data.child('economy/version').val() && newData.child('economy/ownedItems/top_basic').val() === data.child('economy/ownedItems/top_basic').val() && newData.child('economy/ownedItems/item_hoodie').val() === data.child('economy/ownedItems/item_hoodie').val() && newData.child('economy/ownedItems/top_stripes').val() === data.child('economy/ownedItems/top_stripes').val() && newData.child('economy/ownedItems/top_hawaii').val() === data.child('economy/ownedItems/top_hawaii').val() && newData.child('economy/ownedItems/top_sport').val() === data.child('economy/ownedItems/top_sport').val() && newData.child('economy/ownedItems/top_xmas').val() === data.child('economy/ownedItems/top_xmas').val() && newData.child('economy/ownedItems/top_denim').val() === data.child('economy/ownedItems/top_denim').val() && newData.child('economy/ownedItems/item_leather').val() === data.child('economy/ownedItems/item_leather').val() && newData.child('economy/ownedItems/item_suit').val() === data.child('economy/ownedItems/item_suit').val() && newData.child('economy/ownedItems/pants_jeans').val() === data.child('economy/ownedItems/pants_jeans').val() && newData.child('economy/ownedItems/pants_shorts').val() === data.child('economy/ownedItems/pants_shorts').val() && newData.child('economy/ownedItems/pants_black').val() === data.child('economy/ownedItems/pants_black').val() && newData.child('economy/ownedItems/pants_white').val() === data.child('economy/ownedItems/pants_white').val() && newData.child('economy/ownedItems/pants_red').val() === data.child('economy/ownedItems/pants_red').val() && newData.child('economy/ownedItems/pants_camo').val() === data.child('economy/ownedItems/pants_camo').val() && newData.child('economy/ownedItems/shoes_sneakers').val() === data.child('economy/ownedItems/shoes_sneakers').val() && newData.child('economy/ownedItems/shoes_boots').val() === data.child('economy/ownedItems/shoes_boots').val() && newData.child('economy/ownedItems/shoes_formal').val() === data.child('economy/ownedItems/shoes_formal').val() && newData.child('economy/ownedItems/shoes_red').val() === data.child('economy/ownedItems/shoes_red').val() && newData.child('economy/ownedItems/shoes_gold').val() === data.child('economy/ownedItems/shoes_gold').val() && newData.child('economy/ownedItems/item_hat').val() === data.child('economy/ownedItems/item_hat').val() && newData.child('economy/ownedItems/hat_beanie').val() === data.child('economy/ownedItems/hat_beanie').val() && newData.child('economy/ownedItems/hat_cowboy').val() === data.child('economy/ownedItems/hat_cowboy').val() && newData.child('economy/ownedItems/hat_tophat').val() === data.child('economy/ownedItems/hat_tophat').val() && newData.child('economy/ownedItems/item_crown').val() === data.child('economy/ownedItems/item_crown').val() && newData.child('economy/ownedItems/item_glasses').val() === data.child('economy/ownedItems/item_glasses').val() && newData.child('economy/ownedItems/glasses_round').val() === data.child('economy/ownedItems/glasses_round').val() && newData.child('economy/ownedItems/glasses_heart').val() === data.child('economy/ownedItems/glasses_heart').val() && newData.child('economy/ownedFurniture/bed_std').val() === data.child('economy/ownedFurniture/bed_std').val() && newData.child('economy/ownedFurniture/bed_lux').val() === data.child('economy/ownedFurniture/bed_lux').val() && newData.child('economy/ownedFurniture/wardrobe_std').val() === data.child('economy/ownedFurniture/wardrobe_std').val() && newData.child('economy/ownedFurniture/wardrobe_lux').val() === data.child('economy/ownedFurniture/wardrobe_lux').val() && newData.child('economy/ownedFurniture/nightstand_std').val() === data.child('economy/ownedFurniture/nightstand_std').val() && newData.child('economy/ownedFurniture/nightstand_lux').val() === data.child('economy/ownedFurniture/nightstand_lux').val() && newData.child('economy/ownedFurniture/desk_std').val() === data.child('economy/ownedFurniture/desk_std').val() && newData.child('economy/ownedFurniture/desk_lux').val() === data.child('economy/ownedFurniture/desk_lux').val() && newData.child('economy/ownedFurniture/lamp_std').val() === data.child('economy/ownedFurniture/lamp_std').val() && newData.child('economy/ownedFurniture/lamp_lux').val() === data.child('economy/ownedFurniture/lamp_lux').val() && newData.child('economy/ownedFurniture/sofa_std').val() === data.child('economy/ownedFurniture/sofa_std').val() && newData.child('economy/ownedFurniture/sofa_lux').val() === data.child('economy/ownedFurniture/sofa_lux').val() && newData.child('economy/ownedFurniture/tv_std').val() === data.child('economy/ownedFurniture/tv_std').val() && newData.child('economy/ownedFurniture/tv_lux').val() === data.child('economy/ownedFurniture/tv_lux').val() && newData.child('economy/ownedFurniture/plant_std').val() === data.child('economy/ownedFurniture/plant_std').val() && newData.child('economy/ownedFurniture/plant_lux').val() === data.child('economy/ownedFurniture/plant_lux').val() && newData.child('economy/invest/shop/units').val() === data.child('economy/invest/shop/units').val() && newData.child('economy/invest/shop/cost').val() === data.child('economy/invest/shop/cost').val() && newData.child('economy/invest/app/units').val() === data.child('economy/invest/app/units').val() && newData.child('economy/invest/app/cost').val() === data.child('economy/invest/app/cost').val() && newData.child('economy/invest/crypto/units').val() === data.child('economy/invest/crypto/units').val() && newData.child('economy/invest/crypto/cost').val() === data.child('economy/invest/crypto/cost').val()))) && ((auth != null && auth.uid === 'market-publisher') || !data.child('pendingDeath').exists() || newData.child('pendingDeath').exists())",
+        ".validate": "(auth != null && auth.uid === 'market-publisher') || (((!data.child('ownerId').exists() && (!newData.child('ownerId').exists() || (newData.child('ownerId').val() === root.child('sims_accounts').child(auth.uid).child('playerId').val()))) || (data.child('ownerId').val() === newData.child('ownerId').val()) || ((data.child('ownerId').val() === root.child('sims_accounts').child(auth.uid).child('playerId').val()) && !newData.child('ownerId').exists())) && ((data.child('ownerId').val() === root.child('sims_accounts').child(auth.uid).child('playerId').val()) || (newData.child('ownerId').val() === root.child('sims_accounts').child(auth.uid).child('playerId').val()) || (newData.child('owner').val() === data.child('owner').val() && newData.child('lastSeen').val() === data.child('lastSeen').val() && newData.child('pin').val() === data.child('pin').val() && newData.child('economy/version').val() === data.child('economy/version').val() && newData.child('economy/ownedItems/top_basic').val() === data.child('economy/ownedItems/top_basic').val() && newData.child('economy/ownedItems/item_hoodie').val() === data.child('economy/ownedItems/item_hoodie').val() && newData.child('economy/ownedItems/top_stripes').val() === data.child('economy/ownedItems/top_stripes').val() && newData.child('economy/ownedItems/top_hawaii').val() === data.child('economy/ownedItems/top_hawaii').val() && newData.child('economy/ownedItems/top_sport').val() === data.child('economy/ownedItems/top_sport').val() && newData.child('economy/ownedItems/top_xmas').val() === data.child('economy/ownedItems/top_xmas').val() && newData.child('economy/ownedItems/top_denim').val() === data.child('economy/ownedItems/top_denim').val() && newData.child('economy/ownedItems/item_leather').val() === data.child('economy/ownedItems/item_leather').val() && newData.child('economy/ownedItems/item_suit').val() === data.child('economy/ownedItems/item_suit').val() && newData.child('economy/ownedItems/pants_jeans').val() === data.child('economy/ownedItems/pants_jeans').val() && newData.child('economy/ownedItems/pants_shorts').val() === data.child('economy/ownedItems/pants_shorts').val() && newData.child('economy/ownedItems/pants_black').val() === data.child('economy/ownedItems/pants_black').val() && newData.child('economy/ownedItems/pants_white').val() === data.child('economy/ownedItems/pants_white').val() && newData.child('economy/ownedItems/pants_red').val() === data.child('economy/ownedItems/pants_red').val() && newData.child('economy/ownedItems/pants_camo').val() === data.child('economy/ownedItems/pants_camo').val() && newData.child('economy/ownedItems/shoes_sneakers').val() === data.child('economy/ownedItems/shoes_sneakers').val() && newData.child('economy/ownedItems/shoes_boots').val() === data.child('economy/ownedItems/shoes_boots').val() && newData.child('economy/ownedItems/shoes_formal').val() === data.child('economy/ownedItems/shoes_formal').val() && newData.child('economy/ownedItems/shoes_red').val() === data.child('economy/ownedItems/shoes_red').val() && newData.child('economy/ownedItems/shoes_gold').val() === data.child('economy/ownedItems/shoes_gold').val() && newData.child('economy/ownedItems/item_hat').val() === data.child('economy/ownedItems/item_hat').val() && newData.child('economy/ownedItems/hat_beanie').val() === data.child('economy/ownedItems/hat_beanie').val() && newData.child('economy/ownedItems/hat_cowboy').val() === data.child('economy/ownedItems/hat_cowboy').val() && newData.child('economy/ownedItems/hat_tophat').val() === data.child('economy/ownedItems/hat_tophat').val() && newData.child('economy/ownedItems/item_crown').val() === data.child('economy/ownedItems/item_crown').val() && newData.child('economy/ownedItems/item_glasses').val() === data.child('economy/ownedItems/item_glasses').val() && newData.child('economy/ownedItems/glasses_round').val() === data.child('economy/ownedItems/glasses_round').val() && newData.child('economy/ownedItems/glasses_heart').val() === data.child('economy/ownedItems/glasses_heart').val() && newData.child('economy/ownedItems/top_white').val() === data.child('economy/ownedItems/top_white').val() && newData.child('economy/ownedItems/top_print').val() === data.child('economy/ownedItems/top_print').val() && newData.child('economy/ownedItems/top_tank').val() === data.child('economy/ownedItems/top_tank').val() && newData.child('economy/ownedItems/top_polo').val() === data.child('economy/ownedItems/top_polo').val() && newData.child('economy/ownedItems/top_hoodie_pink').val() === data.child('economy/ownedItems/top_hoodie_pink').val() && newData.child('economy/ownedItems/top_plaid').val() === data.child('economy/ownedItems/top_plaid').val() && newData.child('economy/ownedItems/top_sweater').val() === data.child('economy/ownedItems/top_sweater').val() && newData.child('economy/ownedItems/top_jersey').val() === data.child('economy/ownedItems/top_jersey').val() && newData.child('economy/ownedItems/top_vest').val() === data.child('economy/ownedItems/top_vest').val() && newData.child('economy/ownedItems/top_puffer').val() === data.child('economy/ownedItems/top_puffer').val() && newData.child('economy/ownedItems/top_tuxedo').val() === data.child('economy/ownedItems/top_tuxedo').val() && newData.child('economy/ownedItems/pants_joggers').val() === data.child('economy/ownedItems/pants_joggers').val() && newData.child('economy/ownedItems/pants_skirt').val() === data.child('economy/ownedItems/pants_skirt').val() && newData.child('economy/ownedItems/pants_cargo').val() === data.child('economy/ownedItems/pants_cargo').val() && newData.child('economy/ownedItems/pants_plaid').val() === data.child('economy/ownedItems/pants_plaid').val() && newData.child('economy/ownedItems/pants_ripped').val() === data.child('economy/ownedItems/pants_ripped').val() && newData.child('economy/ownedItems/pants_sequin').val() === data.child('economy/ownedItems/pants_sequin').val() && newData.child('economy/ownedItems/shoes_sandals').val() === data.child('economy/ownedItems/shoes_sandals').val() && newData.child('economy/ownedItems/shoes_slippers').val() === data.child('economy/ownedItems/shoes_slippers').val() && newData.child('economy/ownedItems/shoes_rain').val() === data.child('economy/ownedItems/shoes_rain').val() && newData.child('economy/ownedItems/shoes_hightop').val() === data.child('economy/ownedItems/shoes_hightop').val() && newData.child('economy/ownedItems/shoes_skate').val() === data.child('economy/ownedItems/shoes_skate').val() && newData.child('economy/ownedItems/hat_party').val() === data.child('economy/ownedItems/hat_party').val() && newData.child('economy/ownedItems/hat_bandana').val() === data.child('economy/ownedItems/hat_bandana').val() && newData.child('economy/ownedItems/hat_bucket').val() === data.child('economy/ownedItems/hat_bucket').val() && newData.child('economy/ownedItems/hat_capback').val() === data.child('economy/ownedItems/hat_capback').val() && newData.child('economy/ownedItems/hat_beret').val() === data.child('economy/ownedItems/hat_beret').val() && newData.child('economy/ownedItems/hat_santa').val() === data.child('economy/ownedItems/hat_santa').val() && newData.child('economy/ownedItems/hat_chef').val() === data.child('economy/ownedItems/hat_chef').val() && newData.child('economy/ownedItems/hat_flowers').val() === data.child('economy/ownedItems/hat_flowers').val() && newData.child('economy/ownedItems/hat_fedora').val() === data.child('economy/ownedItems/hat_fedora').val() && newData.child('economy/ownedItems/hat_headphones').val() === data.child('economy/ownedItems/hat_headphones').val() && newData.child('economy/ownedItems/glasses_3d').val() === data.child('economy/ownedItems/glasses_3d').val() && newData.child('economy/ownedItems/glasses_nerd').val() === data.child('economy/ownedItems/glasses_nerd').val() && newData.child('economy/ownedItems/glasses_star').val() === data.child('economy/ownedItems/glasses_star').val() && newData.child('economy/ownedItems/glasses_cat').val() === data.child('economy/ownedItems/glasses_cat').val() && newData.child('economy/ownedItems/glasses_aviator').val() === data.child('economy/ownedItems/glasses_aviator').val() && newData.child('economy/ownedItems/glasses_ski').val() === data.child('economy/ownedItems/glasses_ski').val() && newData.child('economy/ownedItems/glasses_monocle').val() === data.child('economy/ownedItems/glasses_monocle').val() && newData.child('economy/ownedItems/neck_tie').val() === data.child('economy/ownedItems/neck_tie').val() && newData.child('economy/ownedItems/neck_bowtie').val() === data.child('economy/ownedItems/neck_bowtie').val() && newData.child('economy/ownedItems/neck_scarf').val() === data.child('economy/ownedItems/neck_scarf').val() && newData.child('economy/ownedItems/neck_backpack').val() === data.child('economy/ownedItems/neck_backpack').val() && newData.child('economy/ownedItems/neck_medal').val() === data.child('economy/ownedItems/neck_medal').val() && newData.child('economy/ownedItems/neck_pearls').val() === data.child('economy/ownedItems/neck_pearls').val() && newData.child('economy/ownedItems/neck_chain').val() === data.child('economy/ownedItems/neck_chain').val() && newData.child('economy/ownedFurniture/bed_std').val() === data.child('economy/ownedFurniture/bed_std').val() && newData.child('economy/ownedFurniture/bed_lux').val() === data.child('economy/ownedFurniture/bed_lux').val() && newData.child('economy/ownedFurniture/wardrobe_std').val() === data.child('economy/ownedFurniture/wardrobe_std').val() && newData.child('economy/ownedFurniture/wardrobe_lux').val() === data.child('economy/ownedFurniture/wardrobe_lux').val() && newData.child('economy/ownedFurniture/nightstand_std').val() === data.child('economy/ownedFurniture/nightstand_std').val() && newData.child('economy/ownedFurniture/nightstand_lux').val() === data.child('economy/ownedFurniture/nightstand_lux').val() && newData.child('economy/ownedFurniture/desk_std').val() === data.child('economy/ownedFurniture/desk_std').val() && newData.child('economy/ownedFurniture/desk_lux').val() === data.child('economy/ownedFurniture/desk_lux').val() && newData.child('economy/ownedFurniture/lamp_std').val() === data.child('economy/ownedFurniture/lamp_std').val() && newData.child('economy/ownedFurniture/lamp_lux').val() === data.child('economy/ownedFurniture/lamp_lux').val() && newData.child('economy/ownedFurniture/sofa_std').val() === data.child('economy/ownedFurniture/sofa_std').val() && newData.child('economy/ownedFurniture/sofa_lux').val() === data.child('economy/ownedFurniture/sofa_lux').val() && newData.child('economy/ownedFurniture/tv_std').val() === data.child('economy/ownedFurniture/tv_std').val() && newData.child('economy/ownedFurniture/tv_lux').val() === data.child('economy/ownedFurniture/tv_lux').val() && newData.child('economy/ownedFurniture/plant_std').val() === data.child('economy/ownedFurniture/plant_std').val() && newData.child('economy/ownedFurniture/plant_lux').val() === data.child('economy/ownedFurniture/plant_lux').val() && newData.child('economy/ownedFurniture/bed_pre').val() === data.child('economy/ownedFurniture/bed_pre').val() && newData.child('economy/ownedFurniture/wardrobe_pre').val() === data.child('economy/ownedFurniture/wardrobe_pre').val() && newData.child('economy/ownedFurniture/nightstand_pre').val() === data.child('economy/ownedFurniture/nightstand_pre').val() && newData.child('economy/ownedFurniture/desk_pre').val() === data.child('economy/ownedFurniture/desk_pre').val() && newData.child('economy/ownedFurniture/lamp_pre').val() === data.child('economy/ownedFurniture/lamp_pre').val() && newData.child('economy/ownedFurniture/sofa_pre').val() === data.child('economy/ownedFurniture/sofa_pre').val() && newData.child('economy/ownedFurniture/tv_pre').val() === data.child('economy/ownedFurniture/tv_pre').val() && newData.child('economy/ownedFurniture/plant_pre').val() === data.child('economy/ownedFurniture/plant_pre').val() && newData.child('economy/invest/shop/units').val() === data.child('economy/invest/shop/units').val() && newData.child('economy/invest/shop/cost').val() === data.child('economy/invest/shop/cost').val() && newData.child('economy/invest/app/units').val() === data.child('economy/invest/app/units').val() && newData.child('economy/invest/app/cost').val() === data.child('economy/invest/app/cost').val() && newData.child('economy/invest/crypto/units').val() === data.child('economy/invest/crypto/units').val() && newData.child('economy/invest/crypto/cost').val() === data.child('economy/invest/crypto/cost').val() && newData.child('economy/bank').val() === data.child('economy/bank').val() && newData.child('paintings/p1').val() === data.child('paintings/p1').val() && newData.child('paintings/p2').val() === data.child('paintings/p2').val() && newData.child('paintings/p3').val() === data.child('paintings/p3').val()))) && ((auth != null && auth.uid === 'market-publisher') || !data.child('pendingDeath').exists() || newData.child('pendingDeath').exists())",
         "pendingDeath": {
           ".validate": "(auth != null && auth.uid === 'market-publisher') || (data.exists() && newData.child('id').val() === data.child('id').val() && newData.child('name').val() === data.child('name').val() && newData.child('lastSeen').val() === data.child('lastSeen').val())",
           "id": {
@@ -408,6 +573,11 @@
           },
           "$other": {
             ".validate": false
+          }
+        },
+        "paintings": {
+          "$slot": {
+            ".validate": "$slot.matches(/^p[1-3]$/) && newData.isString() && newData.val().length === 1200 && newData.val().matches(/^[0-9a-f]+$/)"
           }
         }
       },
@@ -479,7 +649,7 @@
         ".read": "(auth != null && auth.token.firebase.sign_in_provider === 'google.com') && root.child('sims_accounts').child(auth.uid).child('playerId').val() === $pid",
         "$key": {
           ".write": "((auth != null && auth.token.firebase.sign_in_provider === 'google.com') && root.child('sims_accounts').child(auth.uid).child('playerId').isString()) && ((!newData.exists() && root.child('sims_accounts').child(auth.uid).child('playerId').val() === $pid) || (!data.exists() && newData.child('from').val() === root.child('sims_accounts').child(auth.uid).child('playerId').val()))",
-          ".validate": "newData.hasChildren(['type','from','fromName','t']) && newData.child('type').val().matches(/^(talk|praise|insult|punch|food|money_notice|drug|drugReturn)$/)",
+          ".validate": "newData.hasChildren(['type','from','fromName','t']) && newData.child('type').val().matches(/^(talk|praise|insult|punch|food|money_notice|drug|drugReturn|romance|kissAsk|kissYes|kissNo)$/)",
           "from": {
             ".validate": "newData.isString() && newData.val().length <= 140"
           },

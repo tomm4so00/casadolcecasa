@@ -104,6 +104,20 @@ html {
   background: #2ed573;
   width: 0%;
 }
+/* Barra dei soldi divisa: verde = cassaforte, azzurro = banca */
+.money-split {
+  display: flex;
+}
+#bank-bar-fill {
+  background: #48dbfb;
+  width: 0%;
+}
+.money-amounts #money-text {
+  color: #2ed573;
+}
+.money-amounts #bank-text {
+  color: #48dbfb;
+}
 
 /* Touch Controls / Mouse Input Zone */
 #left-touch-zone {
@@ -435,6 +449,12 @@ input[type='number'] {
   font-size: 0.8rem;
   color: #2ed573;
   font-weight: bold;
+}
+.shop-item-info p.shop-item-benefit {
+  font-size: 0.7rem;
+  color: #c8d6e5;
+  font-weight: normal;
+  margin-top: 2px;
 }
 .btn-buy {
   background: #ff4757;
@@ -809,6 +829,17 @@ input[type='number'] {
   justify-content: center;
   font-size: 1.1rem;
 }
+.item-card .swatch-cv {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 240 / 150;
+  border-radius: 6px;
+  background: radial-gradient(
+    circle at 50% 40%,
+    rgba(255, 255, 255, 0.16),
+    rgba(255, 255, 255, 0.03) 70%
+  );
+}
 .item-card .price {
   color: #2ed573;
   font-weight: bold;
@@ -1013,4 +1044,110 @@ input[type='number'] {
 
 .hidden {
   display: none !important;
+}
+
+/* Laboratorio artistico: tela, tavolozza e strumenti */
+.paint-panel {
+  max-width: 520px;
+  max-height: 96vh;
+  overflow-y: auto;
+}
+.paint-hint {
+  font-size: 0.7rem;
+  color: #c8d6e5;
+}
+.paint-frame {
+  background: linear-gradient(135deg, #a47148, #6d4c41);
+  padding: 8px;
+  border-radius: 6px;
+  box-shadow: inset 0 0 0 2px rgba(0, 0, 0, 0.25);
+}
+#paint-canvas {
+  display: block;
+  margin: 0 auto;
+  /* La tela si rimpicciolisce sugli schermi bassi: i pulsanti restano sempre visibili */
+  width: min(100%, calc((96vh - 330px) * 4 / 3));
+  min-width: 160px;
+  height: auto;
+  aspect-ratio: 4 / 3;
+  background: #fff;
+  cursor: crosshair;
+  touch-action: none;
+  image-rendering: pixelated;
+}
+.paint-palette {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 5px;
+}
+.paint-swatch {
+  aspect-ratio: 1;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.25);
+  cursor: pointer;
+}
+.paint-swatch.active {
+  border-color: #feca57;
+  box-shadow: 0 0 0 2px #feca57;
+  transform: scale(1.12);
+}
+.paint-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+.paint-tools button {
+  flex: 1 1 auto;
+  border: none;
+  border-radius: 6px;
+  padding: 7px 6px;
+  font-size: 0.75rem;
+  font-weight: bold;
+  color: #fff;
+  background: #2f3542;
+  cursor: pointer;
+}
+.paint-tools button.active {
+  background: #e84393;
+}
+
+/* Telefono in orizzontale: tela a sinistra, colori e pulsanti a destra */
+@media (orientation: landscape) and (max-height: 520px) {
+  .paint-panel {
+    max-width: 96vw;
+    display: grid;
+    grid-template-columns: auto minmax(200px, 1fr);
+    grid-template-areas:
+      'head head'
+      'frame palette'
+      'frame tools'
+      'frame actions';
+    align-content: start;
+    gap: 8px;
+  }
+  .paint-panel .shop-head {
+    grid-area: head;
+  }
+  .paint-panel .paint-frame {
+    grid-area: frame;
+    align-self: start;
+  }
+  .paint-panel .paint-palette {
+    grid-area: palette;
+    gap: 4px;
+  }
+  .paint-panel .paint-tools {
+    grid-area: tools;
+  }
+  .paint-panel .creator-actions {
+    grid-area: actions;
+  }
+  #paint-canvas {
+    width: auto;
+    height: calc(96vh - 80px);
+    min-width: 0;
+  }
+  .paint-swatch {
+    max-width: 30px;
+  }
 }

@@ -4,6 +4,7 @@ import { canPlaySession } from './accounts.js';
 import { toast } from './missions.js';
 import { RoomEconomy, decodeEconomy } from './room-economy.js';
 import type { EconomyState, RoomState } from './models.js';
+import { bankBalanceOf, depositChange, withdrawChange } from './bank-rules.js';
 
 let wallet: RoomEconomy | null = null;
 export function resetEconomy() {
@@ -21,6 +22,7 @@ export function applyConfirmedEconomy(room: RoomState) {
     game.player.ownedItems = structuredClone(economy.ownedItems);
     game.player.ownedFurniture = structuredClone(economy.ownedFurniture);
     game.player.invest = structuredClone(economy.invest);
+    game.bankBalance = bankBalanceOf(economy.bank);
   }
 }
 function getWallet(): RoomEconomy | null {
@@ -35,6 +37,7 @@ function getWallet(): RoomEconomy | null {
       ownedItems: game.player.ownedItems,
       ownedFurniture: game.player.ownedFurniture,
       invest: game.player.invest,
+      bank: game.bankBalance || 0,
     }),
     applyConfirmedEconomy,
     () => scope.active && canPlaySession() && !game.player.isDead,
@@ -89,4 +92,13 @@ export async function transferMoney(targetPlayerId: string, amount: number): Pro
     toast('Trasferimento non confermato.', 4000);
     return false;
   }
+}
+
+// Sposta soldi dalla cassaforte al conto in banca, nella stessa transazione della stanza.
+export function bankDeposit(amount: number): Promise<boolean> {
+  return updateEconomy(depositChange(amount));
+}
+// Riporta soldi dal conto in banca alla cassaforte.
+export function bankWithdraw(amount: number): Promise<boolean> {
+  return updateEconomy(withdrawChange(amount));
 }

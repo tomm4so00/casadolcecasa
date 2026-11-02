@@ -1,3 +1,4 @@
+import { bedSleepSpeed, plantHappinessDecay } from './furniture-benefits.js';
 import type { CharacterState, DrugState } from './models.js';
 
 export interface NeedsRules {
@@ -36,8 +37,9 @@ export function advanceNeeds(
   if (state.isDead || !Number.isFinite(seconds) || seconds <= 0 || !Number.isFinite(endAt)) return;
   let remaining = seconds;
   let now = endAt - seconds * 1000;
-  const bed = state.ownedFurniture.bed_lux ? 1.5 : 1;
-  const plant = state.ownedFurniture.plant_lux ? 0.3 : state.ownedFurniture.plant_std ? 0.5 : 1;
+  // Letto e pianta migliori: riposo più rapido e felicità che cala più lentamente.
+  const bed = bedSleepSpeed(state.ownedFurniture);
+  const plant = plantHappinessDecay(state.ownedFurniture);
   while (remaining > 1e-8 && state.healthLevel > 0) {
     if (state.isSleeping && state.sleepLevel >= 100 - 1e-8) {
       state.sleepLevel = 100;

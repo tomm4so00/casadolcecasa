@@ -7,6 +7,8 @@ import { toast } from './missions.js';
 import { sfx } from './audio.js';
 import { isoProject, isoScale } from './render/primitives.js';
 import { box, ellipseShadow } from './render/objects.js';
+import { openDialog } from './interface.js';
+import { nextPayMessage } from './job-pay.js';
 export function mgFlash(ok?: GameValue): GameValue {
   if (!game.MG.el) return;
   game.MG.el.classList.remove('mg-flash-ok', 'mg-flash-ko');
@@ -26,7 +28,8 @@ export function mgRating(..._args: GameValue[]): GameValue {
 }
 
 export function mgMultiplier(r?: GameValue): GameValue {
-  return !game.SKILL_PAY ? 1 : r < 0.7 ? 1 : r < 0.9 ? 1.2 : 1.4;
+  // Bonus prestazione (×1,2 dal 50%, ×1,4 dal 75%): disattivato con SKILL_PAY = false.
+  return !game.SKILL_PAY ? 1 : r < 0.5 ? 1 : r < 0.75 ? 1.2 : 1.4;
 }
 
 export function mgHud(..._args: GameValue[]): GameValue {
@@ -165,7 +168,12 @@ export function mgInteract(item?: GameValue, key?: GameValue): GameValue {
   if (game.MG.carry.id === st.item && item.id === st.target) {
     mgScore(1);
     sfx('coin');
-    toast(`✅ ${game.MG.carry.e} ${game.MG.carry.label} consegnato!`, 1800);
+    const perItem: number = game.activeShift?.perItem ?? 0;
+    if (game.activeShift) game.activeShift.delivered = (game.activeShift.delivered || 0) + 1;
+    toast(
+      `✅ ${game.MG.carry.e} ${game.MG.carry.label} consegnato!${perItem ? ` +${perItem} €` : ''}`,
+      1800,
+    );
     game.MG.carry = null;
     game.MG.stepIdx++;
     if (game.MG.stepIdx >= game.MG.task.steps.length) {
@@ -288,8 +296,10 @@ export async function updateShift(delta: number): Promise<void> {
   hud.classList.remove('hidden');
   const pct: GameValue = Math.min(100, (1 - game.activeShift.remaining / game.SHIFT_SECONDS) * 100);
   dom('shift-fill').style.width = pct + '%';
+  const itemsPay: number = (game.activeShift.delivered || 0) * (game.activeShift.perItem || 0);
   dom('shift-text').textContent =
-    `💼 Turno in corso: ${Math.ceil(Math.max(0, game.activeShift.remaining))} s · +${game.activeShift.pay} €`;
+    `💼 Turno in corso: ${Math.ceil(Math.max(0, game.activeShift.remaining))} s · +${game.activeShift.pay} €` +
+    (itemsPay ? ` · 📦 +${itemsPay} €` : '');
   if (game.activeShift.remaining <= 0) {
     const s: GameValue = game.activeShift;
     game.activeShift = null;
@@ -297,7 +307,10 @@ export async function updateShift(delta: number): Promise<void> {
     const rating: GameValue = mgRating(),
       mult: GameValue = mgMultiplier(rating);
     mgStop();
-    s.pay = Math.round(s.pay * mult);
+    const basePay: number = Math.round(s.pay * mult);
+    const delivered: number = s.delivered || 0;
+    const itemsPay: number = delivered * (s.perItem || 0);
+    s.pay = basePay + itemsPay;
     s.rating = rating;
     s.mult = mult;
     game.player.jobExperience[s.jobKey] = (game.player.jobExperience[s.jobKey] || 0) + 1;
@@ -310,10 +323,18 @@ export async function updateShift(delta: number): Promise<void> {
     game.player.happinessLevel = Math.max(0, game.player.happinessLevel - 5);
     game.player.sleepLevel = Math.max(0, game.player.sleepLevel - 3);
     game.view.currentRoomTitle = `${s.title} ✅`;
-    toast(
-      `✅ Turno completato! Prestazione ${Math.round(s.rating * 100)}%${s.mult !== 1 ? ' (×' + String(s.mult).replace('.', ',') + ')' : ''} · +${s.pay} € (turni: ${game.player.jobExperience[s.jobKey]}/60)`,
-      5000,
-    );
+    const done: number = game.player.jobExperience[s.jobKey];
+    const multText = s.mult !== 1 ? ' (×' + String(s.mult).replace('.', ',') + ')' : '';
+    void openDialog({
+      title: '✅ Turno completato!',
+      text:
+        `💼 Paga base: ${basePay} €${multText}\n` +
+        `📦 Oggetti consegnati: ${delivered} × ${s.perItem || 0} € = ${itemsPay} €\n` +
+        `💰 Totale: +${s.pay} €\n` +
+        `Turni completati in questo lavoro: ${done}\n\n` +
+        nextPayMessage(done),
+      buttons: [{ label: 'Ok', value: 'ok' }],
+    });
   }
 }
 

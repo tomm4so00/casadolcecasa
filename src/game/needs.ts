@@ -513,9 +513,18 @@ export function updateNeeds(delta?: GameValue): GameValue {
   dom('happiness-bar-fill').style.width = Math.round(game.player.happinessLevel) + '%';
   dom('happiness-text').innerText = Math.round(game.player.happinessLevel) + '%';
   updateDrugHud();
-  let moneyBarWidth: GameValue = Math.min(100, (game.moneyLevel / 1000) * 100);
-  dom('money-bar-fill').style.width = moneyBarWidth + '%';
-  dom('money-text').innerText = game.moneyLevel + ' €';
+  // Sotto i 1000 € in cassaforte la barra si riempie solo di verde, verso 1000 €.
+  // Da 1000 € in su è piena e divisa in proporzione: verde cassaforte, azzurro banca.
+  const bankMoney: number = game.bankBalance || 0;
+  const totalMoney: number = game.moneyLevel + bankMoney;
+  const vaultFull: boolean = game.moneyLevel >= 1000;
+  const vaultWidth: number = vaultFull
+    ? (game.moneyLevel / totalMoney) * 100
+    : (game.moneyLevel / 1000) * 100;
+  dom('money-bar-fill').style.width = vaultWidth + '%';
+  dom('bank-bar-fill').style.width = (vaultFull ? 100 - vaultWidth : 0) + '%';
+  dom('money-text').innerText = '🔐 ' + game.moneyLevel + ' €';
+  dom('bank-text').innerText = '🏦 ' + bankMoney + ' €';
   // Chiede il PIN solo quando i soldi salgono oltre l'ultima richiesta (prima chiedeva ad ogni frame)
   if (
     game.session.saveReady &&

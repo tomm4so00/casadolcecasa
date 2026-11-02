@@ -45,8 +45,8 @@ try {
   console.log('CATALOG', catalog);
   assert.equal(catalog.rooms, 32);
   assert(
-    catalog.clothes === 28 &&
-      catalog.furniture === 16 &&
+    catalog.clothes === 74 &&
+      catalog.furniture === 24 &&
       catalog.jobs === 4 &&
       catalog.business === 3,
   );
@@ -95,6 +95,8 @@ try {
     };
   });
   assert.deepEqual(shift, { turns: 1, owned: true, bed: true, invest: 100 });
+  // A fine turno compare il riepilogo della paga: lo chiude come farebbe il giocatore.
+  await page.locator('#dialog-buttons').getByRole('button', { name: 'Ok', exact: true }).click();
   await page.evaluate(async () => (await import('/src/game/chat.ts')).openGlobalChat());
   await page.locator('#gchat-input').fill('Messaggio di prova offline');
   await page.evaluate(async () => (await import('/src/game/chat.ts')).sendChat());
@@ -114,6 +116,8 @@ try {
       'discoteca',
       'negozio_vestiti',
       'negozio_mobili',
+      'banca',
+      'laboratorio',
       'CIMITERO',
       'lavoro_cantiere',
       'lavoro_ospedale',

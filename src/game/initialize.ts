@@ -1,3 +1,4 @@
+import { canKiss } from './romance.js';
 import { startMarket } from './market-client.js';
 import { resetEconomy } from './economy.js';
 import { createCharacterState } from './models.js';
@@ -14,6 +15,8 @@ import {
   KITCHEN_FURNITURE,
   BATHROOM_FURNITURE,
   CLOTHES_STORE_FURNITURE,
+  BANK_FURNITURE,
+  ART_STUDIO_FURNITURE,
   STORE_FLOOR_FURNITURE,
   SALOON_DOORS,
   COURTYARD_DOORS,
@@ -55,6 +58,9 @@ import {
   drawFlowersProp,
   drawFountainProp,
   drawFridge,
+  drawBankCounter,
+  drawEasel,
+  drawPaintTableProp,
   drawGraveProp,
   drawHeartMonitorProp,
   drawHospitalBedProp,
@@ -104,6 +110,9 @@ import {
   wallShelf,
   wallTowels,
   wallWhiteboard,
+  wallVaultDoor,
+  wallRoomPainting,
+  wallSafe,
   wallWindow,
 } from './render/scenes.js';
 import { firebaseOptions, isLocalMode, createDatabase } from './runtime.js';
@@ -153,6 +162,9 @@ export function initializeGame() {
   game.player.hygieneLevel = 50;
   game.player.happinessLevel = 50;
   game.vaultCache = 0;
+  game.bankBalance = 0;
+  game.kissAnim = null;
+  game.kissPending = null;
   game.legacyPocketMoney = 0;
   game.vaultSynced = false;
   game.lastNoRoomToastAt = 0;
@@ -181,15 +193,16 @@ export function initializeGame() {
   game.player.hasFoodInInventory = false;
   game.player.foodIsCooked = false;
   game.shopCatalog = structuredClone(SHOP_CATALOG);
-  game.SLOTS = ['top', 'pants', 'shoes', 'hat', 'glasses'];
+  game.SLOTS = ['top', 'pants', 'shoes', 'hat', 'glasses', 'neck'];
   game.SLOT_INFO = structuredClone(SLOT_INFO);
-  game.OPTIONAL_SLOTS = ['hat', 'glasses'];
+  game.OPTIONAL_SLOTS = ['hat', 'glasses', 'neck'];
   game.DEFAULT_LOOK = {
     top: 'top_basic',
     pants: 'pants_jeans',
     shoes: 'shoes_sneakers',
     hat: null,
     glasses: null,
+    neck: null,
   };
   game.player.ownedItems = {};
   game.player.equipped = Object.assign({}, game.DEFAULT_LOOK);
@@ -267,7 +280,7 @@ export function initializeGame() {
   game.player.gameMinutes = 8 * 60;
   game.GAME_MINUTES_PER_SEC = 1 / 60;
   game.activeShift = null;
-  game.SHIFT_SECONDS = 25;
+  game.SHIFT_SECONDS = 45;
   game.mySay = '';
   game.mySayT = 0;
   game.dialogResolve = null;
@@ -323,6 +336,8 @@ export function initializeGame() {
   game.bathroomFurniture = structuredClone(BATHROOM_FURNITURE);
   game.clothesStoreFurniture = structuredClone(CLOTHES_STORE_FURNITURE);
   game.storeFloorFurniture = structuredClone(STORE_FLOOR_FURNITURE);
+  game.bankFurniture = structuredClone(BANK_FURNITURE);
+  game.artStudioFurniture = structuredClone(ART_STUDIO_FURNITURE);
   game.saloonDoors = structuredClone(SALOON_DOORS);
   game.courtyardDoors = structuredClone(COURTYARD_DOORS);
   lifetime.listen(browser, 'load', (): GameValue => {
@@ -403,6 +418,12 @@ export function initializeGame() {
       show: (): GameValue => game.player.foodIsCooked,
     },
     { id: 'money', label: '💶 Regala soldi', color: '#27ae60', show: (): GameValue => hasRoom() },
+    {
+      id: 'kiss',
+      label: '💋 Prova a baciare',
+      color: '#ff6b81',
+      show: (): GameValue => canKiss(game.socTarget?.id),
+    },
     {
       id: 'drug',
       label: (): GameValue => `💊 Regala droga (${game.player.drugStock})`,
@@ -521,7 +542,7 @@ export function initializeGame() {
   ];
   game.alertLevel = {};
   game.wakeAlertSent = false;
-  game.SKILL_PAY = true;
+  game.SKILL_PAY = false; // niente bonus in base alla prestazione: la paga dipende da turni e oggetti
   game.MG = {
     active: false,
     job: '',
@@ -556,6 +577,10 @@ export function initializeGame() {
     safe: drawSafe,
     stove: drawStove,
     fridge: drawFridge,
+    bankCounter: drawBankCounter,
+    easel1: drawEasel,
+    easel2: drawEasel,
+    easel3: drawEasel,
     coffee: drawCoffeeMachine,
     toilet: drawToilet,
     sink: drawSink,
@@ -613,6 +638,7 @@ export function initializeGame() {
     mannequin: drawMannequinProp,
     console: drawConsoleProp,
     bathmat: drawBathmatProp,
+    paintTable: drawPaintTableProp,
   };
   game.graveList = [];
   game.graveMap = {};
@@ -648,8 +674,14 @@ export function initializeGame() {
     cross: wallCross,
     menu: wallMenu,
     whiteboard: wallWhiteboard,
+    vaultDoor: wallVaultDoor,
   };
-  game.WALL_DECOR_DYNAMIC = { clock: wallClock, neon: wallNeon };
+  game.WALL_DECOR_DYNAMIC = {
+    clock: wallClock,
+    neon: wallNeon,
+    roomPainting: wallRoomPainting,
+    wallSafe,
+  };
   game.bgCache = { key: '', canvas: null };
   game.lightCanvas = null;
   game.SKIN_TONES = ['#ffdbac', '#f1c27d', '#e0ac69', '#c68642', '#8d5524'];

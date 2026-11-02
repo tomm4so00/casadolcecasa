@@ -1,7 +1,16 @@
 import { spendMoney } from '../economy.js';
 import type { GameValue } from '../context.js';
 import { game } from '../context.js';
-import { isoProject, isoScale, poly, rnd, setPlane } from './primitives.js';
+import {
+  isoProject,
+  isoScale,
+  poly,
+  rnd,
+  footprintOf,
+  rotateVector,
+  setPlane,
+  worldPoint,
+} from './primitives.js';
 import { hasRoom, isMyRoomNow, saveGame } from '../saves.js';
 import {
   freeRoomsInApt,
@@ -14,6 +23,10 @@ import { drawGlasses, drawHat, drawPlayerAvatar, drawShowerWater } from './avata
 import { nameHash } from './scenes.js';
 import { fmtDuration, toast } from '../missions.js';
 import { openDialog } from '../interface.js';
+import { sortIsoParts } from './iso-sort.js';
+import { SAFE_CORRIDOR } from '../room-layout.js';
+import { nextUpgrade, tierOf, tierOfPlaced, tiersOf } from '../furniture-tiers.js';
+import { LAMP_LIGHT } from '../furniture-benefits.js';
 export function resetPlane(..._args: GameValue[]): GameValue {
   game.view.ctx.setTransform(1, 0, 0, 1, 0, 0);
 }
@@ -36,33 +49,142 @@ export function box(
     y1: GameValue = y + h / 2;
   const P: GameValue = isoProject;
   const edge: GameValue = opt.edge === undefined ? 'rgba(0,0,0,0.3)' : opt.edge;
-  poly(
-    [P(x0, y1, z0), P(x1, y1, z0), P(x1, y1, z1), P(x0, y1, z1)],
-    opt.left || game.darken(color, 0.1),
-    edge,
-  ); // faccia davanti-sinistra
-  poly(
-    [P(x1, y1, z0), P(x1, y0, z0), P(x1, y0, z1), P(x1, y1, z1)],
-    opt.right || game.darken(color, 0.28),
-    edge,
-  ); // faccia davanti-destra
-  poly(
-    [P(x0, y0, z1), P(x1, y0, z1), P(x1, y1, z1), P(x0, y1, z1)],
-    opt.top || game.lighten(color, 0.1),
-    edge,
-  ); // sopra
-  return { x, y, w, h, d, x0, x1, y0, y1, z0, z1 };
+  const b: GameValue = { x, y, w, h, d, x0, x1, y0, y1, z0, z1 };
+  const rot = game.furnRot;
+  const drawFaces = (): void => {
+    if (!rot || !rot.k) {
+      poly(
+        [P(x0, y1, z0), P(x1, y1, z0), P(x1, y1, z1), P(x0, y1, z1)],
+        opt.left || game.darken(color, 0.1),
+        edge,
+      ); // faccia davanti-sinistra
+      poly(
+        [P(x1, y1, z0), P(x1, y0, z0), P(x1, y0, z1), P(x1, y1, z1)],
+        opt.right || game.darken(color, 0.28),
+        edge,
+      ); // faccia davanti-destra
+    } else {
+      // Mobile ruotato: si disegnano le due facce che dopo la rotazione guardano verso chi osserva.
+      const sides = [
+        {
+          n: [0, 1],
+          own: opt.left,
+          pts: [P(x0, y1, z0), P(x1, y1, z0), P(x1, y1, z1), P(x0, y1, z1)],
+        },
+        {
+          n: [1, 0],
+          own: opt.right,
+          pts: [P(x1, y1, z0), P(x1, y0, z0), P(x1, y0, z1), P(x1, y1, z1)],
+        },
+        {
+          n: [0, -1],
+          own: null,
+          pts: [P(x0, y0, z0), P(x1, y0, z0), P(x1, y0, z1), P(x0, y0, z1)],
+        },
+        {
+          n: [-1, 0],
+          own: null,
+          pts: [P(x0, y1, z0), P(x0, y0, z0), P(x0, y0, z1), P(x0, y1, z1)],
+        },
+      ];
+      for (const side of sides) {
+        const wn = rotateVector(side.n[0], side.n[1], rot.k);
+        if (wn.x < 0.5 && wn.y < 0.5) continue; // faccia nascosta
+        poly(side.pts, side.own || game.darken(color, wn.y > 0.5 ? 0.1 : 0.28), edge);
+      }
+    }
+    poly(
+      [P(x0, y0, z1), P(x1, y0, z1), P(x1, y1, z1), P(x0, y1, z1)],
+      opt.top || game.lighten(color, 0.1),
+      edge,
+    ); // sopra
+    for (const extra of b._extra || []) extra();
+  };
+  // Mobile ruotato: le parti si disegnano alla fine, ordinate per profondità.
+  if (game.furnQueue && rot && rot.k) {
+    b._extra = [];
+    const a = worldPoint(x0, y0),
+      c = worldPoint(x1, y1);
+    game.furnQueue.push({
+      minX: Math.min(a.x, c.x),
+      maxX: Math.max(a.x, c.x),
+      minY: Math.min(a.y, c.y),
+      maxY: Math.max(a.y, c.y),
+      minZ: z0,
+      maxZ: z1,
+      draw: drawFaces,
+    });
+  } else drawFaces();
+  return b;
 }
+
+/** Per i disegni che non sono box: con un mobile ruotato vengono messi in coda nell'ordine giusto. */
+export function drawDeferred(x: number, y: number, z: number, fn: () => void): void {
+  if (game.furnQueue && game.furnRot?.k) {
+    const c = worldPoint(x, y);
+    game.furnQueue.push({
+      minX: c.x - 1,
+      maxX: c.x + 1,
+      minY: c.y - 1,
+      maxY: c.y + 1,
+      minZ: z,
+      maxZ: z + 1,
+      draw: fn,
+    });
+  } else fn();
+}
+
+// Normale (verso l'esterno) delle facce laterali: left = davanti (+y), right = destra (+x),
+// back = retro (−y), west = fianco sinistro (−x). Le ultime due si vedono solo se il mobile è girato.
+const FACE_NORMAL: Record<string, [number, number]> = {
+  left: [0, 1],
+  right: [1, 0],
+  back: [0, -1],
+  west: [-1, 0],
+};
 
 // Disegna su una faccia del box: fn(larghezza, altezza) in coordinate locali (origine in alto a sinistra)
 export function onFace(b?: GameValue, face?: GameValue, fn?: GameValue): GameValue {
-  if (face === 'top') setPlane([b.x0, b.y0, b.z1], [1, 0, 0], [0, 1, 0]);
-  else if (face === 'left') setPlane([b.x0, b.y1, b.z1], [1, 0, 0], [0, 0, -1]);
-  else setPlane([b.x1, b.y1, b.z1], [0, -1, 0], [0, 0, -1]);
+  if (face !== 'top') {
+    // Con la rotazione una faccia può guardare dalla parte opposta a chi osserva: allora non si vede.
+    const [nx, ny] = FACE_NORMAL[face] || FACE_NORMAL.right;
+    const wn = rotateVector(nx, ny, game.furnRot?.k || 0);
+    if (wn.x < 0.5 && wn.y < 0.5) return;
+  }
+  const paint = (): void => {
+    if (face === 'top') setPlane([b.x0, b.y0, b.z1], [1, 0, 0], [0, 1, 0]);
+    else if (face === 'left') setPlane([b.x0, b.y1, b.z1], [1, 0, 0], [0, 0, -1]);
+    else if (face === 'back') setPlane([b.x1, b.y0, b.z1], [-1, 0, 0], [0, 0, -1]);
+    else if (face === 'west') setPlane([b.x0, b.y0, b.z1], [0, 1, 0], [0, 0, -1]);
+    else setPlane([b.x1, b.y1, b.z1], [0, -1, 0], [0, 0, -1]);
+    try {
+      const across = face === 'right' || face === 'west' ? b.h : b.w;
+      fn(across, face === 'top' ? b.h : b.d);
+    } finally {
+      resetPlane();
+    }
+  };
+  if (b._extra) b._extra.push(paint);
+  else paint();
+}
+
+/** Disegna un mobile della stanza con la sua rotazione (0-3 quarti di giro attorno al centro). */
+export function withFurnitureRotation(item: GameValue, draw: () => void): void {
+  const k = (((item.rot || 0) % 4) + 4) % 4;
+  if (!k) {
+    draw();
+    return;
+  }
+  const prevRot = game.furnRot,
+    prevQueue = game.furnQueue;
+  game.furnRot = { k, cx: item.x, cy: item.y };
+  game.furnQueue = [];
   try {
-    fn(face === 'right' ? b.h : b.w, face === 'top' ? b.h : b.d);
+    draw();
+    sortIsoParts(game.furnQueue).forEach((part) => part.draw());
   } finally {
-    resetPlane();
+    game.furnRot = prevRot;
+    game.furnQueue = prevQueue;
   }
 }
 
@@ -118,6 +240,11 @@ export function isLux(it?: GameValue): GameValue {
   return /✨|Lusso/.test(it.name || '');
 }
 
+// Fascia intermedia fra standard e lusso.
+export function isPremium(it?: GameValue): boolean {
+  return tierOfPlaced(it || {}) === 'premium';
+}
+
 export function gameClockText(..._args: GameValue[]): GameValue {
   const m: GameValue = Math.floor(game.player.gameMinutes);
   return String(Math.floor(m / 60) % 24).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0');
@@ -126,13 +253,30 @@ export function gameClockText(..._args: GameValue[]): GameValue {
 // ---------------------------------------------------------------- MOBILI DELLA STANZA
 export function drawBed(it?: GameValue): GameValue {
   const Z: GameValue = it.zb || 0,
-    lux: GameValue = isLux(it);
-  const frameC: GameValue = lux ? '#c9a227' : '#7b4a2e';
+    lux: GameValue = isLux(it),
+    pre = isPremium(it);
+  const frameC: GameValue = lux ? '#c9a227' : pre ? '#4e2f1c' : '#7b4a2e';
   const { x, y, w, h }: GameValue = it;
-  const hb: GameValue = box(x, y - h / 2 + 4, w, 8, lux ? 54 : 44, frameC, { z0: Z });
+  const hb: GameValue = box(x, y - h / 2 + 4, w, 8, lux ? 54 : pre ? 50 : 44, frameC, { z0: Z });
   onFace(hb, 'left', (W?: GameValue, H?: GameValue): GameValue => {
     game.view.ctx.fillStyle = game.darken(frameC, 0.18);
     game.view.ctx.fillRect(5, 6, W - 10, H - 16);
+    if (pre) {
+      // testiera imbottita capitonné con profilo argentato
+      game.view.ctx.fillStyle = game.darken(it.color, 0.1);
+      game.view.ctx.fillRect(6, 7, W - 12, H - 18);
+      game.view.ctx.fillStyle = 'rgba(0,0,0,0.35)';
+      for (let i = 1; i < 6; i++)
+        for (let j = 1; j < 3; j++) {
+          game.view.ctx.beginPath();
+          game.view.ctx.arc(6 + ((W - 12) * i) / 6, 7 + ((H - 18) * j) / 3, 1.1, 0, 6.3);
+          game.view.ctx.fill();
+        }
+      game.view.ctx.strokeStyle = '#dfe6e9';
+      game.view.ctx.lineWidth = 1;
+      game.view.ctx.strokeRect(6, 7, W - 12, H - 18);
+      return;
+    }
     if (lux) {
       game.view.ctx.strokeStyle = '#fff3b0';
       game.view.ctx.lineWidth = 1.5;
@@ -225,7 +369,8 @@ export function drawShirtShape(
 export function drawWardrobe(it?: GameValue): GameValue {
   const Z: GameValue = it.zb || 0,
     lux: GameValue = isLux(it);
-  const c: GameValue = lux ? '#7a3b12' : '#a47551';
+  const pre = isPremium(it);
+  const c: GameValue = lux ? '#7a3b12' : pre ? '#5b3a29' : '#a47551';
   const openK: GameValue = !it.zb && isMyRoomNow() ? wardrobeOpenAmount() : 0;
   const b: GameValue = box(it.x, it.y, it.w, it.h, it.z, c, { z0: Z });
   onFace(b, 'left', (W?: GameValue, H?: GameValue): GameValue => {
@@ -268,12 +413,12 @@ export function drawWardrobe(it?: GameValue): GameValue {
       game.view.ctx.lineWidth = 1.2;
       game.view.ctx.strokeRect(4, 6, W / 2 - 6, H - 18);
       game.view.ctx.strokeRect(W / 2 + 2, 6, W / 2 - 6, H - 18);
-      if (lux) {
-        game.view.ctx.strokeStyle = '#e5c158';
+      if (lux || pre) {
+        game.view.ctx.strokeStyle = lux ? '#e5c158' : '#c8ccd0';
         game.view.ctx.strokeRect(9, 13, W / 2 - 16, H - 32);
         game.view.ctx.strokeRect(W / 2 + 7, 13, W / 2 - 16, H - 32);
       }
-      game.view.ctx.fillStyle = lux ? '#f1c40f' : '#2d3436';
+      game.view.ctx.fillStyle = lux ? '#f1c40f' : pre ? '#dfe6e9' : '#2d3436';
       game.view.ctx.fillRect(W / 2 - 6, H * 0.42, 2.5, 16);
       game.view.ctx.fillRect(W / 2 + 3.5, H * 0.42, 2.5, 16);
     }
@@ -289,40 +434,42 @@ export function drawWardrobe(it?: GameValue): GameValue {
     game.view.ctx.fillStyle = 'rgba(255,255,255,0.08)';
     game.view.ctx.fillRect(0, 0, W, H);
   });
-  if (openK > 0.02) {
-    // ante che ruotano sui cardini verso l'esterno
-    const ang: GameValue = openK * Math.PI * 0.58;
-    const leaf: GameValue = (b.x1 - b.x0) / 2 - 3;
-    const zA: GameValue = b.z0 + 10,
-      zB: GameValue = b.z1 - 6;
-    const doorC: GameValue = lux ? '#8a4a1c' : '#b68562';
-    const drawLeaf: GameValue = (
-      hx?: GameValue,
-      dir?: GameValue,
-      shadeK?: GameValue,
-    ): GameValue => {
-      const ex: GameValue = hx + dir * leaf * Math.cos(ang),
-        ey: GameValue = b.y1 + leaf * Math.sin(ang);
-      const pts: GameValue = [
-        isoProject(hx, b.y1, zA),
-        isoProject(ex, ey, zA),
-        isoProject(ex, ey, zB),
-        isoProject(hx, b.y1, zB),
-      ];
-      poly(pts, game.darken(doorC, shadeK), 'rgba(0,0,0,0.45)');
-      const k: GameValue = 0.82,
-        hz: GameValue = zA + (zB - zA) * 0.5;
-      const hp: GameValue = isoProject(
-        hx + dir * leaf * Math.cos(ang) * k,
-        b.y1 + leaf * Math.sin(ang) * k,
-        hz,
-      );
-      game.view.ctx.fillStyle = lux ? '#f1c40f' : '#2d3436';
-      game.view.ctx.fillRect(hp.x - 1.2, hp.y - 7, 2.4, 14);
-    };
-    drawLeaf(b.x0 + 3, 1, 0.05 + 0.15 * openK);
-    drawLeaf(b.x1 - 3, -1, 0.2);
-  }
+  // ante aperte: con l'armadio ruotato vanno disegnate dopo le altre parti
+  if (openK > 0.02)
+    drawDeferred(it.x, b.y1 + 25, b.z0 + 1, () => {
+      // ante che ruotano sui cardini verso l'esterno
+      const ang: GameValue = openK * Math.PI * 0.58;
+      const leaf: GameValue = (b.x1 - b.x0) / 2 - 3;
+      const zA: GameValue = b.z0 + 10,
+        zB: GameValue = b.z1 - 6;
+      const doorC: GameValue = lux ? '#8a4a1c' : pre ? '#6b4532' : '#b68562';
+      const drawLeaf: GameValue = (
+        hx?: GameValue,
+        dir?: GameValue,
+        shadeK?: GameValue,
+      ): GameValue => {
+        const ex: GameValue = hx + dir * leaf * Math.cos(ang),
+          ey: GameValue = b.y1 + leaf * Math.sin(ang);
+        const pts: GameValue = [
+          isoProject(hx, b.y1, zA),
+          isoProject(ex, ey, zA),
+          isoProject(ex, ey, zB),
+          isoProject(hx, b.y1, zB),
+        ];
+        poly(pts, game.darken(doorC, shadeK), 'rgba(0,0,0,0.45)');
+        const k: GameValue = 0.82,
+          hz: GameValue = zA + (zB - zA) * 0.5;
+        const hp: GameValue = isoProject(
+          hx + dir * leaf * Math.cos(ang) * k,
+          b.y1 + leaf * Math.sin(ang) * k,
+          hz,
+        );
+        game.view.ctx.fillStyle = lux ? '#f1c40f' : pre ? '#dfe6e9' : '#2d3436';
+        game.view.ctx.fillRect(hp.x - 1.2, hp.y - 7, 2.4, 14);
+      };
+      drawLeaf(b.x0 + 3, 1, 0.05 + 0.15 * openK);
+      drawLeaf(b.x1 - 3, -1, 0.2);
+    });
 }
 
 export function drawDesk(it?: GameValue, t?: GameValue): GameValue {
@@ -330,7 +477,8 @@ export function drawDesk(it?: GameValue, t?: GameValue): GameValue {
     lux: GameValue = isLux(it);
   const { x, y, w, h }: GameValue = it;
   const deskH: GameValue = Math.max(20, it.z - 20);
-  const legC: GameValue = lux ? '#2c2c54' : '#4a4a4a';
+  const pre = isPremium(it);
+  const legC: GameValue = lux ? '#2c2c54' : pre ? '#b2bec3' : '#4a4a4a';
   [
     [-1, -1],
     [1, -1],
@@ -340,12 +488,15 @@ export function drawDesk(it?: GameValue, t?: GameValue): GameValue {
     ([sx, sy]: GameValue = {}): GameValue =>
       box(x + sx * (w / 2 - 4), y + sy * (h / 2 - 4), 5, 5, deskH, legC, { z0: Z }),
   );
-  const top: GameValue = box(x, y, w, h, 5, lux ? '#1e1e2e' : '#c8a27a', { z0: Z + deskH });
+  const top: GameValue = box(x, y, w, h, 5, lux ? '#1e1e2e' : pre ? '#5d4037' : '#c8a27a', {
+    z0: Z + deskH,
+  });
   onFace(top, 'top', (W?: GameValue, H?: GameValue): GameValue => {
     if (!lux) woodGrain(W, H, 'rgba(0,0,0,0.1)', false, 5);
   });
   if (lux)
-    ['left', 'right'].forEach(
+    // striscia luminosa su tutti i lati (con la scrivania girata si vedono anche retro e fianco)
+    ['left', 'right', 'back', 'west'].forEach(
       (f?: GameValue): GameValue =>
         onFace(top, f, (W?: GameValue, H?: GameValue): GameValue => {
           game.view.ctx.fillStyle = `hsl(${(t * 90) % 360},90%,60%)`;
@@ -354,11 +505,13 @@ export function drawDesk(it?: GameValue, t?: GameValue): GameValue {
     );
   const tz: GameValue = Z + deskH + 5;
   box(x, y - h * 0.28, 5, 5, 6, '#333', { z0: tz });
-  const mon: GameValue = box(x, y - h * 0.28, w * 0.55, 4, 26, '#111', { z0: tz + 6 });
+  const mon: GameValue = box(x, y - h * 0.28, w * (pre ? 0.66 : 0.55), 4, pre ? 28 : 26, '#111', {
+    z0: tz + 6,
+  });
   onFace(mon, 'left', (W?: GameValue, H?: GameValue): GameValue => {
     const g: GameValue = game.view.ctx.createLinearGradient(0, 0, W, H);
-    g.addColorStop(0, lux ? '#6c5ce7' : '#0984e3');
-    g.addColorStop(1, lux ? '#00cec9' : '#74b9ff');
+    g.addColorStop(0, lux ? '#6c5ce7' : pre ? '#00b894' : '#0984e3');
+    g.addColorStop(1, lux ? '#00cec9' : pre ? '#81ecec' : '#74b9ff');
     game.view.ctx.fillStyle = g;
     game.view.ctx.fillRect(2, 2, W - 4, H - 4);
     game.view.ctx.fillStyle = 'rgba(255,255,255,0.65)';
@@ -367,12 +520,19 @@ export function drawDesk(it?: GameValue, t?: GameValue): GameValue {
   });
   box(x, y + h * 0.12, w * 0.45, 10, 2, '#dfe6e9', { z0: tz });
   box(x + w * 0.32, y + h * 0.1, 6, 8, 2, '#dfe6e9', { z0: tz });
+  if (pre) {
+    // lampada da scrivania cromata e tazza
+    box(x - w * 0.36, y - h * 0.2, 3, 3, 16, '#b2bec3', { z0: tz });
+    box(x - w * 0.36 + 4, y - h * 0.2, 9, 6, 4, '#dfe6e9', { z0: tz + 14 });
+    box(x + w * 0.38, y - h * 0.15, 5, 5, 5, '#ffffff', { z0: tz });
+  }
 }
 
 export function drawNightstand(it?: GameValue): GameValue {
   const Z: GameValue = it.zb || 0,
     lux: GameValue = isLux(it);
-  const c: GameValue = lux ? '#eceff1' : '#a47148';
+  const pre = isPremium(it);
+  const c: GameValue = lux ? '#eceff1' : pre ? '#5d4037' : '#a47148';
   const b: GameValue = box(it.x, it.y, it.w, it.h, it.z, c, { z0: Z });
   onFace(b, 'left', (W?: GameValue, H?: GameValue): GameValue => {
     if (lux) {
@@ -386,7 +546,7 @@ export function drawNightstand(it?: GameValue): GameValue {
     game.view.ctx.lineWidth = 1;
     game.view.ctx.strokeRect(3, 3, W - 6, H / 2 - 4);
     game.view.ctx.strokeRect(3, H / 2 + 1, W - 6, H / 2 - 6);
-    game.view.ctx.fillStyle = lux ? '#d4ac0d' : '#2d3436';
+    game.view.ctx.fillStyle = lux ? '#d4ac0d' : pre ? '#dfe6e9' : '#2d3436';
     game.view.ctx.fillRect(W / 2 - 3, H / 4 - 1, 6, 2.5);
     game.view.ctx.fillRect(W / 2 - 3, H * 0.75 - 2, 6, 2.5);
   });
@@ -404,8 +564,10 @@ export function drawLamp(it?: GameValue, _t?: GameValue, lights?: GameValue): Ga
   const Z: GameValue = it.zb || 0,
     lux: GameValue = isLux(it);
   box(it.x, it.y, it.w * 0.7, it.h * 0.7, 3, '#2d3436', { z0: Z });
-  box(it.x, it.y, 3, 3, it.z - 22, lux ? '#d4ac0d' : '#7f8c8d', { z0: Z + 3 });
-  const sh: GameValue = box(it.x, it.y, it.w * 0.85, it.h * 0.85, 20, lux ? '#f7dc6f' : '#f5ecd7', {
+  const pre = isPremium(it);
+  box(it.x, it.y, 3, 3, it.z - 22, lux ? '#d4ac0d' : pre ? '#dfe6e9' : '#7f8c8d', { z0: Z + 3 });
+  const shade = lux ? '#f7dc6f' : pre ? '#fdfefe' : '#f5ecd7';
+  const sh: GameValue = box(it.x, it.y, it.w * 0.85, it.h * 0.85, 20, shade, {
     z0: Z + it.z - 20,
     edge: 'rgba(0,0,0,0.15)',
   });
@@ -417,19 +579,34 @@ export function drawLamp(it?: GameValue, _t?: GameValue, lights?: GameValue): Ga
     game.view.ctx.fillRect(0, 0, W, H);
   });
   if (lights && !it.zb)
-    lights.push({ x: it.x, y: it.y, z: it.z, r: lux ? 190 : 150, color: '255,206,130' });
+    lights.push({
+      x: it.x,
+      y: it.y,
+      z: it.z,
+      r: LAMP_LIGHT[lux ? 'lux' : pre ? 'premium' : 'std'],
+      color: '255,206,130',
+    });
 }
 
 export function drawSofa(it?: GameValue): GameValue {
   const Z: GameValue = it.zb || 0,
     lux: GameValue = isLux(it);
+  const pre = isPremium(it);
   const c: GameValue = it.color,
     { x, y, w, h }: GameValue = it;
   const arm: GameValue = Math.max(6, w * 0.11);
-  const back: GameValue = box(x, y - h / 2 + 6, w, 12, it.z, game.darken(c, 0.05), { z0: Z });
+  if (pre)
+    // piedini in legno
+    [-1, 1].forEach((sx) =>
+      [-1, 1].forEach((sy) =>
+        box(x + sx * (w / 2 - 4), y + sy * (h / 2 - 5), 4, 4, 4, '#4e2f1c', { z0: Z }),
+      ),
+    );
+  const Zs = pre ? Z + 3 : Z;
+  const back: GameValue = box(x, y - h / 2 + 6, w, 12, it.z, game.darken(c, 0.05), { z0: Zs });
   onFace(back, 'left', (W?: GameValue, _H?: GameValue): GameValue => {
-    if (lux) {
-      game.view.ctx.fillStyle = 'rgba(255,255,255,0.4)';
+    if (lux || pre) {
+      game.view.ctx.fillStyle = lux ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.35)';
       for (let i: GameValue = 0; i < 4; i++)
         for (let j: GameValue = 0; j < 2; j++) {
           game.view.ctx.beginPath();
@@ -438,8 +615,8 @@ export function drawSofa(it?: GameValue): GameValue {
         }
     }
   });
-  box(x - w / 2 + arm / 2, y + 4, arm, h - 8, it.z * 0.65, c, { z0: Z });
-  const seat: GameValue = box(x, y + 5, w - arm * 2, h - 14, it.z * 0.45, c, { z0: Z });
+  box(x - w / 2 + arm / 2, y + 4, arm, h - 8, it.z * 0.65, c, { z0: Zs });
+  const seat: GameValue = box(x, y + 5, w - arm * 2, h - 14, it.z * 0.45, c, { z0: Zs });
   onFace(seat, 'top', (W?: GameValue, H?: GameValue): GameValue => {
     game.view.ctx.strokeStyle = 'rgba(0,0,0,0.25)';
     game.view.ctx.lineWidth = 1;
@@ -451,10 +628,16 @@ export function drawSofa(it?: GameValue): GameValue {
     }
   });
   if (!it.zb)
-    box(x - w * 0.22, y - h / 2 + 16, 14, 6, 12, lux ? '#f5d76e' : game.lighten(c, 0.4), {
-      z0: Z + it.z * 0.45,
-    });
-  box(x + w / 2 - arm / 2, y + 4, arm, h - 8, it.z * 0.65, c, { z0: Z });
+    box(
+      x - w * 0.22,
+      y - h / 2 + 16,
+      14,
+      6,
+      12,
+      lux ? '#f5d76e' : pre ? '#f5f6fa' : game.lighten(c, 0.4),
+      { z0: Zs + it.z * 0.45 },
+    );
+  box(x + w / 2 - arm / 2, y + 4, arm, h - 8, it.z * 0.65, c, { z0: Zs });
 }
 
 export function drawTV(it?: GameValue, t?: GameValue, lights?: GameValue): GameValue {
@@ -462,16 +645,27 @@ export function drawTV(it?: GameValue, t?: GameValue, lights?: GameValue): GameV
     lux: GameValue = isLux(it);
   const { x, y, w, h }: GameValue = it;
   const standH: GameValue = Math.min(18, it.z * 0.3);
-  const stand: GameValue = box(x, y, w, h, standH, lux ? '#1b1b1b' : '#6d4c41', { z0: Z });
+  const pre = isPremium(it);
+  const stand: GameValue = box(x, y, w, h, standH, lux ? '#1b1b1b' : pre ? '#3e2723' : '#6d4c41', {
+    z0: Z,
+  });
   onFace(stand, 'left', (W?: GameValue, H?: GameValue): GameValue => {
     game.view.ctx.strokeStyle = 'rgba(255,255,255,0.14)';
     game.view.ctx.strokeRect(3, 3, W / 2 - 5, H - 6);
     game.view.ctx.strokeRect(W / 2 + 2, 3, W / 2 - 5, H - 6);
   });
   box(x, y - 4, 6, 4, 4, '#222', { z0: Z + standH });
-  const scr: GameValue = box(x, y - 4, w * (lux ? 1.05 : 0.9), 3, it.z - standH - 4, '#0b0b0b', {
-    z0: Z + standH + 4,
-  });
+  const scr: GameValue = box(
+    x,
+    y - 4,
+    w * (lux ? 1.05 : pre ? 0.98 : 0.9),
+    3,
+    it.z - standH - 4,
+    '#0b0b0b',
+    {
+      z0: Z + standH + 4,
+    },
+  );
   onFace(scr, 'left', (W?: GameValue, H?: GameValue): GameValue => {
     const hue: GameValue = (t * 35) % 360;
     const g: GameValue = game.view.ctx.createLinearGradient(0, 0, W, H);
@@ -492,7 +686,12 @@ export function drawTV(it?: GameValue, t?: GameValue, lights?: GameValue): GameV
     game.view.ctx.fillRect(1.5, 1.5, W * 0.35, H - 3);
   });
   if (lights && !it.zb)
-    lights.push({ x, y: y + 20, z: 20, r: lux ? 110 : 80, color: '130,170,255' });
+    lights.push({
+      ...worldPoint(x, y + 20),
+      z: 20,
+      r: lux ? 110 : pre ? 95 : 80,
+      color: '130,170,255',
+    });
 }
 
 export function drawPlant(it?: GameValue, t?: GameValue): GameValue {
@@ -525,6 +724,48 @@ export function drawPlant(it?: GameValue, t?: GameValue): GameValue {
       game.view.ctx.ellipse(top.x + dx * s, top.y + dy * s, r * 1.4 * s, r * 0.8 * s, 0, 0, 6.3);
       game.view.ctx.fill();
     });
+    return;
+  }
+  if (isPremium(it)) {
+    const vase: GameValue = box(it.x, it.y, sz * 0.7, sz * 0.7, 16, '#ecf0f1', { z0: Z });
+    onFace(vase, 'left', (W?: GameValue, H?: GameValue): GameValue => {
+      game.view.ctx.fillStyle = '#2e86de';
+      game.view.ctx.fillRect(0, H * 0.35, W, 2.5);
+      game.view.ctx.fillRect(0, H * 0.6, W, 1.2);
+    });
+    onFace(vase, 'right', (W?: GameValue, H?: GameValue): GameValue => {
+      game.view.ctx.fillStyle = '#2e86de';
+      game.view.ctx.fillRect(0, H * 0.35, W, 2.5);
+    });
+    top = isoProject(it.x, it.y, Z + 16);
+    const kk: GameValue = (it.z / 55) * s;
+    for (let i = 0; i < 9; i++) {
+      const a = -Math.PI / 2 + (i - 4) * 0.36 + Math.sin(t * 1.2 + i) * 0.04;
+      const len = (20 + rnd(i + 11) * 10) * kk;
+      const cx = top.x + Math.cos(a) * len * 0.55,
+        cy = top.y + Math.sin(a) * len * 0.55;
+      game.view.ctx.strokeStyle = '#145a32';
+      game.view.ctx.lineWidth = 1 * kk;
+      game.view.ctx.beginPath();
+      game.view.ctx.moveTo(top.x, top.y);
+      game.view.ctx.lineTo(cx, cy);
+      game.view.ctx.stroke();
+      game.view.ctx.fillStyle = i % 2 ? '#1e8449' : '#239b56';
+      game.view.ctx.beginPath();
+      game.view.ctx.ellipse(cx, cy, len * 0.38, 6 * kk, a, 0, 6.3);
+      game.view.ctx.fill();
+      // tagli tipici delle foglie di monstera
+      game.view.ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+      game.view.ctx.lineWidth = 0.8;
+      for (const f of [-0.5, 0, 0.5]) {
+        const px = cx + Math.cos(a) * len * 0.15 * f,
+          py = cy + Math.sin(a) * len * 0.15 * f;
+        game.view.ctx.beginPath();
+        game.view.ctx.moveTo(px, py);
+        game.view.ctx.lineTo(px + Math.cos(a + 1.4) * 4 * kk, py + Math.sin(a + 1.4) * 4 * kk);
+        game.view.ctx.stroke();
+      }
+    }
     return;
   }
   const pot: GameValue = box(
@@ -665,61 +906,530 @@ export function drawStove(it?: GameValue): GameValue {
   }
 }
 
-export function drawFridge(it?: GameValue): GameValue {
-  const b: GameValue = box(it.x, it.y, it.w, it.h, it.z, '#dfe6e9');
-  onFace(b, 'left', (W?: GameValue, H?: GameValue): GameValue => {
-    const g: GameValue = game.view.ctx.createLinearGradient(0, 0, W, 0);
-    g.addColorStop(0, '#f5f6fa');
-    g.addColorStop(1, '#c8d0d6');
-    game.view.ctx.fillStyle = g;
-    game.view.ctx.fillRect(0, 0, W, H);
-    if (game.view.fridgeIsOpen) {
-      game.view.ctx.fillStyle = '#fffbe6';
-      game.view.ctx.fillRect(4, 4, W - 8, H - 8);
-      game.view.ctx.strokeStyle = '#dcd6c0';
-      for (let i: GameValue = 1; i < 5; i++) {
-        game.view.ctx.beginPath();
-        game.view.ctx.moveTo(4, (H * i) / 5);
-        game.view.ctx.lineTo(W - 4, (H * i) / 5);
-        game.view.ctx.stroke();
-      }
-      const foods: GameValue = ['#e74c3c', '#f1c40f', '#27ae60', '#e67e22', '#ecf0f1', '#8e44ad'];
-      for (let i: GameValue = 0; i < 9; i++) {
-        game.view.ctx.fillStyle = foods[i % foods.length];
-        game.view.ctx.fillRect(
-          8 + ((i % 3) * (W - 16)) / 3,
-          (H * (Math.floor(i / 3) + 1)) / 5 - 9,
-          9,
-          8,
-        );
+// ---------------------------------------------------------------- frigorifero
+
+const FRIDGE_OPEN_MS = 520;
+const FRIDGE_CLOSE_MS = 360;
+const FRIDGE_MAX_ANGLE = Math.PI * 0.62;
+const FRIDGE_DOOR_DEPTH = 5;
+const fridgeAnim = { open: false, from: 0, t0: -Infinity };
+
+// 0 = chiuso, 1 = aperto. La porta si apre con un piccolo rimbalzo e si chiude accelerando.
+function fridgeOpenAmount(now: number): number {
+  const at = (time: number): number => {
+    const dur = fridgeAnim.open ? FRIDGE_OPEN_MS : FRIDGE_CLOSE_MS;
+    const k = Math.min(1, Math.max(0, (time - fridgeAnim.t0) / dur));
+    if (!fridgeAnim.open) return fridgeAnim.from * (1 - k * k);
+    const back = 1 + 2.2 * Math.pow(k - 1, 3) + 1.2 * Math.pow(k - 1, 2);
+    return fridgeAnim.from + (1 - fridgeAnim.from) * back;
+  };
+  if (!!game.view.fridgeIsOpen !== fridgeAnim.open) {
+    // Riparte dalla posizione attuale, anche se l'animazione precedente non era finita.
+    fridgeAnim.from = Math.min(1, at(now));
+    fridgeAnim.open = !!game.view.fridgeIsOpen;
+    fridgeAnim.t0 = now;
+  }
+  return at(now);
+}
+
+function steelGradient(ctx: GameValue, W: number, H: number): GameValue {
+  const g = ctx.createLinearGradient(0, 0, W, H * 0.25);
+  g.addColorStop(0, '#fbfcfd');
+  g.addColorStop(0.45, '#e4eaee');
+  g.addColorStop(1, '#c3cdd4');
+  return g;
+}
+
+function roundRect(ctx: GameValue, x: number, y: number, w: number, h: number, r: number) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+
+// Pannello di una porta vista da fuori, in coordinate della faccia (origine in alto a sinistra).
+function drawFridgeDoorPanel(
+  ctx: GameValue,
+  W: number,
+  H: number,
+  handleY: number,
+  handleH: number,
+) {
+  roundRect(ctx, 0, 0, W, H, 3);
+  ctx.fillStyle = steelGradient(ctx, W, H);
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(60,72,82,0.35)';
+  ctx.lineWidth = 0.8;
+  ctx.stroke();
+  // riflesso obliquo dell'acciaio
+  ctx.save();
+  ctx.clip();
+  ctx.fillStyle = 'rgba(255,255,255,0.45)';
+  ctx.beginPath();
+  ctx.moveTo(W * 0.18, 0);
+  ctx.lineTo(W * 0.34, 0);
+  ctx.lineTo(W * 0.1, H);
+  ctx.lineTo(-W * 0.06, H);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,0.22)';
+  ctx.fillRect(0, 0, W, 1.5);
+  ctx.restore();
+  // maniglia verticale sul lato libero (la porta ruota sul lato sinistro)
+  const hx = W - 9;
+  ctx.fillStyle = 'rgba(0,0,0,0.18)';
+  roundRect(ctx, hx + 1.2, handleY + 1.5, 3.2, handleH, 1.6);
+  ctx.fill();
+  const hg = ctx.createLinearGradient(hx, 0, hx + 3.2, 0);
+  hg.addColorStop(0, '#f5f7f8');
+  hg.addColorStop(0.5, '#a9b4bc');
+  hg.addColorStop(1, '#6c7a85');
+  ctx.fillStyle = hg;
+  roundRect(ctx, hx, handleY, 3.2, handleH, 1.6);
+  ctx.fill();
+  ctx.fillStyle = '#7d8a94';
+  ctx.fillRect(hx + 0.6, handleY + 1, 2, 2.5);
+  ctx.fillRect(hx + 0.6, handleY + handleH - 3.5, 2, 2.5);
+}
+
+function drawFridgeMagnets(ctx: GameValue, W: number, H: number) {
+  // biglietto della spesa
+  ctx.save();
+  ctx.translate(W * 0.3, H * 0.3);
+  ctx.rotate(-0.08);
+  ctx.fillStyle = 'rgba(0,0,0,0.12)';
+  ctx.fillRect(-9, -9, 19, 23);
+  ctx.fillStyle = '#fff7c2';
+  ctx.fillRect(-10, -11, 19, 23);
+  ctx.strokeStyle = 'rgba(52,152,219,0.55)';
+  ctx.lineWidth = 0.6;
+  for (let i = 0; i < 5; i++) {
+    ctx.beginPath();
+    ctx.moveTo(-7, -5 + i * 3.6);
+    ctx.lineTo(-7 + (i % 2 ? 9 : 12), -5 + i * 3.6);
+    ctx.stroke();
+  }
+  ctx.fillStyle = '#e74c3c';
+  ctx.beginPath();
+  ctx.arc(-0.5, -11, 2.3, 0, 6.3);
+  ctx.fill();
+  ctx.restore();
+  // calamite
+  const dot = (x: number, y: number, r: number, c: string) => {
+    ctx.fillStyle = 'rgba(0,0,0,0.18)';
+    ctx.beginPath();
+    ctx.arc(x + 0.8, y + 0.9, r, 0, 6.3);
+    ctx.fill();
+    ctx.fillStyle = c;
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, 6.3);
+    ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.55)';
+    ctx.beginPath();
+    ctx.arc(x - r * 0.35, y - r * 0.35, r * 0.35, 0, 6.3);
+    ctx.fill();
+  };
+  dot(W * 0.62, H * 0.22, 2.6, '#0984e3');
+  dot(W * 0.2, H * 0.62, 2.4, '#fdcb6e');
+  // calamita a cuore
+  const hx = W * 0.55,
+    hy = H * 0.5;
+  ctx.fillStyle = '#e84393';
+  ctx.beginPath();
+  ctx.moveTo(hx, hy + 3);
+  ctx.bezierCurveTo(hx - 5, hy - 1, hx - 2.5, hy - 5, hx, hy - 2);
+  ctx.bezierCurveTo(hx + 2.5, hy - 5, hx + 5, hy - 1, hx, hy + 3);
+  ctx.fill();
+  // disegno di un bambino: casetta con il sole
+  ctx.save();
+  ctx.translate(W * 0.36, H * 0.74);
+  ctx.rotate(0.06);
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(-8, -7, 16, 13);
+  ctx.strokeStyle = '#e17055';
+  ctx.lineWidth = 0.8;
+  ctx.strokeRect(-4, -1, 8, 5);
+  ctx.beginPath();
+  ctx.moveTo(-5, -1);
+  ctx.lineTo(0, -5);
+  ctx.lineTo(5, -1);
+  ctx.stroke();
+  ctx.fillStyle = '#fdcb6e';
+  ctx.beginPath();
+  ctx.arc(5, -4.5, 1.5, 0, 6.3);
+  ctx.fill();
+  ctx.restore();
+}
+
+// Display del freezer con temperatura e led che "respira".
+function drawFridgeDisplay(ctx: GameValue, W: number, H: number, t: number) {
+  const x = W * 0.14,
+    y = H * 0.34,
+    w = 26,
+    h = 12;
+  roundRect(ctx, x, y, w, h, 2);
+  ctx.fillStyle = '#1e272e';
+  ctx.fill();
+  ctx.fillStyle = 'rgba(116,185,255,0.14)';
+  ctx.fillRect(x + 1, y + 1, w - 2, h / 2 - 1);
+  ctx.fillStyle = '#74e0ff';
+  ctx.font = 'bold 8px sans-serif';
+  ctx.textBaseline = 'middle';
+  ctx.textAlign = 'left';
+  ctx.fillText('4°C', x + 3, y + h / 2 + 0.5);
+  ctx.fillStyle = `rgba(46,213,115,${0.55 + 0.45 * Math.sin(t * 2.2)})`;
+  ctx.beginPath();
+  ctx.arc(x + w - 3, y + h / 2, 1.3, 0, 6.3);
+  ctx.fill();
+}
+
+// Interno illuminato: ripiani in vetro, cibo e cassetti delle verdure.
+function drawFridgeInterior(ctx: GameValue, W: number, H: number, light: number, hasMeal: boolean) {
+  const c = (base: number, add: number) => Math.round(base + add * light);
+  const g = ctx.createLinearGradient(0, 0, 0, H);
+  g.addColorStop(0, `rgb(${c(200, 55)},${c(212, 43)},255)`);
+  g.addColorStop(1, `rgb(${c(150, 50)},${c(170, 50)},${c(185, 50)})`);
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, W, H);
+  // profondità: pareti laterali in ombra
+  const side = ctx.createLinearGradient(0, 0, W, 0);
+  side.addColorStop(0, 'rgba(40,60,80,0.28)');
+  side.addColorStop(0.12, 'rgba(40,60,80,0)');
+  side.addColorStop(0.88, 'rgba(40,60,80,0)');
+  side.addColorStop(1, 'rgba(40,60,80,0.32)');
+  ctx.fillStyle = side;
+  ctx.fillRect(0, 0, W, H);
+  // lampada in alto
+  ctx.fillStyle = `rgba(255,252,230,${0.4 + 0.6 * light})`;
+  ctx.fillRect(W * 0.35, 1.5, W * 0.3, 2);
+  const lg = ctx.createRadialGradient(W / 2, 3, 1, W / 2, 3, W * 0.8);
+  lg.addColorStop(0, `rgba(255,250,225,${0.45 * light})`);
+  lg.addColorStop(1, 'rgba(255,250,225,0)');
+  ctx.fillStyle = lg;
+  ctx.fillRect(0, 0, W, H);
+
+  const shelf = (y: number) => {
+    ctx.fillStyle = 'rgba(160,215,240,0.55)';
+    ctx.fillRect(1, y, W - 2, 2.2);
+    ctx.fillStyle = 'rgba(255,255,255,0.8)';
+    ctx.fillRect(1, y, W - 2, 0.7);
+  };
+  const s1 = H * 0.27,
+    s2 = H * 0.52,
+    s3 = H * 0.74;
+
+  // ripiano alto: latte, marmellata, formaggio
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(W * 0.1, s1 - 17, 9, 17);
+  ctx.fillStyle = '#0984e3';
+  ctx.fillRect(W * 0.1, s1 - 11, 9, 4);
+  ctx.fillStyle = '#dfe6e9';
+  ctx.beginPath();
+  ctx.moveTo(W * 0.1, s1 - 17);
+  ctx.lineTo(W * 0.1 + 4.5, s1 - 21);
+  ctx.lineTo(W * 0.1 + 9, s1 - 17);
+  ctx.fill();
+  ctx.fillStyle = 'rgba(214,48,49,0.85)';
+  ctx.fillRect(W * 0.34, s1 - 10, 9, 10);
+  ctx.fillStyle = '#d63031';
+  ctx.fillRect(W * 0.34 - 0.5, s1 - 12, 10, 2.5);
+  ctx.fillStyle = '#fdcb6e';
+  ctx.beginPath();
+  ctx.moveTo(W * 0.58, s1);
+  ctx.lineTo(W * 0.86, s1);
+  ctx.lineTo(W * 0.86, s1 - 8);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = '#e1a93a';
+  for (const u of [0.75, 0.81]) {
+    ctx.beginPath();
+    ctx.arc(W * u, s1 - 2.5, 1.1, 0, 6.3);
+    ctx.fill();
+  }
+  shelf(s1);
+
+  // ripiano centrale: bottiglie e mele
+  for (const [color, u] of [
+    ['#00b894', 0.12],
+    ['#e17055', 0.26],
+  ] as const) {
+    const x = W * u;
+    ctx.fillStyle = color;
+    ctx.fillRect(x, s2 - 20, 7, 20);
+    ctx.fillRect(x + 2, s2 - 25, 3, 5);
+    ctx.fillStyle = 'rgba(255,255,255,0.4)';
+    ctx.fillRect(x + 1, s2 - 18, 1.5, 15);
+  }
+  (
+    [
+      [0.55, '#d63031', 0],
+      [0.67, '#e84118', 0],
+      [0.61, '#44bd32', 5],
+    ] as const
+  ).forEach(([u, color, lift]) => {
+    const x = W * u,
+      y = s2 - 4 - lift;
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.arc(x, y, 4, 0, 6.3);
+    ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.45)';
+    ctx.beginPath();
+    ctx.arc(x - 1.3, y - 1.3, 1.2, 0, 6.3);
+    ctx.fill();
+  });
+  shelf(s2);
+
+  // ripiano basso: il piatto pronto da 5 € (sparisce quando lo prendi) e le uova
+  if (hasMeal) {
+    ctx.fillStyle = 'rgba(255,255,255,0.75)';
+    roundRect(ctx, W * 0.1, s3 - 9, 22, 9, 2);
+    ctx.fill();
+    ctx.fillStyle = '#e17055';
+    ctx.fillRect(W * 0.1 + 2, s3 - 6, 18, 4);
+    ctx.fillStyle = '#74b9ff';
+    ctx.fillRect(W * 0.1 - 0.5, s3 - 10.5, 23, 2);
+  }
+  ctx.fillStyle = '#b2bec3';
+  ctx.fillRect(W * 0.56, s3 - 4, 22, 4);
+  ctx.fillStyle = '#fff1d6';
+  for (let i = 0; i < 4; i++) {
+    ctx.beginPath();
+    ctx.ellipse(W * 0.56 + 3 + i * 5.3, s3 - 5.5, 2.3, 3, 0, 0, 6.3);
+    ctx.fill();
+  }
+  shelf(s3);
+
+  // cassetti delle verdure
+  const dy = s3 + 4,
+    dh = H - dy - 2;
+  (
+    [
+      [2, W / 2 - 3],
+      [W / 2 + 1, W / 2 - 3],
+    ] as const
+  ).forEach(([x, w], i) => {
+    ctx.fillStyle = 'rgba(200,235,250,0.55)';
+    roundRect(ctx, x, dy, w, dh, 2);
+    ctx.fill();
+    ctx.save();
+    ctx.clip();
+    if (i === 0) {
+      ctx.fillStyle = '#6ab04c';
+      for (const u of [0.25, 0.5, 0.75]) {
+        ctx.beginPath();
+        ctx.arc(x + w * u, dy + dh * 0.45, 4.5, 0, 6.3);
+        ctx.fill();
       }
     } else {
-      game.view.ctx.strokeStyle = 'rgba(0,0,0,0.3)';
-      game.view.ctx.beginPath();
-      game.view.ctx.moveTo(2, H * 0.35);
-      game.view.ctx.lineTo(W - 2, H * 0.35);
-      game.view.ctx.stroke();
-      game.view.ctx.fillStyle = '#636e72';
-      game.view.ctx.fillRect(W - 10, H * 0.12, 3, H * 0.16);
-      game.view.ctx.fillRect(W - 10, H * 0.45, 3, H * 0.3);
-      [
-        ['#e74c3c', 0.2, 0.5],
-        ['#0984e3', 0.35, 0.6],
-        ['#fdcb6e', 0.25, 0.7],
-      ].forEach(([c, u, v]: GameValue = {}): GameValue => {
-        game.view.ctx.fillStyle = c;
-        game.view.ctx.beginPath();
-        game.view.ctx.arc(W * u, H * v, 2.5, 0, 6.3);
-        game.view.ctx.fill();
-      });
-      game.view.ctx.fillStyle = '#ffffff';
-      game.view.ctx.fillRect(W * 0.12, H * 0.55, 14, 10);
+      ctx.fillStyle = '#e67e22';
+      for (let k = 0; k < 3; k++) {
+        ctx.beginPath();
+        ctx.moveTo(x + 4 + k * 6, dy + 3);
+        ctx.lineTo(x + 7 + k * 6, dy + 3);
+        ctx.lineTo(x + 5.5 + k * 6, dy + dh);
+        ctx.fill();
+      }
+    }
+    ctx.restore();
+    ctx.strokeStyle = 'rgba(255,255,255,0.8)';
+    ctx.lineWidth = 0.8;
+    roundRect(ctx, x, dy, w, dh, 2);
+    ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,0.7)';
+    ctx.fillRect(x + w / 2 - 4, dy + 1.5, 8, 1.5);
+  });
+}
+
+// Lato interno della porta: guarnizione e balconcini con bottiglie.
+function drawFridgeDoorInside(ctx: GameValue, W: number, H: number, light: number) {
+  const c = (base: number, add: number) => Math.round(base + add * light);
+  roundRect(ctx, 0, 0, W, H, 3);
+  ctx.fillStyle = `rgb(${c(210, 35)},${c(220, 30)},${c(228, 27)})`;
+  ctx.fill();
+  ctx.strokeStyle = '#95a5a6';
+  ctx.lineWidth = 2;
+  roundRect(ctx, 1.5, 1.5, W - 3, H - 3, 3);
+  ctx.stroke();
+  const rows = [
+    [0.3, ['#f1c40f', '#ffffff', '#e74c3c']],
+    [0.6, ['#2ecc71', '#2ecc71', '#3498db']],
+    [0.9, ['#ffffff', '#e67e22', '#e67e22']],
+  ] as const;
+  rows.forEach(([v, colors], row) => {
+    const y = H * v;
+    const tall = row === 2 ? 20 : 15;
+    colors.forEach((color, i) => {
+      const x = 7 + i * ((W - 14) / 3);
+      // bottiglia: corpo, collo e tappo
+      ctx.fillStyle = color;
+      roundRect(ctx, x, y - tall, 8, tall, 2);
+      ctx.fill();
+      ctx.fillRect(x + 2.5, y - tall - 4, 3, 4.5);
+      ctx.fillStyle = 'rgba(0,0,0,0.35)';
+      ctx.fillRect(x + 2, y - tall - 5.5, 4, 2);
+      ctx.fillStyle = 'rgba(255,255,255,0.45)';
+      ctx.fillRect(x + 1.3, y - tall + 2, 1.4, tall - 4);
+    });
+    // balconcino trasparente che copre la base delle bottiglie
+    ctx.fillStyle = 'rgba(205,235,250,0.88)';
+    ctx.fillRect(3, y - 7, W - 6, 7);
+    ctx.fillStyle = 'rgba(255,255,255,0.9)';
+    ctx.fillRect(3, y - 7, W - 6, 1.2);
+    ctx.fillStyle = 'rgba(80,110,130,0.25)';
+    ctx.fillRect(3, y - 1, W - 6, 1);
+  });
+}
+
+export function drawFridge(it?: GameValue): GameValue {
+  const ctx: GameValue = game.view.ctx;
+  const now = performance.now();
+  const t = now / 1000;
+  const openK = fridgeOpenAmount(now);
+  const light = Math.min(1, Math.max(0, openK * 1.4 - 0.15));
+  const freezerShare = 0.34;
+  const kick = 8;
+  const zTop = it.z;
+  const mainTopZ = zTop - zTop * freezerShare - 2;
+  const mainBottomZ = kick + 1;
+  const x0 = it.x - it.w / 2,
+    y1 = it.y + it.h / 2;
+
+  // alone di luce fredda sul pavimento davanti al frigo aperto
+  if (light > 0.02) {
+    setPlane([x0, y1, 0], [1, 0, 0], [0, 1, 0]);
+    try {
+      const glow = ctx.createRadialGradient(it.w / 2, 0, 4, it.w / 2, 0, it.w * 1.3);
+      glow.addColorStop(0, `rgba(205,235,255,${0.42 * light})`);
+      glow.addColorStop(1, 'rgba(205,235,255,0)');
+      ctx.fillStyle = glow;
+      ctx.fillRect(-it.w * 0.6, 0, it.w * 2.2, it.w * 1.3);
+    } finally {
+      resetPlane();
+    }
+  }
+
+  const b: GameValue = box(it.x, it.y, it.w, it.h, it.z, '#dfe6e9', {
+    left: '#e8edf0',
+    right: '#b6c1c8',
+    top: '#f3f6f7',
+  });
+
+  onFace(b, 'left', (W?: GameValue, H?: GameValue): GameValue => {
+    ctx.fillStyle = '#c9d2d8';
+    ctx.fillRect(0, 0, W, H);
+    // freezer (sempre chiuso)
+    const fH = H * freezerShare - 2;
+    ctx.save();
+    ctx.translate(1.5, 1.5);
+    drawFridgeDoorPanel(ctx, W - 3, fH, fH * 0.45, fH * 0.45);
+    drawFridgeDisplay(ctx, W - 3, fH, t);
+    ctx.restore();
+    // vano principale: si vede solo mentre la porta è aperta
+    const mainTop = zTop - mainTopZ,
+      mainH = mainTopZ - mainBottomZ;
+    ctx.fillStyle = '#2d3436';
+    ctx.fillRect(1.5, mainTop, W - 3, mainH);
+    if (openK > 0.01) {
+      ctx.save();
+      ctx.translate(3, mainTop + 1.5);
+      drawFridgeInterior(ctx, W - 6, mainH - 3, light, !game.player.hasFoodInInventory);
+      ctx.restore();
+    }
+    // zoccolo con griglia di aerazione
+    ctx.fillStyle = '#3d4852';
+    ctx.fillRect(1.5, H - kick, W - 3, kick - 1);
+    ctx.strokeStyle = 'rgba(255,255,255,0.18)';
+    ctx.lineWidth = 0.8;
+    for (let x = 6; x < W - 6; x += 4) {
+      ctx.beginPath();
+      ctx.moveTo(x, H - kick + 2);
+      ctx.lineTo(x, H - 3);
+      ctx.stroke();
     }
   });
   onFace(b, 'right', (W?: GameValue, H?: GameValue): GameValue => {
-    game.view.ctx.fillStyle = 'rgba(255,255,255,0.08)';
-    game.view.ctx.fillRect(0, 0, W * 0.3, H);
+    const g = ctx.createLinearGradient(0, 0, W, 0);
+    g.addColorStop(0, 'rgba(255,255,255,0.12)');
+    g.addColorStop(1, 'rgba(0,0,0,0.08)');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = 'rgba(0,0,0,0.15)';
+    ctx.fillRect(0, H * freezerShare - 1, W, 1.2);
+    ctx.fillStyle = '#3d4852';
+    ctx.fillRect(0, H - kick, W, kick - 1);
   });
+  onFace(b, 'top', (W?: GameValue, H?: GameValue): GameValue => {
+    ctx.fillStyle = 'rgba(255,255,255,0.25)';
+    ctx.fillRect(0, 0, W, H * 0.15);
+  });
+
+  // porta principale che ruota sul cardine sinistro
+  const ang = openK * FRIDGE_MAX_ANGLE;
+  const ca = Math.cos(ang),
+    sa = Math.sin(ang);
+  const hingeX = x0 + 1.5;
+  const doorW = it.w - 3,
+    doorH = mainTopZ - mainBottomZ;
+  const depth = FRIDGE_DOOR_DEPTH * Math.min(1, openK * 6);
+  const fx = hingeX + doorW * ca,
+    fy = y1 + doorW * sa;
+  // spessore della porta sul lato libero
+  if (depth > 0.2) {
+    const ix = sa * depth,
+      iy = -ca * depth;
+    poly(
+      [
+        isoProject(fx, fy, mainTopZ),
+        isoProject(fx + ix, fy + iy, mainTopZ),
+        isoProject(fx + ix, fy + iy, mainBottomZ),
+        isoProject(fx, fy, mainBottomZ),
+      ],
+      '#aab5bd',
+      'rgba(0,0,0,0.3)',
+    );
+  }
+  // Oltre i 45° chi guarda vede il lato interno della porta.
+  if (ca - sa > 0) {
+    setPlane([hingeX, y1, mainTopZ], [ca, sa, 0], [0, 0, -1]);
+    try {
+      drawFridgeDoorPanel(ctx, doorW, doorH, 6, doorH * 0.42);
+      drawFridgeMagnets(ctx, doorW, doorH);
+      if (openK > 0.01) {
+        ctx.fillStyle = `rgba(0,0,0,${0.12 * Math.min(1, openK * 3)})`;
+        ctx.fillRect(0, 0, doorW, doorH);
+      }
+    } finally {
+      resetPlane();
+    }
+  } else {
+    setPlane([hingeX + sa * depth, y1 - ca * depth, mainTopZ], [ca, sa, 0], [0, 0, -1]);
+    try {
+      drawFridgeDoorInside(ctx, doorW, doorH, light);
+    } finally {
+      resetPlane();
+    }
+  }
+
+  // aria fredda che scivola fuori verso il pavimento
+  if (light > 0.3) {
+    const s = isoScale();
+    for (let i = 0; i < 7; i++) {
+      const ph = (t * 0.32 + i / 7) % 1;
+      const p = isoProject(
+        x0 + it.w * (0.15 + 0.7 * rnd(i + 3)) + Math.sin(t * 1.3 + i) * 3,
+        y1 + 4 + ph * 26,
+        mainBottomZ + 12 - ph * 14,
+      );
+      ctx.fillStyle = `rgba(235,245,255,${0.22 * (1 - ph) * light})`;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, (4 + ph * 9) * s, 0, 6.3);
+      ctx.fill();
+    }
+  }
 }
 
 export function drawToilet(it?: GameValue): GameValue {
@@ -843,16 +1553,13 @@ export function drawCounter(it?: GameValue): GameValue {
 
 export function drawShelf(it?: GameValue, t?: GameValue): GameValue {
   const plat: GameValue = box(it.x, it.y, it.w, it.h, 12, '#f5f6fa');
-  const std: GameValue = game.furnitureCatalog.find(
-    (f?: GameValue): GameValue => f.category === it.category && !f.isLuxury,
-  );
-  const lux: GameValue = game.furnitureCatalog.find(
-    (f?: GameValue): GameValue => f.category === it.category && f.isLuxury,
-  );
-  const def: GameValue = std && game.player.ownedFurniture[std.id] ? lux : std;
+  // Espone il prossimo acquisto (standard → pregiato → lusso); col lusso già preso mostra quello.
+  const def: GameValue =
+    nextUpgrade(game.furnitureCatalog, game.player.ownedFurniture, it.category) ||
+    tiersOf(game.furnitureCatalog, it.category).at(-1);
   if (!def) return;
   onFace(plat, 'left', (W?: GameValue, H?: GameValue): GameValue => {
-    game.view.ctx.fillStyle = def.isLuxury ? '#f1c40f' : '#ff4757';
+    game.view.ctx.fillStyle = { std: '#ff4757', premium: '#8e44ad', lux: '#f1c40f' }[tierOf(def)];
     game.view.ctx.fillRect(W / 2 - 13, 2, 26, H - 4);
     game.view.ctx.fillStyle = '#fff';
     game.view.ctx.font = 'bold 7px sans-serif';
@@ -1111,13 +1818,17 @@ export function drawMapItem(
   lights?: GameValue,
 ): GameValue {
   if (k === game.movingPropKey) {
-    setPlane([item.x - item.w / 2, item.y - item.h / 2, 0], [1, 0, 0], [0, 1, 0]);
+    // evidenzia l'ingombro a terra (già ruotato) del mobile che si sta spostando
+    const fp: GameValue = footprintOf(item);
+    setPlane([item.x - fp.w / 2, item.y - fp.h / 2, 0], [1, 0, 0], [0, 1, 0]);
     game.view.ctx.fillStyle = `rgba(254,202,87,${0.35 + 0.2 * Math.sin(t * 6)})`;
-    game.view.ctx.fillRect(-4, -4, item.w + 8, item.h + 8);
+    game.view.ctx.fillRect(-4, -4, fp.w + 8, fp.h + 8);
     resetPlane();
   }
   if (k === 'doorExit' || k === 'exitHouse')
     return drawExitMat(item, k === 'exitHouse' ? 'ESCI DI CASA' : 'USCITA');
+  // Gli oggetti da parete (il quadro) si disegnano sulla parete, non sul pavimento.
+  if (item.wallItem) return;
   if (game.view.activeEnvironment === 'CORTILE') return drawCourtyardDoor(k, item);
   if (game.view.activeEnvironment === 'SALOON') return drawSaloonDoor(k, item);
   if (game.view.activeEnvironment === 'negozio_vestiti') {
@@ -1125,8 +1836,12 @@ export function drawMapItem(
     return drawBoutiqueItem(k, item, t);
   }
   if (k.startsWith('shelf')) return drawShelf(item, t);
-  softShadow(item.x, item.y, item.w, item.h);
-  drawFurnitureByKind(k, item, t, lights);
+  // Piante e lampade sono uguali da ogni lato: la rotazione non cambia il loro aspetto.
+  const symmetric = k === 'plant' || k === 'lamp';
+  withFurnitureRotation(symmetric ? { ...item, rot: 0 } : item, () => {
+    softShadow(item.x, item.y, item.w, item.h);
+    drawFurnitureByKind(k, item, t, lights);
+  });
 }
 
 // ---------------------------------------------------------------- OGGETTI DEGLI AMBIENTI
@@ -2122,5 +2837,310 @@ export async function openEpitaph(..._args: GameValue[]): Promise<GameValue> {
     game.player.epitaph = res.value.slice(0, 60);
     saveGame(true);
     toast(game.player.epitaph ? '🪦 Epitaffio salvato' : '🪦 Epitaffio rimosso');
+  }
+}
+
+// ---------------------------------------------------------------- BANCA
+const BANK_TELLERS = [
+  {
+    look: 'item_suit,pants_black,shoes_formal,glasses_round,neck_tie',
+    body: {
+      skin: 2,
+      freckles: 0,
+      hairStyle: 0,
+      hairColor: 1,
+      eyeColor: 0,
+      eyeShape: 0,
+      mouth: 1,
+      beard: 1,
+    },
+  },
+  {
+    look: 'top_vest,pants_black,shoes_formal,neck_pearls',
+    body: {
+      skin: 5,
+      freckles: 0,
+      hairStyle: 3,
+      hairColor: 0,
+      eyeColor: 1,
+      eyeShape: 1,
+      mouth: 3,
+      beard: 0,
+    },
+  },
+];
+
+// Sportello in marmo con vetri, due impiegati e i cartelli degli sportelli.
+export function drawBankCounter(it?: GameValue, t?: GameValue): GameValue {
+  const ctx: GameValue = game.view.ctx;
+  const windows = [-0.25, 0.25].map((k) => it.x + it.w * k);
+  // impiegati dietro il bancone
+  windows.forEach((wx, i) => {
+    const look: GameValue = resolveLook(parseLook(BANK_TELLERS[i].look));
+    look.body = BANK_TELLERS[i].body;
+    drawPlayerAvatar(wx, it.y - it.h / 2 - 16, '', (t || 0) + i * 3, look, false, '', {
+      noShadow: true,
+    });
+  });
+  const zTop = it.z - 6;
+  const b: GameValue = box(it.x, it.y, it.w, it.h, zTop, '#d8cfc0');
+  onFace(b, 'left', (W?: GameValue, H?: GameValue): GameValue => {
+    const panels = 5;
+    const pw = (W - 8) / panels;
+    for (let i = 0; i < panels; i++) {
+      const x = 4 + i * pw;
+      const g = ctx.createLinearGradient(x, 0, x + pw, H);
+      g.addColorStop(0, '#f4efe6');
+      g.addColorStop(1, '#cfc4b1');
+      ctx.fillStyle = g;
+      ctx.fillRect(x + 2, 6, pw - 4, H - 14);
+      // venature del marmo
+      ctx.strokeStyle = 'rgba(120,110,95,0.35)';
+      ctx.lineWidth = 0.7;
+      ctx.beginPath();
+      ctx.moveTo(x + 4, 10 + rnd(i) * 10);
+      ctx.bezierCurveTo(
+        x + pw * 0.4,
+        20 + rnd(i + 3) * 10,
+        x + pw * 0.6,
+        8,
+        x + pw - 4,
+        26 + rnd(i + 7) * 12,
+      );
+      ctx.stroke();
+    }
+    ctx.fillStyle = '#b08d57';
+    ctx.fillRect(0, 2, W, 2);
+    ctx.fillRect(0, H - 6, W, 2);
+    // targa centrale
+    ctx.fillStyle = '#1e3a5f';
+    ctx.fillRect(W / 2 - 26, H * 0.36, 52, 14);
+    ctx.fillStyle = '#f1c40f';
+    ctx.font = 'bold 8px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('🏦 BANCA', W / 2, H * 0.36 + 10);
+  });
+  onFace(b, 'right', (W?: GameValue, H?: GameValue): GameValue => {
+    ctx.fillStyle = 'rgba(0,0,0,0.06)';
+    ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = '#b08d57';
+    ctx.fillRect(0, H - 6, W, 2);
+  });
+  box(it.x, it.y, it.w + 6, it.h + 6, 6, '#2d3436', { z0: zTop, top: '#3d4852' });
+  // vetrata con le fessure degli sportelli
+  const gy = it.y;
+  const z0 = it.z,
+    z1 = it.z + 46;
+  const x0 = it.x - it.w / 2 + 3,
+    x1 = it.x + it.w / 2 - 3;
+  const pane = (xa: number, xb: number, za: number, zb: number) =>
+    poly(
+      [
+        isoProject(xa, gy, za),
+        isoProject(xb, gy, za),
+        isoProject(xb, gy, zb),
+        isoProject(xa, gy, zb),
+      ],
+      'rgba(185,225,245,0.22)',
+      'rgba(255,255,255,0.45)',
+    );
+  const slotH = 9;
+  pane(x0, x1, z0 + slotH, z1);
+  windows.forEach((wx) => pane(wx - 14, wx + 14, z0, z0 + 2));
+  // riflessi sul vetro
+  const s: GameValue = isoScale();
+  [x0 + 20, it.x + 10, x1 - 30].forEach((rx) => {
+    const a = isoProject(rx, gy, z1 - 6),
+      c = isoProject(rx + 12, gy, z0 + slotH + 6);
+    ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+    ctx.lineWidth = 2 * s;
+    ctx.beginPath();
+    ctx.moveTo(a.x, a.y);
+    ctx.lineTo(c.x, c.y);
+    ctx.stroke();
+  });
+  // montanti in ottone
+  for (const px of [x0, ...windows.map((w) => w - 16), ...windows.map((w) => w + 16), x1])
+    box(px, gy, 3, 3, z1 - z0, '#b08d57', { z0 });
+  box(it.x, gy, it.w - 2, 4, 3, '#b08d57', { z0: z1 });
+  // cartelli degli sportelli
+  windows.forEach((wx, i) => {
+    const sign: GameValue = box(wx, gy, 34, 2, 10, '#1e3a5f', { z0: z1 + 3 });
+    onFace(sign, 'left', (W?: GameValue, H?: GameValue): GameValue => {
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 6px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(`SPORTELLO ${i + 1}`, W / 2, H / 2 + 2);
+    });
+    // campanello e vassoio per i soldi
+    box(wx + 8, it.y + it.h / 2 - 6, 10, 6, 1, '#b2bec3', { z0: it.z });
+    const bell = isoProject(wx - 9, it.y + it.h / 2 - 6, it.z + 3);
+    ctx.fillStyle = '#f1c40f';
+    ctx.beginPath();
+    ctx.arc(bell.x, bell.y, 3 * s, Math.PI, 0);
+    ctx.fill();
+    ctx.fillStyle = '#7f8c8d';
+    ctx.fillRect(bell.x - 4 * s, bell.y, 8 * s, 1.2 * s);
+  });
+}
+
+// ---------------------------------------------------------------- LABORATORIO ARTISTICO
+const ART_COLORS = ['#e74c3c', '#f1c40f', '#2e86de', '#2ecc71', '#8e44ad', '#e67e22', '#fd79a8'];
+
+// Cavalletto con una tela già iniziata, la mensola dei colori e un barattolo di pennelli.
+export function drawEasel(it?: GameValue, t?: GameValue): GameValue {
+  const ctx: GameValue = game.view.ctx;
+  const seed: number = it.seed || 1;
+  const wood = '#a0703f';
+  const { x, y } = it;
+  // tre gambe del cavalletto
+  box(x - 12, y + 4, 3, 3, 70, wood);
+  box(x + 12, y + 4, 3, 3, 70, wood);
+  box(x, y - 8, 3, 3, 76, game.darken(wood, 0.15));
+  box(x, y + 4, 30, 4, 3, game.darken(wood, 0.1), { z0: 24 });
+  // tela
+  const canvasBox: GameValue = box(x, y + 2, 30, 2, 30, '#f5f6fa', { z0: 30 });
+  onFace(canvasBox, 'left', (W?: GameValue, H?: GameValue): GameValue => {
+    ctx.fillStyle = '#fdfdfd';
+    ctx.fillRect(1, 1, W - 2, H - 2);
+    for (let i = 0; i < 6; i++) {
+      ctx.fillStyle = ART_COLORS[(seed * 3 + i) % ART_COLORS.length];
+      ctx.globalAlpha = 0.85;
+      ctx.beginPath();
+      ctx.ellipse(
+        3 + rnd(seed * 10 + i) * (W - 6),
+        3 + rnd(seed * 20 + i) * (H - 6),
+        2 + rnd(seed * 30 + i) * 5,
+        1.5 + rnd(seed * 40 + i) * 4,
+        rnd(i) * 3,
+        0,
+        6.3,
+      );
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+    ctx.strokeStyle = 'rgba(0,0,0,0.25)';
+    ctx.lineWidth = 0.6;
+    ctx.strokeRect(0.5, 0.5, W - 1, H - 1);
+  });
+  box(x, y + 2, 34, 6, 2, wood, { z0: 28 });
+  // tavolozza appoggiata sulla mensola, con un po' di colore che brilla
+  const pal = isoProject(x + 8, y + 5, 31);
+  const s: GameValue = isoScale();
+  ctx.fillStyle = '#deb887';
+  ctx.beginPath();
+  ctx.ellipse(pal.x, pal.y, 6 * s, 2.6 * s, 0, 0, 6.3);
+  ctx.fill();
+  for (let i = 0; i < 4; i++) {
+    ctx.fillStyle = ART_COLORS[(seed + i) % ART_COLORS.length];
+    ctx.beginPath();
+    ctx.arc(pal.x + (i - 1.5) * 2.6 * s, pal.y - 0.4 * s, 0.9 * s, 0, 6.3);
+    ctx.fill();
+  }
+  // barattolo con i pennelli
+  box(x - 9, y + 5, 4, 4, 5, '#74b9ff', { z0: 30 });
+  for (let i = 0; i < 3; i++) {
+    const a = isoProject(x - 9 + (i - 1), y + 5, 35);
+    const b = isoProject(x - 9 + (i - 1) * 2.4, y + 5, 42 + Math.sin((t || 0) * 0.8 + i) * 0.3);
+    ctx.strokeStyle = '#6d4c41';
+    ctx.lineWidth = 1 * s;
+    ctx.beginPath();
+    ctx.moveTo(a.x, a.y);
+    ctx.lineTo(b.x, b.y);
+    ctx.stroke();
+    ctx.fillStyle = ART_COLORS[(seed + i * 2) % ART_COLORS.length];
+    ctx.beginPath();
+    ctx.arc(b.x, b.y, 1.2 * s, 0, 6.3);
+    ctx.fill();
+  }
+}
+
+// Tavolo da lavoro con barattoli di colore, tubetti e un rotolo di carta.
+export function drawPaintTableProp(it?: GameValue): GameValue {
+  const ctx: GameValue = game.view.ctx;
+  const seed: number = it.seed || 1;
+  [
+    [-1, -1],
+    [1, -1],
+    [-1, 1],
+    [1, 1],
+  ].forEach(([sx, sy]) =>
+    box(it.x + sx * (it.w / 2 - 4), it.y + sy * (it.h / 2 - 4), 4, 4, it.z - 5, '#6d4c41'),
+  );
+  const top: GameValue = box(it.x, it.y, it.w, it.h, 5, '#c8a27a', { z0: it.z - 5 });
+  onFace(top, 'top', (W?: GameValue, H?: GameValue): GameValue => {
+    // macchie di colore sul piano
+    for (let i = 0; i < 7; i++) {
+      ctx.fillStyle = ART_COLORS[(seed + i) % ART_COLORS.length];
+      ctx.globalAlpha = 0.5;
+      ctx.beginPath();
+      ctx.arc(rnd(seed * 7 + i) * W, rnd(seed * 9 + i) * H, 1 + rnd(i + seed) * 2.5, 0, 6.3);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  });
+  for (let i = 0; i < 4; i++) {
+    const c = ART_COLORS[(seed * 2 + i) % ART_COLORS.length];
+    const pot: GameValue = box(it.x - it.w * 0.32 + i * 9, it.y - 6, 7, 7, 8, '#ecf0f1', {
+      z0: it.z,
+    });
+    onFace(pot, 'top', (W?: GameValue, H?: GameValue): GameValue => {
+      ctx.fillStyle = c;
+      ctx.fillRect(1, 1, W - 2, H - 2);
+    });
+  }
+  // tubetti
+  for (let i = 0; i < 3; i++)
+    box(
+      it.x + it.w * 0.18 + i * 6,
+      it.y + 8,
+      3,
+      9,
+      3,
+      ART_COLORS[(seed + i + 3) % ART_COLORS.length],
+      {
+        z0: it.z,
+      },
+    );
+  // rotolo di carta
+  box(it.x + it.w * 0.3, it.y - 8, 14, 6, 6, '#fdfefe', { z0: it.z });
+}
+
+// Mentre si sposta un mobile, mostra la zona da lasciare libera fino alla cassaforte.
+export function drawSafeCorridor(t: number): void {
+  const ctx: GameValue = game.view.ctx;
+  const all = SAFE_CORRIDOR;
+  const minX = Math.min(...all.map((r) => r.minX)),
+    minY = Math.min(...all.map((r) => r.minY));
+  setPlane([minX, minY, 0], [1, 0, 0], [0, 1, 0]);
+  try {
+    // l'unione delle corsie, colorata una sola volta
+    ctx.beginPath();
+    for (const r of all) ctx.rect(r.minX - minX, r.minY - minY, r.maxX - r.minX, r.maxY - r.minY);
+    ctx.fillStyle = `rgba(46,213,115,${0.16 + 0.06 * Math.sin(t * 3)})`;
+    ctx.fill('nonzero');
+    ctx.strokeStyle = 'rgba(46,213,115,0.8)';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([8, 6]);
+    for (const r of all)
+      ctx.strokeRect(
+        r.minX - minX + 1,
+        r.minY - minY + 1,
+        r.maxX - r.minX - 2,
+        r.maxY - r.minY - 2,
+      );
+    ctx.setLineDash([]);
+    // scritta lungo la corsia che porta alla cassaforte
+    const lane = all[1];
+    ctx.save();
+    ctx.translate((lane.minX + lane.maxX) / 2 - minX, (lane.minY + lane.maxY) / 2 - minY);
+    ctx.rotate(-Math.PI / 2);
+    ctx.fillStyle = 'rgba(255,255,255,0.85)';
+    ctx.font = 'bold 10px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('PASSAGGIO LIBERO PER LA CASSAFORTE', 0, 4);
+    ctx.restore();
+  } finally {
+    resetPlane();
   }
 }

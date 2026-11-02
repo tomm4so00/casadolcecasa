@@ -11,6 +11,12 @@ import { getWealth, toast } from './missions.js';
 import { currentBody, lookString, ownsItem, parseBody, resolveLook } from './character.js';
 import { startInbox } from './social.js';
 import { startChat } from './chat.js';
+import { bestOwnedByProp } from './furniture-tiers.js';
+import { decodeRomance } from './romance-rules.js';
+import { pushOutOfCorridor } from './room-layout.js';
+import { footprintOf } from './render/primitives.js';
+import { PAINTING_SLOTS, paintingKey, roomPaintings } from './painting-rules.js';
+import { kissActive } from './romance.js';
 export function hashPin(pin?: GameValue, salt?: GameValue): GameValue {
   let s: GameValue = 'sims:' + salt + ':' + pin,
     h: GameValue = 5381;
@@ -68,11 +74,16 @@ export function buildSaveData(..._args: GameValue[]): SaveV8 {
       (furniturePos['base_' + k] = {
         x: Math.round(game.playerRoomFurniture[k].x),
         y: Math.round(game.playerRoomFurniture[k].y),
+        ...(game.playerRoomFurniture[k].rot ? { rot: game.playerRoomFurniture[k].rot } : {}),
       }),
   );
   game.furnitureCatalog.forEach(
     (f?: GameValue): GameValue =>
-      (furniturePos[f.id] = { x: Math.round(f.propData.x), y: Math.round(f.propData.y) }),
+      (furniturePos[f.id] = {
+        x: Math.round(f.propData.x),
+        y: Math.round(f.propData.y),
+        ...(f.propData.rot ? { rot: f.propData.rot } : {}),
+      }),
   );
   const r1: GameValue = (v?: GameValue): GameValue => Math.round(v * 10) / 10;
   const data: SaveV8 = {
@@ -105,6 +116,8 @@ export function buildSaveData(..._args: GameValue[]): SaveV8 {
     foodCooked: !!game.player.foodIsCooked,
   };
   if (game.player.drugStock > 0) data.drugStock = game.player.drugStock;
+  if (game.player.romance && Object.keys(game.player.romance).length)
+    data.romance = game.player.romance;
   if (game.player.coffeeAt) data.coffeeAt = game.player.coffeeAt;
   if (Object.keys(game.player.invest).length) {
     data.invest = {};
@@ -156,6 +169,7 @@ export function applySave(value: unknown): void {
   game.player.gameMinutes = num(s.gameMinutes, game.player.gameMinutes);
   game.player.bornAt = num(s.bornAt, 0);
   game.player.drugStock = Math.max(0, Math.floor(num(s.drugStock, 0)));
+  game.player.romance = decodeRomance(s.romance);
   game.player.coffeeAt = num(s.coffeeAt, 0);
   game.player.invest = {};
   game.BIZ.forEach((b?: GameValue): GameValue => {
@@ -208,10 +222,21 @@ export function applySave(value: unknown): void {
   game.player.jobExperience = Object.assign(game.player.jobExperience, s.jobExperience || {});
   let fp: GameValue = s.furniturePos || {};
   Object.keys(game.playerRoomFurniture).forEach((k?: GameValue): GameValue => {
-    if (fp['base_' + k]) Object.assign(game.playerRoomFurniture[k], fp['base_' + k]);
+    // solo i mobili spostabili: cassaforte e porta restano dove sono
+    if (fp['base_' + k] && game.playerRoomFurniture[k].moveable)
+      Object.assign(game.playerRoomFurniture[k], fp['base_' + k]);
   });
   game.furnitureCatalog.forEach((f?: GameValue): GameValue => {
     if (fp[f.id]) Object.assign(f.propData, fp[f.id]);
+  });
+  // Mobili sistemati prima del passaggio libero: vengono spinti fuori.
+  [
+    ...Object.values(game.playerRoomFurniture),
+    ...game.furnitureCatalog.map((f?: GameValue): GameValue => f.propData),
+  ].forEach((item?: GameValue): GameValue => {
+    if (!item.moveable || item.wallItem) return;
+    const fp2: GameValue = footprintOf(item);
+    Object.assign(item, pushOutOfCorridor({ x: item.x, y: item.y, w: fp2.w, h: fp2.h }));
   });
 }
 
@@ -350,12 +375,15 @@ export async function loadGame(..._args: GameValue[]): Promise<GameValue> {
 
 export function getMyRoomMap(..._args: GameValue[]): GameValue {
   let combined: GameValue = Object.assign({}, game.playerRoomFurniture);
-  Object.keys(game.player.ownedFurniture).forEach((itemId?: GameValue): GameValue => {
-    let itemDef: GameValue = game.furnitureCatalog.find(
-      (f?: GameValue): GameValue => f.id === itemId,
-    );
-    if (itemDef) combined[itemDef.propKey] = itemDef.propData;
-  });
+  // Per ogni posizione mostra il mobile migliore posseduto (lusso > pregiato > standard).
+  bestOwnedByProp(game.furnitureCatalog, game.player.ownedFurniture).forEach(
+    (def: GameValue, propKey: string) => {
+      combined[propKey] = def.propData;
+    },
+  );
+  const room: GameValue = game.roomsState[game.myAssignedRoomIdx ?? -1];
+  const hung = roomPaintings(room);
+  for (const slot of PAINTING_SLOTS) if (!hung[slot]) delete combined[paintingKey(slot)];
   return combined;
 }
 
@@ -374,6 +402,8 @@ export function publishRoomLayout(..._args: GameValue[]): GameValue {
       name: o.name,
       color: o.color,
       topColor: o.topColor,
+      ...(o.wallItem ? { wallItem: true } : {}),
+      ...(o.rot ? { rot: o.rot } : {}),
     };
   });
   const key: GameValue = JSON.stringify(layout);
@@ -494,7 +524,13 @@ export function startPresence(..._args: GameValue[]): GameValue {
       outfit: resolveLook(game.player.equipped).top.color,
       look: lookString(),
       body: game.bodyString(currentBody()),
-      act: game.showerAnim ? 'shower' : game.player.isSleeping ? 'sleep' : '',
+      act: kissActive()
+        ? 'kiss'
+        : game.showerAnim
+          ? 'shower'
+          : game.player.isSleeping
+            ? 'sleep'
+            : '',
       say: game.mySay,
       sayT: game.mySayT,
     };

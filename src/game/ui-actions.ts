@@ -3,6 +3,7 @@ import {
   handleSubAction,
   openClothesShop,
   placeFurniture,
+  rotateFurniture,
   returnHomeFromActivity,
   startMovingFurniture,
 } from './character.js';
@@ -45,6 +46,7 @@ export const uiActions: Readonly<Record<string, UiAction>> = {
   handleJobMenuAction: () => handleJobMenuAction(),
   startMovingFurniture: () => startMovingFurniture(),
   placeFurniture: () => placeFurniture(),
+  rotateFurniture: () => rotateFurniture(),
   returnHomeFromActivity: () => returnHomeFromActivity(),
   reloadForUpdate: () => reloadForUpdate(),
   restoreFromCode: () => restoreFromCode(),

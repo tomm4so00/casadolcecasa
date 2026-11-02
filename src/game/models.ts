@@ -1,3 +1,4 @@
+import type { RomanceBook } from './romance-rules.js';
 import type { GameDatabase } from './database.js';
 
 export interface Point {
@@ -37,6 +38,8 @@ export interface EconomyState {
   ownedItems: Record<string, boolean>;
   ownedFurniture: Record<string, boolean>;
   invest: Record<string, Investment>;
+  /** Soldi depositati in banca. */
+  bank?: number;
 }
 export interface RoomState {
   id: number;
@@ -78,6 +81,8 @@ export interface CharacterState {
   epitaph: string;
   gameMinutes: number;
   missionIndex: number;
+  /** Relazioni romantiche con gli altri giocatori. */
+  romance?: RomanceBook;
 }
 export interface SessionState {
   authUid: string | null;
@@ -125,4 +130,5 @@ export const createCharacterState = (): CharacterState => ({
   epitaph: '',
   gameMinutes: 0,
   missionIndex: 0,
+  romance: {},
 });

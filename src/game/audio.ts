@@ -82,6 +82,25 @@ export function sfx(type?: GameValue): GameValue {
         [523, 659, 784, 1047].forEach(
           (f?: GameValue, i?: GameValue): GameValue => tone(f, i * 0.09, 0.22, 'triangle', 0.1),
         ),
+      // guarnizione che si stacca, poi il ronzio del motore
+      fridgeOpen: (): GameValue => {
+        tone(320, 0, 0.05, 'triangle', 0.08);
+        tone(130, 0.03, 0.12, 'triangle', 0.1);
+        tone(58, 0.1, 0.7, 'sine', 0.05);
+      },
+      // tonfo morbido della porta che si chiude
+      fridgeClose: (): GameValue => {
+        tone(110, 0, 0.12, 'triangle', 0.2);
+        tone(70, 0.04, 0.22, 'sine', 0.16);
+      },
+      // schiocco del bacio e un piccolo carillon
+      kiss: (): GameValue => {
+        tone(1400, 0, 0.04, 'sine', 0.08);
+        tone(900, 0.03, 0.06, 'triangle', 0.06);
+        [784, 988, 1175].forEach(
+          (f?: GameValue, i?: GameValue): GameValue => tone(f, 0.12 + i * 0.1, 0.25, 'sine', 0.05),
+        );
+      },
       wardrobe: (): GameValue => {
         tone(180, 0, 0.18, 'triangle', 0.12);
         tone(240, 0.12, 0.22, 'triangle', 0.1);

@@ -1,6 +1,7 @@
 import type { GameDatabase } from './database.js';
 import type { EconomyState, RoomState } from './models.js';
 import { decodeSaveV8, isRecord } from './save-model.js';
+import { bankBalanceOf } from './bank-rules.js';
 
 export function decodeEconomy(value: unknown): EconomyState | null {
   if (!isRecord(value) || value.version !== 1) return null;
@@ -11,11 +12,13 @@ export function decodeEconomy(value: unknown): EconomyState | null {
     invest: value.invest ?? {},
   });
   if (!data) return null;
+  if (value.bank !== undefined && bankBalanceOf(value.bank) !== value.bank) return null;
   return {
     version: 1,
     ownedItems: data.ownedItems!,
     ownedFurniture: data.ownedFurniture!,
     invest: data.invest!,
+    ...(value.bank !== undefined ? { bank: value.bank as number } : {}),
   };
 }
 

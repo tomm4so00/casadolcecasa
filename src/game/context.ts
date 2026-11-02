@@ -1,3 +1,4 @@
+import type { IsoPart } from './render/iso-sort.js';
 import type { Business } from '../../shared/market.js';
 import type { SHOP_CATALOG, FURNITURE_CATALOG } from './data/catalogues.js';
 import type {
@@ -20,6 +21,13 @@ export interface GameContext {
   GAME_VERSION: number;
   onlinePlayers: GameValue;
   vaultCache: number;
+  bankBalance: number;
+  kissAnim: GameValue;
+  /** Rotazione del mobile che si sta disegnando (null = nessuna). */
+  furnRot: { k: number; cx: number; cy: number } | null;
+  /** Parti del mobile ruotato in attesa di essere disegnate nell'ordine giusto. */
+  furnQueue: IsoPart[] | null;
+  kissPending: GameValue;
   legacyPocketMoney: number;
   vaultSynced: boolean;
   lastNoRoomToastAt: number;
@@ -107,6 +115,8 @@ export interface GameContext {
   bathroomFurniture: GameValue;
   clothesStoreFurniture: GameValue;
   storeFloorFurniture: GameValue;
+  bankFurniture: GameValue;
+  artStudioFurniture: GameValue;
   saloonDoors: GameValue;
   courtyardDoors: GameValue;
   ABSENT_DEATH_MS: GameValue;

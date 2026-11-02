@@ -5,6 +5,8 @@ import { lifetime, dom } from './runtime.js';
 import { sfx } from './audio.js';
 import { saveGame, withTimeout } from './saves.js';
 import { openDialog } from './interface.js';
+import { RELAX_GAIN } from './furniture-benefits.js';
+import { tierOfPlaced } from './furniture-tiers.js';
 // ---------- Divano e TV ----------
 export function relaxWith(kind?: GameValue, item?: GameValue): GameValue {
   const now: GameValue = Date.now();
@@ -14,8 +16,7 @@ export function relaxWith(kind?: GameValue, item?: GameValue): GameValue {
     );
     return;
   }
-  const lux: GameValue = (item.name || '').includes('✨');
-  const gain: GameValue = kind === 'tv' ? (lux ? 25 : 15) : lux ? 20 : 10;
+  const gain: number = RELAX_GAIN[kind === 'tv' ? 'tv' : 'sofa'][tierOfPlaced(item)];
   game.player.happinessLevel = Math.min(100, game.player.happinessLevel + gain);
   if (kind === 'tv') game.player.sleepLevel = Math.max(0, game.player.sleepLevel - 3);
   else game.player.sleepLevel = Math.min(100, game.player.sleepLevel + 3);
@@ -31,6 +32,7 @@ export function relaxWith(kind?: GameValue, item?: GameValue): GameValue {
 export function getWealth(..._args: GameValue[]): GameValue {
   return (
     game.moneyLevel +
+    (game.bankBalance || 0) +
     Math.round(typeof game.investedTotal === 'function' ? game.investedTotal() : 0)
   );
 }

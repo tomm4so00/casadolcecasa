@@ -8,7 +8,7 @@ import { toast } from './missions.js';
 import { hasRoom, isMyRoomNow, saveGame } from './saves.js';
 import { sfx } from './audio.js';
 import { closeModal } from './render/primitives.js';
-import { changeSafePin } from './world.js';
+import { changeSafePin, getCurrentFurnitureMap, setFurniturePosition } from './world.js';
 export function itemById(id?: GameValue): GameValue {
   return game.shopCatalog.find((i?: GameValue): GameValue => i.id === id) || null;
 }
@@ -73,6 +73,7 @@ export function botLook(name?: GameValue): GameValue {
     shoes: pick('shoes', 5),
     hat: h % 3 === 0 ? pick('hat', 7) : null,
     glasses: h % 4 === 1 ? pick('glasses', 9) : null,
+    neck: h % 5 === 2 ? pick('neck', 11) : null,
   }));
 }
 
@@ -182,6 +183,47 @@ export function itemSwatch(it?: GameValue): GameValue {
   return `<div class="swatch" style="background:${bg}">${it.name.match(/\p{Extended_Pictographic}/u) ? it.name.match(/\p{Extended_Pictographic}/u)[0] : ''}</div>`;
 }
 
+// Fascia di altezza del manichino (da z0 a z1) inquadrata nella miniatura di ogni categoria.
+const THUMB_FRAME: Record<string, [number, number]> = {
+  top: [16, 50],
+  pants: [-1, 27],
+  shoes: [-2, 10],
+  hat: [48, 84],
+  glasses: [51, 65],
+  neck: [30, 57],
+};
+
+function itemThumbHtml(it: GameValue): string {
+  return `<canvas class="swatch-cv" width="240" height="150" data-thumb="${it.id}"></canvas>`;
+}
+
+// Disegna il capo indossato da un manichino, inquadrato sulla parte del corpo giusta.
+export function drawItemThumb(cv: HTMLCanvasElement, it: GameValue): void {
+  const look: GameValue = resolveLook({ [it.slot]: it.id });
+  look.mannequin = true;
+  const [z0, z1] = THUMB_FRAME[it.slot] || [0, 70];
+  const scale = Math.min((cv.height * 0.82) / (z1 - z0), cv.width / 30);
+  const savedCtx: GameValue = game.view.ctx;
+  const ctx = cv.getContext('2d');
+  if (!ctx) return;
+  game.view.ctx = ctx;
+  game.viewOverride = { cx: cv.width / 2, cy: cv.height / 2 + ((z0 + z1) / 2) * scale, scale };
+  try {
+    ctx.clearRect(0, 0, cv.width, cv.height);
+    drawPlayerAvatar(0, 0, '', 0, look, false, '', { noShadow: true });
+  } finally {
+    game.view.ctx = savedCtx;
+    game.viewOverride = null;
+  }
+}
+
+function paintItemThumbs(box: HTMLElement): void {
+  box.querySelectorAll<HTMLCanvasElement>('canvas[data-thumb]').forEach((cv) => {
+    const it: GameValue = itemById(cv.dataset.thumb);
+    if (it) drawItemThumb(cv, it);
+  });
+}
+
 export function renderTabs(
   containerId?: GameValue,
   active?: GameValue,
@@ -232,7 +274,7 @@ export function renderClothesShop(..._args: GameValue[]): GameValue {
       const card: GameValue = document.createElement('div');
       card.className = 'item-card' + (game.shopState.tryOn === it.id ? ' selected' : '');
       card.innerHTML =
-        `${itemSwatch(it)}<div>${it.name}</div>` +
+        `${itemThumbHtml(it)}<div>${it.name}</div>` +
         (owned
           ? `<div class="owned-tag">✓ Nel tuo armadio</div>`
           : `<div class="price">💰 ${it.price} €</div>`) +
@@ -247,6 +289,7 @@ export function renderClothesShop(..._args: GameValue[]): GameValue {
       };
       list.appendChild(card);
     });
+  paintItemThumbs(list);
 }
 
 export async function buyClothing(id: string): Promise<void> {
@@ -337,11 +380,12 @@ export function renderWardrobe(..._args: GameValue[]): GameValue {
     const card: GameValue = document.createElement('div');
     card.className = 'item-card' + (on ? ' selected' : '');
     card.innerHTML =
-      `${it.id ? itemSwatch(it) : '<div class="swatch" style="background:#2f3542">🚫</div>'}<div>${it.name}</div>` +
+      `${it.id ? itemThumbHtml(it) : '<div class="swatch" style="background:#2f3542">🚫</div>'}<div>${it.name}</div>` +
       `<div class="btn-row"><button type="button" class="${on ? 'on' : ''}">${on ? 'Indossato ✓' : 'Indossa'}</button></div>`;
     card.onclick = (): GameValue => equipItem(game.wardrobeSlot, it.id);
     box.appendChild(card);
   });
+  paintItemThumbs(box);
   if (items.length <= (game.OPTIONAL_SLOTS.includes(game.wardrobeSlot) ? 1 : 0)) {
     const p: GameValue = document.createElement('div');
     p.style.cssText = 'grid-column: 1 / -1; color: #aaa; font-size: 0.8rem; padding: 8px;';
@@ -401,11 +445,13 @@ export function startMovingFurniture(..._args: GameValue[]): GameValue {
   game.movingPropKey = game.activeTargetProp;
   dom('pop-interaction').classList.add('hidden');
   dom('btn-place-furniture').classList.remove('hidden');
+  const moving: GameValue = getCurrentFurnitureMap()[game.movingPropKey];
+  dom('btn-rotate-furniture').classList.toggle('hidden', !moving || !!moving.wallItem);
   const isTouch: GameValue = 'ontouchstart' in browser || navigator.maxTouchPoints > 0;
   toast(
     isTouch
-      ? '🖐️ Trascina il mobile col dito, poi premi 📌 Lascia Mobile'
-      : '🖐️ Trascina il mobile col mouse oppure usa WASD/frecce. Poi premi 📌 Lascia Mobile o E',
+      ? '🖐️ Trascina il mobile col dito, giralo con 🔄 Ruota, poi premi 📌 Lascia Mobile'
+      : '🖐️ Trascina il mobile col mouse oppure usa WASD/frecce, giralo con R. Poi premi 📌 Lascia Mobile o E',
     4500,
   );
 }
@@ -415,6 +461,17 @@ export function placeFurniture(..._args: GameValue[]): GameValue {
   game.isDraggingFurniture = false;
   game.movingPropKey = null;
   dom('btn-place-furniture').classList.add('hidden');
+  dom('btn-rotate-furniture').classList.add('hidden');
   toast('✅ Mobile posizionato con successo!');
   saveGame(true); // salva subito la posizione (e la pubblica per chi visita la stanza)
+}
+
+// Gira di un quarto di giro il mobile che si sta spostando (davanti verso i 4 assi).
+export function rotateFurniture(..._args: GameValue[]): GameValue {
+  if (!game.isMovingFurnitureMode || !game.movingPropKey) return;
+  const obj: GameValue = getCurrentFurnitureMap()[game.movingPropKey];
+  if (!obj || obj.wallItem) return;
+  obj.rot = ((obj.rot || 0) + 1) % 4;
+  setFurniturePosition(obj, obj.x, obj.y); // l'ingombro cambia: resta dentro la stanza
+  sfx('click');
 }
