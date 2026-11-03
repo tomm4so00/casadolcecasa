@@ -2145,7 +2145,7 @@ export const ENV_DECOR = {
     { kind: 'plant', x: 168, y: -160, w: 26, h: 26, z: 60 },
   ],
   KITCHEN: [
-    { kind: 'table', x: 35, y: 30, w: 56, h: 40 },
+    { kind: 'table', x: 35, y: 30, w: 70, h: 50 },
     { kind: 'plant', x: -168, y: 150, w: 24, h: 24, z: 55 },
   ],
   BATHROOM: [

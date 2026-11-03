@@ -31,7 +31,7 @@ import { footprintOf, isoProject, isoScale } from './render/primitives.js';
 import { mgButtonText, mgInteract, mgStart, openComputerShopModal } from './jobs.js';
 import { coffeeLeftMs, openDealer, useCoffee } from './needs.js';
 import { showGraveInfo } from './render/objects.js';
-import { startShower } from './render/avatars.js';
+import { startShower, startToilet, startWash } from './bathroom.js';
 import { sfx } from './audio.js';
 import { openBankCounter } from './bank.js';
 import { openProjects, rocketFunded } from './projects.js';
@@ -508,9 +508,17 @@ export function checkProximity(..._args: GameValue[]): GameValue {
       btnMain.innerText = `✋ ${item.name}`;
       btnSub.classList.add('hidden');
     }
-    if (game.view.activeEnvironment === 'BATHROOM' && found === 'shower') {
-      btnMain.innerText = game.showerAnim ? '🚿 Doccia in corso…' : '🚿 Fai la doccia';
-      btnMain.classList.toggle('btn-pop-locked', !!game.showerAnim);
+    if (game.view.activeEnvironment === 'BATHROOM') {
+      const busy = !!(game.showerAnim || game.bathAnim);
+      const labels: Record<string, [string, string]> = {
+        shower: ['🚿 Fai la doccia', '🚿 Doccia in corso…'],
+        toilet: ['🚽 Usa il WC', '🚽 Occupato…'],
+        sink: ['🚰 Lavati le mani', '🚰 Ti stai lavando…'],
+      };
+      if (labels[found]) {
+        btnMain.innerText = labels[found][busy ? 1 : 0];
+        btnMain.classList.toggle('btn-pop-locked', busy);
+      }
     }
     if (item.moveable && isMyRoomNow()) {
       if (found === 'bed' && game.player.isSleeping) {
@@ -533,7 +541,6 @@ export function checkProximity(..._args: GameValue[]): GameValue {
 // (attività ricreative e negozi) e il pulsante Indietro per tornare all'elenco principale.
 const OUTSIDE_MENU: Record<'' | 'fun' | 'shops', string[]> = {
   '': [
-    'btn-act-walk',
     'btn-act-fun',
     'btn-act-shops',
     'btn-act-work',
@@ -542,7 +549,7 @@ const OUTSIDE_MENU: Record<'' | 'fun' | 'shops', string[]> = {
     'btn-act-eng',
     'btn-act-cemetery',
   ],
-  fun: ['btn-act-bar', 'btn-act-trip', 'btn-act-disco', 'btn-act-back'],
+  fun: ['btn-act-walk', 'btn-act-bar', 'btn-act-trip', 'btn-act-disco', 'btn-act-back'],
   shops: ['btn-act-furnitureshop', 'btn-act-clothesshop', 'btn-act-back'],
 };
 const OUTSIDE_BUTTONS = [...new Set(Object.values(OUTSIDE_MENU).flat())];
@@ -668,7 +675,7 @@ function freeBedSlot(): number | null {
 
 export async function handleObjectInteract(..._args: GameValue[]): Promise<void> {
   if (!game.activeTargetProp) return;
-  if (game.showerAnim) return;
+  if (game.showerAnim || game.bathAnim) return;
   let map = getCurrentFurnitureMap();
   let item: GameValue = map[game.activeTargetProp];
   if (game.view.activeEnvironment === 'CIMITERO') {
@@ -791,11 +798,9 @@ export async function handleObjectInteract(..._args: GameValue[]): Promise<void>
     if (game.activeTargetProp === 'shower') {
       startShower();
     } else if (game.activeTargetProp === 'sink') {
-      game.player.hygieneLevel = Math.min(100, game.player.hygieneLevel + 20);
-      toast('Ti sei lavato mani e viso 🚰 (Igiene +20%)');
+      startWash();
     } else if (game.activeTargetProp === 'toilet') {
-      game.player.happinessLevel = Math.min(100, game.player.happinessLevel + 5);
-      toast('Che sollievo! 🚽 (Felicità +5%)');
+      startToilet();
     } else if (game.activeTargetProp === 'doorExit') {
       backToSaloon();
     }

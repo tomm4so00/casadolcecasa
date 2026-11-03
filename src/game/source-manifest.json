@@ -1441,12 +1441,12 @@
     },
     {
       "name": "startShower",
-      "module": "render/avatars",
+      "module": "bathroom",
       "line": 5860
     },
     {
       "name": "updateShower",
-      "module": "render/avatars",
+      "module": "bathroom",
       "line": 5867
     },
     {

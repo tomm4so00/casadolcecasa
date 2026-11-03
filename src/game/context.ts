@@ -44,6 +44,12 @@ export interface GameContext {
   hasSetSafePin: boolean;
   safePinCode: string;
   showerAnim: GameValue;
+  /** Animazione del WC o del lavandino in corso (kind: 'toilet' | 'wash'). */
+  bathAnim: GameValue;
+  /** Momento (animClock) dell'ultimo scarico del WC, per il vortice d'acqua. */
+  toiletFlushAt: number;
+  /** Qualcuno si sta lavando le mani in questo fotogramma (acqua dal rubinetto). */
+  frameSinkRunning: boolean;
   sleepK: number;
   /** Cuscino su cui dorme il giocatore: 0 sinistro, 1 destro (nel letto ci stanno in due). */
   bedSlot: number;

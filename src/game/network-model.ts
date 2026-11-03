@@ -25,6 +25,8 @@ export interface OnlinePlayer extends PresenceInfo {
   place?: string;
   say?: string;
   sayT?: number;
+  /** Pezzi di vestiti tolti per la doccia (0-4). */
+  und?: number;
   /** Cuscino su cui dorme (0 o 1), solo mentre è a letto. */
   bed?: number;
 }

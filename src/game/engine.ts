@@ -1,3 +1,11 @@
+import {
+  myBathPose,
+  myUndressStep,
+  showerSpots,
+  updateBathroom,
+  updateShower,
+} from './bathroom.js';
+import { drawClothesPile, undressedLook } from './render/avatars.js';
 import { realHour } from './game-clock.js';
 import type { GameValue } from './context.js';
 import { canPlaySession } from './accounts.js';
@@ -11,7 +19,6 @@ import {
   drawOfflineTag,
   drawPlayerAvatar,
   drawSleepThoughts,
-  updateShower,
   bedSpot,
 } from './render/avatars.js';
 import {
@@ -112,12 +119,15 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
       ),
     );
   if (game.showerAnim && game.view.activeEnvironment !== 'BATHROOM') game.showerAnim = null;
+  if (game.bathAnim && game.view.activeEnvironment !== 'BATHROOM') game.bathAnim = null;
   if (game.showerAnim) updateShower(animTime);
+  if (game.bathAnim) updateBathroom(animTime);
   if (kissActive()) approachKissPartner(delta);
   if (
     !game.player.isSleeping &&
     game.sleepK < 0.01 &&
     !game.showerAnim &&
+    !game.bathAnim &&
     !game.isMovingFurnitureMode &&
     !kissActive() &&
     !faintAmount() &&
@@ -238,6 +248,19 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
   }
   const mySayNow: GameValue = game.mySay && Date.now() - game.mySayT < 6000 ? game.mySay : '';
   game.frameShowerActors = [];
+  game.frameSinkRunning = game.bathAnim?.pose === 'wash';
+  // vestiti piegati davanti alla doccia mentre ci si lava
+  const pileAt = showerSpots().pile;
+  const addPile = (look: GameValue, step: number): void => {
+    if (game.view.activeEnvironment !== 'BATHROOM' || !step) return;
+    drawables.push({
+      depth: pileAt.x + pileAt.y,
+      draw: (): GameValue => drawClothesPile(pileAt.x, pileAt.y, look, step),
+    });
+  };
+  const myStep = myUndressStep();
+  const myShownLook = (): GameValue => undressedLook(myLook(), myStep);
+  addPile(myLook(), myStep);
   const showerProp: GameValue = map.shower;
   const inCabin: GameValue = (x?: GameValue, y?: GameValue): GameValue =>
     showerProp &&
@@ -246,7 +269,7 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
   if (game.showerAnim && inCabin(game.playerPos.x, game.playerPos.y)) {
     const px: GameValue = game.playerPos.x,
       py: GameValue = game.playerPos.y;
-    game.frameShowerActors.push({ x: px, y: py, look: myLook() });
+    game.frameShowerActors.push({ x: px, y: py, look: myShownLook() });
     labels.push((): GameValue => drawNameTagWorld(px, py, 92, game.player.myData.nick));
   } else {
     const ease: GameValue = game.sleepK * game.sleepK * (3 - 2 * game.sleepK);
@@ -274,13 +297,14 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
               game.playerPos.y,
               game.player.myData.nick,
               animTime,
-              myLook(),
+              myShownLook(),
               game.isWalking,
               mySayNow,
               game.sleepK,
               map.bed,
               game.bedSlot,
               { x: game.moveRight, y: -game.moveForward },
+              myBathPose(),
             ),
     });
     if (kissActive()) {
@@ -378,10 +402,15 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
         (s.sleepK || 0) + Math.max(-delta / 0.9, Math.min(delta / 0.9, sTarget - (s.sleepK || 0))),
       ),
     );
+    const und: number = act === 'shower' ? Number(op.und) || 0 : 0;
+    const shownLook: GameValue = und ? undressedLook(s.look, und) : s.look;
+    addPile(s.look, und);
+    if (act === 'wash') game.frameSinkRunning = true;
+    const pose: string = act === 'sit' || act === 'wash' ? act : '';
     if (act === 'shower' && inCabin(s.x, s.y)) {
       const rx: GameValue = s.x,
         ry: GameValue = s.y;
-      game.frameShowerActors.push({ x: rx, y: ry, look: s.look });
+      game.frameShowerActors.push({ x: rx, y: ry, look: shownLook });
       labels.push((): GameValue => drawNameTagWorld(rx, ry, 92, op.name));
       return;
     }
@@ -401,13 +430,14 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
               s.y,
               shownName,
               animTime,
-              s.look,
+              shownLook,
               moving,
               say,
               sk,
               map.bed,
               typeof op.bed === 'number' ? op.bed : null,
               { x: dx, y: dy },
+              pose,
             ),
     });
   });

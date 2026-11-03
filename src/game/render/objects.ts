@@ -1441,7 +1441,7 @@ export function drawFridge(it?: GameValue): GameValue {
   }
 }
 
-export function drawToilet(it?: GameValue): GameValue {
+export function drawToilet(it?: GameValue, t?: GameValue): GameValue {
   const ctx = game.view.ctx;
   const tank: GameValue = box(it.x, it.y - it.h / 2 + 8, it.w * 0.8, 14, 42, '#ffffff');
   onFace(tank, 'top', (W?: GameValue, H?: GameValue): GameValue => {
@@ -1458,10 +1458,31 @@ export function drawToilet(it?: GameValue): GameValue {
     ctx.beginPath();
     ctx.ellipse(W / 2, H / 2, W / 3.3, H / 3.3, 0, 0, 6.3);
     ctx.fill();
+    // scarico: l'acqua gira nel water per un secondo e mezzo
+    const since = (t || 0) - game.toiletFlushAt;
+    if (since >= 0 && since < 1.5) {
+      const k = 1 - since / 1.5;
+      ctx.strokeStyle = `rgba(255,255,255,${0.85 * k})`;
+      ctx.lineWidth = 1.4;
+      for (let i = 0; i < 3; i++) {
+        const a0 = since * 9 + (i * Math.PI * 2) / 3;
+        ctx.beginPath();
+        ctx.ellipse(
+          W / 2,
+          H / 2,
+          (W / 3.6) * (0.4 + 0.25 * i),
+          (H / 3.6) * (0.4 + 0.25 * i),
+          0,
+          a0,
+          a0 + 2.2,
+        );
+        ctx.stroke();
+      }
+    }
   });
 }
 
-export function drawSink(it?: GameValue): GameValue {
+export function drawSink(it?: GameValue, t?: GameValue): GameValue {
   const ctx = game.view.ctx;
   const cab: GameValue = box(it.x, it.y, it.w, it.h, it.z - 5, it.color || '#0984e3');
   onFace(cab, 'left', (W?: GameValue, H?: GameValue): GameValue => {
@@ -1485,6 +1506,39 @@ export function drawSink(it?: GameValue): GameValue {
   });
   box(it.x, it.y - it.h / 2 + 5, 4, 4, 12, '#b2bec3', { z0: it.z });
   box(it.x, it.y - it.h / 2 + 9, 4, 9, 3, '#b2bec3', { z0: it.z + 9 });
+  if (game.frameSinkRunning) drawSinkWater(it, t || 0);
+}
+
+/** Acqua che scende dal rubinetto e schizzi nel lavandino. */
+function drawSinkWater(it: GameValue, t: number): void {
+  const ctx = game.view.ctx;
+  const s: number = isoScale();
+  const top = isoProject(it.x, it.y - it.h / 2 + 13, it.z + 9),
+    bottom = isoProject(it.x, it.y - it.h / 2 + 13, it.z - 1);
+  const g = ctx.createLinearGradient(0, top.y, 0, bottom.y);
+  g.addColorStop(0, 'rgba(116,185,255,0.95)');
+  g.addColorStop(1, 'rgba(116,185,255,0.5)');
+  ctx.strokeStyle = g;
+  ctx.lineWidth = 2.2 * s;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(top.x, top.y);
+  ctx.lineTo(bottom.x + Math.sin(t * 20) * 0.4 * s, bottom.y);
+  ctx.stroke();
+  for (let i = 0; i < 6; i++) {
+    const k = (t * 2.2 + i / 6) % 1;
+    const a = i * 1.9;
+    const p = isoProject(
+      it.x + Math.cos(a) * (3 + 7 * k),
+      it.y - it.h / 2 + 13 + Math.sin(a) * (3 + 6 * k),
+      it.z - 1 + Math.sin(k * Math.PI) * 4,
+    );
+    ctx.fillStyle = `rgba(200,230,255,${0.9 * (1 - k)})`;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, 1.1 * s, 0, 6.3);
+    ctx.fill();
+  }
+  ctx.lineCap = 'butt';
 }
 
 export function drawShower(it?: GameValue, t?: GameValue): GameValue {

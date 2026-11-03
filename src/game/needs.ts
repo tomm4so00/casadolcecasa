@@ -81,6 +81,7 @@ export async function die(..._args: GameValue[]): Promise<GameValue> {
   game.player.isSleeping = false;
   game.activeShift = null;
   game.showerAnim = null;
+  game.bathAnim = null;
   mgStop();
   const data: GameValue = buildSaveData(); // contiene dead:true
   try {

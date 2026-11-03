@@ -4,7 +4,6 @@ import { lifetime, dom } from '../runtime.js';
 import { bodyFromName, currentBody, drawAvatarPreview, resolveLook } from '../character.js';
 import { sfx } from '../audio.js';
 import { saveGame } from '../saves.js';
-import { toast } from '../missions.js';
 import { isoProject, isoScale, rnd, rotateAround, rotateVector, toRgb } from './primitives.js';
 import { box, onFace, withFurnitureRotation } from './objects.js';
 import { nameHash } from './scenes.js';
@@ -1049,56 +1048,6 @@ export function finishCreator(ok?: GameValue): GameValue {
 }
 
 // ---------- Animazioni: doccia e sonno ----------
-export function startShower(..._args: GameValue[]): GameValue {
-  if (game.showerAnim) return;
-  game.showerAnim = {
-    t0: game.animClock,
-    fromX: game.playerPos.x,
-    fromY: game.playerPos.y,
-    hy0: game.player.hygieneLevel,
-  };
-  sfx('shower');
-}
-
-// Entra nel box, resta sotto l'acqua per qualche secondo (l'igiene sale piano piano) e poi esce
-export function updateShower(now?: GameValue): GameValue {
-  const sh: GameValue = game.bathroomFurniture.shower,
-    a: GameValue = game.showerAnim,
-    e: GameValue = now - a.t0;
-  const inX: GameValue = sh.x,
-    inY: GameValue = sh.y + 4;
-  const ease: GameValue = (k?: GameValue): GameValue => k * k * (3 - 2 * k);
-  const T1: GameValue = 0.8,
-    T2: GameValue = 3.8,
-    T3: GameValue = 4.6;
-  if (e < T1) {
-    const k: GameValue = ease(e / T1);
-    game.playerPos.x = a.fromX + (inX - a.fromX) * k;
-    game.playerPos.y = a.fromY + (inY - a.fromY) * k;
-    game.isWalking = true;
-  } else if (e < T2) {
-    game.playerPos.x = inX;
-    game.playerPos.y = inY;
-    game.player.hygieneLevel = Math.max(
-      game.player.hygieneLevel,
-      a.hy0 + (100 - a.hy0) * ((e - T1) / (T2 - T1)),
-    );
-  } else if (e < T3) {
-    const k: GameValue = ease((e - T2) / (T3 - T2));
-    game.playerPos.x = inX + (a.fromX - inX) * k;
-    game.playerPos.y = inY + (a.fromY - inY) * k;
-    game.isWalking = true;
-    game.player.hygieneLevel = 100;
-  } else {
-    game.player.hygieneLevel = 100;
-    game.player.stats.showers++;
-    game.playerPos.x = a.fromX;
-    game.playerPos.y = a.fromY;
-    game.showerAnim = null;
-    toast('Doccia completata! 🚿');
-  }
-}
-
 export function pillTag(cx?: GameValue, ny?: GameValue, name?: GameValue): GameValue {
   const ctx = game.view.ctx;
   if (!name) return;
@@ -1247,10 +1196,45 @@ export function drawActor(
   bed?: GameValue,
   bedSlot?: number | null,
   walkDir?: { x: number; y: number } | null,
+  pose?: string,
 ): GameValue {
   if (sleepProgress > 0.001 && bed)
     return drawAvatarSleeping(x, y, name, animTime, look, say, sleepProgress, bed, bedSlot);
-  return drawPlayerAvatar(x, y, name, animTime, look, moving, say, { walkDir });
+  return drawPlayerAvatar(x, y, name, animTime, look, moving, say, {
+    walkDir,
+    pose,
+    newspaper: pose === 'sit',
+  });
+}
+
+/**
+ * Aspetto mentre ci si spoglia per la doccia: step 0 = vestito, 1 = senza accessori,
+ * 2 = senza maglia, 3 = scalzo, 4 = in mutande.
+ */
+export function undressedLook(look: GameValue, step: number): GameValue {
+  if (!step || step <= 0) return look;
+  const out: GameValue = { ...look, hat: null, glasses: null, neck: null };
+  if (step >= 2) out.top = { id: '_bare', style: 'bare', color: '#000000' };
+  if (step >= 3) out.shoes = { id: '_barefoot', style: 'barefoot', color: '#000000' };
+  if (step >= 4) out.pants = { id: '_briefs', style: 'briefs', color: '#74b9ff' };
+  return out;
+}
+
+/** Vestiti piegati a terra: si vedono i pezzi già tolti (step come in undressedLook). */
+export function drawClothesPile(x: number, y: number, look: GameValue, step: number): void {
+  if (!step || step <= 0) return;
+  let z = 0;
+  const layer = (w: number, h: number, d: number, color: string) => {
+    box(x, y, w, h, d, color, { z0: z });
+    z += d;
+  };
+  if (step >= 4 && look.pants) layer(20, 14, 3, look.pants.color);
+  if (step >= 2 && look.top) layer(18, 13, 3, look.top.color);
+  if (step >= 3 && look.shoes) {
+    box(x + 15, y - 4, 7, 4, 3, look.shoes.color);
+    box(x + 15, y + 3, 7, 4, 3, look.shoes.color);
+  }
+  if (look.hat) box(x, y, 9, 9, 3, look.hat.color || '#2d3436', { z0: z });
 }
 
 // Acqua, bolle di sapone e vapore dentro il box doccia
@@ -1341,7 +1325,7 @@ export function drawPlayerAvatar(
   const bd: GameValue = look.body || bodyFromName(name);
   const skin: GameValue = mannequin ? '#dfe4ea' : game.BODY_PARTS.skin.opts[bd.skin].c;
   const hair: GameValue = game.BODY_PARTS.hairColor.opts[bd.hairColor].c;
-  const top: GameValue = look.top,
+  const top: GameValue = look.top?.style === 'bare' ? { ...look.top, color: skin } : look.top,
     pants: GameValue = look.pants,
     shoes: GameValue = look.shoes,
     neckItem: GameValue = look.neck || null;
@@ -1354,11 +1338,15 @@ export function drawPlayerAvatar(
   }
   const phase: GameValue = animTime * 12 + (hsh % 10);
   const swing: GameValue = moving ? Math.sin(phase) : 0;
-  const bob: GameValue = moving
-    ? Math.abs(Math.sin(phase)) * 1.8
-    : mannequin
-      ? 0
-      : Math.sin(animTime * 2 + hsh) * 0.5;
+  const pose: string = (opts && opts.pose) || '';
+  const sitting = pose === 'sit';
+  const bob: GameValue = sitting
+    ? -4
+    : moving
+      ? Math.abs(Math.sin(phase)) * 1.8
+      : mannequin
+        ? 0
+        : Math.sin(animTime * 2 + hsh) * 0.5;
   // Direzione di marcia (a terra): il passo va avanti e indietro lungo questa.
   // Senza direzione resta il passo in diagonale di prima.
   const wd = opts && opts.walkDir;
@@ -1396,7 +1384,8 @@ export function drawPlayerAvatar(
 
   // ---- gambe, pantaloni e scarpe
   const pStyle: GameValue = pants.style;
-  const bareFrom: number = pStyle === 'shorts' ? 0.5 : pStyle === 'skirt' ? 0.12 : 1;
+  const bareFrom: number =
+    pStyle === 'shorts' ? 0.5 : pStyle === 'skirt' ? 0.12 : pStyle === 'briefs' ? 0.22 : 1;
   const drawShoe = (b: Pt, back: boolean): void => {
     const sc = back ? game.darken(shoes.color, 0.2) : shoes.color;
     const sc2 = shoes.color2 || '#ffffff';
@@ -1521,6 +1510,15 @@ export function drawPlayerAvatar(
         dot(fx + 1.2 * s, fy - 0.8 * s, 0.4 * s, '#2d3436');
         dot(fx + 2.6 * s, fy - 0.8 * s, 0.4 * s, '#2d3436');
         break;
+      case 'barefoot':
+        ctx.fillStyle = back ? game.darken(skin, 0.12) : skin;
+        ctx.beginPath();
+        ctx.ellipse(fx, fy, 3.2 * s, 1.6 * s, 0, 0, 6.3);
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(0,0,0,0.25)';
+        ctx.lineWidth = 0.6;
+        ctx.stroke();
+        break;
       case 'checker':
         body(3.6, 2, -0.2);
         ctx.save();
@@ -1638,28 +1636,55 @@ export function drawPlayerAvatar(
         break;
     }
   };
-  const drawLeg = (a: Pt, b: Pt, back: boolean): void => {
+  const drawLeg = (a: Pt, b: Pt, back: boolean, knee?: Pt): void => {
     const pc = back ? game.darken(pants.color, 0.18) : pants.color;
+    const width =
+      (pStyle === 'shorts' || pStyle === 'briefs'
+        ? 5.4
+        : pStyle === 'cargo' || pStyle === 'joggers'
+          ? 5
+          : 4.6) * s;
+    const sk = back ? game.darken(skin, 0.12) : skin;
+    if (knee) {
+      // seduto: coscia in avanti, stinco verso il pavimento
+      if (bareFrom < 1) {
+        const cut = lerpPt(a, knee, Math.min(1, bareFrom * 2));
+        seg(cut, knee, sk, 3.8 * s);
+        seg(knee, b, sk, 3.8 * s);
+        if (pStyle !== 'skirt') seg(a, cut, pc, width);
+      } else {
+        seg(a, knee, pc, width);
+        seg(knee, b, pc, width);
+      }
+      drawShoe(b, back);
+      return;
+    }
     const cut = lerpPt(a, b, bareFrom);
-    if (bareFrom < 1) seg(cut, b, back ? game.darken(skin, 0.12) : skin, 3.8 * s);
+    if (bareFrom < 1) seg(cut, b, sk, 3.8 * s);
     if (pStyle !== 'skirt') {
-      const width =
-        pStyle === 'shorts' ? 5.4 : pStyle === 'cargo' || pStyle === 'joggers' ? 5 : 4.6;
-      seg(a, cut, pc, width * s);
+      seg(a, cut, pc, width);
       drawPantsPattern(a, cut, pc);
     }
     drawShoe(b, back);
   };
-  drawLeg(
-    P(3, -3, 22 + bob),
-    P(3 - swing * STRIDE * dX, -3 - swing * STRIDE * dY, 2 + liftBack),
-    true,
-  );
-  drawLeg(
-    P(-3, 3, 22 + bob),
-    P(-3 + swing * STRIDE * dX, 3 + swing * STRIDE * dY, 2 + liftFront),
-    false,
-  );
+  if (sitting) {
+    for (const [side, back] of [
+      [1, true],
+      [-1, false],
+    ] as const)
+      drawLeg(P(side * 3.5, 0, 22 + bob), P(side * 3.5, 13, 2), back, P(side * 3.5, 11, 19));
+  } else {
+    drawLeg(
+      P(3, -3, 22 + bob),
+      P(3 - swing * STRIDE * dX, -3 - swing * STRIDE * dY, 2 + liftBack),
+      true,
+    );
+    drawLeg(
+      P(-3, 3, 22 + bob),
+      P(-3 + swing * STRIDE * dX, 3 + swing * STRIDE * dY, 2 + liftFront),
+      false,
+    );
+  }
   if (pStyle === 'skirt') {
     const st = hip.y - 1 * s,
       sb = hip.y + 9.5 * s;
@@ -1691,7 +1716,25 @@ export function drawPlayerAvatar(
 
   // ---- braccia: manica lunga, corta o niente
   const sleeveKind =
-    top.style === 'tank' ? 'none' : SHORT_SLEEVES.has(top.style) ? 'short' : 'long';
+    top.style === 'tank' || top.style === 'bare'
+      ? 'none'
+      : SHORT_SLEEVES.has(top.style)
+        ? 'short'
+        : 'long';
+  // mani: al lavandino si strofinano davanti al petto, seduti stanno sulle ginocchia
+  const rub = pose === 'wash' ? Math.sin(animTime * 16) * 1.6 * s : 0;
+  const handBack: Pt | null =
+    pose === 'wash'
+      ? { x: neck.x + 3 * s + rub, y: hip.y - 6 * s }
+      : sitting
+        ? { x: P(3.5, 11, 20).x + 1 * s, y: P(3.5, 11, 20).y - 1 * s }
+        : null;
+  const handFront: Pt | null =
+    pose === 'wash'
+      ? { x: neck.x - 3 * s - rub, y: hip.y - 5 * s }
+      : sitting
+        ? { x: P(-3.5, 11, 20).x - 1 * s, y: P(-3.5, 11, 20).y - 1 * s }
+        : null;
   const drawArm = (from: Pt, to: Pt, back: boolean): void => {
     const sc = back ? game.darken(top.color, 0.3) : game.darken(top.color, 0.08);
     const sk = back ? game.darken(skin, 0.12) : skin;
@@ -1728,7 +1771,7 @@ export function drawPlayerAvatar(
   };
   drawArm(
     { x: neck.x + tw - 1 * s, y: neck.y + 3 * s },
-    { x: hip.x + 11 * s + armX, y: hip.y + 1 * s + armY },
+    handBack || { x: hip.x + 11 * s + armX, y: hip.y + 1 * s + armY },
     true,
   );
 
@@ -1925,6 +1968,21 @@ export function drawPlayerAvatar(
       ctx.lineWidth = 0.5 * s;
       ctx.stroke();
       break;
+    case 'bare':
+      dot(neck.x, tyTop + tH * 0.78, 0.6 * s, game.darken(skin, 0.3));
+      seg(
+        { x: neck.x - 4 * s, y: tyTop + tH * 0.3 },
+        { x: neck.x - 1 * s, y: tyTop + tH * 0.34 },
+        game.darken(skin, 0.15),
+        0.5 * s,
+      );
+      seg(
+        { x: neck.x + 4 * s, y: tyTop + tH * 0.3 },
+        { x: neck.x + 1 * s, y: tyTop + tH * 0.34 },
+        game.darken(skin, 0.15),
+        0.5 * s,
+      );
+      break;
     case 'tank':
       // spalle e scollo scoperti
       ctx.fillStyle = skin;
@@ -2080,9 +2138,51 @@ export function drawPlayerAvatar(
   // ---- braccio davanti
   drawArm(
     { x: neck.x - tw + 1 * s, y: neck.y + 3 * s },
-    { x: hip.x - 11 * s - armX, y: hip.y + 1 * s - armY },
+    handFront || { x: hip.x - 11 * s - armX, y: hip.y + 1 * s - armY },
     false,
   );
+  // schiuma del sapone tra le mani
+  if (pose === 'wash')
+    for (let i = 0; i < 6; i++) {
+      const k = (animTime * 1.3 + i / 6) % 1;
+      const bx = neck.x + Math.sin(i * 2.3 + animTime * 3) * 5 * s;
+      const by = hip.y - 6 * s - k * 9 * s;
+      ctx.fillStyle = `rgba(255,255,255,${0.85 * (1 - k)})`;
+      ctx.strokeStyle = `rgba(116,185,255,${0.8 * (1 - k)})`;
+      ctx.lineWidth = 0.6;
+      ctx.beginPath();
+      ctx.arc(bx, by, (1.2 + (i % 3) * 0.5) * s, 0, 6.3);
+      ctx.fill();
+      ctx.stroke();
+    }
+  // seduti sul WC si legge il giornale
+  if (sitting && opts && opts.newspaper) {
+    const nx = neck.x,
+      ny = neck.y + 5 * s;
+    ctx.fillStyle = '#f5f6fa';
+    ctx.strokeStyle = 'rgba(0,0,0,0.35)';
+    ctx.lineWidth = 0.7;
+    ctx.beginPath();
+    ctx.moveTo(nx - 9 * s, ny);
+    ctx.lineTo(nx, ny + 1.5 * s);
+    ctx.lineTo(nx + 9 * s, ny);
+    ctx.lineTo(nx + 9 * s, ny + 12 * s);
+    ctx.lineTo(nx, ny + 13.5 * s);
+    ctx.lineTo(nx - 9 * s, ny + 12 * s);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    seg({ x: nx, y: ny + 1.5 * s }, { x: nx, y: ny + 13.5 * s }, 'rgba(0,0,0,0.25)', 0.5 * s);
+    ctx.fillStyle = '#2d3436';
+    ctx.fillRect(nx - 8 * s, ny + 1.5 * s, 6 * s, 1.4 * s);
+    for (let i = 0; i < 4; i++) {
+      ctx.fillStyle = 'rgba(0,0,0,0.3)';
+      ctx.fillRect(nx - 8 * s, ny + (4 + i * 2) * s, 6.5 * s, 0.6 * s);
+      ctx.fillRect(nx + 1.5 * s, ny + (3 + i * 2) * s, 6.5 * s, 0.6 * s);
+    }
+    dot(nx - 9 * s, ny + 6 * s, 2.2 * s, skin);
+    dot(nx + 9 * s, ny + 6 * s, 2.2 * s, skin);
+  }
 
   // ---- testa
   if (!mannequin) drawHairBack(head, s, bd.hairStyle, hair);

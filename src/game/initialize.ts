@@ -190,6 +190,9 @@ export function initializeGame() {
   game.player.jobExperience = { cantiere: 0, ospedale: 0, ristorante: 0, ufficio: 0 };
   game.player.isSleeping = false;
   game.showerAnim = null;
+  game.bathAnim = null;
+  game.toiletFlushAt = -10;
+  game.frameSinkRunning = false;
   game.sleepK = 0;
   game.bedSlot = 0;
   game.showerFog = 0;
@@ -452,6 +455,7 @@ export function initializeGame() {
     game.player.isDead ||
     game.player.isSleeping ||
     !!game.showerAnim ||
+    !!game.bathAnim ||
     !!game.activeShift ||
     game.MG.active ||
     !game.session.saveReady ||

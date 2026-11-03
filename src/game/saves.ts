@@ -579,9 +579,12 @@ export function startPresence(..._args: GameValue[]): GameValue {
           ? 'kiss'
           : game.showerAnim
             ? 'shower'
-            : game.player.isSleeping
-              ? 'sleep'
-              : '',
+            : game.bathAnim
+              ? game.bathAnim.pose || ''
+              : game.player.isSleeping
+                ? 'sleep'
+                : '',
+      ...(game.showerAnim?.und ? { und: game.showerAnim.und } : {}),
       say: game.mySay,
       sayT: game.mySayT,
       ...(game.player.isSleeping ? { bed: game.bedSlot } : {}),
