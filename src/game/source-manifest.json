@@ -91,7 +91,7 @@
     },
     {
       "name": "musicFor",
-      "module": "audio",
+      "module": "music-rules",
       "line": 876
     },
     {

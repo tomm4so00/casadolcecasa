@@ -69,6 +69,6 @@ describe('memoria delle relazioni', () => {
     const rules = JSON.parse(
       fs.readFileSync('firebase/database.rules.proposed.json', 'utf8'),
     ).rules;
-    expect(rules.sims_interactions.$pid.$key['.validate']).toContain('|theft)');
+    expect(rules.sims_interactions.$pid.$key['.validate']).toContain('|theft');
   });
 });

@@ -93,6 +93,15 @@ export async function maintainGame(database: MaintenanceDatabase, now: number): 
     if (oldKeys.length)
       await database.ref('sims_chat').update(Object.fromEntries(oldKeys.map((key) => [key, null])));
   }
+  // sala giochi: le partite più vecchie di un giorno si cancellano
+  const games = (await database.ref('sims_games').get()).val();
+  if (record(games)) {
+    const old = Object.entries(games)
+      .filter(([, g]) => !record(g) || !(typeof g.t === 'number' && now - g.t < 24 * 3600000))
+      .map(([key]) => key);
+    if (old.length)
+      await database.ref('sims_games').update(Object.fromEntries(old.map((key) => [key, null])));
+  }
   // bacheca dei pettegolezzi: si tengono solo i fatti più recenti
   const gossip = (await database.ref('sims_gossip').get()).val();
   if (record(gossip)) {

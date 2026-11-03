@@ -92,7 +92,7 @@ async function proposeSwitch(): Promise<void> {
   const id = state?.offer;
   const got = obtainedPersonality(state);
   if (!state || !id || !got) return;
-  sfx('mission');
+  sfx('switchOffer');
   const res = await openDialog({
     title: '🔀 Cambiare personalità?',
     text:
@@ -127,7 +127,7 @@ async function announceLevel(level: PersonalityLevel): Promise<void> {
   postGossip(
     `${game.player.myData.nick} ora è ${PERSONALITY_BADGE[got].emoji} ${PERSONALITY_TITLES[got][level - 1]} (livello ${level})`,
   );
-  sfx('mission');
+  sfx('levelUp');
   await openDialog({
     title: `⭐ Livello ${level}!`,
     text:
@@ -157,7 +157,7 @@ async function announcePersonality(id: PersonalityId): Promise<void> {
   // Lascia prima aprire le finestre che l'azione stessa mostra (es. il riepilogo di fine turno),
   // poi aspetta che vengano chiuse: altrimenti si coprirebbero a vicenda.
   await waitForFreeScreen();
-  sfx('mission');
+  sfx('personality');
   await openDialog({
     title: '✨ La tua personalità',
     text:

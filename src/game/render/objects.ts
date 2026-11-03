@@ -3274,6 +3274,13 @@ const FACADE_STYLE: Record<
     awning: ['#b33939', '#2c2c54'],
     title: '🎰 SALA SCOMMESSE',
   },
+  sala: {
+    wall: '#1a1030',
+    sign: '#0b0518',
+    text: '#00e5ff',
+    awning: ['#ff2fb3', '#1a1030'],
+    title: '🕹️ SALA GIOCHI',
+  },
 };
 
 /** Vetrina di un negozio del centro commerciale: insegna, tenda, due vetrine e la porta a vetri. */
@@ -3451,6 +3458,21 @@ function drawWindowDisplay(shop: string, x: number, y: number, w: number, h: num
       ctx.fillStyle = ['#d4e157', '#a5d6a7', '#8e24aa'][i];
       ctx.beginPath();
       ctx.arc(px, base - 34, 2.5, 0, 6.3);
+      ctx.fill();
+    }
+  } else if (shop === 'sala') {
+    // cabinati con gli schermi colorati che lampeggiano
+    for (let i = 0; i < 3; i++) {
+      const cw = w / 3 - 6,
+        cx = x + 4 + i * (w / 3);
+      ctx.fillStyle = ['#ff2fb3', '#6c2bd9', '#00b8d4'][i];
+      ctx.fillRect(cx, base - 38, cw, 36);
+      const on = Math.floor(t * 3 + i) % 2 === 0;
+      ctx.fillStyle = on ? '#2ed573' : '#0b0518';
+      ctx.fillRect(cx + 3, base - 33, cw - 6, 12);
+      ctx.fillStyle = '#feca57';
+      ctx.beginPath();
+      ctx.arc(cx + cw / 2, base - 12, 2.5, 0, 6.3);
       ctx.fill();
     }
   } else {

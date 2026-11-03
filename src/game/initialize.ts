@@ -1,4 +1,5 @@
 import { canSellJoint } from './weed.js';
+import { drawBNTable, drawC4Table, drawReflexCabinet } from './render/arcade-props.js';
 import {
   MOONBASE_DRAW,
   MOONBASE_INSIDE_DRAW,
@@ -32,6 +33,7 @@ import {
   ART_STUDIO_FURNITURE,
   ENGINEERING_FURNITURE,
   BETTING_FURNITURE,
+  ARCADE_FURNITURE,
   MALL_FURNITURE,
   MOON_FURNITURE,
   GROWSHOP_FURNITURE,
@@ -397,6 +399,7 @@ export function initializeGame() {
   game.artStudioFurniture = structuredClone(ART_STUDIO_FURNITURE);
   game.engineeringFurniture = structuredClone(ENGINEERING_FURNITURE);
   game.bettingFurniture = structuredClone(BETTING_FURNITURE);
+  game.arcadeFurniture = structuredClone(ARCADE_FURNITURE);
   game.mallFurniture = structuredClone(MALL_FURNITURE);
   game.moonFurniture = structuredClone(MOON_FURNITURE);
   game.growshopFurniture = structuredClone(GROWSHOP_FURNITURE);
@@ -687,9 +690,13 @@ export function initializeGame() {
     slot2: drawSlotMachine,
     slot3: drawSlotMachine,
     rpsTable: drawRpsTable,
+    tableC4: drawC4Table,
+    tableBN: drawBNTable,
+    reflexCab: drawReflexCabinet,
     shopFurniture: drawShopFacade,
     shopClothes: drawShopFacade,
     shopBetting: drawShopFacade,
+    shopArcade: drawShopFacade,
     moonRocket: drawMoonRocket,
     weedPot: drawWeedPot,
     // schermo del laboratorio con la diretta dalla base lunare

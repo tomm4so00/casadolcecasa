@@ -4,6 +4,7 @@ import type { GameValue } from './context.js';
 import { game } from './context.js';
 import { openDialog } from './interface.js';
 import { toast } from './missions.js';
+import { sfx } from './audio.js';
 import {
   GOSSIP_MAX_TEXT,
   GOSSIP_SHOW,
@@ -67,8 +68,10 @@ export function startGossip(): void {
     // al primo caricamento i vecchi fatti non fanno scattare l'avviso
     if (!first)
       for (const e of list)
-        if (!seen.has(e.k) && isAbout(e, game.session.myPlayerId))
+        if (!seen.has(e.k) && isAbout(e, game.session.myPlayerId)) {
+          sfx('gossip');
           toast('📰 Si parla di te sulla bacheca dei pettegolezzi del cortile!', 5000);
+        }
     for (const e of list) seen.add(e.k);
     first = false;
     entries = list;

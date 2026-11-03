@@ -143,6 +143,7 @@ export interface GameContext {
   artStudioFurniture: SceneMap;
   engineeringFurniture: SceneMap;
   bettingFurniture: SceneMap;
+  arcadeFurniture: SceneMap;
   moonFurniture: SceneMap;
   growshopFurniture: SceneMap;
   petshopFurniture: SceneMap;

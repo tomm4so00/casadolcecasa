@@ -1,6 +1,7 @@
 import { offerJoint, onJointOffer, onJointPaid, onJointRefused } from './weed.js';
 import { type RelationAct, noteRelation } from './relations-rules.js';
 import { saveGame } from './saves.js';
+import { onGameInvite } from './arcade.js';
 import { postGossip } from './gossip.js';
 import { myLine, notePersonality } from './personality.js';
 import { onArtSold } from './art-market.js';
@@ -9,6 +10,7 @@ import type { GameValue } from './context.js';
 import { game } from './context.js';
 import { lifetime } from './runtime.js';
 import { toast } from './missions.js';
+import { sfx } from './audio.js';
 import { openDialog } from './interface.js';
 import { drugTake } from './needs.js';
 import {
@@ -186,9 +188,13 @@ function remember(m: GameValue, who: string, act: RelationAct): void {
   const book = (game.player.relations ??= {});
   const now = noteRelation(book, m.from, who, act, Number(m.t) || Date.now());
   saveGame(false);
-  if (now === 'friend') toast(`🤝 ${who} ora è tuo amico!`, 5000);
-  else if (now === 'enemy') toast(`⚔️ ${who} ora è tuo nemico!`, 5000);
-  else if (now === null) toast(`${who} non è più tuo ${RELATION_WORD[act]}.`, 4000);
+  if (now === 'friend') {
+    sfx('friend');
+    toast(`🤝 ${who} ora è tuo amico!`, 5000);
+  } else if (now === 'enemy') {
+    sfx('enemy');
+    toast(`⚔️ ${who} ora è tuo nemico!`, 5000);
+  } else if (now === null) toast(`${who} non è più tuo ${RELATION_WORD[act]}.`, 4000);
 }
 
 /** Se una relazione finisce, era l'opposto del gesto ricevuto. */
@@ -243,9 +249,12 @@ export async function handleSocial(m?: GameValue): Promise<GameValue> {
       if (!(await creditMoney(amt))) return;
       toast(`💶 ${who} ti ha regalato ${amt} €!`, 4000);
     }
+  } else if (m.type === 'gameInvite') {
+    await onGameInvite(m, who);
   } else if (m.type === 'theft') {
     // la vittima scopre chi è stato: per tutti gli altri il ladro resta misterioso
     const amt = Math.max(0, Math.floor(Number(m.amt) || 0));
+    sfx('robbed');
     toast(`🕵️ ${who} ti ha svuotato la cassaforte! Rubati ${amt} €.`, 6000);
     remember(m, who, 'theft');
   } else if (m.type === 'artSold') {

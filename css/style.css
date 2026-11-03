@@ -1962,3 +1962,161 @@ body.ticker-on #app-version {
     opacity: 1;
   }
 }
+
+/* ---- Sala giochi: finestra della partita ---- */
+#arcade-modal {
+  z-index: 900; /* sotto le finestre di dialogo (inviti, avvisi) */
+}
+.arcade-card {
+  max-width: 460px;
+}
+.arcade-card h3 {
+  margin: 0 0 4px;
+}
+.arcade-vs {
+  font-size: 0.8rem;
+  color: #a4b0be;
+}
+.arcade-status {
+  margin: 8px 0 10px;
+  font-weight: bold;
+  min-height: 1.3em;
+}
+.arcade-legend {
+  margin-top: 6px;
+  font-size: 0.75rem;
+  color: #dfe6e9;
+}
+.arcade-buttons {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+.arcade-buttons .btn-primary {
+  flex: 1;
+  margin-top: 0;
+}
+/* Forza 4 */
+.c4-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  background: #1e5bd6;
+  padding: 8px;
+  border-radius: 10px;
+  box-shadow: inset 0 -4px 0 #173f9c;
+}
+.c4-cell {
+  aspect-ratio: 1;
+  border-radius: 50%;
+  border: none;
+  padding: 0;
+  background: #0d1b3e;
+  box-shadow: inset 0 3px 4px rgba(0, 0, 0, 0.5);
+}
+.c4-grid.my-turn .c4-cell {
+  cursor: pointer;
+}
+.c4-grid.my-turn .c4-cell.c4-0:hover {
+  background: #23407a;
+}
+.c4-1,
+.c4-dot.c4-1 {
+  background: #e74c3c;
+}
+.c4-2,
+.c4-dot.c4-2 {
+  background: #f1c40f;
+}
+.c4-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  vertical-align: middle;
+}
+/* Battaglia navale */
+.bn-wrap {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+.bn-title {
+  font-size: 0.75rem;
+  margin-bottom: 4px;
+  color: #dfe6e9;
+}
+.bn-grid {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 2px;
+  width: 190px;
+}
+.bn-cell {
+  aspect-ratio: 1;
+  border: none;
+  border-radius: 3px;
+  padding: 0;
+  font-size: 0.6rem;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.bn-sea {
+  background: #2e86de;
+}
+.bn-ship {
+  background: #95a5a6;
+}
+.bn-hit {
+  background: #c0392b;
+}
+.bn-miss {
+  background: #74b9ff;
+}
+.bn-grid.my-turn .bn-sea {
+  cursor: pointer;
+}
+.bn-grid.my-turn .bn-sea:hover {
+  background: #54a0ff;
+}
+/* Riflessi */
+.rx-score {
+  margin-bottom: 8px;
+  font-size: 0.9rem;
+}
+.rx-pad {
+  width: 100%;
+  height: 170px;
+  border: none;
+  border-radius: 16px;
+  font-size: 1.4rem;
+  font-weight: bold;
+  color: #ffffff;
+  cursor: pointer;
+  touch-action: manipulation;
+  user-select: none;
+}
+.rx-wait {
+  background: #c0392b;
+}
+.rx-go {
+  background: #2ed573;
+  animation: rx-pulse 0.4s ease-in-out infinite alternate;
+}
+.rx-early {
+  background: #e67e22;
+}
+.rx-done {
+  background: #6c5ce7;
+}
+@keyframes rx-pulse {
+  from {
+    transform: scale(1);
+  }
+  to {
+    transform: scale(1.03);
+  }
+}

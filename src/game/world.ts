@@ -57,6 +57,8 @@ import { openDialog } from './interface.js';
 import { openRealtyBoard } from './realty.js';
 import { sendSocial } from './social.js';
 import { openGossipBoard } from './gossip.js';
+import { openArcadeStation } from './arcade.js';
+import { ARCADE_GAMES, type ArcadeGame, isArcadeGame } from './arcade-rules.js';
 import { quotedTitle } from './painting-titles.js';
 import { roomPaintings, slotOfKey } from './painting-rules.js';
 import { relaxWith, toast } from './missions.js';
@@ -339,6 +341,7 @@ export function getCurrentFurnitureMap(..._args: GameValue[]): SceneMap {
   if (game.view.activeEnvironment === 'laboratorio') return game.artStudioFurniture;
   if (game.view.activeEnvironment === 'ingegneria') return game.engineeringFurniture;
   if (game.view.activeEnvironment === 'scommesse') return game.bettingFurniture;
+  if (game.view.activeEnvironment === 'sala_giochi') return game.arcadeFurniture;
   if (game.view.activeEnvironment === 'centro_commerciale') return game.mallFurniture;
   if (game.view.activeEnvironment === 'luna') return game.moonFurniture;
   if (game.view.activeEnvironment === 'base_lunare') return game.moonbaseInsideFurniture;
@@ -487,6 +490,12 @@ export function checkProximity(..._args: GameValue[]): GameValue {
           : `🍦 Compra un gelato (${ICE_CREAM_PRICE} €)`;
         btnMain.classList.toggle('btn-pop-locked', !!game.iceCream);
       } else btnMain.innerText = item.enter ? `🚪 Entra: ${item.name}` : '🏠 Torna a casa';
+    } else if (game.view.activeEnvironment === 'sala_giochi') {
+      btnMain.classList.remove('btn-pop-locked');
+      btnSub.classList.add('hidden');
+      btnMain.innerText = isArcadeGame(item.game)
+        ? `${ARCADE_GAMES[item.game as ArcadeGame].emoji} Sfida qualcuno a ${ARCADE_GAMES[item.game as ArcadeGame].name}`
+        : '🚪 Torna Fuori';
     } else if (game.view.activeEnvironment === 'scommesse') {
       btnMain.classList.remove('btn-pop-locked');
       btnSub.classList.add('hidden');
@@ -901,6 +910,7 @@ const MALL_SHOPS: Record<string, { facade: string; activity: string }> = {
   negozio_mobili: { facade: 'shopFurniture', activity: 'furnitureshop' },
   negozio_vestiti: { facade: 'shopClothes', activity: 'clothesshop' },
   scommesse: { facade: 'shopBetting', activity: 'betting' },
+  sala_giochi: { facade: 'shopArcade', activity: 'arcade' },
   growshop: { facade: 'shopGrow', activity: 'growshop' },
   negozio_animali: { facade: 'shopPets', activity: 'petshop' },
 };
@@ -1051,6 +1061,9 @@ export async function handleObjectInteract(..._args: GameValue[]): Promise<void>
   } else if (game.view.activeEnvironment === 'centro_commerciale') {
     if (game.activeTargetProp === 'iceCream') await buyIceCream();
     else if (item?.enter) await doActivity(item.enter);
+    else if (game.activeTargetProp === 'doorExit') backToSaloon();
+  } else if (game.view.activeEnvironment === 'sala_giochi') {
+    if (isArcadeGame(item?.game)) await openArcadeStation(item.game);
     else if (game.activeTargetProp === 'doorExit') backToSaloon();
   } else if (game.view.activeEnvironment === 'scommesse') {
     if (String(game.activeTargetProp).startsWith('slot')) openSlot();
@@ -1290,6 +1303,7 @@ export async function handleSafeInteraction(..._args: GameValue[]): Promise<Game
     if (r && r.committed && stolen > 0) {
       if (!(await creditMoney(stolen))) return;
       saveGame(true);
+      sfx('theft');
       toast(`🎉 COLPO RIUSCITO! Hai rubato ${stolen} € dalla cassaforte! 💰`, 4000);
       // la vittima scopre chi è stato (e il ladro diventa suo nemico)
       if (room.ownerId) void sendSocial(room.ownerId, { type: 'theft', amt: stolen });
@@ -1428,6 +1442,12 @@ export async function doActivity(type?: GameValue): Promise<void> {
   } else if (type === 'growshop') {
     game.view.activeEnvironment = 'growshop';
     game.view.currentRoomTitle = 'Grow Shop 🌿';
+    dom('btn-return-home').classList.add('hidden');
+    game.playerPos = { x: 0, y: 110 };
+    return;
+  } else if (type === 'arcade') {
+    game.view.activeEnvironment = 'sala_giochi';
+    game.view.currentRoomTitle = 'Sala Giochi 🕹️';
     dom('btn-return-home').classList.add('hidden');
     game.playerPos = { x: 0, y: 110 };
     return;

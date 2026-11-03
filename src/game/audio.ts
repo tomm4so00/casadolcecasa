@@ -1,6 +1,8 @@
 import type { GameValue } from './context.js';
 import { game } from './context.js';
 import { dom, browser } from './runtime.js';
+import { musicFor } from './music-rules.js';
+export { musicFor };
 export function sfx(type?: GameValue): GameValue {
   if (!game.soundOn) return;
   try {
@@ -50,6 +52,14 @@ export function sfx(type?: GameValue): GameValue {
       g.connect(game.audioCtx.destination);
       src.start(t0 + start);
     };
+    // una nota per nome (es. 'C5', 'F#4'), più comoda delle frequenze per le melodie
+    const note = (
+      name: string,
+      start: number,
+      dur: number,
+      wave: GameValue = 'triangle',
+      vol = 0.08,
+    ): void => tone(game.midiHz(game.midiOf(name)), start, dur, wave, vol);
     const sounds: GameValue = {
       shower: (): GameValue => noise(0, 3.6, 0.06, 3200),
       sleep: (): GameValue =>
@@ -93,13 +103,85 @@ export function sfx(type?: GameValue): GameValue {
         tone(110, 0, 0.12, 'triangle', 0.2);
         tone(70, 0.04, 0.22, 'sine', 0.16);
       },
-      // schiocco del bacio e un piccolo carillon
+      // schiocco del bacio, poi un carillon romantico che sale e un accordo morbido
       kiss: (): GameValue => {
+        duckMusic(2.4);
         tone(1400, 0, 0.04, 'sine', 0.08);
         tone(900, 0.03, 0.06, 'triangle', 0.06);
-        [784, 988, 1175].forEach(
-          (f?: GameValue, i?: GameValue): GameValue => tone(f, 0.12 + i * 0.1, 0.25, 'sine', 0.05),
-        );
+        note('G5', 0.15, 0.3, 'sine', 0.06);
+        note('B5', 0.3, 0.3, 'sine', 0.06);
+        note('D6', 0.45, 0.3, 'sine', 0.06);
+        note('G6', 0.6, 0.5, 'sine', 0.05);
+        ['G4', 'B4', 'D5', 'F#5'].forEach((n) => note(n, 0.6, 1.4, 'triangle', 0.035));
+        note('B6', 1.0, 0.6, 'sine', 0.03);
+      },
+      // furto riuscito: passi in punta di piedi, poi il "cha-ching" del registratore di cassa
+      theft: (): GameValue => {
+        duckMusic(2.2);
+        ['E3', 'G3', 'B3', 'D#4'].forEach((n, i) => note(n, i * 0.16, 0.08, 'square', 0.05));
+        noise(0.62, 0.75, 0.03, 2600);
+        note('C7', 0.7, 0.12, 'square', 0.04);
+        note('E7', 0.78, 0.45, 'sine', 0.07);
+        note('G6', 0.78, 0.45, 'sine', 0.05);
+        ['C5', 'E5', 'G5'].forEach((n) => note(n, 1.05, 0.6, 'triangle', 0.05));
+      },
+      // la propria cassaforte svuotata: sirena d'allarme
+      robbed: (): GameValue => {
+        duckMusic(2.4);
+        for (let i = 0; i < 4; i++) {
+          tone(880, i * 0.42, 0.2, 'sawtooth', 0.04);
+          tone(660, i * 0.42 + 0.21, 0.2, 'sawtooth', 0.04);
+        }
+      },
+      // si sale di livello: arpeggio che sale e scintille
+      levelUp: (): GameValue => {
+        duckMusic(2.4);
+        ['C5', 'E5', 'G5', 'C6'].forEach((n, i) => note(n, i * 0.08, 0.2, 'triangle', 0.09));
+        ['C5', 'E5', 'G5'].forEach((n) => note(n, 0.34, 0.9, 'square', 0.03));
+        note('C6', 0.34, 0.9, 'triangle', 0.07);
+        note('E6', 0.55, 0.25, 'sine', 0.05);
+        note('G6', 0.68, 0.25, 'sine', 0.05);
+        note('C7', 0.82, 0.5, 'sine', 0.04);
+      },
+      // si diventa una personalità: fanfara
+      personality: (): GameValue => {
+        duckMusic(3);
+        note('G4', 0, 0.12, 'square', 0.06);
+        note('G4', 0.14, 0.08, 'square', 0.06);
+        note('G4', 0.24, 0.08, 'square', 0.06);
+        note('C5', 0.34, 0.6, 'square', 0.06);
+        ['C4', 'E4', 'G4'].forEach((n) => note(n, 0.34, 0.6, 'triangle', 0.06));
+        note('E5', 0.95, 0.15, 'triangle', 0.08);
+        note('G5', 1.1, 0.15, 'triangle', 0.08);
+        note('C6', 1.25, 0.9, 'triangle', 0.09);
+        ['C5', 'E5', 'G5'].forEach((n) => note(n, 1.25, 1.1, 'sine', 0.04));
+      },
+      // proposta di cambiare personalità: accordi misteriosi
+      switchOffer: (): GameValue => {
+        duckMusic(2);
+        ['C5', 'F#5', 'A5'].forEach((n, i) => note(n, i * 0.18, 0.5, 'triangle', 0.06));
+        ['D5', 'G#5', 'B5'].forEach((n, i) => note(n, 0.7 + i * 0.12, 0.7, 'sine', 0.05));
+      },
+      // qualcuno diventa tuo amico: due note calde
+      friend: (): GameValue => {
+        duckMusic(1.4);
+        note('C5', 0, 0.35, 'triangle', 0.08);
+        note('A5', 0.18, 0.6, 'triangle', 0.08);
+        note('E5', 0.18, 0.6, 'sine', 0.04);
+      },
+      // qualcuno diventa tuo nemico: accordo stonato e cupo
+      enemy: (): GameValue => {
+        duckMusic(1.4);
+        tone(110, 0, 0.7, 'sawtooth', 0.05);
+        tone(116.5, 0, 0.7, 'sawtooth', 0.05);
+        tone(55, 0, 0.5, 'triangle', 0.12);
+        note('D#4', 0.3, 0.5, 'square', 0.03);
+      },
+      // "si parla di te": un "uh-oh" pettegolo
+      gossip: (): GameValue => {
+        note('G5', 0, 0.16, 'sine', 0.08);
+        note('E5', 0.18, 0.3, 'sine', 0.08);
+        note('D#5', 0.36, 0.2, 'triangle', 0.04);
       },
       wardrobe: (): GameValue => {
         tone(180, 0, 0.18, 'triangle', 0.12);
@@ -129,13 +211,10 @@ export function musicParse(tr?: GameValue): GameValue {
   return tr;
 }
 
-export function musicFor(env?: GameValue): GameValue {
-  if (env === 'bar') return 'bar';
-  if (env === 'discoteca') return 'disco';
-  if (env === 'CIMITERO') return 'grave';
-  if (env === 'passeggiata' || env === 'viaggio') return 'outdoor';
-  if (typeof env === 'string' && env.indexOf('lavoro_') === 0) return 'work';
-  return 'home';
+/** Abbassa la musica per qualche secondo, così si sente bene un effetto importante. */
+function duckMusic(seconds: number): void {
+  if (!game.audioCtx) return;
+  game.MUSIC.duckUntil = game.audioCtx.currentTime + seconds;
 }
 
 export function musicWave(kind?: GameValue): GameValue {
@@ -265,7 +344,9 @@ export function musicTick(..._args: GameValue[]): GameValue {
     const want: GameValue = musicWant(),
       bus: GameValue = musicBus(),
       now: GameValue = game.audioCtx.currentTime;
-    const target: GameValue = want ? (game.player.isSleeping ? 0.18 : 0.55) : 0;
+    let target: GameValue = want ? (game.player.isSleeping ? 0.18 : 0.55) : 0;
+    // durante un effetto importante (bacio, furto, livello…) la musica si abbassa
+    if (target && (game.MUSIC.duckUntil || 0) > now) target = Math.round(target * 25) / 100;
     if (game.MUSIC.vol !== target) {
       bus.gain.cancelScheduledValues(now);
       bus.gain.setTargetAtTime(target, now, 0.15);
