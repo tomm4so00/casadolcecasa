@@ -1,6 +1,7 @@
 import { startBetting } from './betting.js';
 import { startGossip } from './gossip.js';
 import { startPaintingTitles } from './painting-titles.js';
+import { onLedgerChange, startLimited } from './limited.js';
 import { applyDailyPerks } from './personality.js';
 import { enablePush } from './push.js';
 import { startPlayersHud } from './players-hud.js';
@@ -30,7 +31,8 @@ import {
 import { openCharacterCreator } from './render/avatars.js';
 import { openEpitaph, rebuildGraveyard } from './render/objects.js';
 import { checkMissions, toast } from './missions.js';
-import { resumeLastSpot, setupControls } from './world.js';
+import { openFurnitureShopModal, resumeLastSpot, setupControls } from './world.js';
+import { renderClothesShop } from './character.js';
 import { startLoop } from './engine.js';
 import { die, reapAbsentPlayers, showDeathScreen, updateNotifyButton } from './needs.js';
 import { updateSoundButton } from './audio.js';
@@ -306,6 +308,12 @@ export async function startGame(..._args: GameValue[]): Promise<GameValue> {
   startArtMarket();
   startGossip();
   startPaintingTitles();
+  startLimited();
+  // negozi aperti: si aggiornano quando qualcuno compra o vende una copia in edizione limitata
+  onLedgerChange(() => {
+    if (!dom('clothes-modal').classList.contains('hidden')) renderClothesShop();
+    if (!dom('furniture-shop-modal').classList.contains('hidden')) openFurnitureShopModal();
+  });
   startProjects();
   startBetting();
   updateSoundButton();

@@ -17,12 +17,14 @@ import {
   getCurrentFurnitureMap,
   setFurniturePosition,
 } from './world.js';
+import { buyLimited, limitedLeft, myCopy, ownsLimited } from './limited.js';
 export function itemById(id?: GameValue): GameValue {
   return game.shopCatalog.find((i?: GameValue): GameValue => i.id === id) || null;
 }
 
 export function ownsItem(id?: GameValue): GameValue {
   const it: GameValue = itemById(id);
+  if (it?.limited) return ownsLimited(id); // edizione limitata: decide il registro delle copie
   return !!it && (!!it.starter || !!game.player.ownedItems[id]);
 }
 
@@ -280,20 +282,34 @@ export function renderClothesShop(..._args: GameValue[]): GameValue {
     .forEach((it?: GameValue): GameValue => {
       const owned: GameValue = ownsItem(it.id);
       const card: GameValue = document.createElement('div');
-      card.className = 'item-card' + (game.shopState.tryOn === it.id ? ' selected' : '');
+      card.className =
+        'item-card' +
+        (game.shopState.tryOn === it.id ? ' selected' : '') +
+        (it.limited ? ' ltd' : '');
+      // edizione limitata: copie rimaste, niente rivendita al negozio (si vende agli altri giocatori)
+      const left = it.limited ? limitedLeft(it.id) : 0;
+      const status = it.limited
+        ? owned
+          ? `<div class="owned-tag">💎 Tua: copia #${myCopy(it.id)}/${it.limited}</div>`
+          : `<div class="ltd-tag">💎 Edizione limitata · ${left ? `ne restano ${left} su ${it.limited}` : 'esaurita'}</div><div class="price">💰 ${it.price.toLocaleString('it-IT')} €</div>`
+        : owned
+          ? `<div class="owned-tag">✓ Nel tuo armadio</div>`
+          : `<div class="price">💰 ${it.price} €</div>`;
+      const action = owned
+        ? it.limited
+          ? ''
+          : `<button type="button" class="sell" data-act="sell">💸 Rivendi ${resaleValue(it.price)} €</button>`
+        : it.limited && !left
+          ? ''
+          : '<button type="button" class="buy" data-act="buy">Compra</button>';
       card.innerHTML =
         `${itemThumbHtml(it)}<div>${it.name}</div>` +
-        (owned
-          ? `<div class="owned-tag">✓ Nel tuo armadio</div>`
-          : `<div class="price">💰 ${it.price} €</div>`) +
-        `<div class="btn-row"><button type="button" data-act="try">👀 Prova</button>${
-          owned
-            ? `<button type="button" class="sell" data-act="sell">💸 Rivendi ${resaleValue(it.price)} €</button>`
-            : '<button type="button" class="buy" data-act="buy">Compra</button>'
-        }</div>`;
+        status +
+        `<div class="btn-row"><button type="button" data-act="try">👀 Prova</button>${action}</div>`;
       card.onclick = (e?: GameValue): GameValue => {
         const act: GameValue = e.target.dataset && e.target.dataset.act;
-        if (act === 'buy') buyClothing(it.id);
+        if (act === 'buy' && it.limited) void buyLimited(it.id, it.price);
+        else if (act === 'buy') buyClothing(it.id);
         else if (act === 'sell') void sellClothing(it.id);
         else {
           game.shopState.tryOn = game.shopState.tryOn === it.id ? null : it.id;
@@ -307,7 +323,7 @@ export function renderClothesShop(..._args: GameValue[]): GameValue {
 
 export async function buyClothing(id: string): Promise<void> {
   const it: GameValue = itemById(id);
-  if (!it || ownsItem(id)) return;
+  if (!it || ownsItem(id) || it.limited) return;
   if (game.moneyLevel < it.price) {
     toast(`❌ Ti servono ${it.price} € per ${it.name}.`);
     return;

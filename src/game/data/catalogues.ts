@@ -627,6 +627,60 @@ export const SHOP_CATALOG = [
     color: '#f1c40f',
     style: 'chain',
   },
+  // ---- edizione limitata: solo 5 copie numerate per ogni capo, in tutto il gioco.
+  // Chi le indossa brilla (vedi drawLimitedSparkles); si scambiano tra giocatori (limited.ts).
+  {
+    id: 'ltd_tuxedo',
+    slot: 'top',
+    name: "Smoking d'Oro 💎",
+    price: 2500,
+    color: '#b8860b',
+    color2: '#111111',
+    style: 'tuxedo',
+    limited: 5,
+  },
+  {
+    id: 'ltd_crown',
+    slot: 'hat',
+    name: 'Corona di Diamanti 💎',
+    price: 3000,
+    color: '#dff6ff',
+    color2: '#ff2fb3',
+    style: 'crown',
+    limited: 5,
+  },
+  {
+    id: 'ltd_shades',
+    slot: 'glasses',
+    name: 'Occhiali di Rubino 💎',
+    price: 1800,
+    color: '#c0392b',
+    color2: '#f1c40f',
+    style: 'aviator',
+    limited: 5,
+  },
+];
+
+/**
+ * Mobili in edizione limitata: 5 copie numerate per ciascuno. Compaiono nella stanza di chi li
+ * possiede (ognuno ha il suo posto e si può spostare) e chi visita può fare un'offerta.
+ */
+export const LIMITED_FURNITURE = [
+  {
+    id: 'ltd_statue',
+    name: "Statua d'Oro 💎",
+    price: 4500,
+    limited: 5,
+    // posti iniziali liberi: tra il letto e l'armadio, e nell'angolo davanti a destra
+    propData: { x: 5, y: -140, w: 30, h: 30, z: 96, name: "Statua d'Oro 💎", moveable: true },
+  },
+  {
+    id: 'ltd_jukebox',
+    name: 'Juke-box al Neon 💎',
+    price: 3500,
+    limited: 5,
+    propData: { x: 150, y: 135, w: 40, h: 26, z: 78, name: 'Juke-box al Neon 💎', moveable: true },
+  },
 ];
 
 export const SLOT_INFO = {

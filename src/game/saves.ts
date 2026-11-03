@@ -25,6 +25,7 @@ import { bestOwnedByProp } from './furniture-tiers.js';
 import { decodeRomance } from './romance-rules.js';
 import { decodeRelations } from './relations-rules.js';
 import { decodeWelcome } from './welcome-rules.js';
+import { limitedFurnitureProps, limitedRoomItems } from './limited.js';
 import { decodePersonality, obtainedPersonality, personalityLevel } from './personality-rules.js';
 import { decodeWorkDay } from './job-pay.js';
 import { pushOutOfCorridor } from './room-layout.js';
@@ -102,6 +103,10 @@ export function buildSaveData(..._args: GameValue[]): SaveV8 {
         ...(f.propData.rot ? { rot: f.propData.rot } : {}),
       }),
   );
+  // mobili in edizione limitata: il loro posto nella stanza
+  limitedFurnitureProps().forEach((p, id) => {
+    furniturePos[id] = { x: Math.round(p.x), y: Math.round(p.y), ...(p.rot ? { rot: p.rot } : {}) };
+  });
   const r1: GameValue = (v?: GameValue): GameValue => Math.round(v * 10) / 10;
   const data: SaveV8 = {
     v: game.GAME_VERSION,
@@ -268,7 +273,9 @@ export function applySave(value: unknown): void {
     else if (acc.hat) game.player.equipped.hat = 'item_hat';
   }
   game.SLOTS.forEach((sl?: GameValue): GameValue => {
-    if (game.player.equipped[sl] && !ownsItem(game.player.equipped[sl]))
+    // i capi in edizione limitata si controllano quando arriva il registro delle copie (limited.ts)
+    const eq = game.player.equipped[sl];
+    if (eq && !String(eq).startsWith('ltd_') && !ownsItem(eq))
       game.player.equipped[sl] = game.DEFAULT_LOOK[sl];
   });
   game.player.activeJobKey = s.activeJobKey || null;
@@ -281,6 +288,9 @@ export function applySave(value: unknown): void {
   });
   game.furnitureCatalog.forEach((f?: GameValue): GameValue => {
     if (fp[f.id]) Object.assign(f.propData, fp[f.id]);
+  });
+  limitedFurnitureProps().forEach((p, id) => {
+    if (fp[id]) Object.assign(p, fp[id]);
   });
   // Mobili sistemati prima del passaggio libero: vengono spinti fuori.
   [
@@ -431,6 +441,7 @@ export function getMyRoomMap(..._args: GameValue[]): GameValue {
   // pianta in vaso e barattolo d'erba, casette degli animali
   Object.assign(combined, weedRoomItems());
   Object.assign(combined, petRoomItems());
+  Object.assign(combined, limitedRoomItems());
   return combined;
 }
 

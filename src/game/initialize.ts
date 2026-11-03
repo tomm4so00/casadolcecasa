@@ -1,4 +1,5 @@
 import { canSellJoint } from './weed.js';
+import { drawGoldStatue, drawJukebox } from './render/limited-props.js';
 import { drawBNTable, drawC4Table, drawReflexCabinet } from './render/arcade-props.js';
 import {
   MOONBASE_DRAW,
@@ -697,6 +698,8 @@ export function initializeGame() {
     shopClothes: drawShopFacade,
     shopBetting: drawShopFacade,
     shopArcade: drawShopFacade,
+    ltd_statue: drawGoldStatue,
+    ltd_jukebox: drawJukebox,
     moonRocket: drawMoonRocket,
     weedPot: drawWeedPot,
     // schermo del laboratorio con la diretta dalla base lunare

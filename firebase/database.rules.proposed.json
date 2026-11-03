@@ -794,12 +794,48 @@
         }
       }
     },
+    "sims_limited": {
+      ".read": "(auth != null && (auth.token.firebase.sign_in_provider === 'google.com' || (auth.token.firebase.sign_in_provider === 'password' && auth.token.email.endsWith('@giocatori.casadolcecasa.app')))) && root.child('sims_accounts').child(auth.uid).child('playerId').isString()",
+      "$item": {
+        "$n": {
+          ".write": "((auth != null && (auth.token.firebase.sign_in_provider === 'google.com' || (auth.token.firebase.sign_in_provider === 'password' && auth.token.email.endsWith('@giocatori.casadolcecasa.app')))) && root.child('sims_accounts').child(auth.uid).child('playerId').isString()) && ((!data.exists() && newData.child('o').val() === root.child('sims_accounts').child(auth.uid).child('playerId').val() && !newData.child('sale').exists()) || (data.child('o').val() === root.child('sims_accounts').child(auth.uid).child('playerId').val() && newData.exists() && newData.child('o').val() === root.child('sims_accounts').child(auth.uid).child('playerId').val()) || (data.child('sale/to').val() === root.child('sims_accounts').child(auth.uid).child('playerId').val() && newData.child('o').val() === root.child('sims_accounts').child(auth.uid).child('playerId').val() && !newData.child('sale').exists()))",
+          ".validate": "$item.matches(/^ltd_[a-z]+$/) && $n.matches(/^[1-5]$/) && newData.hasChildren(['o','on','t'])",
+          "o": {
+            ".validate": "newData.isString() && newData.val().length <= 140"
+          },
+          "on": {
+            ".validate": "newData.isString() && newData.val().length <= 20"
+          },
+          "t": {
+            ".validate": "newData.isNumber()"
+          },
+          "sale": {
+            ".validate": "newData.hasChildren(['to','p','t'])",
+            "to": {
+              ".validate": "newData.isString() && newData.val().length <= 140"
+            },
+            "p": {
+              ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 1000000"
+            },
+            "t": {
+              ".validate": "newData.isNumber()"
+            },
+            "$other": {
+              ".validate": false
+            }
+          },
+          "$other": {
+            ".validate": false
+          }
+        }
+      }
+    },
     "sims_interactions": {
       "$pid": {
         ".read": "(auth != null && (auth.token.firebase.sign_in_provider === 'google.com' || (auth.token.firebase.sign_in_provider === 'password' && auth.token.email.endsWith('@giocatori.casadolcecasa.app')))) && root.child('sims_accounts').child(auth.uid).child('playerId').val() === $pid",
         "$key": {
           ".write": "((auth != null && (auth.token.firebase.sign_in_provider === 'google.com' || (auth.token.firebase.sign_in_provider === 'password' && auth.token.email.endsWith('@giocatori.casadolcecasa.app')))) && root.child('sims_accounts').child(auth.uid).child('playerId').isString()) && ((!newData.exists() && root.child('sims_accounts').child(auth.uid).child('playerId').val() === $pid) || (!data.exists() && newData.child('from').val() === root.child('sims_accounts').child(auth.uid).child('playerId').val()))",
-          ".validate": "newData.hasChildren(['type','from','fromName','t']) && newData.child('type').val().matches(/^(talk|praise|insult|punch|food|money_notice|drug|drugReturn|romance|kissAsk|kissYes|kissNo|artSold|weedOffer|weedPaid|weedNo|theft|gameInvite)$/)",
+          ".validate": "newData.hasChildren(['type','from','fromName','t']) && newData.child('type').val().matches(/^(talk|praise|insult|punch|food|money_notice|drug|drugReturn|romance|kissAsk|kissYes|kissNo|artSold|weedOffer|weedPaid|weedNo|theft|gameInvite|ltdOffer|ltdAccept|ltdNo)$/)",
           "from": {
             ".validate": "newData.isString() && newData.val().length <= 140"
           },

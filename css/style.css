@@ -2120,3 +2120,107 @@ body.ticker-on #app-version {
     transform: scale(1.03);
   }
 }
+
+/* ---- Classifiche: elenco completo che si scorre ---- */
+.lb-card {
+  max-width: 420px;
+}
+.lb-card h3 {
+  margin: 10px 0 2px;
+}
+.lb-tabs {
+  display: flex;
+  gap: 6px;
+}
+.lb-tab {
+  flex: 1;
+  padding: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  color: #dfe6e9;
+  font-weight: bold;
+  cursor: pointer;
+}
+.lb-tab.sel {
+  background: #e67e22;
+  border-color: #e67e22;
+  color: #ffffff;
+}
+.lb-count {
+  font-size: 0.75rem;
+  color: #a4b0be;
+  margin-bottom: 8px;
+}
+.lb-list {
+  position: relative;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 50vh;
+  overflow-y: auto;
+  text-align: left;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.25);
+}
+.lb-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  font-size: 0.85rem;
+}
+.lb-row:nth-child(even) {
+  background: rgba(255, 255, 255, 0.03);
+}
+.lb-top {
+  font-weight: bold;
+}
+.lb-me {
+  background: rgba(46, 213, 115, 0.22) !important;
+  outline: 1px solid #2ed573;
+}
+.lb-rank {
+  width: 2.2em;
+  flex: none;
+  text-align: center;
+}
+.lb-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.lb-value {
+  flex: none;
+  color: #feca57;
+}
+.lb-empty {
+  padding: 16px;
+  text-align: center;
+  color: #a4b0be;
+}
+.lb-note {
+  font-size: 0.72rem;
+  color: #a4b0be;
+  margin: 8px 0 4px;
+}
+.lb-close {
+  margin-top: 6px;
+}
+
+/* ---- Edizione limitata: schede dorate nei negozi ---- */
+.item-card.ltd,
+.shop-item-card.ltd {
+  border: 1px solid #c9a227;
+  background: linear-gradient(160deg, rgba(201, 162, 39, 0.22), rgba(108, 43, 217, 0.18));
+  box-shadow: 0 0 12px rgba(241, 196, 15, 0.35);
+}
+.ltd-tag {
+  color: #feca57;
+  font-weight: bold;
+  font-size: 0.72rem;
+  margin: 2px 0;
+}

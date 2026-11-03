@@ -8,6 +8,8 @@ import { openDialog } from './interface.js';
 import { RELAX_COOLDOWN_MS, RELAX_GAIN } from './furniture-benefits.js';
 import { tierOfPlaced } from './furniture-tiers.js';
 import { openWelcomeList, tickWelcome, updateWelcomeHud } from './welcome.js';
+import { livedRows, wealthRows } from './leaderboard-rules.js';
+import { showLeaderboard } from './leaderboard.js';
 // ---------- Divano e TV ----------
 /** Pausa su divano o TV. Con `quiet` non avvisa se è troppo presto. Restituisce true se è andata. */
 export function relaxWith(kind?: GameValue, item?: GameValue, quiet = false): boolean {
@@ -104,96 +106,25 @@ export function fmtDuration(ms?: GameValue): GameValue {
 
 export async function openLeaderboard(mode: GameValue = 'wealth'): Promise<GameValue> {
   saveGame(true);
-  let lb: GameValue = {},
-    gy: GameValue = {};
-  try {
-    const snap: GameValue = await withTimeout(
-      game.session.db.ref('sims_leaderboard').once('value'),
-      5000,
-    );
-    lb = (snap && snap.val()) || {};
-  } catch (e: GameValue) {}
-  if (mode === 'lived') {
+  const read = async (path: string): Promise<GameValue> => {
     try {
-      gy =
-        (
-          (await withTimeout(game.session.db.ref('sims_graveyard').once('value'), 5000)) || {
-            val: (): GameValue => ({}),
-          }
-        ).val() || {};
-    } catch (e: GameValue) {}
-  }
-  const medals: GameValue = ['🥇', '🥈', '🥉'];
-  let list: GameValue, text: GameValue, title: GameValue;
-  if (mode === 'lived') {
-    const now: GameValue = Date.now();
-    list = Object.keys(lb)
-      .filter((id?: GameValue): GameValue => lb[id].bornAt)
-      .map(
-        (id?: GameValue): GameValue => ({
-          id,
-          name: lb[id].name,
-          ms: now - lb[id].bornAt,
-          dead: false,
-        }),
-      )
-      .concat(
-        Object.keys(gy)
-          .filter((id?: GameValue): GameValue => typeof gy[id].lived === 'number')
-          .map(
-            (id?: GameValue): GameValue => ({
-              id,
-              name: gy[id].name,
-              ms: gy[id].lived,
-              dead: true,
-            }),
-          ),
-      );
-    list.sort((a?: GameValue, b?: GameValue): GameValue => b.ms - a.ms);
-    const line: GameValue = (p?: GameValue, i?: GameValue): GameValue =>
-      `${medals[i] || i + 1 + '.'} ${p.name}${p.id === game.session.myPlayerId ? ' (tu)' : ''} — ${fmtDuration(p.ms)}${p.dead ? ' ⚰️' : ''}`;
-    text = list.slice(0, 10).map(line).join('\n') || 'Ancora nessuno in classifica.';
-    const myPos: GameValue = list.findIndex(
-      (p?: GameValue): GameValue => p.id === game.session.myPlayerId,
-    );
-    if (myPos >= 10)
-      text += `\n…\n${myPos + 1}. ${list[myPos].name} (tu) — ${fmtDuration(list[myPos].ms)}`;
-    text += '\n\nTempo di vita del personaggio. I vivi crescono ogni ora, ⚰️ = morto.';
-    title = '⏳ Classifica dei più longevi';
-  } else {
-    list = Object.keys(lb)
-      .map((id?: GameValue): GameValue => Object.assign({ id }, lb[id]))
-      .filter((p?: GameValue): GameValue => typeof p.wealth === 'number');
-    list.sort((a?: GameValue, b?: GameValue): GameValue => b.wealth - a.wealth);
-    const myPos: GameValue = list.findIndex(
-      (p?: GameValue): GameValue => p.id === game.session.myPlayerId,
-    );
-    text =
-      list
-        .slice(0, 10)
-        .map(
-          (p?: GameValue, i?: GameValue): GameValue =>
-            `${medals[i] || i + 1 + '.'} ${p.name}${p.id === game.session.myPlayerId ? ' (tu)' : ''} — ${p.wealth} €`,
-        )
-        .join('\n') || 'Ancora nessun giocatore in classifica.';
-    if (myPos >= 10)
-      text += `\n…\n${myPos + 1}. ${list[myPos].name} (tu) — ${list[myPos].wealth} €`;
-    text += '\n\nConta i soldi in cassaforte.';
-    title = '🏆 Classifica dei più ricchi';
-  }
-  const res: GameValue = await openDialog({
-    title,
-    text,
-    buttons: [
-      { label: 'Chiudi', value: null },
-      {
-        label: mode === 'lived' ? '💰 Più ricchi' : '⏳ Più longevi',
-        value: 'toggle',
-        color: '#e67e22',
-      },
-    ],
-  });
-  if (res.action === 'toggle') openLeaderboard(mode === 'lived' ? 'wealth' : 'lived');
+      const snap: GameValue = await withTimeout(game.session.db.ref(path).once('value'), 5000);
+      return (snap && snap.val()) || {};
+    } catch (e: GameValue) {
+      return {};
+    }
+  };
+  const lb: GameValue = await read('sims_leaderboard');
+  const lived = mode === 'lived';
+  // tutti i giocatori, in un elenco che si scorre (vedi leaderboard.ts)
+  const rows = lived ? livedRows(lb, await read('sims_graveyard'), Date.now()) : wealthRows(lb);
+  showLeaderboard(
+    lived ? 'lived' : 'wealth',
+    rows,
+    game.session.myPlayerId,
+    (r) => (lived ? fmtDuration(r.value) : `${r.value.toLocaleString('it-IT')} €`),
+    (m) => void openLeaderboard(m),
+  );
 }
 
 export function toast(msg?: GameValue, ms: GameValue = 2600, sound: GameValue = null): GameValue {

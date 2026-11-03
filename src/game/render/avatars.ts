@@ -1,3 +1,4 @@
+import { drawSparkles } from './limited-props.js';
 import type { GameValue } from '../context.js';
 import { game } from '../context.js';
 import { lifetime, dom } from '../runtime.js';
@@ -2263,6 +2264,15 @@ export function drawPlayerAvatar(
     ctx.fillStyle = '#fff';
     ctx.fillText(name, head.x, ny + 11.5, nw - 8);
   }
+  // ---- edizione limitata: chi la indossa brilla (lo vedono tutti)
+  if (game.SLOTS.some((sl: string) => look[sl]?.limited))
+    drawSparkles(
+      ctx,
+      (a, k) => P(Math.cos(a) * 15, Math.sin(a) * 15, 10 + k * 62),
+      (animTime || 0) + (hsh % 7),
+      4,
+      s,
+    );
   if (say) {
     ctx.font = '12px sans-serif';
     const bw: GameValue = Math.min(180, ctx.measureText(say).width) + 16;

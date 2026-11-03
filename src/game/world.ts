@@ -57,6 +57,18 @@ import { openDialog } from './interface.js';
 import { openRealtyBoard } from './realty.js';
 import { sendSocial } from './social.js';
 import { openGossipBoard } from './gossip.js';
+import { LIMITED_FURNITURE } from './data/catalogues.js';
+import {
+  buyLimited,
+  isLimitedId,
+  limitedLeft,
+  myCopy,
+  makeOffer,
+  offerButtonText,
+  visitedCopy,
+  visitedLimitedClothes,
+  wardrobeOffers,
+} from './limited.js';
 import { openArcadeStation } from './arcade.js';
 import { ARCADE_GAMES, type ArcadeGame, isArcadeGame } from './arcade-rules.js';
 import { quotedTitle } from './painting-titles.js';
@@ -626,6 +638,17 @@ export function checkProximity(..._args: GameValue[]): GameValue {
           btnSub.innerText = '🦮 Porta a spasso';
           btnSub.classList.remove('hidden');
         } else btnSub.classList.add('hidden');
+      } else if (isLimitedId(found)) {
+        // mobile in edizione limitata: il mio, o di un altro (offerta)
+        btnMain.innerText = isMyRoomNow()
+          ? `💎 ${item.name}`
+          : offerButtonText(found) || `💎 ${item.name}`;
+        btnMain.classList.remove('btn-pop-locked');
+        btnSub.classList.add('hidden');
+      } else if (found === 'wardrobe' && !isMyRoomNow() && visitedLimitedClothes()) {
+        btnMain.innerText = `💎 ${visitedLimitedClothes()}`;
+        btnMain.classList.remove('btn-pop-locked');
+        btnSub.classList.add('hidden');
       } else if (found.startsWith('painting')) {
         const name = quotedTitle(
           roomPaintings(game.roomsState[game.currentRoomIdx ?? -1])[slotOfKey(found) || 'p1'],
@@ -1174,7 +1197,16 @@ export async function handleObjectInteract(..._args: GameValue[]): Promise<void>
       toast(game.player.isSleeping ? 'Ti sei coricato a letto 🛏️' : 'Ti sei svegliato.');
     } else if (game.activeTargetProp === 'wardrobe') {
       if (isMyRoomNow()) openWardrobe();
-      else toast("🚫 Non puoi frugare nell'armadio di un altro!");
+      // nell'armadio di un altro si vedono solo i capi in edizione limitata, per fare un'offerta
+      else if (!(await wardrobeOffers())) toast("🚫 Non puoi frugare nell'armadio di un altro!");
+    } else if (isLimitedId(game.activeTargetProp)) {
+      const n = visitedCopy(game.activeTargetProp);
+      if (!isMyRoomNow() && n) await makeOffer(game.activeTargetProp, n);
+      else
+        toast(
+          `💎 ${item?.name || ''}: edizione limitata. Puoi spostarlo con 🖐️ Sposta Mobile.`,
+          4000,
+        );
     } else if (game.activeTargetProp === 'desk') {
       openComputerShopModal();
     } else if (PET_OF_KEY[game.activeTargetProp] && isMyRoomNow()) {
@@ -1538,6 +1570,24 @@ function announceFurnitureBenefit(def: GameValue): void {
 export function openFurnitureShopModal(..._args: GameValue[]): GameValue {
   const container: GameValue = dom('furniture-catalog-container');
   container.innerHTML = '';
+  // in cima i mobili in edizione limitata: poche copie numerate, si comprano una volta sola
+  for (const def of LIMITED_FURNITURE) {
+    const n = myCopy(def.id);
+    const left = limitedLeft(def.id);
+    const card: GameValue = document.createElement('div');
+    card.className = 'shop-item-card ltd';
+    card.innerHTML = `
+          <div class="shop-item-info">
+            <h4>${def.name}</h4>
+            <p class="ltd-tag">💎 Edizione limitata · ${n ? `tua: copia #${n}/${def.limited}` : left ? `ne restano ${left} su ${def.limited}` : 'esaurita'}</p>
+            <p>💰 ${def.price.toLocaleString('it-IT')} €</p>
+          </div>
+          ${n || !left ? '' : `<button class="btn-buy" type="button">Acquista</button>`}`;
+    card
+      .querySelector('button')
+      ?.addEventListener('click', () => void buyLimited(def.id, def.price));
+    container.appendChild(card);
+  }
   game.furnitureCatalog.forEach((item?: GameValue): GameValue => {
     const isOwned: GameValue = game.player.ownedFurniture[item.id];
     const card: GameValue = document.createElement('div');

@@ -219,6 +219,6 @@ describe('sala giochi nel gioco', () => {
     const g = rules.sims_games.$gid;
     expect(g['.read']).toContain("data.child('a').val() ===");
     expect(g['.write']).toContain("newData.child('b').val() === data.child('b').val()");
-    expect(rules.sims_interactions.$pid.$key['.validate']).toContain('|gameInvite)');
+    expect(rules.sims_interactions.$pid.$key['.validate']).toContain('|gameInvite');
   });
 });

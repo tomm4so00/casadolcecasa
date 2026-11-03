@@ -13,7 +13,8 @@ describe('catalogo dei vestiti', () => {
   });
 
   it('ogni capo acquistabile è ammesso e protetto dalle regole del database', () => {
-    for (const { id } of SHOP_CATALOG) {
+    // i capi in edizione limitata non stanno negli acquisti della stanza: li segna il registro delle copie
+    for (const { id } of SHOP_CATALOG.filter((i) => !('limited' in i))) {
       expect(room.economy.ownedItems, id).toHaveProperty(id);
       expect(room['.validate'], id).toContain(`economy/ownedItems/${id}'`);
     }
