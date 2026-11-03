@@ -4,6 +4,7 @@ import {
   deathWarningText,
   maintainGame,
   sendDeathWarnings,
+  sendPetWarnings,
 } from '../server/src/maintenance.js';
 import { localDatabase } from '../src/game/database.js';
 import { Lifetime } from '../src/game/lifetime.js';
@@ -128,5 +129,46 @@ describe('avviso sul telefono prima della morte per assenza', () => {
 
   it('il testo dice quante ore restano', () => {
     expect(deathWarningText('Ada', now - 79.6 * 3600000, now).body).toContain('entro 1 ora');
+  });
+});
+
+describe('avvisi per gli animali che stanno per morire', () => {
+  const now = 1_800_000_000_000;
+  const H = 3600000;
+  // il cane è sazio da `fedHoursAgo` ore: senza cibo muore dopo 48 ore
+  const setup = async (fedHoursAgo: number, savedMinutesAgo = 120) => {
+    const database = localDatabase(new Lifetime(), new MemoryStorage());
+    await database.ref('sims_saves/player_a').set({
+      savedAt: now - savedMinutesAgo * 60000,
+      moneyLevel: 0,
+      pets: { dog: { hunger: 100, at: now - fedHoursAgo * H }, fish: { hunger: 100, at: now } },
+    });
+    await database.ref('sims_push/player_a/tokens/k1').set({ token: 'tok-ok', t: now });
+    const calls: { title: string; body: string; tag: string }[] = [];
+    const send: PushSender = async (_token, m) => {
+      calls.push({ title: m.title, body: m.body, tag: m.tag });
+      return 'sent';
+    };
+    return { database, calls, send };
+  };
+
+  it('avvisa nelle ultime 6 ore, una volta sola, solo per l’animale in pericolo', async () => {
+    const { database, calls, send } = await setup(44);
+    expect(await sendPetWarnings(database, now, send)).toBe(1);
+    expect(calls[0].title).toBe('🆘 Il tuo cane 🐶 sta per morire!');
+    expect(calls[0].body).toContain('entro 4 ore');
+    expect(calls[0].tag).toBe('sims-pet-dog');
+    expect(await sendPetWarnings(database, now + 15 * 60000, send)).toBe(0);
+  });
+
+  it('non avvisa se c’è ancora tempo, se è già morto o se si sta giocando', async () => {
+    for (const [hours, saved] of [
+      [40, 120],
+      [49, 120],
+      [44, 3],
+    ]) {
+      const { database, send } = await setup(hours, saved);
+      expect(await sendPetWarnings(database, now, send)).toBe(0);
+    }
   });
 });

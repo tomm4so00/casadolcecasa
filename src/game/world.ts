@@ -1,4 +1,6 @@
 import { buyPlant, plantLabel, smokeJoint, tendPlant } from './weed.js';
+import { PETS, PET_FOOD_PRICE, type PetKind } from './pet-rules.js';
+import { PET_OF_KEY, buyPet, feed, giveUpForAdoption, petSpots } from './pets.js';
 import { DAILY_LIMITS, recordUse, usesLeftToday } from './daily-limits.js';
 import {
   COIN_PRICE,
@@ -301,9 +303,13 @@ export function getCurrentFurnitureMap(..._args: GameValue[]): SceneMap {
     let room: GameValue = game.roomsState[game.currentRoomIdx ?? -1];
     if (room && room.layout) {
       let m: GameValue = {};
-      Object.keys(room.layout).forEach(
-        (k?: GameValue): GameValue => (m[k] = Object.assign({ moveable: false }, room.layout[k])),
-      );
+      const free: string[] = [];
+      Object.keys(room.layout).forEach((k?: GameValue): GameValue => {
+        // cane e gatto non sono mobili: girano per la stanza (vedi pets.ts)
+        if (room.layout[k]?.free) free.push(room.layout[k].free);
+        else m[k] = Object.assign({ moveable: false }, room.layout[k]);
+      });
+      game.visitFreePets = free;
       // La cassaforte è sempre a muro, anche nelle disposizioni pubblicate prima di questa versione.
       m.safe = { ...game.playerRoomFurniture.safe, moveable: false };
       return m;
@@ -323,6 +329,7 @@ export function getCurrentFurnitureMap(..._args: GameValue[]): SceneMap {
   if (game.view.activeEnvironment === 'centro_commerciale') return game.mallFurniture;
   if (game.view.activeEnvironment === 'luna') return game.moonFurniture;
   if (game.view.activeEnvironment === 'growshop') return game.growshopFurniture;
+  if (game.view.activeEnvironment === 'negozio_animali') return game.petshopFurniture;
   if (game.view.activeEnvironment === 'ingegneria_esterno') return game.engineeringYardFurniture;
   if (game.view.activeEnvironment === 'CIMITERO') return game.graveMap;
   if (game.MG.active && game.view.activeEnvironment === 'lavoro_' + game.MG.job) return game.MG.map;
@@ -351,6 +358,15 @@ export function checkProximity(..._args: GameValue[]): GameValue {
       found = key;
     } // l'oggetto più vicino
   });
+  // cane e gatto che girano per la propria stanza
+  const pets = petSpots();
+  for (const key of Object.keys(pets)) {
+    const d = Math.hypot(game.playerPos.x - pets[key].x, game.playerPos.y - pets[key].y);
+    if (d < Math.min(bestDist, 45)) {
+      bestDist = d;
+      found = key;
+    }
+  }
   // seduti sul divano il pulsante resta quello per alzarsi
   if (onSofa() && map.sofa) found = 'sofa';
   // panchine e fontana del cortile, carretto dei gelati (seduti si resta sulla propria panchina)
@@ -371,7 +387,7 @@ export function checkProximity(..._args: GameValue[]): GameValue {
   if (found) {
     game.activeTargetProp = found;
     pop.classList.remove('hidden');
-    let item: GameValue = map[found] || spots[found];
+    let item: GameValue = map[found] || spots[found] || pets[found];
     if (game.view.activeEnvironment === 'SALOON') {
       if (found === 'exitHouse') {
         if (!game.view.isOutsideMenuOpen) {
@@ -414,6 +430,18 @@ export function checkProximity(..._args: GameValue[]): GameValue {
         doorYard: '🚀 Vai nella zona esterna',
       };
       btnMain.innerText = labels[found] || '🚪 Torna Fuori';
+    } else if (game.view.activeEnvironment === 'negozio_animali') {
+      btnMain.classList.remove('btn-pop-locked');
+      btnSub.classList.add('hidden');
+      if (item.pet) {
+        const info = PETS[item.pet as PetKind];
+        const owned = !!game.player.pets?.[item.pet as PetKind];
+        btnMain.innerText = owned
+          ? `${info.emoji} Hai già un ${info.name}`
+          : `${info.emoji} Compra un ${info.name} (${info.price} €)`;
+        btnMain.classList.toggle('btn-pop-locked', owned);
+      } else if (found === 'petCounter') btnMain.innerText = '🏡 Dai in adozione un animale';
+      else btnMain.innerText = '🚪 Torna Fuori';
     } else if (game.view.activeEnvironment === 'growshop') {
       btnMain.classList.remove('btn-pop-locked');
       btnSub.classList.add('hidden');
@@ -555,6 +583,14 @@ export function checkProximity(..._args: GameValue[]): GameValue {
         btnMain.innerText = game.player.isSleeping ? '⏰ Svegliati' : '😴 Coricati a Letto';
         btnMain.classList.remove('btn-pop-locked');
         btnSub.classList.add('hidden');
+      } else if (item.pet && PET_OF_KEY[found] && isMyRoomNow()) {
+        const kind = item.pet as PetKind;
+        btnMain.innerText = `🍖 Dai da mangiare ${/^[aeiou]/.test(PETS[kind].name) ? "all'" : 'al '}${PETS[kind].name} (${PET_FOOD_PRICE} €)`;
+        btnMain.classList.remove('btn-pop-locked');
+        if (kind === 'dog') {
+          btnSub.innerText = '🦮 Porta a spasso';
+          btnSub.classList.remove('hidden');
+        } else btnSub.classList.add('hidden');
       } else if (found.startsWith('painting')) {
         btnMain.innerText = isMyRoomNow() ? `🖼️ ${item.name}` : '🖼️ Ammira il quadro';
         btnMain.classList.remove('btn-pop-locked');
@@ -799,6 +835,7 @@ const MALL_SHOPS: Record<string, { facade: string; activity: string }> = {
   negozio_vestiti: { facade: 'shopClothes', activity: 'clothesshop' },
   scommesse: { facade: 'shopBetting', activity: 'betting' },
   growshop: { facade: 'shopGrow', activity: 'growshop' },
+  negozio_animali: { facade: 'shopPets', activity: 'petshop' },
 };
 
 /** Esce da un negozio e torna nel centro commerciale, davanti alla sua vetrina. */
@@ -903,6 +940,10 @@ export async function handleObjectInteract(..._args: GameValue[]): Promise<void>
       sfx('door');
       lifetime.setTimeout(() => goToEngineering(true), 350);
     } else if (game.activeTargetProp === 'doorExit') backToSaloon();
+  } else if (game.view.activeEnvironment === 'negozio_animali') {
+    if (item?.pet) await buyPet(item.pet as PetKind);
+    else if (game.activeTargetProp === 'petCounter') await giveUpForAdoption();
+    else if (game.activeTargetProp === 'doorExit') backToSaloon();
   } else if (game.view.activeEnvironment === 'growshop') {
     if (item?.strain) await buyPlant(item.strain);
     else if (game.activeTargetProp === 'doorExit') backToSaloon();
@@ -1024,6 +1065,8 @@ export async function handleObjectInteract(..._args: GameValue[]): Promise<void>
       else toast("🚫 Non puoi frugare nell'armadio di un altro!");
     } else if (game.activeTargetProp === 'desk') {
       openComputerShopModal();
+    } else if (PET_OF_KEY[game.activeTargetProp] && isMyRoomNow()) {
+      await feed(PET_OF_KEY[game.activeTargetProp]);
     } else if (game.activeTargetProp === 'sofa') {
       toggleSofa(item);
     } else if (game.activeTargetProp === 'tv') {
@@ -1264,6 +1307,12 @@ export async function doActivity(type?: GameValue): Promise<void> {
   } else if (type === 'mall') {
     backToMall();
     dom('btn-return-home').classList.add('hidden');
+    return;
+  } else if (type === 'petshop') {
+    game.view.activeEnvironment = 'negozio_animali';
+    game.view.currentRoomTitle = 'Negozio di Animali 🐾';
+    dom('btn-return-home').classList.add('hidden');
+    game.playerPos = { x: 0, y: 110 };
     return;
   } else if (type === 'growshop') {
     game.view.activeEnvironment = 'growshop';

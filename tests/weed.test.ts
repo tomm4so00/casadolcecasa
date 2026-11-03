@@ -70,3 +70,38 @@ describe('coltivazione', () => {
     for (const type of ['weedOffer', 'weedPaid', 'weedNo']) expect(v).toContain(type);
   });
 });
+
+describe('vaso spostato nella stanza', () => {
+  it('la posizione del vaso resta anche dopo il raccolto e si legge dal salvataggio', () => {
+    const planted = { grams: 0, strain: 'lemon' as const, plantedAt: 1, potX: -40, potY: 90 };
+    const after = harvest(planted, 1 + GROW_MS)!;
+    expect(after.potX).toBe(-40);
+    expect(after.potY).toBe(90);
+    expect(decodeWeed({ grams: 0, potX: 999, potY: 10 })).toEqual({
+      grams: 0,
+      potX: 200,
+      potY: 10,
+    });
+    expect(decodeWeed({ grams: 0, potX: 'x', potY: 10 }).potX).toBeUndefined();
+  });
+});
+
+describe('barattolo spostato nella stanza', () => {
+  it('la posizione del barattolo si salva e si perde solo quando si svuota', () => {
+    expect(decodeWeed({ grams: 5, jarStrain: 'lemon', jarX: -20, jarY: 30 })).toMatchObject({
+      jarX: -20,
+      jarY: 30,
+    });
+    // barattolo vuoto: niente posizione
+    expect(decodeWeed({ grams: 0, jarX: -20, jarY: 30 }).jarX).toBeUndefined();
+    const last = takeJoint({
+      grams: 1,
+      jarStrain: 'lemon',
+      jarX: -20,
+      jarY: 30,
+      potX: 5,
+      potY: 6,
+    })!;
+    expect(last).toEqual({ grams: 0, potX: 5, potY: 6 });
+  });
+});

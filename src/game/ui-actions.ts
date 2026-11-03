@@ -1,4 +1,5 @@
 import { openArtSite, setArtTab } from './art-market.js';
+import { leaveDogHome } from './pets.js';
 import { openProjects } from './projects.js';
 import { spinSlot } from './betting.js';
 import { standUp } from './faint.js';
@@ -61,6 +62,7 @@ export const uiActions: Readonly<Record<string, UiAction>> = {
   spinSlot: () => void spinSlot(),
   setArtTab: ([tab]) => setArtTab(String(tab)),
   returnHomeFromActivity: () => returnHomeFromActivity(),
+  leaveDogHome: () => leaveDogHome(),
   reloadForUpdate: () => reloadForUpdate(),
   restoreFromCode: () => restoreFromCode(),
   chooseOrGoToJob: ([arg0, arg1]) => chooseOrGoToJob(String(arg0), String(arg1)),

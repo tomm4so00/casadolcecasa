@@ -24,6 +24,7 @@ import { box, onFace } from './render/objects.js';
 import { isoProject, isoScale } from './render/primitives.js';
 import { sfx } from './audio.js';
 import { updateFlu } from './flu.js';
+import { updatePetHud } from './pets.js';
 export async function reapAbsentPlayers(..._args: GameValue[]): Promise<GameValue> {
   if (!game.session.OFFLINE) return; // The trusted scheduled process handles other characters.
   let reaped: GameValue = [];
@@ -539,6 +540,7 @@ export function updateNeeds(delta?: GameValue): GameValue {
   dom('happiness-text').innerText = Math.round(game.player.happinessLevel) + '%';
   updateDrugHud();
   updateFlu();
+  updatePetHud();
   // Sotto i 1000 € in cassaforte la barra si riempie solo di verde, verso 1000 €.
   // Da 1000 € in su è piena e divisa in proporzione: verde cassaforte, azzurro banca.
   const bankMoney: number = game.bankBalance || 0;

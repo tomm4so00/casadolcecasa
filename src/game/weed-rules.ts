@@ -31,6 +31,12 @@ export interface WeedState {
   /** Erba nel barattolo e varietà dell'ultimo raccolto. */
   grams: number;
   jarStrain?: StrainId;
+  /** Dove il giocatore ha spostato il vaso nella stanza (resta anche dopo il raccolto). */
+  potX?: number;
+  potY?: number;
+  /** Dove sta il barattolo (finché non si svuota). */
+  jarX?: number;
+  jarY?: number;
 }
 
 export const emptyWeed = (): WeedState => ({ grams: 0 });
@@ -62,14 +68,21 @@ export function buyPlantError(state: WeedState, strain: StrainId, money: number)
 /** Raccolto: il vaso si svuota e il barattolo si riempie. null se la pianta non è pronta. */
 export function harvest(state: WeedState, now: number): WeedState | null {
   if (!state.plantedAt || !state.strain || growProgress(state.plantedAt, now) < 1) return null;
-  return { grams: state.grams + HARVEST_GRAMS, jarStrain: state.strain };
+  return {
+    grams: state.grams + HARVEST_GRAMS,
+    jarStrain: state.strain,
+    ...(state.potX !== undefined ? { potX: state.potX, potY: state.potY } : {}),
+  };
 }
 
 /** Toglie una canna dal barattolo; null se è vuoto. */
 export function takeJoint(state: WeedState): WeedState | null {
   if (state.grams < JOINT_GRAMS) return null;
   const grams = state.grams - JOINT_GRAMS;
-  return { ...state, grams, ...(grams > 0 ? {} : { jarStrain: undefined }) };
+  if (grams > 0) return { ...state, grams };
+  // barattolo vuoto: sparisce (e il prossimo comparirà dove c'era la pianta)
+  const { jarStrain: _s, jarX: _x, jarY: _y, ...rest } = state;
+  return { ...rest, grams };
 }
 
 /** Legge lo stato dal salvataggio scartando i valori non validi. */
@@ -84,5 +97,20 @@ export function decodeWeed(value: unknown): WeedState {
   if (Number.isSafeInteger(v.grams) && (v.grams as number) > 0)
     out.grams = Math.min(100000, v.grams as number);
   if (out.grams > 0 && isStrain(v.jarStrain)) out.jarStrain = v.jarStrain;
+  for (const [kx, ky] of [
+    ['potX', 'potY'],
+    ['jarX', 'jarY'],
+  ] as const) {
+    const x = v[kx],
+      y = v[ky];
+    if (typeof x === 'number' && typeof y === 'number' && isFinite(x) && isFinite(y)) {
+      out[kx] = Math.max(-200, Math.min(200, x));
+      out[ky] = Math.max(-180, Math.min(180, y));
+    }
+  }
+  if (!out.grams) {
+    delete out.jarX;
+    delete out.jarY;
+  }
   return out;
 }

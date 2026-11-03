@@ -1609,7 +1609,7 @@ export function drawCounter(it?: GameValue): GameValue {
     ctx.fillStyle = 'rgba(255,255,255,0.9)';
     ctx.font = 'bold 9px sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText('CASSA', W / 2, H / 2 + 3);
+    ctx.fillText(it.label || 'CASSA', W / 2, H / 2 + 3);
   });
   box(it.x, it.y, it.w + 6, it.h + 6, 5, '#f5f6fa', { z0: it.z - 5 });
   const reg: GameValue = box(it.x + it.w * 0.28, it.y, 22, 16, 12, '#2d3436', { z0: it.z });
@@ -3086,6 +3086,13 @@ const FACADE_STYLE: Record<
     awning: ['#2e7d32', '#111111'],
     title: '🌿 GROW SHOP',
   },
+  animali: {
+    wall: '#f6b26b',
+    sign: '#7a3e0a',
+    text: '#fff3e0',
+    awning: ['#e67e22', '#fffaf0'],
+    title: '🐾 ANIMALI',
+  },
   scommesse: {
     wall: '#2c2c54',
     sign: '#120a1a',
@@ -3220,6 +3227,35 @@ function drawWindowDisplay(shop: string, x: number, y: number, w: number, h: num
       ctx.fillStyle = '#636e72';
       ctx.fillRect(cx - 0.5, base - 14, 1, 12);
       ctx.fillRect(cx - 5, base - 3, 10, 2);
+    }
+  } else if (shop === 'animali') {
+    // cuccia con una zampa disegnata e una bolla di pesce che sale
+    ctx.fillStyle = '#8d5524';
+    ctx.beginPath();
+    ctx.ellipse(x + w / 2, base - 6, w * 0.32, 5, 0, 0, 6.3);
+    ctx.fill();
+    ctx.fillStyle = '#c68642';
+    ctx.beginPath();
+    ctx.arc(x + w / 2, base - 13 + Math.sin(t * 3) * 0.6, 6, 0, 6.3);
+    ctx.fill();
+    ctx.fillStyle = '#8d5524';
+    ctx.beginPath();
+    ctx.ellipse(x + w / 2 - 5, base - 14, 2, 4, 0.3, 0, 6.3);
+    ctx.fill();
+    ctx.fillStyle = '#222';
+    ctx.beginPath();
+    ctx.arc(x + w / 2 + 2, base - 14, 0.9, 0, 6.3);
+    ctx.fill();
+    // impronte di zampa sul vetro
+    ctx.fillStyle = 'rgba(122,62,10,0.45)';
+    for (const [px, py] of [
+      [x + 6, y + 8],
+      [x + w - 10, y + 14],
+    ]) {
+      ctx.beginPath();
+      ctx.arc(px, py + 3, 2.2, 0, 6.3);
+      for (const d of [-2.5, 0, 2.5]) ctx.arc(px + d, py - 0.5, 0.9, 0, 6.3);
+      ctx.fill();
     }
   } else if (shop === 'grow') {
     // piantine in vaso sotto la luce viola
@@ -3896,7 +3932,9 @@ export function drawMapItem(
   }
   if (k.startsWith('shelf')) return drawShelf(item, t);
   // Piante e lampade sono uguali da ogni lato: la rotazione non cambia il loro aspetto.
-  const symmetric = k === 'plant' || k === 'lamp';
+  // Anche le casette degli animali (gabbie, teca, acquario) girano da sole il loro disegno.
+  const symmetric =
+    k === 'plant' || k === 'lamp' || k === 'weedPot' || k === 'weedJar' || !!item.pet;
   withFurnitureRotation(symmetric ? { ...item, rot: 0 } : item, () => {
     softShadow(item.x, item.y, item.w, item.h);
     drawFurnitureByKind(k, item, t, lights);

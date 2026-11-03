@@ -1,4 +1,7 @@
 import { canSellJoint } from './weed.js';
+import { drawPetBubble, drawPetHome, drawShopPet } from './render/pets.js';
+import { homeBubble } from './pets.js';
+import type { PetKind } from './pet-rules.js';
 import { canKiss } from './romance.js';
 import { applyRoomBounds, growSceneData } from './room-size.js';
 import { startMarket } from './market-client.js';
@@ -24,6 +27,7 @@ import {
   MALL_FURNITURE,
   MOON_FURNITURE,
   GROWSHOP_FURNITURE,
+  PETSHOP_FURNITURE,
   ENGINEERING_YARD_FURNITURE,
   STORE_FLOOR_FURNITURE,
   SALOON_DOORS,
@@ -385,6 +389,10 @@ export function initializeGame() {
   game.mallFurniture = structuredClone(MALL_FURNITURE);
   game.moonFurniture = structuredClone(MOON_FURNITURE);
   game.growshopFurniture = structuredClone(GROWSHOP_FURNITURE);
+  game.petshopFurniture = structuredClone(PETSHOP_FURNITURE);
+  game.dogWalk = null;
+  game.dogLeftAt = null;
+  game.visitFreePets = [];
   game.moonCurve = 0;
   game.rocketTripAt = 0;
   game.moonTripAt = 0;
@@ -672,17 +680,32 @@ export function initializeGame() {
     shopBetting: drawShopFacade,
     moonRocket: drawMoonRocket,
     weedPot: drawWeedPot,
+    // animali: casette nella stanza (con il fumetto se hanno fame) ed espositori del negozio
+    petBird: (it: GameValue, t: GameValue) => drawPetHomeWithBubble('bird', it, t),
+    petHamster: (it: GameValue, t: GameValue) => drawPetHomeWithBubble('hamster', it, t),
+    petSnake: (it: GameValue, t: GameValue) => drawPetHomeWithBubble('snake', it, t),
+    petFish: (it: GameValue, t: GameValue) => drawPetHomeWithBubble('fish', it, t),
+    petDog: () => {},
+    petCat: () => {},
+    shopDog: drawShopPet,
+    shopCat: drawShopPet,
+    shopBird: drawShopPet,
+    shopHamster: drawShopPet,
+    shopSnake: drawShopPet,
+    shopFish: drawShopPet,
     weedJar: drawWeedJar,
     strainLemon: drawStrainDisplay,
     strainAmnesia: drawStrainDisplay,
     strainPurple: drawStrainDisplay,
     shopGrow: drawShopFacade,
+    shopPets: drawShopFacade,
     launchButton: drawLaunchButton,
     coffee: drawCoffeeMachine,
     toilet: drawToilet,
     sink: drawSink,
     shower: drawShower,
     shopCounter: drawCounter,
+    petCounter: drawCounter,
   };
   game.discoRGB = (h?: GameValue): GameValue => {
     const f: GameValue = (n?: GameValue): GameValue => {
@@ -808,4 +831,11 @@ export function initializeGame() {
   ];
   game.lastTime = performance.now();
   game.animClock = 0;
+}
+
+/** Casetta di un animale nella stanza, con il fumetto quando ha fame o ha appena mangiato. */
+function drawPetHomeWithBubble(kind: PetKind, it: GameValue, t: number): void {
+  drawPetHome(kind, it, t || 0);
+  const text = homeBubble(kind, t || 0);
+  if (text) drawPetBubble(it.x, it.y, (it.z || 30) + 6, text);
 }

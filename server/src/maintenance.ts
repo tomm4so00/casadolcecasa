@@ -1,3 +1,13 @@
+import {
+  PETS,
+  PET_DYING_WARN_MS,
+  PET_HUNGER_DEPLETION_SEC,
+  PET_KINDS,
+  type PetKind,
+  decodePets,
+  petDiesAt,
+} from '../../shared/pet-rules.js';
+
 interface Snapshot {
   val(): unknown;
 }
@@ -152,6 +162,68 @@ export async function sendDeathWarnings(
     await pushRef.update({ warnedFor: lastSeen });
   }
   return sent;
+}
+
+// ---------------------------------------------------------------- animali che stanno per morire
+
+/**
+ * Avvisa sul telefono chi ha un animale che sta per morire di fame (nelle ultime 6 ore) e non
+ * sta giocando in questo momento (chi gioca riceve l'avviso nel gioco). Ogni pericolo viene
+ * avvisato una volta sola: in sims_push/<id>/petWarned/<animale> resta l'ora prevista della morte.
+ * Restituisce quanti avvisi sono partiti.
+ */
+export async function sendPetWarnings(
+  database: MaintenanceDatabase,
+  now: number,
+  send: PushSender,
+): Promise<number> {
+  const saves = (await database.ref('sims_saves').get()).val();
+  if (!record(saves)) return 0;
+  let sent = 0;
+  for (const [playerId, save] of Object.entries(saves)) {
+    if (!record(save) || save.dead || !record(save.pets)) continue;
+    // chi ha salvato negli ultimi minuti sta giocando: lo avvisa il gioco stesso
+    if (typeof save.savedAt === 'number' && now - save.savedAt < 10 * 60000) continue;
+    const pets = decodePets(save.pets);
+    const dying = PET_KINDS.filter((k) => {
+      const p = pets[k];
+      if (!p) return false;
+      const left = petDiesAt(p, PET_HUNGER_DEPLETION_SEC) - now;
+      return left > 0 && left <= PET_DYING_WARN_MS;
+    });
+    if (!dying.length) continue;
+    const pushRef = database.ref('sims_push/' + playerId);
+    const push = (await pushRef.get()).val();
+    if (!record(push) || !record(push.tokens)) continue;
+    const warned = record(push.petWarned) ? push.petWarned : {};
+    for (const kind of dying) {
+      const diesAt = Math.round(petDiesAt(pets[kind]!, PET_HUNGER_DEPLETION_SEC));
+      if (warned[kind] === diesAt) continue;
+      const text = petWarningText(kind, diesAt, now);
+      for (const [key, entry] of Object.entries(push.tokens)) {
+        if (!record(entry) || typeof entry.token !== 'string') continue;
+        const result = await send(entry.token, {
+          ...text,
+          link: GAME_URL,
+          tag: 'sims-pet-' + kind,
+        });
+        if (result === 'sent') sent++;
+        if (result === 'gone') await database.ref(`sims_push/${playerId}/tokens/${key}`).remove();
+      }
+      await database.ref(`sims_push/${playerId}/petWarned`).update({ [kind]: diesAt });
+    }
+  }
+  return sent;
+}
+
+/** Testo dell'avviso per l'animale, con le ore che restano. */
+export function petWarningText(kind: PetKind, diesAt: number, now: number) {
+  const info = PETS[kind];
+  const hours = Math.max(1, Math.round((diesAt - now) / 3600000));
+  return {
+    title: `🆘 Il tuo ${info.name} ${info.emoji} sta per morire!`,
+    body: `Non mangia da troppo tempo. Entra in Casa dolce casa e dagli da mangiare entro ${hours} ${hours === 1 ? 'ora' : 'ore'}.`,
+  };
 }
 
 // ---------------------------------------------------------------- razzo quasi pronto

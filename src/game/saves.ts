@@ -2,7 +2,9 @@ import { decodeWeed } from './weed-rules.js';
 import { decodeFlu, isSick } from './flu-rules.js';
 import { myBenchPose } from './courtyard-fun.js';
 import { decodeDailyUses } from './daily-limits.js';
-import { weedRoomItems } from './weed.js';
+import { decodePets } from './pet-rules.js';
+import { freePetsForLayout, petRoomItems, syncPetHomes } from './pets.js';
+import { syncWeedPot, weedRoomItems } from './weed.js';
 import { publishVitals } from './players-hud-rules.js';
 import { advanceNeeds } from './simulation.js';
 import { needsRules } from './needs-rules.js';
@@ -158,7 +160,15 @@ export function buildSaveData(..._args: GameValue[]): SaveV8 {
   if (game.player.personality) data.personality = game.player.personality;
   if (game.player.workDay) data.workDay = game.player.workDay;
   if (game.player.daily) data.daily = game.player.daily;
-  if (game.player.weed && (game.player.weed.plantedAt || game.player.weed.grams))
+  if (game.player.pets && Object.keys(game.player.pets).length) {
+    syncPetHomes();
+    data.pets = game.player.pets;
+  }
+  syncWeedPot();
+  if (
+    game.player.weed &&
+    (game.player.weed.plantedAt || game.player.weed.grams || game.player.weed.potX !== undefined)
+  )
     data.weed = game.player.weed;
   if (game.player.coffeeAt) data.coffeeAt = game.player.coffeeAt;
   if (game.player.flu && (game.player.flu.nextAt || game.player.flu.sickAt))
@@ -220,6 +230,7 @@ export function applySave(value: unknown): void {
   game.player.personality = decodePersonality(s.personality);
   game.player.workDay = decodeWorkDay(s.workDay);
   game.player.daily = decodeDailyUses(s.daily);
+  game.player.pets = decodePets(s.pets);
   game.player.weed = decodeWeed(s.weed);
   game.player.flu = decodeFlu(s.flu);
   game.player.coffeeAt = num(s.coffeeAt, 0);
@@ -427,8 +438,9 @@ export function getMyRoomMap(..._args: GameValue[]): GameValue {
   const room: GameValue = game.roomsState[game.myAssignedRoomIdx ?? -1];
   const hung = roomPaintings(room);
   for (const slot of PAINTING_SLOTS) if (!hung[slot]) delete combined[paintingKey(slot)];
-  // pianta in vaso e barattolo d'erba
+  // pianta in vaso e barattolo d'erba, casette degli animali
   Object.assign(combined, weedRoomItems());
+  Object.assign(combined, petRoomItems());
   return combined;
 }
 
@@ -451,8 +463,11 @@ export function publishRoomLayout(..._args: GameValue[]): GameValue {
       ...(o.rot ? { rot: o.rot } : {}),
       ...(o.grow ? { grow: o.grow } : {}),
       ...(o.jar ? { jar: o.jar } : {}),
+      ...(o.pet ? { pet: o.pet } : {}),
     };
   });
+  // cane e gatto (chi visita la stanza li vede girare)
+  Object.assign(layout, freePetsForLayout());
   const key: GameValue = JSON.stringify(layout);
   if (key === game.lastLayoutKey) return;
   game.lastLayoutKey = key;
@@ -622,6 +637,7 @@ export function startPresence(..._args: GameValue[]): GameValue {
       say: game.mySay,
       sayT: game.mySayT,
       ...(isSick(game.player.flu, Date.now()) ? { sick: 1 } : {}),
+      ...(game.dogWalk ? { dog: 1 } : {}),
       ...(game.player.isSleeping ? { bed: game.bedSlot } : {}),
     };
     const key: GameValue = JSON.stringify(payload);

@@ -31,6 +31,8 @@ export interface OnlinePlayer extends PresenceInfo {
   bed?: number;
   /** 1 se ha l'influenza (si attacca a chi gli si avvicina). */
   sick?: number;
+  /** 1 se porta a spasso il suo cane al guinzaglio. */
+  dog?: number;
 }
 
 export function decodeChatMessage(value: unknown): ChatMessage | null {

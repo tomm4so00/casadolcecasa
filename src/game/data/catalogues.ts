@@ -1574,13 +1574,13 @@ export const ENGINEERING_YARD_FURNITURE = {
   },
 };
 
-// Centro commerciale (600×400): le vetrine dei tre negozi lungo la parete di fondo; avvicinandosi
+// Centro commerciale (600×400): le vetrine dei cinque negozi lungo la parete di fondo; avvicinandosi
 // si entra. `enter` è l'attività che porta dentro il negozio.
 export const MALL_FURNITURE = {
   shopFurniture: {
-    x: -218,
+    x: -232,
     y: -189,
-    w: 128,
+    w: 108,
     h: 22,
     z: 128,
     name: 'Negozio di Mobili 🛋️',
@@ -1589,9 +1589,9 @@ export const MALL_FURNITURE = {
     moveable: false,
   },
   shopClothes: {
-    x: -74,
+    x: -116,
     y: -189,
-    w: 128,
+    w: 108,
     h: 22,
     z: 128,
     name: 'Boutique Dolce Casa 👗',
@@ -1599,10 +1599,21 @@ export const MALL_FURNITURE = {
     enter: 'clothesshop',
     moveable: false,
   },
-  shopGrow: {
-    x: 74,
+  shopPets: {
+    x: 0,
     y: -189,
-    w: 128,
+    w: 108,
+    h: 22,
+    z: 128,
+    name: 'Negozio di Animali 🐾',
+    shop: 'animali',
+    enter: 'petshop',
+    moveable: false,
+  },
+  shopGrow: {
+    x: 116,
+    y: -189,
+    w: 108,
     h: 22,
     z: 128,
     name: 'Grow Shop 🌿',
@@ -1611,9 +1622,9 @@ export const MALL_FURNITURE = {
     moveable: false,
   },
   shopBetting: {
-    x: 218,
+    x: 232,
     y: -189,
-    w: 128,
+    w: 108,
     h: 22,
     z: 128,
     name: 'Sala Scommesse 🎰',
@@ -1668,6 +1679,56 @@ export const GROWSHOP_FURNITURE = {
     z: 90,
     strain: 'purple',
     name: 'Purple Haze 🍇',
+    moveable: false,
+  },
+  doorExit: { x: 0, y: 160, w: 60, h: 15, z: 110, name: 'Torna Fuori 🚪', moveable: false },
+};
+
+// Negozio di animali: sei espositori (cucce per cane e gatto, gabbie, teca e acquario), il bancone
+// delle adozioni e l'uscita.
+export const PETSHOP_FURNITURE = {
+  shopDog: { x: -120, y: -125, w: 40, h: 30, z: 20, pet: 'dog', name: 'Cane 🐶', moveable: false },
+  shopCat: { x: -40, y: -140, w: 36, h: 28, z: 20, pet: 'cat', name: 'Gatto 🐱', moveable: false },
+  shopBird: {
+    x: 40,
+    y: -140,
+    w: 26,
+    h: 26,
+    z: 52,
+    pet: 'bird',
+    name: 'Uccellino 🐦',
+    moveable: false,
+  },
+  shopHamster: {
+    x: 120,
+    y: -125,
+    w: 40,
+    h: 28,
+    z: 30,
+    pet: 'hamster',
+    name: 'Criceto 🐹',
+    moveable: false,
+  },
+  shopSnake: {
+    x: -140,
+    y: 30,
+    w: 52,
+    h: 28,
+    z: 34,
+    pet: 'snake',
+    name: 'Serpente 🐍',
+    moveable: false,
+  },
+  shopFish: { x: 140, y: 30, w: 48, h: 24, z: 40, pet: 'fish', name: 'Pesce 🐟', moveable: false },
+  petCounter: {
+    x: 80,
+    y: 105,
+    w: 80,
+    h: 32,
+    z: 60,
+    name: 'Bancone delle adozioni 🏡',
+    label: 'ADOZIONI',
+    color: '#e67e22',
     moveable: false,
   },
   doorExit: { x: 0, y: 160, w: 60, h: 15, z: 110, name: 'Torna Fuori 🚪', moveable: false },
@@ -2357,6 +2418,12 @@ export const ENV_DECOR = {
     { kind: 'plant', x: -168, y: -160, w: 26, h: 26, z: 60 },
     { kind: 'plant', x: 168, y: 150, w: 26, h: 26, z: 60 },
   ],
+  negozio_animali: [
+    { kind: 'plant', x: -168, y: -160, w: 26, h: 26, z: 60 },
+    { kind: 'plant', x: 168, y: -160, w: 26, h: 26, z: 60 },
+    { kind: 'plant', x: -168, y: 140, w: 26, h: 26, z: 60 },
+    { kind: 'plant', x: 168, y: 140, w: 26, h: 26, z: 60 },
+  ],
   growshop: [
     { kind: 'plant', x: -168, y: -160, w: 26, h: 26, z: 60 },
     { kind: 'plant', x: 168, y: -160, w: 26, h: 26, z: 60 },
@@ -2382,12 +2449,13 @@ export const ENV_DECOR = {
     { kind: 'bench', x: 170, y: 50, w: 50, h: 16 },
     // colonne tra le vetrine, con le lampade
     { kind: 'mallColumn', x: -291, y: -186, w: 16, h: 16, z: 128 },
-    { kind: 'mallColumn', x: -146, y: -186, w: 16, h: 16, z: 128 },
-    { kind: 'mallColumn', x: 0, y: -186, w: 16, h: 16, z: 128 },
-    { kind: 'mallColumn', x: 146, y: -186, w: 16, h: 16, z: 128 },
+    { kind: 'mallColumn', x: -174, y: -186, w: 12, h: 16, z: 128 },
+    { kind: 'mallColumn', x: -58, y: -186, w: 12, h: 16, z: 128 },
+    { kind: 'mallColumn', x: 58, y: -186, w: 12, h: 16, z: 128 },
+    { kind: 'mallColumn', x: 174, y: -186, w: 12, h: 16, z: 128 },
     { kind: 'mallColumn', x: 291, y: -186, w: 16, h: 16, z: 128 },
-    { kind: 'plant', x: -146, y: -152, w: 22, h: 22, z: 55 },
-    { kind: 'plant', x: 146, y: -152, w: 22, h: 22, z: 55 },
+    { kind: 'plant', x: -174, y: -152, w: 22, h: 22, z: 55 },
+    { kind: 'plant', x: 174, y: -152, w: 22, h: 22, z: 55 },
     // palme nei vasi agli angoli
     { kind: 'mallPalm', x: -262, y: -95, w: 30, h: 30, z: 110 },
     { kind: 'mallPalm', x: 262, y: -95, w: 30, h: 30, z: 110 },
@@ -2529,6 +2597,25 @@ export const ENV_STYLE = {
     ],
   },
   luna: { floor: 'moon', floorColor: '#bdbdb6', outdoor: true },
+  negozio_animali: {
+    floor: 'wood',
+    floorColor: '#d9b48f',
+    wall: '#fdebd0',
+    wallStyle: 'plain',
+    trim: '#e67e22',
+    decor: {
+      back: [{ t: 'neon', u: 200, text: 'PET SHOP', color: '255,170,60' }],
+      left: [
+        { t: 'poster', u: 110, text: 'ADOTTA UN AMICO', color: '#e67e22' },
+        { t: 'clock', u: 260 },
+      ],
+    },
+    lights: [
+      { x: -80, y: -110, z: 0, r: 190, color: '255,235,200' },
+      { x: 80, y: -110, z: 0, r: 190, color: '255,235,200' },
+      { x: 0, y: 60, z: 0, r: 230, color: '255,245,225' },
+    ],
+  },
   growshop: {
     floor: 'concrete',
     floorColor: '#4a4a4a',
@@ -2564,10 +2651,11 @@ export const ENV_STYLE = {
       ],
     },
     lights: [
-      { x: -218, y: -130, z: 0, r: 170, color: '255,190,120' },
-      { x: -74, y: -130, z: 0, r: 170, color: '255,170,215' },
-      { x: 74, y: -130, z: 0, r: 170, color: '170,255,150' },
-      { x: 218, y: -130, z: 0, r: 170, color: '220,180,255' },
+      { x: -232, y: -130, z: 0, r: 150, color: '255,190,120' },
+      { x: -116, y: -130, z: 0, r: 150, color: '255,170,215' },
+      { x: 0, y: -130, z: 0, r: 150, color: '255,215,150' },
+      { x: 116, y: -130, z: 0, r: 150, color: '170,255,150' },
+      { x: 232, y: -130, z: 0, r: 150, color: '220,180,255' },
       { x: 0, y: 60, z: 0, r: 260, color: '255,245,225' },
       { x: -150, y: 150, z: 0, r: 150, color: '255,235,200' },
       { x: 150, y: 150, z: 0, r: 150, color: '255,235,200' },

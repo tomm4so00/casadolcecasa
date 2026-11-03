@@ -145,6 +145,13 @@ export interface GameContext {
   bettingFurniture: SceneMap;
   moonFurniture: SceneMap;
   growshopFurniture: SceneMap;
+  petshopFurniture: SceneMap;
+  /** Cane al guinzaglio che segue il giocatore (null se è a casa). */
+  dogWalk: GameValue;
+  /** Dove è stato lasciato il cane togliendogli il guinzaglio. */
+  dogLeftAt: { x: number; y: number } | null;
+  /** Cani e gatti di chi abita nella stanza che si sta visitando. */
+  visitFreePets: string[];
   /** Stanza in cui si stava dormendo quando si è chiuso il gioco (null = la propria). */
   sleepRoom: number | null;
   /** La porta del laboratorio resta aperta fino a questo istante (performance.now) mentre la si attraversa. */

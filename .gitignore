@@ -16,3 +16,6 @@ server/lib/
 
 # copie delle regole Firebase fatte prima di ogni pubblicazione
 firebase/backups/
+
+# Impostazioni personali di Claude Code
+.claude/settings.local.json

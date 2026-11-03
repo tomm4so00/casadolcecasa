@@ -1,4 +1,5 @@
 import { purchaseItem, spendMoney } from './economy.js';
+import { startDogWalk } from './pets.js';
 import type { GameValue } from './context.js';
 import { game } from './context.js';
 import { lifetime, dom, browser } from './runtime.js';
@@ -418,6 +419,15 @@ export function returnHomeFromActivity(..._args: GameValue[]): GameValue {
 }
 
 export async function handleSubAction(..._args: GameValue[]): Promise<void> {
+  if (
+    game.view.activeEnvironment === 'PLAYER_ROOM' &&
+    game.activeTargetProp === 'petDog' &&
+    isMyRoomNow()
+  ) {
+    startDogWalk();
+    dom('btn-act-sub').classList.add('hidden');
+    return;
+  }
   if (
     game.view.activeEnvironment === 'PLAYER_ROOM' &&
     game.activeTargetProp === 'safe' &&

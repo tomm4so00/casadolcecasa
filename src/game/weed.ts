@@ -29,30 +29,61 @@ export const JAR_SPOT_WITH_POT = { x: 70, y: 82 };
 const weed = (): WeedState => (game.player.weed ??= emptyWeed());
 const euro = (n: number) => `${n.toLocaleString('it-IT')} €`;
 
+/** Il vaso resta lo stesso oggetto finché la pianta cresce, così quando lo sposti la posizione resta. */
+let pot: GameValue = null;
+
+/** Dove sta il vaso: dove l'ha messo il giocatore, oppure il posto di partenza. */
+const potSpot = (w: WeedState) => (w.potX !== undefined ? { x: w.potX, y: w.potY! } : POT_SPOT);
+
+/** Anche il barattolo resta lo stesso oggetto, così si può spostare. */
+let jar: GameValue = null;
+
+/** Prima di salvare: la posizione di vaso e barattolo (spostati come mobili) torna nello stato. */
+export function syncWeedPot(): void {
+  const w = game.player.weed;
+  if (!w) return;
+  if (pot) {
+    w.potX = Math.round(pot.x);
+    w.potY = Math.round(pot.y);
+  }
+  if (jar && w.grams > 0) {
+    w.jarX = Math.round(jar.x);
+    w.jarY = Math.round(jar.y);
+  }
+}
+
 /** Oggetti da aggiungere alla mappa della propria stanza: il vaso con la pianta e il barattolo. */
 export function weedRoomItems(): Record<string, GameValue> {
   const w = weed();
   const items: Record<string, GameValue> = {};
-  if (w.plantedAt && w.strain)
-    items.weedPot = {
-      ...POT_SPOT,
-      w: 24,
-      h: 24,
-      z: 40,
-      name: `${STRAINS[w.strain].name} 🌱`,
-      grow: { s: w.strain, p: w.plantedAt },
-      moveable: false,
-    };
-  if (w.grams > 0)
-    items.weedJar = {
-      ...(w.plantedAt ? JAR_SPOT_WITH_POT : POT_SPOT),
-      w: 14,
-      h: 14,
-      z: 24,
-      name: 'Barattolo di erba 🌿',
-      jar: { g: w.grams, s: w.jarStrain || 'amnesia' },
-      moveable: false,
-    };
+  if (w.plantedAt && w.strain) {
+    if (!pot || pot.grow.p !== w.plantedAt)
+      pot = {
+        ...potSpot(w),
+        w: 24,
+        h: 24,
+        z: 40,
+        name: `${STRAINS[w.strain].name} 🌱`,
+        grow: { s: w.strain, p: w.plantedAt },
+        moveable: true,
+      };
+    items.weedPot = pot;
+  } else pot = null;
+  if (w.grams > 0) {
+    if (!jar) {
+      // dove l'ha messo il giocatore; se no accanto al vaso, o al posto del vaso se è vuoto
+      const base = pot ? { x: pot.x, y: pot.y } : potSpot(w);
+      const start =
+        w.jarX !== undefined
+          ? { x: w.jarX, y: w.jarY! }
+          : pot
+            ? { x: base.x, y: base.y - (POT_SPOT.y - JAR_SPOT_WITH_POT.y) }
+            : base;
+      jar = { ...start, w: 14, h: 14, z: 24, name: 'Barattolo di erba 🌿', moveable: true };
+    }
+    jar.jar = { g: w.grams, s: w.jarStrain || 'amnesia' };
+    items.weedJar = jar;
+  } else jar = null;
   return items;
 }
 
@@ -106,6 +137,11 @@ export function tendPlant(): void {
       4500,
     );
     return;
+  }
+  // la pianta diventa un barattolo: compare dove c'era il vaso (se il barattolo c'era già, resta lì)
+  if (pot && !jar) {
+    done.jarX = Math.round(pot.x);
+    done.jarY = Math.round(pot.y);
   }
   game.player.weed = done;
   sfx('mission');

@@ -43,6 +43,7 @@ export interface SaveV8 {
   weed?: unknown;
   flu?: unknown;
   daily?: unknown;
+  pets?: unknown;
   /** Stanza (indice globale) e cuscino del letto in cui si sta dormendo. */
   sleepRoom?: unknown;
   bedSlot?: unknown;

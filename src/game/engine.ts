@@ -8,6 +8,8 @@ import {
 } from './bathroom.js';
 import { drawClothesPile, drawFluGerms, drawSmokePuffs, undressedLook } from './render/avatars.js';
 import { isSick } from './flu-rules.js';
+import { petDrawables, updatePets } from './pets.js';
+import { collarPoint, drawLeash, drawQuadruped } from './render/pets.js';
 import {
   drawCoinToss,
   drawIceCream,
@@ -143,6 +145,7 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
   if (game.benchSit) updateBench(animTime);
   if (game.coinToss) updateCoinToss(animTime);
   if (game.iceCream) updateIceCream(animTime);
+  updatePets(animTime);
   if (kissActive()) approachKissPartner(delta);
   if (
     !game.player.isSleeping &&
@@ -357,6 +360,8 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
       labels.push((): GameValue => drawKissHearts(game.playerPos.x, game.playerPos.y, since));
     }
   }
+  // cane e gatto nella stanza, e il cane al guinzaglio
+  petDrawables(animTime, drawables, labels);
   game.simulationBots.forEach((bot?: GameValue): GameValue => {
     if (bot.env === game.view.activeEnvironment) {
       if (!bot.nextSayAt || animTime > bot.nextSayAt) {
@@ -450,6 +455,32 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
       ),
     );
     if (act === 'rocket') return; // a bordo del razzo
+    // cane al guinzaglio di un altro giocatore: lo segue a distanza
+    if (op.dog && !isOffline) {
+      const dg = s.dog || (s.dog = { x: s.x - 22, y: s.y + 10, dx: 1, dy: 0, moving: false });
+      const ddx = s.x - dg.x,
+        ddy = s.y - dg.y;
+      const dd = Math.hypot(ddx, ddy);
+      dg.moving = dd > 29;
+      if (dd > 80) {
+        dg.x = s.x - 22;
+        dg.y = s.y + 10;
+      } else if (dd > 28) {
+        const kk = Math.min(1, delta * 8);
+        dg.x += (ddx / dd) * (dd - 28) * kk;
+        dg.y += (ddy / dd) * (dd - 28) * kk;
+        dg.dx = ddx;
+        dg.dy = ddy;
+      }
+      drawables.push({
+        depth: dg.x + dg.y,
+        draw: (): GameValue =>
+          drawQuadruped('dog', dg.x, dg.y, animTime, { moving: dg.moving, dx: dg.dx, dy: dg.dy }),
+      });
+      const ox = s.x,
+        oy = s.y;
+      labels.push((): GameValue => drawLeash(ox, oy, collarPoint(dg.x, dg.y, dg.dx, dg.dy)));
+    } else if (s.dog) s.dog = null;
     if (act === 'smoke') {
       const sx = s.x,
         sy = s.y;

@@ -1,6 +1,7 @@
 import type { WeedState } from './weed-rules.js';
 import type { FluState } from './flu-rules.js';
 import type { DailyUses } from './daily-limits.js';
+import type { PetBook } from './pet-rules.js';
 import type { PersonalityState } from './personality-rules.js';
 import type { WorkDay } from './job-pay.js';
 import type { RomanceBook } from './romance-rules.js';
@@ -135,6 +136,8 @@ export interface CharacterState {
   flu?: FluState;
   /** Azioni con un massimo al giorno già fatte oggi (viaggio, WC). */
   daily?: DailyUses;
+  /** Animali domestici: fame e posizione delle casette. */
+  pets?: PetBook;
 }
 export interface SessionState {
   authUid: string | null;
