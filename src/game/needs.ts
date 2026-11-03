@@ -26,6 +26,7 @@ import { isoProject, isoScale } from './render/primitives.js';
 import { sfx } from './audio.js';
 import { updateFlu } from './flu.js';
 import { updatePetHud } from './pets.js';
+import { welcomeTeachesPin } from './welcome.js';
 export async function reapAbsentPlayers(..._args: GameValue[]): Promise<GameValue> {
   if (!game.session.OFFLINE) return; // The trusted scheduled process handles other characters.
   let reaped: GameValue = [];
@@ -560,6 +561,7 @@ export function updateNeeds(delta?: GameValue): GameValue {
     game.session.saveReady &&
     game.moneyLevel > game.pinPromptMoneyThreshold &&
     !game.hasSetSafePin &&
+    !welcomeTeachesPin() &&
     hasRoom() &&
     !game.dialogResolve
   ) {

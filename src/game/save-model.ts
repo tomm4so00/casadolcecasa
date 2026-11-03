@@ -40,6 +40,7 @@ export interface SaveV8 {
   romance?: unknown;
   relations?: unknown;
   personality?: unknown;
+  welcome?: unknown;
   workDay?: unknown;
   weed?: unknown;
   flu?: unknown;

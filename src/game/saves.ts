@@ -24,6 +24,7 @@ import { startChat } from './chat.js';
 import { bestOwnedByProp } from './furniture-tiers.js';
 import { decodeRomance } from './romance-rules.js';
 import { decodeRelations } from './relations-rules.js';
+import { decodeWelcome } from './welcome-rules.js';
 import { decodePersonality, obtainedPersonality, personalityLevel } from './personality-rules.js';
 import { decodeWorkDay } from './job-pay.js';
 import { pushOutOfCorridor } from './room-layout.js';
@@ -142,6 +143,7 @@ export function buildSaveData(..._args: GameValue[]): SaveV8 {
   if (game.player.relations && Object.keys(game.player.relations).length)
     data.relations = game.player.relations;
   if (game.player.personality) data.personality = game.player.personality;
+  if (game.player.welcome) data.welcome = game.player.welcome;
   if (game.player.workDay) data.workDay = game.player.workDay;
   if (game.player.daily) data.daily = game.player.daily;
   if (game.player.pets && Object.keys(game.player.pets).length) {
@@ -245,6 +247,9 @@ export function applySave(value: unknown): void {
   game.player.stats = Object.assign(game.player.stats, s.stats || {});
   game.player.missionIndex = num(s.missionIndex, 0);
   if ((s.missionSet || 1) < 3) game.player.missionIndex = 0; // missioni eliminate: i progressi vecchi non valgono per le nuove
+  // missioni di benvenuto: a chi ha già mangiato, fatto la doccia e lavorato non si propongono
+  const st = game.player.stats;
+  game.player.welcome = decodeWelcome(s.welcome, st.meals > 0 && st.showers > 0 && st.shifts > 0);
   game.player.ownedItems = s.ownedItems || {};
   game.player.ownedFurniture = s.ownedFurniture || {};
   if (s.equipped) {

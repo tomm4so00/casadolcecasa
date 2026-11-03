@@ -6,6 +6,7 @@ import type { PersonalityState } from './personality-rules.js';
 import type { WorkDay } from './job-pay.js';
 import type { RomanceBook } from './romance-rules.js';
 import type { RelationBook } from './relations-rules.js';
+import type { WelcomeState } from './welcome-rules.js';
 import type { GameDatabase } from './database.js';
 
 export interface Point {
@@ -129,6 +130,8 @@ export interface CharacterState {
   romance?: RomanceBook;
   /** Come lo hanno trattato gli altri giocatori: amici e nemici. */
   relations?: RelationBook;
+  /** Missioni di benvenuto: a che punto si è. */
+  welcome?: WelcomeState;
   /** Punti delle personalità sviluppate giocando. */
   personality?: PersonalityState;
   /** Turni di lavoro iniziati oggi (massimo SHIFTS_PER_DAY). */

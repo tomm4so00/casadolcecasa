@@ -7,6 +7,7 @@ import { saveGame, withTimeout } from './saves.js';
 import { openDialog } from './interface.js';
 import { RELAX_COOLDOWN_MS, RELAX_GAIN } from './furniture-benefits.js';
 import { tierOfPlaced } from './furniture-tiers.js';
+import { openWelcomeList, tickWelcome, updateWelcomeHud } from './welcome.js';
 // ---------- Divano e TV ----------
 /** Pausa su divano o TV. Con `quiet` non avvisa se è troppo presto. Restituisce true se è andata. */
 export function relaxWith(kind?: GameValue, item?: GameValue, quiet = false): boolean {
@@ -45,6 +46,8 @@ export function getWealth(..._args: GameValue[]): GameValue {
 }
 
 export function updateMissionHud(..._args: GameValue[]): GameValue {
+  // senza missioni a punti si mostrano quelle di benvenuto
+  if (!game.MISSIONS.length) return updateWelcomeHud();
   const m: GameValue = game.MISSIONS[game.player.missionIndex];
   const el: GameValue = dom('mission-text');
   el.style.display = game.MISSIONS.length ? '' : 'none'; // senza missioni il riquadro sparisce
@@ -53,6 +56,11 @@ export function updateMissionHud(..._args: GameValue[]): GameValue {
 
 export async function checkMissions(..._args: GameValue[]): Promise<void> {
   if (!game.session.saveReady) return;
+  if (!game.MISSIONS.length) {
+    await tickWelcome();
+    updateWelcomeHud();
+    return;
+  }
   const m: GameValue = game.MISSIONS[game.player.missionIndex];
   if (m) {
     if (m.skip && m.skip()) {
@@ -72,6 +80,7 @@ export async function checkMissions(..._args: GameValue[]): Promise<void> {
 }
 
 export function openMissions(..._args: GameValue[]): GameValue {
+  if (!game.MISSIONS.length) return void openWelcomeList();
   const lines: GameValue = game.MISSIONS.map(
     (m?: GameValue, i?: GameValue): GameValue =>
       `${i < game.player.missionIndex ? '✅' : i === game.player.missionIndex ? '👉' : '⬜'} ${m.text} · ${m.reward} €`,
