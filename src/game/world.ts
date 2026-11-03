@@ -1,4 +1,12 @@
 import { buyPlant, plantLabel, smokeJoint, tendPlant } from './weed.js';
+import {
+  SAFE_LEVEL2_PRICE,
+  isValidPin,
+  maxPinDigit,
+  pinHint,
+  pinTooHighForLevel,
+  safeLevel,
+} from './safe-pin.js';
 import { resaleValue } from './resale-rules.js';
 import { PETS, PET_FOOD_PRICE, type PetKind } from './pet-rules.js';
 import { PET_OF_KEY, buyPet, feed, giveUpForAdoption, petSpots } from './pets.js';
@@ -35,8 +43,7 @@ import type { SceneMap } from './models.js';
 import { game } from './context.js';
 import { lifetime, dom, browser } from './runtime.js';
 import {
-  SAFE_PIN_HINT,
-  SAFE_PIN_RE,
+  mySafeLevel,
   getMyRoomMap,
   hasRoom,
   hashPin,
@@ -58,7 +65,7 @@ import {
 } from './character.js';
 import { footprintOf, isoProject, isoScale } from './render/primitives.js';
 import { mgButtonText, mgInteract, mgStart, openComputerShopModal } from './jobs.js';
-import { coffeeLeftMs, openDealer, useCoffee } from './needs.js';
+import { coffeeLeftMs, openDealer, promptSetSafePin, useCoffee } from './needs.js';
 import { showGraveInfo } from './render/objects.js';
 import { startShower, startToilet, startWash } from './bathroom.js';
 import { sfx } from './audio.js';
@@ -77,16 +84,16 @@ export async function changeSafePin(..._args: GameValue[]): Promise<GameValue> {
   if (!room || room.ownerId !== game.session.myPlayerId) return;
   const res: GameValue = await openDialog({
     title: game.hasSetSafePin ? '🔑 Cambia combinazione' : '🔑 Imposta combinazione',
-    text: `Scegli la nuova combinazione segreta della cassaforte: ${SAFE_PIN_HINT}.`,
-    input: { placeholder: '134', numeric: true, maxLength: 3 },
+    text: `Scegli la nuova combinazione segreta della cassaforte: ${pinHint(mySafeLevel())}.`,
+    input: { placeholder: mySafeLevel() >= 2 ? '152' : '134', numeric: true, maxLength: 3 },
     buttons: [
       { label: 'Annulla', value: null, color: '#57606f' },
       { label: 'Salva', value: 'ok', color: '#2ed573' },
     ],
   });
   if (res.action !== 'ok') return;
-  if (!SAFE_PIN_RE.test(res.value)) {
-    toast('❌ Combinazione non valida: servono ' + SAFE_PIN_HINT + '.');
+  if (!isValidPin(res.value, mySafeLevel())) {
+    toast('❌ Combinazione non valida: servono ' + pinHint(mySafeLevel()) + '.');
     return;
   }
   game.safePinCode = hashPin(res.value, room.id);
@@ -1177,10 +1184,15 @@ export async function handleSafeInteraction(..._args: GameValue[]): Promise<Game
       value: 'pin',
       color: '#2ed573',
     });
+    const level = mySafeLevel();
     const res: GameValue = await openDialog({
-      title: '🔐 Cassaforte personale',
+      title: `🔐 Cassaforte personale · Livello ${level}`,
       text:
         `In cassaforte: ${game.moneyLevel} €\n\nTutti i tuoi soldi sono qui, al sicuro sul server… a meno che qualcuno indovini il PIN!` +
+        `\n\nCombinazione: ${pinHint(level)}.` +
+        (level < 2
+          ? `\n🔐 Con la cassaforte livello 2 (negozio di mobili, ${SAFE_LEVEL2_PRICE} €) puoi usare anche il 5: è più difficile da indovinare.`
+          : '') +
         (game.hasSetSafePin ? '' : '\n\n⚠️ La cassaforte non ha ancora un PIN.'),
       buttons,
     });
@@ -1222,9 +1234,11 @@ export async function handleSafeInteraction(..._args: GameValue[]): Promise<Game
     alarmOn(record);
     return;
   }
+  // la cassaforte livello 2 accetta combinazioni con le cifre fino a 5
+  const level = safeLevel(room.economy?.ownedFurniture);
   const res: GameValue = await openDialog({
-    title: '🕵️ Tentativo di scasso',
-    text: `Inserisci la combinazione segreta di 3 cifre (da 1 a 4).\nTentativi rimasti: ${maxTries - tries}`,
+    title: `🕵️ Tentativo di scasso · Cassaforte livello ${level}`,
+    text: `Inserisci la combinazione segreta di 3 cifre (da 1 a ${maxPinDigit(level)}).\nTentativi rimasti: ${maxTries - tries}`,
     input: { placeholder: '???', numeric: true, maxLength: 3 },
     buttons: [
       { label: 'Lascia stare', value: null, color: '#57606f' },
@@ -1233,8 +1247,8 @@ export async function handleSafeInteraction(..._args: GameValue[]): Promise<Game
   });
   if (res.action !== 'try' || !res.value) return;
   // un tentativo scritto male non conta
-  if (!SAFE_PIN_RE.test(res.value)) {
-    toast('❌ La combinazione è fatta di ' + SAFE_PIN_HINT + '.');
+  if (!isValidPin(res.value, level)) {
+    toast('❌ La combinazione è fatta di ' + pinHint(level) + '.');
     return;
   }
   // il tentativo si registra online prima di sapere se la combinazione è giusta
@@ -1494,7 +1508,7 @@ export function openFurnitureShopModal(..._args: GameValue[]): GameValue {
     card.innerHTML = `
           <div class="shop-item-info">
             <h4>${item.name}</h4>
-            <p>💰 ${item.price} € · ${TIER_LABEL[tierOf(item)]}</p>
+            <p>💰 ${item.price} € · ${item.category === 'safe' ? 'Livello 2 🔐' : TIER_LABEL[tierOf(item)]}</p>
             <p class="shop-item-benefit">${furnitureBenefit(item)}</p>
           </div>
           ${
@@ -1525,7 +1539,9 @@ export async function buyFurnitureItem(itemId: string): Promise<void> {
   );
   if (!(await purchaseItem('ownedFurniture', itemId, price))) return;
   const tier = tierOf(definition);
-  if (before && TIER_RANK[tierOf(before)] > TIER_RANK[tier]) {
+  if (definition.category === 'safe') {
+    toast('🔐 Cassaforte livello 2 installata nella parete della tua stanza!');
+  } else if (before && TIER_RANK[tierOf(before)] > TIER_RANK[tier]) {
     toast(`Acquistato! Nella stanza resta però ${before.name}, che è di una fascia superiore.`);
   } else if (tier === 'lux') {
     toast('✨ Versione di lusso acquistata! Ha sostituito il modello precedente nella tua stanza.');
@@ -1562,6 +1578,16 @@ Sparirà dalla tua stanza (se hai un modello più semplice, tornerà quello).`,
   toast(`💸 Hai rivenduto ${definition.name}: +${refund} € in cassaforte.`, 3500);
   saveGame(true);
   openFurnitureShopModal();
+  // senza la cassaforte livello 2 il 5 non è più permesso: se la combinazione lo usa va cambiata
+  const room: GameValue = game.roomsState[game.myAssignedRoomIdx ?? -1];
+  if (
+    definition.category === 'safe' &&
+    room &&
+    pinTooHighForLevel(room.pin, room.id, mySafeLevel())
+  )
+    void promptSetSafePin(
+      `La cassaforte è tornata al livello 1, che accetta solo le cifre da 1 a 4, e la tua combinazione contiene un 5. Scegline una nuova: ${pinHint(1)}.`,
+    );
 }
 
 // Gestione intelligente del menu Lavoro

@@ -391,12 +391,71 @@
     <!-- Accesso online: un passo alla volta -->
     <div id="setup-online" class="hidden">
       <div class="setup-step" data-step="login">
-        <p class="setup-text">Accedi con il tuo account Google per entrare nel gioco.</p>
+        <p class="setup-text">Accedi per entrare nel gioco.</p>
         <button class="btn-primary" id="cloud-game-btn" type="button">Accedi con Google</button>
+        <div class="setup-divider"><span>oppure con nome giocatore e password</span></div>
+        <div class="input-group">
+          <label for="setup-username">Nome giocatore</label>
+          <input type="text" id="setup-username" autocomplete="username" maxlength="20" />
+        </div>
+        <div class="input-group">
+          <label for="setup-password">Password</label>
+          <input
+            type="password"
+            id="setup-password"
+            autocomplete="current-password"
+            maxlength="64"
+          />
+        </div>
+        <button class="btn-primary btn-alt" id="setup-password-login" type="button">Entra</button>
+        <button class="btn-link" id="setup-register-open" type="button">
+          Prima volta? Scegli nome giocatore e password
+        </button>
         <label class="setup-remember">
           <input type="checkbox" id="setup-remember" />
           Ricordami su questo dispositivo
         </label>
+      </div>
+      <div class="setup-step hidden" data-step="register">
+        <p class="setup-text">
+          Scegli il nome giocatore e la password con cui entrerai nel gioco. Più avanti, dal profilo
+          (👤), potrai collegare anche il tuo account Google.
+        </p>
+        <div class="input-group">
+          <label for="setup-reg-username">Nome giocatore</label>
+          <input
+            type="text"
+            id="setup-reg-username"
+            autocomplete="username"
+            maxlength="20"
+            placeholder="es. mario_88"
+          />
+        </div>
+        <p class="setup-hint">
+          Da 3 a 20 caratteri: lettere senza accenti, numeri, punto, trattino e trattino basso. È
+          anche il nome del tuo Sim.
+        </p>
+        <div class="input-group">
+          <label for="setup-reg-password">Password</label>
+          <input
+            type="password"
+            id="setup-reg-password"
+            autocomplete="new-password"
+            maxlength="64"
+            placeholder="almeno 6 caratteri"
+          />
+        </div>
+        <div class="input-group">
+          <label for="setup-reg-password2">Ripeti la password</label>
+          <input
+            type="password"
+            id="setup-reg-password2"
+            autocomplete="new-password"
+            maxlength="64"
+          />
+        </div>
+        <button class="btn-primary" id="setup-register" type="button">Crea account e gioca</button>
+        <button class="btn-link" type="button" data-setup-login>← Indietro</button>
       </div>
       <div class="setup-step hidden" data-step="choice">
         <p class="setup-text">

@@ -1129,6 +1129,28 @@ export const FURNITURE_CATALOG = [
       moveable: true,
     },
   },
+  {
+    // Cassaforte a muro di livello 2: la combinazione può usare le cifre da 1 a 5 (125 invece di 64).
+    // Prende il posto di quella di serie, nello stesso punto della parete (vedi wallSafe).
+    id: 'safe_pre',
+    name: 'Cassaforte a muro Livello 2 🔐',
+    price: 850,
+    category: 'safe',
+    isLuxury: false,
+    propKey: 'safe',
+    propData: {
+      x: -182,
+      y: 20,
+      w: 44,
+      h: 8,
+      z: 72,
+      name: 'Cassaforte a muro Livello 2 🔐',
+      color: '#2f3640',
+      topColor: '#c9a227',
+      moveable: false,
+      wallItem: true,
+    },
+  },
 ];
 
 export const MUSIC_TRACKS = {

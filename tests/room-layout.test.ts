@@ -48,7 +48,8 @@ describe('cassaforte a muro e passaggio libero', () => {
       ...Object.entries(PLAYER_ROOM_FURNITURE)
         .filter(([key, item]) => key !== 'doorExit' && !('wallItem' in item && item.wallItem))
         .map(([, item]) => item),
-      ...FURNITURE_CATALOG.map((f) => f.propData),
+      // gli oggetti a muro (la cassaforte livello 2) non ingombrano il pavimento
+      ...FURNITURE_CATALOG.map((f) => f.propData).filter((p) => !('wallItem' in p && p.wallItem)),
     ];
     for (const item of items) expect(overlapsCorridor(item), item.name).toBe(false);
   });

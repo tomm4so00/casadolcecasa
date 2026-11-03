@@ -2,7 +2,10 @@ import { game } from './context.js';
 import { startGame } from './interface.js';
 import { toast } from './missions.js';
 import { lifetime } from './runtime.js';
+import type firebase from 'firebase/compat/app';
+import { usernameFromEmail } from './account-model.js';
 import {
+  accessFor,
   claimLegacySim,
   createGoogleSim,
   type GoogleAccess,
@@ -10,12 +13,14 @@ import {
   localLegacySimCode,
   rememberedGoogleUser,
   rememberMe,
+  registerWithPassword,
   setRememberMe,
   signInWithGoogleAccount,
+  signInWithPassword,
   useGoogleSim,
 } from './accounts.js';
 
-type Step = 'login' | 'choice' | 'code' | 'new';
+type Step = 'login' | 'register' | 'choice' | 'code' | 'new';
 
 // Online setup: Google first, then (only on the first access) existing Sim or new Sim.
 export function mountCloudSetup(root: HTMLElement): void {
@@ -63,8 +68,22 @@ export function mountCloudSetup(root: HTMLElement): void {
   const remember = el<HTMLInputElement>('setup-remember');
   remember.checked = rememberMe();
 
-  const signIn = async () => {
-    access = await signInWithGoogleAccount();
+  // Account con nome giocatore e password: il Sim si crea subito, con il nome giocatore
+  // (niente Sim da recuperare: quelli vecchi si collegano solo con Google).
+  const enterPasswordAccount = async (user: firebase.User, nick?: string) => {
+    access = await accessFor(user);
+    await setRememberMe(remember.checked);
+    const name = (nick || user.displayName || usernameFromEmail(user.email) || '').slice(0, 20);
+    if (access.playerId) await play(access.playerId, savedNick() || name);
+    else await play(await createGoogleSim(access.uid), name);
+  };
+
+  const signIn = async (restored?: firebase.User) => {
+    if (restored && usernameFromEmail(restored.email)) {
+      await enterPasswordAccount(restored);
+      return;
+    }
+    access = restored ? await accessFor(restored) : await signInWithGoogleAccount();
     await setRememberMe(remember.checked);
     if (access.playerId) {
       await play(access.playerId, savedNick());
@@ -87,7 +106,39 @@ export function mountCloudSetup(root: HTMLElement): void {
   };
 
   const loginButton = el<HTMLButtonElement>('cloud-game-btn');
-  run(loginButton, signIn);
+  run(loginButton, () => signIn());
+
+  // ---- nome giocatore e password
+  const userInput = el<HTMLInputElement>('setup-username');
+  const passInput = el<HTMLInputElement>('setup-password');
+  const passwordLogin = el<HTMLButtonElement>('setup-password-login');
+  run(passwordLogin, async () => {
+    await setRememberMe(remember.checked);
+    await enterPasswordAccount(await signInWithPassword(userInput.value, passInput.value));
+  });
+  lifetime.listen(passInput, 'keydown', (e: Event) => {
+    if ((e as KeyboardEvent).key === 'Enter') passwordLogin.click();
+  });
+  const regUser = el<HTMLInputElement>('setup-reg-username');
+  const regPass = el<HTMLInputElement>('setup-reg-password');
+  const regPass2 = el<HTMLInputElement>('setup-reg-password2');
+  run(el('setup-register-open'), async () => {
+    regUser.value ||= userInput.value.trim();
+    show('register');
+    regUser.focus();
+  });
+  run(el('setup-register'), async () => {
+    if (regPass.value !== regPass2.value) {
+      toast('Le due password non sono uguali.');
+      return;
+    }
+    await setRememberMe(remember.checked);
+    const user = await registerWithPassword(regUser.value, regPass.value);
+    await enterPasswordAccount(user, regUser.value.trim());
+  });
+  panel.querySelectorAll<HTMLButtonElement>('[data-setup-login]').forEach((button) => {
+    lifetime.listen(button, 'click', () => show('login'));
+  });
   // With "Ricordami" a returning player goes straight into the game.
   if (remember.checked) {
     loginButton.disabled = true;
@@ -97,7 +148,7 @@ export function mountCloudSetup(root: HTMLElement): void {
       else lifetime.listen(window, 'load', () => resolve());
     });
     void Promise.all([rememberedGoogleUser(), pageLoaded])
-      .then(([user]) => (user ? signIn() : undefined))
+      .then(([user]) => (user ? signIn(user) : undefined))
       .catch((error) =>
         toast(error instanceof Error ? error.message : 'Accesso non riuscito: ' + error, 6000),
       )

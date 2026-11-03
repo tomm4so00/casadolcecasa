@@ -1,4 +1,5 @@
 import { disablePush, enablePush, needsHomeScreen, showPhoneNotification } from './push.js';
+import { isValidPin, pinHint } from './safe-pin.js';
 import { startNewLife } from './rebirth.js';
 import { clockText, dayNumber, isNight, realHour } from './game-clock.js';
 import { spendMoney } from './economy.js';
@@ -8,8 +9,7 @@ import type { GameValue } from './context.js';
 import { game } from './context.js';
 import { lifetime, dom, browser } from './runtime.js';
 import {
-  SAFE_PIN_HINT,
-  SAFE_PIN_RE,
+  mySafeLevel,
   buildSaveData,
   hasRoom,
   hashPin,
@@ -571,8 +571,8 @@ export async function promptSetSafePin(intro?: string): Promise<GameValue> {
     title: '🔐 Proteggi la cassaforte',
     text:
       intro ||
-      `Hai guadagnato dei soldi! Scegli una combinazione segreta per la cassaforte della tua stanza: ${SAFE_PIN_HINT}.`,
-    input: { placeholder: '134', numeric: true, maxLength: 3 },
+      `Hai guadagnato dei soldi! Scegli una combinazione segreta per la cassaforte della tua stanza: ${pinHint(mySafeLevel())}.`,
+    input: { placeholder: mySafeLevel() >= 2 ? '152' : '134', numeric: true, maxLength: 3 },
     buttons: [
       { label: 'Più tardi', value: null, color: '#57606f' },
       { label: 'Salva PIN', value: 'ok', color: '#2ed573' },
@@ -582,13 +582,15 @@ export async function promptSetSafePin(intro?: string): Promise<GameValue> {
     game.pinPromptMoneyThreshold = game.moneyLevel + 100; // non richiederlo a ogni moneta
     return;
   }
-  if (SAFE_PIN_RE.test(res.value) && hasRoom()) {
+  if (isValidPin(res.value, mySafeLevel()) && hasRoom()) {
     let room: GameValue = game.roomsState[game.myAssignedRoomIdx ?? -1];
     game.safePinCode = hashPin(res.value, room.id);
     game.hasSetSafePin = true;
     game.session.db.ref(`sims_rooms_state/${game.myAssignedRoomIdx}/pin`).set(game.safePinCode);
     toast('✅ Cassaforte protetta con successo!');
   } else {
-    toast(`❌ Combinazione non valida (${SAFE_PIN_HINT}). Te la richiederò al prossimo guadagno.`);
+    toast(
+      `❌ Combinazione non valida (${pinHint(mySafeLevel())}). Te la richiederò al prossimo guadagno.`,
+    );
   }
 }

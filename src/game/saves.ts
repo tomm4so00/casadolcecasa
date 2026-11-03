@@ -1,5 +1,5 @@
 import { decodeWeed } from './weed-rules.js';
-import { hashPin } from './safe-pin.js';
+import { hashPin, pinHint, pinTooHighForLevel, safeLevel } from './safe-pin.js';
 import { roomLabel } from './realty-rules.js';
 import { decodeFlu, isSick } from './flu-rules.js';
 import { myBenchPose } from './courtyard-fun.js';
@@ -34,24 +34,8 @@ import { promptSetSafePin } from './needs.js';
 
 /** Segna la presenza come offline, con l'ora del server in cui il giocatore è uscito. */
 export const OFFLINE_MARK = { offline: true, offAt: { '.sv': 'timestamp' } };
-/** Combinazione della cassaforte: 3 cifre da 1 a 4 (64 combinazioni). */
-export const SAFE_PIN_RE = /^[1-4]{3}$/;
-export const SAFE_PIN_HINT = '3 cifre da 1 a 4 (es. 134)';
-
-/**
- * Le vecchie combinazioni potevano usare anche il 5: il proprietario lo riconosce provando le poche
- * combinazioni possibili sul PIN cifrato della sua stanza.
- */
-export function pinUsesRetiredDigit(pin: unknown, roomId: unknown): boolean {
-  if (typeof pin !== 'string' || !pin.startsWith('h')) return false;
-  for (let a = 1; a <= 5; a++)
-    for (let b = 1; b <= 5; b++)
-      for (let c = 1; c <= 5; c++) {
-        const code = `${a}${b}${c}`;
-        if (code.includes('5') && hashPin(code, roomId) === pin) return true;
-      }
-  return false;
-}
+/** Livello della mia cassaforte (2 con la cassaforte livello 2 del negozio di mobili). */
+export const mySafeLevel = (): 1 | 2 => safeLevel(game.player.ownedFurniture);
 
 export { hashPin };
 
@@ -543,15 +527,16 @@ export function syncMyPinFromRoom(..._args: GameValue[]): GameValue {
       .set(hashPin(room.pin, room.id));
   }
   game.hasSetSafePin = true;
-  // Combinazione scelta quando si potevano usare le cifre fino a 5: si chiede di cambiarla una volta
-  if (!game.pinRetiredAsked && pinUsesRetiredDigit(room.pin, room.id)) {
+  // Combinazione con un 5 ma cassaforte di livello 1 (scelta quando il 5 era permesso a tutti,
+  // o prima di rivendere la cassaforte livello 2): si chiede di cambiarla una volta
+  if (!game.pinRetiredAsked && pinTooHighForLevel(room.pin, room.id, mySafeLevel())) {
     game.pinRetiredAsked = true;
     lifetime.setTimeout(
       () =>
         void promptSetSafePin(
-          'La combinazione della cassaforte ora usa solo le cifre da 1 a 4, e la tua contiene un 5. Scegline una nuova: ' +
-            SAFE_PIN_HINT +
-            '.',
+          'La tua cassaforte (livello 1) accetta solo le cifre da 1 a 4, e la tua combinazione contiene un 5. Scegline una nuova: ' +
+            pinHint(1) +
+            '.\n\nCon la cassaforte livello 2 del negozio di mobili puoi usare anche il 5.',
         ),
       3000,
     );

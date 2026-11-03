@@ -1,4 +1,5 @@
 import { launchPhase } from '../project-rules.js';
+import { safeLevel } from '../safe-pin.js';
 import { realHour } from '../game-clock.js';
 import type { GameValue } from '../context.js';
 import { game } from '../context.js';
@@ -1430,19 +1431,75 @@ export function wallSafe(d?: GameValue, t?: GameValue): GameValue {
     size = 42,
     left = u - size / 2,
     top = 48;
-  // vano nel muro e telaio
+  const room: GameValue = game.roomsState[game.currentRoomIdx ?? -1];
+  const level2 = safeLevel(room?.economy?.ownedFurniture) >= 2;
+  // vano nel muro e telaio (dorato per la cassaforte livello 2)
   ctx.fillStyle = 'rgba(0,0,0,0.35)';
   ctx.fillRect(left - 5, top - 5, size + 10, size + 10);
-  ctx.fillStyle = '#4b5563';
+  ctx.fillStyle = level2 ? '#c9a227' : '#4b5563';
   ctx.fillRect(left - 3, top - 3, size + 6, size + 6);
   const g = ctx.createLinearGradient(left, top, left + size, top + size);
-  g.addColorStop(0, '#9aa5b1');
-  g.addColorStop(1, '#4b5563');
+  g.addColorStop(0, level2 ? '#6b7280' : '#9aa5b1');
+  g.addColorStop(1, level2 ? '#1f2937' : '#4b5563');
   ctx.fillStyle = g;
   ctx.fillRect(left, top, size, size);
   ctx.strokeStyle = 'rgba(0,0,0,0.45)';
   ctx.lineWidth = 1;
   ctx.strokeRect(left + 3, top + 3, size - 6, size - 6);
+  if (level2) drawSafeKeypad(ctx, left, top, size);
+  else drawSafeDial(ctx, left, top, size);
+  // maniglia e cerniere
+  ctx.fillStyle = level2 ? '#e3c565' : '#d1d5db';
+  ctx.fillRect(left + size * 0.76, top + size * 0.3, 3.5, size * 0.4);
+  ctx.fillStyle = '#1f2937';
+  ctx.fillRect(left + 1, top + size * 0.18, 2.5, 6);
+  ctx.fillRect(left + 1, top + size * 0.7, 2.5, 6);
+  // lucina: verde se la cassaforte ha un PIN, rossa altrimenti
+  const pulse = 0.6 + 0.4 * Math.sin((t || 0) * 3);
+  ctx.fillStyle = room?.pin ? `rgba(46,213,115,${pulse})` : `rgba(255,71,87,${pulse})`;
+  ctx.beginPath();
+  ctx.arc(left + size - 6, top + 6, 2, 0, 6.3);
+  ctx.fill();
+}
+
+/** Livello 2: piccolo display e tastiera con i tasti da 1 a 5. */
+function drawSafeKeypad(
+  ctx: CanvasRenderingContext2D,
+  left: number,
+  top: number,
+  size: number,
+): void {
+  const kx = left + 6,
+    ky = top + 7,
+    kw = size * 0.6;
+  ctx.fillStyle = '#0f172a';
+  ctx.fillRect(kx, ky, kw, 8);
+  ctx.fillStyle = '#34d399';
+  ctx.font = 'bold 6px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText('* * *', kx + kw / 2, ky + 6);
+  const kb = (kw - 4) / 3;
+  for (let i = 0; i < 6; i++) {
+    const bx = kx + (i % 3) * (kb + 2),
+      by = ky + 11 + Math.floor(i / 3) * (kb * 0.8 + 2);
+    ctx.fillStyle = i < 5 ? '#e5e7eb' : '#c9a227';
+    ctx.fillRect(bx, by, kb, kb * 0.8);
+    ctx.fillStyle = '#111827';
+    ctx.font = 'bold 5px sans-serif';
+    ctx.fillText(i < 5 ? String(i + 1) : 'OK', bx + kb / 2, by + kb * 0.55);
+  }
+  ctx.fillStyle = '#c9a227';
+  ctx.font = 'bold 5px sans-serif';
+  ctx.fillText('LV 2', left + size / 2, top + size - 3);
+}
+
+/** Livello 1: manopola con le tacche. */
+function drawSafeDial(
+  ctx: CanvasRenderingContext2D,
+  left: number,
+  top: number,
+  size: number,
+): void {
   // manopola con le tacche
   const cx = left + size * 0.42,
     cy = top + size * 0.5;
@@ -1466,19 +1523,6 @@ export function wallSafe(d?: GameValue, t?: GameValue): GameValue {
   ctx.moveTo(cx, cy);
   ctx.lineTo(cx + 4, cy - 3);
   ctx.stroke();
-  // maniglia e cerniere
-  ctx.fillStyle = '#d1d5db';
-  ctx.fillRect(left + size * 0.76, top + size * 0.3, 3.5, size * 0.4);
-  ctx.fillStyle = '#1f2937';
-  ctx.fillRect(left + 1, top + size * 0.18, 2.5, 6);
-  ctx.fillRect(left + 1, top + size * 0.7, 2.5, 6);
-  // lucina: verde se la cassaforte ha un PIN, rossa altrimenti
-  const room: GameValue = game.roomsState[game.currentRoomIdx ?? -1];
-  const pulse = 0.6 + 0.4 * Math.sin((t || 0) * 3);
-  ctx.fillStyle = room?.pin ? `rgba(46,213,115,${pulse})` : `rgba(255,71,87,${pulse})`;
-  ctx.beginPath();
-  ctx.arc(left + size - 6, top + 6, 2, 0, 6.3);
-  ctx.fill();
 }
 
 /**

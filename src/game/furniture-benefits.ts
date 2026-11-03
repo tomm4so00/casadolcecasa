@@ -68,6 +68,8 @@ export function furnitureBenefit(def: { id: string; category: string }): string 
         '💻 Dal PC compri vestiti e mobili online e fai investimenti.' +
         (tier === 'std' ? '' : LOOKS_ONLY)
       );
+    case 'safe':
+      return '🔐 Livello 2: la combinazione può usare le cifre da 1 a 5 (125 combinazioni invece di 64), così è molto più difficile da indovinare.';
     default:
       return '';
   }

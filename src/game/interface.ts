@@ -8,7 +8,8 @@ import { startProjects } from './projects.js';
 import { resumeFaintSpot } from './faint.js';
 import type { GameValue } from './context.js';
 import type { DialogOptions, DialogResult } from './models.js';
-import { acquirePlayerSession } from './accounts.js';
+import { accountLogins, acquirePlayerSession, linkGoogleAccount } from './accounts.js';
+import { roomLabel } from './realty-rules.js';
 import { game } from './context.js';
 import { lifetime, dom, browser } from './runtime.js';
 import {
@@ -123,15 +124,30 @@ export async function showIntro(force: GameValue = false): Promise<GameValue> {
   } catch (e: GameValue) {}
 }
 
+/** Come si accede al Sim (testo del profilo). */
+function loginText(): string {
+  const { username, google } = accountLogins();
+  if (!username)
+    return 'Il tuo Sim è collegato al tuo account Google. Per ritrovarlo su un altro dispositivo accedi con lo stesso account.';
+  return (
+    `Entri con il nome giocatore «${username}» e la tua password.` +
+    (google
+      ? '\n🔗 Google collegato: puoi entrare anche con il tuo account Google.'
+      : '\n🔗 Puoi collegare il tuo account Google per entrare anche con quello.')
+  );
+}
+
 export async function openProfile(..._args: GameValue[]): Promise<GameValue> {
+  const logins = game.session.OFFLINE ? null : accountLogins();
+  const canLink = !!logins?.username && !logins.google;
   const res: GameValue = await openDialog({
     title: `👤 ${game.player.myData.nick}`,
     text:
       (game.session.OFFLINE
         ? `Il tuo codice personaggio è:\n${game.session.myPlayerId}`
-        : 'Il tuo Sim è collegato al tuo account Google. Per ritrovarlo su un altro dispositivo accedi con lo stesso account.') +
+        : loginText()) +
       (hasRoom()
-        ? `\n\nLa tua stanza: n° ${(game.myAssignedRoomIdx ?? -1) + 1} (Appartamento ${game.aptOfRoom(game.myAssignedRoomIdx) + 1})`
+        ? `\n\nLa tua stanza: ${roomLabel(game.myAssignedRoomIdx ?? 0, game.ROOMS_PER_APT)}`
         : '') +
       (game.session.OFFLINE
         ? '\n\n🧪 Sei in modalità prova: niente viene salvato sul server.'
@@ -144,8 +160,17 @@ export async function openProfile(..._args: GameValue[]): Promise<GameValue> {
       { label: '🎨 Aspetto', value: 'look', color: '#8e44ad' },
       { label: '⚰️ Epitaffio', value: 'epitaph', color: '#636e72' },
       ...(game.session.OFFLINE ? [{ label: 'Usa codice', value: 'switch', color: '#e67e22' }] : []),
+      ...(canLink ? [{ label: '🔗 Collega Google', value: 'google', color: '#2e86de' }] : []),
     ],
   });
+  if (res.action === 'google') {
+    try {
+      await linkGoogleAccount();
+      toast('✅ Account Google collegato! Ora puoi entrare anche con Google.', 5000);
+    } catch (error) {
+      toast(error instanceof Error ? error.message : String(error), 6000);
+    }
+  }
   if (res.action === 'look') openCharacterCreator(false);
   if (res.action === 'epitaph') openEpitaph();
   if (res.action === 'switch') switchToCode(res.value);
@@ -153,7 +178,7 @@ export async function openProfile(..._args: GameValue[]): Promise<GameValue> {
 
 export function switchToCode(code?: GameValue): GameValue {
   if (!game.session.OFFLINE) {
-    toast('Il Sim online si apre con il tuo account Google.');
+    toast('Il Sim online si apre con il tuo account (Google o nome giocatore e password).');
     return false;
   }
   code = (code || '').trim();

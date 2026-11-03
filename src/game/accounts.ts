@@ -3,7 +3,16 @@ import 'firebase/compat/auth';
 import { firebaseClient, lifetime } from './runtime.js';
 import { game } from './context.js';
 import { lockCharacter } from '../storage/tab-lock.js';
-import { googlePlayerId, decodeAccountBinding, onlineSaveKey } from './account-model.js';
+import {
+  authErrorMessage,
+  decodeAccountBinding,
+  googlePlayerId,
+  onlineSaveKey,
+  passwordError,
+  usernameEmail,
+  usernameError,
+  usernameFromEmail,
+} from './account-model.js';
 import { decodeSaveV8 } from './save-model.js';
 
 let releaseTab: (() => void) | null = null;
@@ -22,7 +31,7 @@ export async function acquirePlayerSession() {
     !game.session.OFFLINE &&
     (!game.session.authUid || firebaseClient.auth().currentUser?.uid !== game.session.authUid)
   )
-    throw new Error('Accedi con Google per aprire il tuo Sim.');
+    throw new Error('Accedi per aprire il tuo Sim.');
   releaseTab = await lockCharacter(game.session.myPlayerId);
   lifetime.add(() => {
     releaseTab?.();
@@ -106,7 +115,7 @@ export async function setRememberMe(remember: boolean): Promise<void> {
   await googleAuth().setPersistence(remember ? LOCAL : SESSION);
 }
 
-// The Google user restored from a previous visit, once Firebase has finished loading it.
+// The user restored from a previous visit (Google or name and password), once Firebase has loaded it.
 export function rememberedGoogleUser(): Promise<firebase.User | null> {
   const auth = googleAuth();
   return new Promise((resolve) => {
@@ -158,7 +167,11 @@ export interface GoogleAccess {
 
 // Signs in and reports whether this Google account already owns a Sim or is waiting for a link.
 export async function signInWithGoogleAccount(): Promise<GoogleAccess> {
-  const user = await authenticateWithGoogle();
+  return accessFor(await authenticateWithGoogle());
+}
+
+/** Accesso già fatto (Google o nome e password): il Sim dell'account, se c'è già. */
+export async function accessFor(user: firebase.User): Promise<GoogleAccess> {
   const binding = decodeAccountBinding(
     (await game.session.db.ref('sims_accounts/' + user.uid).get()).val(),
   );
@@ -169,7 +182,7 @@ export async function signInWithGoogleAccount(): Promise<GoogleAccess> {
   }
   return {
     uid: user.uid,
-    name: user.displayName || user.email || 'Giocatore',
+    name: user.displayName || usernameFromEmail(user.email) || user.email || 'Giocatore',
     playerId: binding?.playerId ?? null,
     pendingPlayerId,
   };
@@ -209,4 +222,62 @@ export function useGoogleSim(uid: string, playerId: string): void {
   game.session.SAVE_KEY = key;
   localStorage.setItem('sims_device_id', playerId);
   localStorage.setItem('sims_adopt_nick', '1');
+}
+
+// ---------------------------------------------------------------- nome giocatore e password
+
+/** Errore di Firebase tradotto in un messaggio per il giocatore. */
+function friendlyAuthError(error: unknown): Error {
+  const code = (error as { code?: unknown })?.code;
+  return new Error(typeof code === 'string' ? authErrorMessage(code) : String(error));
+}
+
+/** Primo accesso: crea l'account con il nome giocatore e la password scelti. */
+export async function registerWithPassword(username: string, password: string) {
+  const problem = usernameError(username) || passwordError(password);
+  if (problem) throw new Error(problem);
+  let user: firebase.User | null;
+  try {
+    user = (await googleAuth().createUserWithEmailAndPassword(usernameEmail(username), password))
+      .user;
+  } catch (error) {
+    throw friendlyAuthError(error);
+  }
+  if (!user) throw new Error('Registrazione non riuscita.');
+  await user.updateProfile({ displayName: username.trim().slice(0, 20) }).catch(() => {});
+  return user;
+}
+
+/** Accesso con nome giocatore e password già registrati. */
+export async function signInWithPassword(username: string, password: string) {
+  if (usernameError(username) || !password) throw new Error('Nome giocatore o password sbagliati.');
+  try {
+    const user = (await googleAuth().signInWithEmailAndPassword(usernameEmail(username), password))
+      .user;
+    if (!user) throw new Error('Accesso annullato.');
+    return user;
+  } catch (error) {
+    throw friendlyAuthError(error);
+  }
+}
+
+/** Come si accede a questo account: nome giocatore (se registrato così) e se Google è collegato. */
+export function accountLogins(): { username: string | null; google: boolean } {
+  const user = googleAuth().currentUser;
+  const providers = (user?.providerData || []).map((p) => p?.providerId);
+  return { username: usernameFromEmail(user?.email), google: providers.includes('google.com') };
+}
+
+/**
+ * Collega Google all'account con nome e password: da quel momento si entra con l'uno o con
+ * l'altro e si ritrova lo stesso Sim (l'account resta lo stesso).
+ */
+export async function linkGoogleAccount(): Promise<void> {
+  const user = googleAuth().currentUser;
+  if (!user) throw new Error('Accedi prima di collegare Google.');
+  try {
+    await user.linkWithPopup(new firebaseClient.auth.GoogleAuthProvider());
+  } catch (error) {
+    throw friendlyAuthError(error);
+  }
 }

@@ -13,15 +13,21 @@ const catalog = FURNITURE_CATALOG;
 const categories = [...new Set(catalog.map((f) => f.category))];
 
 describe('fasce dei mobili', () => {
-  it('ogni categoria ha pregiato e lusso, e lo standard solo se la stanza non lo ha già', () => {
+  it('ogni categoria ha pregiato e lusso, e lo standard solo se la stanza non lo ha già (cassaforte: solo livello 2)', () => {
     for (const category of categories) {
       const list = tiersOf(catalog, category);
+      // la cassaforte ha un solo potenziamento: il livello 2 (fascia pregiata)
       const expected: string[] =
-        category in PLAYER_ROOM_FURNITURE ? ['premium', 'lux'] : ['std', 'premium', 'lux'];
+        category === 'safe'
+          ? ['premium']
+          : category in PLAYER_ROOM_FURNITURE
+            ? ['premium', 'lux']
+            : ['std', 'premium', 'lux'];
       expect(list.map(tierOf), category).toEqual(expected);
       for (let i = 1; i < list.length; i++) expect(list[i - 1].price).toBeLessThan(list[i].price);
-      // il nome del mobile posizionato basta a riconoscerne la fascia
-      expect(list.map((f) => tierOfPlaced(f.propData))).toEqual(expected);
+      // il nome del mobile posizionato basta a riconoscerne la fascia (la cassaforte è a muro e
+      // il suo livello si legge dagli acquisti della stanza)
+      if (category !== 'safe') expect(list.map((f) => tierOfPlaced(f.propData))).toEqual(expected);
     }
   });
 
