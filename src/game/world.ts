@@ -55,7 +55,10 @@ import {
 import { applyRoomBounds } from './room-size.js';
 import { openDialog } from './interface.js';
 import { openRealtyBoard } from './realty.js';
+import { sendSocial } from './social.js';
 import { openGossipBoard } from './gossip.js';
+import { quotedTitle } from './painting-titles.js';
+import { roomPaintings, slotOfKey } from './painting-rules.js';
 import { relaxWith, toast } from './missions.js';
 import {
   freeRoomsInApt,
@@ -615,7 +618,12 @@ export function checkProximity(..._args: GameValue[]): GameValue {
           btnSub.classList.remove('hidden');
         } else btnSub.classList.add('hidden');
       } else if (found.startsWith('painting')) {
-        btnMain.innerText = isMyRoomNow() ? `🖼️ ${item.name}` : '🖼️ Ammira il quadro';
+        const name = quotedTitle(
+          roomPaintings(game.roomsState[game.currentRoomIdx ?? -1])[slotOfKey(found) || 'p1'],
+        );
+        btnMain.innerText = isMyRoomNow()
+          ? `🖼️ ${name || item.name}`
+          : `🖼️ Ammira ${name || 'il quadro'}`;
         btnMain.classList.remove('btn-pop-locked');
         btnSub.classList.add('hidden');
       } else if (found === 'sofa' || found === 'tv') {
@@ -1168,7 +1176,7 @@ export async function handleObjectInteract(..._args: GameValue[]): Promise<void>
       if (isMyRoomNow()) await managePainting(game.activeTargetProp);
       else
         toast(
-          `🖼️ Un quadro dipinto da ${game.roomsState[game.currentRoomIdx ?? -1]?.owner || 'chi abita qui'}.`,
+          `🖼️ ${quotedTitle(roomPaintings(game.roomsState[game.currentRoomIdx ?? -1])[slotOfKey(game.activeTargetProp) || 'p1']) || 'Un quadro'}, appeso nella stanza di ${game.roomsState[game.currentRoomIdx ?? -1]?.owner || 'chi abita qui'}.`,
           4000,
         );
     }
@@ -1283,7 +1291,9 @@ export async function handleSafeInteraction(..._args: GameValue[]): Promise<Game
       if (!(await creditMoney(stolen))) return;
       saveGame(true);
       toast(`🎉 COLPO RIUSCITO! Hai rubato ${stolen} € dalla cassaforte! 💰`, 4000);
-      // il ladro resta misterioso: si sa solo di chi era la cassaforte
+      // la vittima scopre chi è stato (e il ladro diventa suo nemico)
+      if (room.ownerId) void sendSocial(room.ownerId, { type: 'theft', amt: stolen });
+      // per tutti gli altri il ladro resta misterioso: si sa solo di chi era la cassaforte
       postGossip(
         `La cassaforte di ${room.owner || 'qualcuno'} è stata svuotata da un ladro misterioso 🕵️ (${stolen} €)`,
         room.ownerId ? [room.ownerId] : [],

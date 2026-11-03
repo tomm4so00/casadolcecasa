@@ -9,6 +9,7 @@ import { escapeHtmlSafe } from './needs.js';
 import type { OnlinePlayer } from './network-model.js';
 import { onlineVitals, type VitalKey } from './players-hud-rules.js';
 import { roomLabel } from './realty-rules.js';
+import { relationKind } from './relations-rules.js';
 import {
   PERSONALITY_BADGE,
   type PersonalityId,
@@ -182,7 +183,17 @@ function refresh(): void {
       el = btn;
       el.className = 'po-icon';
       el.dataset.pid = id;
-      el.innerHTML = `<canvas width="${ICON_PX}" height="${ICON_PX}"></canvas>`;
+      el.innerHTML = `<canvas width="${ICON_PX}" height="${ICON_PX}"></canvas><span class="rel-tag hidden"></span>`;
+    }
+    // amico o nemico, per come ti ha trattato
+    const kind = relationKind(game.player.relations?.[id]?.score);
+    const tag = el.querySelector<HTMLElement>('.rel-tag');
+    if (tag) {
+      const text = kind === 'friend' ? 'amico' : kind === 'enemy' ? 'nemico' : '';
+      if (tag.textContent !== text) tag.textContent = text;
+      tag.classList.toggle('hidden', !text);
+      tag.classList.toggle('friend', kind === 'friend');
+      tag.classList.toggle('enemy', kind === 'enemy');
     }
     if (list.children[i] !== el) list.insertBefore(el, list.children[i] || null);
     el.title = String(op.name);

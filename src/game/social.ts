@@ -1,4 +1,6 @@
 import { offerJoint, onJointOffer, onJointPaid, onJointRefused } from './weed.js';
+import { type RelationAct, noteRelation } from './relations-rules.js';
+import { saveGame } from './saves.js';
 import { postGossip } from './gossip.js';
 import { myLine, notePersonality } from './personality.js';
 import { onArtSold } from './art-market.js';
@@ -178,6 +180,28 @@ function showHitEffect(who: string): void {
   }, 950);
 }
 
+/** Ricorda il gesto ricevuto; se l'altro diventa amico o nemico, lo dice. */
+function remember(m: GameValue, who: string, act: RelationAct): void {
+  if (typeof m.from !== 'string') return;
+  const book = (game.player.relations ??= {});
+  const now = noteRelation(book, m.from, who, act, Number(m.t) || Date.now());
+  saveGame(false);
+  if (now === 'friend') toast(`🤝 ${who} ora è tuo amico!`, 5000);
+  else if (now === 'enemy') toast(`⚔️ ${who} ora è tuo nemico!`, 5000);
+  else if (now === null) toast(`${who} non è più tuo ${RELATION_WORD[act]}.`, 4000);
+}
+
+/** Se una relazione finisce, era l'opposto del gesto ricevuto. */
+const RELATION_WORD: Record<RelationAct, string> = {
+  talk: 'nemico',
+  praise: 'nemico',
+  food: 'nemico',
+  gift: 'nemico',
+  insult: 'amico',
+  punch: 'amico',
+  theft: 'amico',
+};
+
 export async function handleSocial(m?: GameValue): Promise<GameValue> {
   if (!m || !m.type) return;
   const who: GameValue = m.fromName || 'Qualcuno';
@@ -187,32 +211,43 @@ export async function handleSocial(m?: GameValue): Promise<GameValue> {
     game.player.healthLevel = Math.min(100, game.player.healthLevel + 2);
     game.player.sleepLevel = Math.max(0, game.player.sleepLevel - 3);
     toast(`💬 ${who} ha chiacchierato con te (+felicità, +salute, −sonno)`, 3500);
+    remember(m, who, 'talk');
     noteRomanticAttention(m.from, who);
   } else if (m.type === 'praise' && !old) {
     game.player.happinessLevel = Math.min(100, game.player.happinessLevel + 6);
     game.player.healthLevel = Math.min(100, game.player.healthLevel + 2);
     toast(`😍 ${who} ti ha fatto un complimento! (+felicità, +salute)`, 3500);
+    remember(m, who, 'praise');
     noteRomanticAttention(m.from, who);
   } else if (m.type === 'insult' && !old) {
     game.player.happinessLevel = Math.max(0, game.player.happinessLevel - 6);
     toast(`🤬 ${who} ti ha insultato! (−felicità)`, 3500);
+    remember(m, who, 'insult');
   } else if (m.type === 'punch' && !old) {
     game.player.happinessLevel = Math.max(0, game.player.happinessLevel - 8);
     if (game.player.healthLevel > 5)
       game.player.healthLevel = Math.max(5, game.player.healthLevel - 8); // le botte non uccidono mai da sole
     toast(`👊 ${who} ti ha picchiato! (−felicità, −salute)`, 4000);
     showHitEffect(who);
+    remember(m, who, 'punch');
   } else if (m.type === 'food') {
     game.player.hungerLevel = Math.min(100, game.player.hungerLevel + 50);
     toast(`🍽️ ${who} ti ha dato da mangiare! (+50% fame)`, 4000);
+    remember(m, who, 'food');
   } else if (m.type === 'money_notice') {
     toast(`💶 ${who} ti ha regalato ${Math.max(0, Math.floor(Number(m.amt) || 0))} €!`, 4000);
+    remember(m, who, 'gift');
   } else if (m.type === 'money') {
     const amt: GameValue = Math.max(0, Math.floor(Number(m.amt) || 0));
     if (amt > 0) {
       if (!(await creditMoney(amt))) return;
       toast(`💶 ${who} ti ha regalato ${amt} €!`, 4000);
     }
+  } else if (m.type === 'theft') {
+    // la vittima scopre chi è stato: per tutti gli altri il ladro resta misterioso
+    const amt = Math.max(0, Math.floor(Number(m.amt) || 0));
+    toast(`🕵️ ${who} ti ha svuotato la cassaforte! Rubati ${amt} €.`, 6000);
+    remember(m, who, 'theft');
   } else if (m.type === 'artSold') {
     onArtSold(who, Math.max(0, Math.floor(Number(m.amt) || 0)));
   } else if (m.type === 'romance') {

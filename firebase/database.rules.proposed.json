@@ -741,12 +741,31 @@
         }
       }
     },
+    "sims_painting_titles": {
+      ".read": "(auth != null && (auth.token.firebase.sign_in_provider === 'google.com' || (auth.token.firebase.sign_in_provider === 'password' && auth.token.email.endsWith('@giocatori.casadolcecasa.app')))) && root.child('sims_accounts').child(auth.uid).child('playerId').isString()",
+      "$id": {
+        ".write": "((auth != null && (auth.token.firebase.sign_in_provider === 'google.com' || (auth.token.firebase.sign_in_provider === 'password' && auth.token.email.endsWith('@giocatori.casadolcecasa.app')))) && root.child('sims_accounts').child(auth.uid).child('playerId').isString()) && (!data.exists() || data.child('by').val() === root.child('sims_accounts').child(auth.uid).child('playerId').val()) && newData.child('by').val() === root.child('sims_accounts').child(auth.uid).child('playerId').val()",
+        ".validate": "$id.matches(/^q[0-9a-z]{2,20}$/) && newData.hasChildren(['title','by','t'])",
+        "title": {
+          ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 40"
+        },
+        "by": {
+          ".validate": "newData.isString() && newData.val().length <= 140"
+        },
+        "t": {
+          ".validate": "newData.isNumber() && newData.val() >= 0"
+        },
+        "$other": {
+          ".validate": false
+        }
+      }
+    },
     "sims_interactions": {
       "$pid": {
         ".read": "(auth != null && (auth.token.firebase.sign_in_provider === 'google.com' || (auth.token.firebase.sign_in_provider === 'password' && auth.token.email.endsWith('@giocatori.casadolcecasa.app')))) && root.child('sims_accounts').child(auth.uid).child('playerId').val() === $pid",
         "$key": {
           ".write": "((auth != null && (auth.token.firebase.sign_in_provider === 'google.com' || (auth.token.firebase.sign_in_provider === 'password' && auth.token.email.endsWith('@giocatori.casadolcecasa.app')))) && root.child('sims_accounts').child(auth.uid).child('playerId').isString()) && ((!newData.exists() && root.child('sims_accounts').child(auth.uid).child('playerId').val() === $pid) || (!data.exists() && newData.child('from').val() === root.child('sims_accounts').child(auth.uid).child('playerId').val()))",
-          ".validate": "newData.hasChildren(['type','from','fromName','t']) && newData.child('type').val().matches(/^(talk|praise|insult|punch|food|money_notice|drug|drugReturn|romance|kissAsk|kissYes|kissNo|artSold|weedOffer|weedPaid|weedNo)$/)",
+          ".validate": "newData.hasChildren(['type','from','fromName','t']) && newData.child('type').val().matches(/^(talk|praise|insult|punch|food|money_notice|drug|drugReturn|romance|kissAsk|kissYes|kissNo|artSold|weedOffer|weedPaid|weedNo|theft)$/)",
           "from": {
             ".validate": "newData.isString() && newData.val().length <= 140"
           },

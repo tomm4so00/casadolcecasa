@@ -38,6 +38,7 @@ export interface SaveV8 {
   deadAt?: number;
   inventory?: { hasFood: boolean; foodCooked: boolean };
   romance?: unknown;
+  relations?: unknown;
   personality?: unknown;
   workDay?: unknown;
   weed?: unknown;

@@ -1,5 +1,6 @@
 import { artistOffer, levelOf } from './personality-rules.js';
 import { postGossip } from './gossip.js';
+import { askPaintingTitle, canNamePainting, quotedTitle } from './painting-titles.js';
 import { notePersonality } from './personality.js';
 import { escapeHtmlSafe } from './needs.js';
 import type { GameValue } from './context.js';
@@ -115,7 +116,9 @@ function renderGallery(list: HTMLElement): void {
   }
   for (const item of items) {
     const mine = item.ownerId === game.session.myPlayerId;
-    const el = card(item.code, mine ? 'Il tuo quadro' : `di ${escapeHtmlSafe(item.owner)}`, [
+    const name = escapeHtmlSafe(quotedTitle(item.code));
+    const el = card(item.code, name || (mine ? 'Il tuo quadro' : 'Senza titolo'), [
+      mine ? 'Il tuo quadro' : `di ${escapeHtmlSafe(item.owner)}`,
       `💰 <b>${euro(item.listing.price)}</b>`,
     ]);
     if (!mine) el.appendChild(button('🛒 Compra', '#2ed573', () => void buyPainting(item)));
@@ -140,9 +143,17 @@ function renderMine(list: HTMLElement): void {
   for (const slot of slots) {
     const listing = decodeListing(room?.sale?.[slot]);
     const n = slot.slice(1);
-    const el = card(hung[slot]!, `Quadro ${n}`, [
+    const code = hung[slot]!;
+    const el = card(code, escapeHtmlSafe(quotedTitle(code)) || `Quadro ${n}`, [
       listing ? `🏷️ In vendita a <b>${euro(listing.price)}</b>` : 'Appeso nella tua stanza',
     ]);
+    if (canNamePainting(code))
+      el.appendChild(
+        button(quotedTitle(code) ? '✏️ Cambia nome' : '✏️ Dai un nome', '#6c5ce7', async () => {
+          await askPaintingTitle(code, 'Come si chiama questo quadro?');
+          renderArtSite();
+        }),
+      );
     if (listing)
       el.appendChild(button('↩️ Ritira dalla vendita', '#636e72', () => void unlist(slot)));
     else {
@@ -282,7 +293,7 @@ async function buyPainting(item: MarketItem): Promise<void> {
   sfx('success');
   toast(`🖼️ Hai comprato il quadro di ${item.owner}! È appeso nella tua stanza.`, 4500);
   postGossip(
-    `${game.player.myData.nick} ha comprato un quadro di ${item.owner} per ${euro(item.listing.price)} 🖼️`,
+    `${game.player.myData.nick} ha comprato ${quotedTitle(item.code) || 'un quadro'} di ${item.owner} per ${euro(item.listing.price)} 🖼️`,
     [item.ownerId],
   );
   renderArtSite();
@@ -349,6 +360,8 @@ async function showBotOffer(slot: PaintingSlot, listing: GameValue): Promise<voi
 
 async function acceptBotOffer(slot: PaintingSlot, listing: GameValue, amount: number) {
   let committed = false;
+  // il nome si legge prima della vendita, quando il quadro è ancora appeso
+  const name = quotedTitle(roomPaintings(myRoom())[slot]);
   try {
     const reference = game.session.db.ref(myRoomPath());
     await reference.get();
@@ -378,7 +391,7 @@ async function acceptBotOffer(slot: PaintingSlot, listing: GameValue, amount: nu
   saveGame(true);
   sfx('coin');
   postGossip(
-    `${game.player.myData.nick} ha venduto un quadro a un collezionista per ${euro(amount)} 🖼️`,
+    `${game.player.myData.nick} ha venduto ${name || 'un quadro'} a un collezionista per ${euro(amount)} 🖼️`,
   );
   const tier = botTier(sold());
   toast(

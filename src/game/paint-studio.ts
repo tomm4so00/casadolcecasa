@@ -5,6 +5,8 @@ import { dom, lifetime } from './runtime.js';
 import { toast } from './missions.js';
 import { openDialog } from './interface.js';
 import { hasRoom } from './saves.js';
+import { askPaintingTitle, canNamePainting, paintingTitle } from './painting-titles.js';
+import { quoted } from './painting-title-rules.js';
 import { sfx } from './audio.js';
 import {
   PAINT_H,
@@ -19,6 +21,7 @@ import {
   MAX_ROOM_PAINTINGS,
   type PaintingSlot,
   firstFreeSlot,
+  roomPaintings,
   slotOfKey,
 } from './painting-rules.js';
 
@@ -201,9 +204,11 @@ async function finishPainting(): Promise<void> {
     dom('paint-modal').classList.remove('hidden');
     return;
   }
+  const code = encodePainting(studio.grid);
+  let hung = false;
   try {
     await game.session.db.ref(`sims_rooms_state/${game.myAssignedRoomIdx}`).update({
-      [`paintings/${slot}`]: encodePainting(studio.grid),
+      [`paintings/${slot}`]: code,
       [`sale/${slot}`]: null,
     });
     game.player.stats.paintings = (game.player.stats.paintings || 0) + 1;
@@ -215,10 +220,13 @@ async function finishPainting(): Promise<void> {
         : '🖼️ Quadro sostituito!',
       4000,
     );
+    hung = true;
   } catch (error) {
     console.warn('[painting]', error);
     toast('Non sono riuscito ad appendere il quadro. Riprova quando sei connesso.', 4000);
   }
+  // appena appeso, gli si dà un nome
+  if (hung) await askPaintingTitle(code, '🖼️ Il tuo quadro è appeso! Come si chiama?');
 }
 
 const SLOT_PLACE: Record<PaintingSlot, string> = {
@@ -245,14 +253,23 @@ export async function chooseSlotToReplace(): Promise<PaintingSlot | null> {
 export async function managePainting(key: string): Promise<void> {
   const slot = slotOfKey(key);
   if (!slot) return;
+  const code = roomPaintings(game.roomsState[game.myAssignedRoomIdx ?? -1])[slot];
+  const title = paintingTitle(code);
   const res: GameValue = await openDialog({
-    title: `🖼️ Il tuo ${SLOT_PLACE[slot]}`,
+    title: `🖼️ ${title ? quoted(title) : `Il tuo ${SLOT_PLACE[slot]}`}`,
     text: 'Per spostarlo lungo le pareti usa 🖐️ Sposta Mobile.\nSe lo togli, liberi il posto per un nuovo quadro del Laboratorio Artistico.',
     buttons: [
       { label: 'Chiudi', value: null, color: '#57606f' },
+      ...(code && canNamePainting(code)
+        ? [{ label: title ? '✏️ Cambia nome' : '✏️ Dai un nome', value: 'name', color: '#6c5ce7' }]
+        : []),
       { label: '🗑️ Togli dalla parete', value: 'remove', color: '#d63031' },
     ],
   });
+  if (res.action === 'name' && code) {
+    await askPaintingTitle(code, 'Come si chiama questo quadro?');
+    return;
+  }
   if (res.action !== 'remove') return;
   try {
     await game.session.db.ref(`sims_rooms_state/${game.myAssignedRoomIdx}`).update({

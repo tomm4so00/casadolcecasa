@@ -5,6 +5,7 @@ import type { PetBook } from './pet-rules.js';
 import type { PersonalityState } from './personality-rules.js';
 import type { WorkDay } from './job-pay.js';
 import type { RomanceBook } from './romance-rules.js';
+import type { RelationBook } from './relations-rules.js';
 import type { GameDatabase } from './database.js';
 
 export interface Point {
@@ -126,6 +127,8 @@ export interface CharacterState {
   missionIndex: number;
   /** Relazioni romantiche con gli altri giocatori. */
   romance?: RomanceBook;
+  /** Come lo hanno trattato gli altri giocatori: amici e nemici. */
+  relations?: RelationBook;
   /** Punti delle personalità sviluppate giocando. */
   personality?: PersonalityState;
   /** Turni di lavoro iniziati oggi (massimo SHIFTS_PER_DAY). */
@@ -188,4 +191,5 @@ export const createCharacterState = (): CharacterState => ({
   gameMinutes: 0,
   missionIndex: 0,
   romance: {},
+  relations: {},
 });

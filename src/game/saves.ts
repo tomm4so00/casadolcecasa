@@ -23,6 +23,7 @@ import { startInbox } from './social.js';
 import { startChat } from './chat.js';
 import { bestOwnedByProp } from './furniture-tiers.js';
 import { decodeRomance } from './romance-rules.js';
+import { decodeRelations } from './relations-rules.js';
 import { decodePersonality, obtainedPersonality, personalityLevel } from './personality-rules.js';
 import { decodeWorkDay } from './job-pay.js';
 import { pushOutOfCorridor } from './room-layout.js';
@@ -138,6 +139,8 @@ export function buildSaveData(..._args: GameValue[]): SaveV8 {
   if (game.player.drugStock > 0) data.drugStock = game.player.drugStock;
   if (game.player.romance && Object.keys(game.player.romance).length)
     data.romance = game.player.romance;
+  if (game.player.relations && Object.keys(game.player.relations).length)
+    data.relations = game.player.relations;
   if (game.player.personality) data.personality = game.player.personality;
   if (game.player.workDay) data.workDay = game.player.workDay;
   if (game.player.daily) data.daily = game.player.daily;
@@ -208,6 +211,7 @@ export function applySave(value: unknown): void {
   game.player.bornAt = num(s.bornAt, 0);
   game.player.drugStock = Math.max(0, Math.floor(num(s.drugStock, 0)));
   game.player.romance = decodeRomance(s.romance);
+  game.player.relations = decodeRelations(s.relations);
   game.player.personality = decodePersonality(s.personality);
   game.player.workDay = decodeWorkDay(s.workDay);
   game.player.daily = decodeDailyUses(s.daily);
