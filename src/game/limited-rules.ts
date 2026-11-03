@@ -3,8 +3,6 @@
 // Il registro (sims_limited/<oggetto>/<numero>) dice chi possiede ogni copia.
 
 export const LIMITED_COPIES = 5;
-/** Un'offerta accettata va pagata entro questo tempo, poi decade. */
-export const SALE_TTL_MS = 10 * 60_000;
 export const OFFER_MIN = 1;
 export const OFFER_MAX = 1_000_000;
 
@@ -87,6 +85,102 @@ export function offerError(
   return null;
 }
 
+// ---------------------------------------------------------------- offerte in attesa
+
+/**
+ * Offerta in attesa (sims_ltd_offers/<proprietario>/<id>): resta lì, senza scadenza, finché il
+ * proprietario non accetta o rifiuta (una sola volta). Chi l'ha fatta non può ritirarla: si
+ * annulla da sola solo se non ha più i soldi per pagarla.
+ */
+export interface LimitedOffer {
+  id: string;
+  from: string;
+  fromName: string;
+  item: string;
+  n: number;
+  amt: number;
+  t: number;
+  /** Nome dell'oggetto con il numero, per la notifica sul telefono. */
+  name: string;
+  /** Il server ha già mandato la notifica sul telefono. */
+  notified?: boolean;
+}
+
+/** Legge le offerte dal database, dalla più vecchia, scartando quelle non valide. */
+export function decodeOffers(value: unknown): LimitedOffer[] {
+  if (!value || typeof value !== 'object') return [];
+  const out: LimitedOffer[] = [];
+  for (const [id, raw] of Object.entries(value as Record<string, unknown>)) {
+    if (!raw || typeof raw !== 'object') continue;
+    const o = raw as Record<string, unknown>;
+    if (typeof o.from !== 'string' || !ID.test(o.from)) continue;
+    if (typeof o.item !== 'string' || !/^ltd_[a-z]+$/.test(o.item)) continue;
+    const n = Number(o.n),
+      amt = Number(o.amt);
+    if (!Number.isInteger(n) || n < 1 || n > LIMITED_COPIES) continue;
+    if (!Number.isInteger(amt) || amt < OFFER_MIN || amt > OFFER_MAX) continue;
+    out.push({
+      id,
+      from: o.from,
+      fromName: typeof o.fromName === 'string' ? o.fromName.slice(0, 20) : 'Giocatore',
+      item: o.item,
+      n,
+      amt,
+      t: Number.isFinite(o.t) ? (o.t as number) : 0,
+      name: typeof o.name === 'string' ? o.name.slice(0, 60) : o.item,
+      ...(o.notified === true ? { notified: true } : {}),
+    });
+  }
+  return out.sort((a, b) => a.t - b.t);
+}
+
+/** L'offerta vale ancora? (la copia è ancora del proprietario: magari l'ha già venduta a un altro) */
+export const offerStillValid = (ledger: Ledger, offer: LimitedOffer, owner: string): boolean =>
+  ledger[offer.item]?.[String(offer.n)]?.o === owner;
+
+/** Offerta inviata, ricordata da chi l'ha fatta (sims_ltd_sent/<compratore>/<id>). */
+export interface SentOffer {
+  id: string;
+  owner: string;
+  item: string;
+  n: number;
+  amt: number;
+  t: number;
+}
+
+/** Legge le offerte inviate dal database, scartando quelle non valide. */
+export function decodeSent(value: unknown): SentOffer[] {
+  if (!value || typeof value !== 'object') return [];
+  const out: SentOffer[] = [];
+  for (const [id, raw] of Object.entries(value as Record<string, unknown>)) {
+    if (!raw || typeof raw !== 'object') continue;
+    const o = raw as Record<string, unknown>;
+    if (typeof o.owner !== 'string' || !ID.test(o.owner)) continue;
+    if (typeof o.item !== 'string' || !/^ltd_[a-z]+$/.test(o.item)) continue;
+    const n = Number(o.n),
+      amt = Number(o.amt);
+    if (!Number.isInteger(n) || n < 1 || n > LIMITED_COPIES) continue;
+    if (!Number.isInteger(amt) || amt < OFFER_MIN || amt > OFFER_MAX) continue;
+    const t = Number.isFinite(o.t) ? (o.t as number) : 0;
+    out.push({ id, owner: o.owner, item: o.item, n, amt, t });
+  }
+  return out.sort((a, b) => a.t - b.t);
+}
+
+/** Offerte che chi le ha fatte non può più pagare (ha speso i soldi): vanno annullate. */
+export const unaffordable = (sent: SentOffer[], money: number): SentOffer[] =>
+  sent.filter((s) => money < s.amt);
+
+/** Messaggio per chi aveva ricevuto un'offerta poi annullata. */
+export const withdrawnText = (fromName: string, name: string): string =>
+  `L’offerta è stata ritirata: ${fromName} non ha più abbastanza soldi per pagare ${name}.`;
+
+/** Testo della notifica sul telefono per un'offerta ricevuta. */
+export const offerPushText = (o: LimitedOffer) => ({
+  title: '💎 Hai ricevuto un’offerta!',
+  body: `${o.fromName} ti offre ${o.amt.toLocaleString('it-IT')} € per ${o.name}. Entra in Casa dolce casa per accettare o rifiutare.`,
+});
+
 /** Il proprietario accetta l'offerta: la copia resta sua finché il compratore non paga. */
 export function acceptSale(
   entry: LedgerEntry | null,
@@ -108,6 +202,7 @@ export function claimSale(
   now: number,
 ): LedgerEntry | null {
   const s = entry?.sale;
-  if (!entry || !s || s.to !== buyer || s.p !== price || now - s.t > SALE_TTL_MS) return null;
+  // nessuna scadenza: chi compra può essere offline quando l'offerta viene accettata
+  if (!entry || !s || s.to !== buyer || s.p !== price) return null;
   return { o: buyer, on: buyerName.slice(0, 20), t: now };
 }

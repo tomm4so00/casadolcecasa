@@ -2,7 +2,7 @@ import { offerJoint, onJointOffer, onJointPaid, onJointRefused } from './weed.js
 import { type RelationAct, noteRelation } from './relations-rules.js';
 import { saveGame } from './saves.js';
 import { onGameInvite } from './arcade.js';
-import { onLimitedAnswer, onLimitedOffer } from './limited.js';
+import { onLimitedAnswer, onLimitedOffer, onLimitedWithdrawn } from './limited.js';
 import { postGossip } from './gossip.js';
 import { myLine, notePersonality } from './personality.js';
 import { onArtSold } from './art-market.js';
@@ -254,6 +254,8 @@ export async function handleSocial(m?: GameValue): Promise<GameValue> {
     await onLimitedOffer(m, who);
   } else if (m.type === 'ltdAccept' || m.type === 'ltdNo') {
     await onLimitedAnswer(m, who, m.type === 'ltdAccept');
+  } else if (m.type === 'ltdGone') {
+    await onLimitedWithdrawn(m, who);
   } else if (m.type === 'gameInvite') {
     await onGameInvite(m, who);
   } else if (m.type === 'theft') {

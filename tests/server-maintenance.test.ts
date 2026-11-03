@@ -4,6 +4,7 @@ import {
   deathWarningText,
   maintainGame,
   sendDeathWarnings,
+  notifyLimitedOffers,
   sendPetWarnings,
 } from '../server/src/maintenance.js';
 import { localDatabase } from '../src/game/database.js';
@@ -170,5 +171,51 @@ describe('avvisi per gli animali che stanno per morire', () => {
       const { database, send } = await setup(hours, saved);
       expect(await sendPetWarnings(database, now, send)).toBe(0);
     }
+  });
+});
+
+describe('notifica delle offerte per l’edizione limitata', () => {
+  const now = 1_800_000_000_000;
+  const setup = async (savedMinutesAgo: number) => {
+    const database = localDatabase(new Lifetime(), new MemoryStorage());
+    await database.ref('sims_saves/player_owner').set({
+      savedAt: now - savedMinutesAgo * 60000,
+      moneyLevel: 0,
+    });
+    await database.ref('sims_push/player_owner/tokens/k1').set({ token: 'tok', t: now });
+    await database.ref('sims_ltd_offers/player_owner/o1').set({
+      from: 'player_luca',
+      fromName: 'Luca',
+      item: 'ltd_crown',
+      n: 2,
+      amt: 5000,
+      t: now - 60000,
+      name: 'Corona di Diamanti 💎 #2/5',
+    });
+    const calls: { title: string; body: string }[] = [];
+    const send: PushSender = async (_token, m) => {
+      calls.push({ title: m.title, body: m.body });
+      return 'sent';
+    };
+    return { database, calls, send };
+  };
+
+  it('avvisa sul telefono chi non sta giocando, una volta sola, e l’offerta resta', async () => {
+    const { database, calls, send } = await setup(120);
+    expect(await notifyLimitedOffers(database, now, send)).toBe(1);
+    expect(calls[0].title).toBe('💎 Hai ricevuto un’offerta!');
+    expect(calls[0].body).toContain('Luca ti offre 5000 € per Corona di Diamanti 💎 #2/5');
+    expect(await notifyLimitedOffers(database, now + 15 * 60000, send)).toBe(0);
+    // non scade: è ancora nella cassetta del proprietario
+    expect((await database.ref('sims_ltd_offers/player_owner/o1/amt').get()).val()).toBe(5000);
+  });
+
+  it('chi sta giocando la vede nel gioco: niente notifica (arriverà se esce senza rispondere)', async () => {
+    const { database, calls, send } = await setup(2);
+    expect(await notifyLimitedOffers(database, now, send)).toBe(0);
+    expect(calls).toHaveLength(0);
+    expect((await database.ref('sims_ltd_offers/player_owner/o1/notified').get()).exists()).toBe(
+      false,
+    );
   });
 });

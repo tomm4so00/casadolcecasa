@@ -1,8 +1,9 @@
 // Oggetti in edizione limitata: acquisto al negozio di una copia numerata, mobili nella propria
 // stanza, offerte tra giocatori e passaggio di proprietà.
 //
-// Scambio: chi compra fa un'offerta → il proprietario accetta (la copia resta sua, "venduta a…")
-// → chi compra paga il proprietario e prende la copia. Così nessuno perde soldi o oggetti a metà.
+// Scambio: chi compra fa un'offerta (non può ritirarla) → il proprietario accetta o rifiuta, una
+// volta sola → se accetta, chi compra paga e prende la copia. Se chi compra spende i soldi e non può
+// più pagare, l'offerta si annulla da sola. Così nessuno perde soldi o oggetti a metà.
 import type { GameValue } from './context.js';
 import { game } from './context.js';
 import { openDialog } from './interface.js';
@@ -25,7 +26,17 @@ import {
   itemsOf,
   nextFreeCopy,
   offerError,
+  type LimitedOffer,
+  decodeOffers,
+  offerPushText,
+  offerStillValid,
+  type SentOffer,
+  decodeSent,
+  unaffordable,
+  withdrawnText,
 } from './limited-rules.js';
+import { lifetime } from './runtime.js';
+import { sendNotify } from './needs.js';
 
 let ledger: Ledger = {};
 let started = false;
@@ -76,6 +87,8 @@ export function startLimited(): void {
     }
     listeners.forEach((fn) => fn());
   });
+  startOffers();
+  startSent();
 }
 
 // ---------------------------------------------------------------- mobili nella stanza
@@ -159,7 +172,7 @@ export async function makeOffer(item: string, n: number): Promise<void> {
   if (!entry) return;
   const res = await openDialog({
     title: `💎 Offerta per ${label(item, n)}`,
-    text: `Appartiene a ${entry.on}. Quanto offri? Se accetta, i soldi passano dalla tua cassaforte alla sua e l’oggetto diventa tuo.\n\nIn cassaforte hai ${game.moneyLevel.toLocaleString('it-IT')} €.`,
+    text: `Appartiene a ${entry.on}. Quanto offri? Se accetta, i soldi passano dalla tua cassaforte alla sua e l’oggetto diventa tuo.\n\nAttenzione: una volta inviata non puoi ritirarla. Se però spendi i soldi e non puoi più pagare, l’offerta si annulla.\n\nIn cassaforte hai ${game.moneyLevel.toLocaleString('it-IT')} €.`,
     input: { placeholder: 'Offerta in €', numeric: true, maxLength: 7 },
     buttons: [
       { label: 'Annulla', value: null, color: '#57606f' },
@@ -173,54 +186,238 @@ export async function makeOffer(item: string, n: number): Promise<void> {
     toast('❌ ' + error, 4000);
     return;
   }
+  // l'offerta aspetta il proprietario finché non risponde: anche se è offline, la trova quando
+  // rientra (e il server gli manda una notifica sul telefono)
+  const t = Date.now();
+  const id = t.toString(36) + '_' + Math.random().toString(36).slice(2, 6);
   try {
-    await sendSocial(entry.o, { type: 'ltdOffer', item, n, amt: amount });
+    await game.session.db.ref(`sims_ltd_offers/${entry.o}/${id}`).set({
+      from: me(),
+      fromName: game.player.myData.nick,
+      item,
+      n,
+      amt: amount,
+      t,
+      name: label(item, n),
+    });
+    // la ricordo anch'io, per annullarla se non avrò più i soldi
+    await game.session.db
+      .ref(`sims_ltd_sent/${me()}/${id}`)
+      .set({ owner: entry.o, item, n, amt: amount, t });
     toast(
-      `💌 Offerta inviata a ${entry.on}: ${amount.toLocaleString('it-IT')} € per ${label(item, n)}.`,
-      4500,
+      `💌 Offerta inviata a ${entry.on}: ${amount.toLocaleString('it-IT')} € per ${label(item, n)}. Se è offline la vedrà quando rientra.`,
+      5000,
     );
   } catch {
     toast('Non sono riuscito a inviare l’offerta. Riprova quando sei connesso.', 4000);
   }
 }
 
-/** Il proprietario riceve un'offerta. */
+// ---------------------------------------------------------------- offerte inviate
+
+let sent: SentOffer[] = [];
+const cancelling = new Set<string>();
+
+/** Dimentica un'offerta inviata (ha avuto risposta o è stata annullata). */
+function forgetSent(id: unknown): void {
+  if (typeof id !== 'string' || !/^[a-z0-9_]{1,40}$/.test(id)) return;
+  void game.session.db
+    .ref(`sims_ltd_sent/${me()}/${id}`)
+    .remove()
+    .catch(() => {});
+}
+
+/** Non ho più i soldi per pagare: l'offerta si annulla e il proprietario viene avvisato. */
+async function cancelOffer(s: SentOffer): Promise<void> {
+  if (cancelling.has(s.id)) return;
+  cancelling.add(s.id);
+  let removed = false;
+  try {
+    // riesce solo se il proprietario non ha ancora risposto
+    await game.session.db.ref(`sims_ltd_offers/${s.owner}/${s.id}`).remove();
+    removed = true;
+  } catch {
+    // già accettata o rifiutata: decide la risposta che arriverà
+  }
+  if (removed) {
+    void sendSocial(s.owner, { type: 'ltdGone', id: s.id, item: s.item, n: s.n, amt: s.amt });
+    toast(
+      `💸 La tua offerta di ${s.amt.toLocaleString('it-IT')} € per ${label(s.item, s.n)} è stata annullata: non hai più abbastanza soldi.`,
+      6000,
+    );
+  }
+  forgetSent(s.id);
+}
+
+/** Tiene d'occhio le offerte inviate: se spendo i soldi, quelle che non posso pagare si annullano. */
+function startSent(): void {
+  game.session.db.ref(`sims_ltd_sent/${me()}`).on('value', (snap: GameValue): void => {
+    sent = decodeSent(snap.val());
+  });
+  lifetime.setInterval(() => {
+    if (!game.session.saveReady) return;
+    for (const s of unaffordable(sent, game.moneyLevel)) void cancelOffer(s);
+  }, 3000);
+}
+
+// ---------------------------------------------------------------- offerte ricevute
+
+let offers: LimitedOffer[] = [];
+let reviewing = false;
+/** Finestra chiusa senza scegliere (da un'altra finestra): si ripropone fra poco. */
+const retryAt = new Map<string, number>();
+/** Offerte ritirate già segnalate (per non dirlo due volte). */
+const withdrawnShown = new Set<string>();
+
+/** Ascolta le offerte ricevute e le propone una alla volta. */
+function startOffers(): void {
+  let first = true;
+  game.session.db.ref(`sims_ltd_offers/${me()}`).on('value', (snap: GameValue): void => {
+    const next = decodeOffers(snap.val());
+    // offerta nuova mentre il gioco è in un'altra scheda: notifica del browser
+    if (!first)
+      for (const o of next)
+        if (!offers.some((x) => x.id === o.id))
+          sendNotify('💎 Hai ricevuto un’offerta!', offerPushText(o).body, 'ltd-offer');
+    first = false;
+    offers = next;
+  });
+  // appena possibile (anche al rientro nel gioco) si propone la prima offerta in attesa
+  lifetime.setInterval(() => {
+    if (reviewing || game.dialogResolve || !game.session.saveReady || game.player.isDead) return;
+    const now = Date.now();
+    const o = offers.find((x) => (retryAt.get(x.id) || 0) <= now);
+    if (o) void reviewOffer(o);
+  }, 3000);
+}
+
+/** Avvisa il proprietario che l'offerta è stata ritirata (una volta sola). */
+async function showWithdrawn(id: string, fromName: string, name: string): Promise<void> {
+  if (withdrawnShown.has(id)) return;
+  withdrawnShown.add(id);
+  await openDialog({
+    title: '💸 Offerta ritirata',
+    text: withdrawnText(fromName, name),
+    buttons: [{ label: 'Ok', value: 'ok', color: '#57606f' }],
+  });
+}
+
+/** Toglie l'offerta dalle attese: true solo per chi ci riesce per primo (si risponde una volta). */
+async function takeOffer(o: LimitedOffer): Promise<boolean> {
+  if (o.id.startsWith('msg_')) return true; // arrivata come messaggio (versione precedente)
+  try {
+    const r = await game.session.db
+      .ref(`sims_ltd_offers/${me()}/${o.id}`)
+      .transaction((cur: GameValue) => (cur ? null : undefined));
+    return !!r?.committed;
+  } catch (error) {
+    console.warn('[edizione limitata]', error);
+    return false;
+  }
+}
+
+/** Il proprietario valuta un'offerta: accetta o rifiuta, una volta sola. */
+export async function reviewOffer(o: LimitedOffer): Promise<void> {
+  if (reviewing) return;
+  reviewing = true;
+  try {
+    // copia già venduta a qualcun altro: l'offerta non vale più
+    if (!offerStillValid(ledger, o, me())) {
+      if (await takeOffer(o))
+        void sendSocial(o.from, { type: 'ltdNo', id: o.id, item: o.item, n: o.n, amt: o.amt });
+      return;
+    }
+    sfx('gossip');
+    const res = await openDialog({
+      title: '💎 Un’offerta per te!',
+      text: `${o.fromName} offre ${o.amt.toLocaleString('it-IT')} € per il tuo oggetto in edizione limitata «${label(o.item, o.n)}».\n\nPuoi rispondere una volta sola. Se accetti, quando ti avrà pagato l’oggetto diventerà suo.`,
+      buttons: [
+        { label: 'Rifiuta', value: 'no', color: '#57606f' },
+        {
+          label: `🤝 Accetta (${o.amt.toLocaleString('it-IT')} €)`,
+          value: 'yes',
+          color: '#2ed573',
+        },
+      ],
+    });
+    if (res.action !== 'no' && res.action !== 'yes') {
+      retryAt.set(o.id, Date.now() + 30_000); // chiusa da un'altra finestra: si ripropone
+      return;
+    }
+    // nel frattempo chi l'ha fatta potrebbe aver speso i soldi: allora è già stata ritirata
+    if (!(await takeOffer(o))) {
+      await showWithdrawn(o.id, o.fromName, label(o.item, o.n));
+      return;
+    }
+    if (res.action === 'no') {
+      void sendSocial(o.from, { type: 'ltdNo', id: o.id, item: o.item, n: o.n, amt: o.amt });
+      toast(`Hai rifiutato l’offerta di ${o.fromName}.`, 3500);
+      return;
+    }
+    let ok = false;
+    try {
+      const r = await ref(o.item, o.n).transaction((cur: GameValue) => {
+        const e =
+          (decodeLedger({ [o.item]: { [o.n]: cur } })[o.item]?.[String(o.n)] as LedgerEntry) ||
+          null;
+        return acceptSale(e, me(), o.from, o.amt, Date.now()) || undefined;
+      });
+      ok = !!r?.committed;
+    } catch (error) {
+      console.warn('[edizione limitata]', error);
+    }
+    if (!ok) {
+      void sendSocial(o.from, { type: 'ltdNo', id: o.id, item: o.item, n: o.n, amt: o.amt });
+      toast('Non sono riuscito a completare la vendita: l’offerta è stata annullata.', 4000);
+      return;
+    }
+    await sendSocial(o.from, { type: 'ltdAccept', id: o.id, item: o.item, n: o.n, amt: o.amt });
+    toast(
+      `🤝 Hai accettato: quando ${o.fromName} paga (anche se ora è offline, appena rientra), ${label(o.item, o.n)} diventa suo.`,
+      6000,
+    );
+  } finally {
+    reviewing = false;
+  }
+}
+
+/** Offerta arrivata come messaggio (versione precedente del gioco): la si tratta allo stesso modo. */
 export async function onLimitedOffer(m: GameValue, who: string): Promise<void> {
   const item = String(m.item || ''),
     n = Number(m.n),
-    amount = Number(m.amt);
-  const entry = ledger[item]?.[String(n)];
-  if (!isLimitedId(item) || !entry || entry.o !== me() || !(amount > 0)) return;
-  while (game.dialogResolve) await new Promise((r) => setTimeout(r, 1200));
-  sfx('gossip');
-  const res = await openDialog({
-    title: '💎 Un’offerta per te!',
-    text: `${who} offre ${amount.toLocaleString('it-IT')} € per il tuo oggetto in edizione limitata «${label(item, n)}».\n\nSe accetti, quando ti avrà pagato l’oggetto diventerà suo.`,
-    buttons: [
-      { label: 'Rifiuta', value: 'no', color: '#57606f' },
-      { label: `🤝 Accetta (${amount.toLocaleString('it-IT')} €)`, value: 'yes', color: '#2ed573' },
-    ],
+    amt = Number(m.amt);
+  if (!isLimitedId(item) || !(amt > 0) || typeof m.from !== 'string') return;
+  await reviewOffer({
+    id: 'msg_' + (m.t || Date.now()),
+    from: m.from,
+    fromName: who,
+    item,
+    n,
+    amt,
+    t: Number(m.t) || 0,
+    name: label(item, n),
   });
-  if (res.action !== 'yes') {
-    void sendSocial(m.from, { type: 'ltdNo', item, n, amt: amount });
-    return;
+}
+
+/** Chi aveva fatto l'offerta l'ha annullata (non può più pagare): avviso e, se era già accettata, la copia torna libera da vendere. */
+export async function onLimitedWithdrawn(m: GameValue, who: string): Promise<void> {
+  const item = String(m.item || ''),
+    n = Number(m.n),
+    amt = Number(m.amt);
+  if (!isLimitedId(item) || typeof m.from !== 'string') return;
+  if (m.sale) {
+    try {
+      await ref(item, n).transaction((cur: GameValue) => {
+        if (!cur || cur.o !== me() || cur.sale?.to !== m.from || cur.sale?.p !== amt)
+          return undefined;
+        const { sale: _sale, ...rest } = cur;
+        return rest;
+      });
+    } catch (error) {
+      console.warn('[edizione limitata]', error);
+    }
   }
-  let ok = false;
-  try {
-    const r = await ref(item, n).transaction((cur: GameValue) => {
-      const e = (decodeLedger({ [item]: { [n]: cur } })[item]?.[String(n)] as LedgerEntry) || null;
-      return acceptSale(e, me(), m.from, amount, Date.now()) || undefined;
-    });
-    ok = !!r?.committed;
-  } catch (error) {
-    console.warn('[edizione limitata]', error);
-  }
-  if (!ok) {
-    toast('Non sono riuscito ad accettare l’offerta.', 4000);
-    return;
-  }
-  await sendSocial(m.from, { type: 'ltdAccept', item, n, amt: amount });
-  toast(`🤝 Hai accettato: quando ${who} paga, ${label(item, n)} diventa suo.`, 5000);
+  await showWithdrawn(String(m.id || 'msg_' + m.t), who, label(item, n));
 }
 
 /** Il compratore riceve la risposta: se accettata, paga e prende l'oggetto. */
@@ -228,6 +425,7 @@ export async function onLimitedAnswer(m: GameValue, who: string, accepted: boole
   const item = String(m.item || ''),
     n = Number(m.n),
     amount = Number(m.amt);
+  forgetSent(m.id);
   if (!accepted) {
     toast(`🙅 ${who} ha rifiutato la tua offerta per ${label(item, n)}.`, 5000);
     return;
@@ -235,7 +433,12 @@ export async function onLimitedAnswer(m: GameValue, who: string, accepted: boole
   const entry = ledger[item]?.[String(n)];
   if (!entry || entry.sale?.to !== me() || entry.sale.p !== amount) return;
   if (game.moneyLevel < amount) {
-    toast(`❌ ${who} ha accettato, ma non hai più ${amount} € in cassaforte.`, 5000);
+    // ho speso i soldi nel frattempo: l'offerta si annulla e il venditore viene avvisato
+    void sendSocial(entry.o, { type: 'ltdGone', id: m.id, sale: true, item, n, amt: amount });
+    toast(
+      `💸 ${who} ha accettato, ma non hai più ${amount.toLocaleString('it-IT')} € in cassaforte: l’offerta è stata annullata.`,
+      6000,
+    );
     return;
   }
   if (!(await transferMoney(entry.o, amount))) {

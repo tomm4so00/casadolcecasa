@@ -8,6 +8,7 @@ import {
   maintainGame,
   notifyRocketAlmostReady,
   sendDeathWarnings,
+  notifyLimitedOffers,
   sendPetWarnings,
 } from './maintenance.js';
 
@@ -104,6 +105,8 @@ async function main() {
       if (warned) console.log(`Death warnings sent: ${warned}`);
       const pets = await sendPetWarnings(getDatabase(app), scheduledAt, send);
       if (pets) console.log(`Pet warnings sent: ${pets}`);
+      const offers = await notifyLimitedOffers(getDatabase(app), scheduledAt, send);
+      if (offers) console.log(`Offer notifications sent: ${offers}`);
     } catch (error) {
       console.log('Death warnings skipped:', (error as { code?: string }).code || 'unknown error');
     }

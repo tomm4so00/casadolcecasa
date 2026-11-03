@@ -293,3 +293,59 @@ export async function notifyRocketAlmostReady(
   }
   return sent;
 }
+
+// ---------------------------------------------------------------- offerte per l'edizione limitata
+
+/** Testo della notifica per un'offerta ricevuta (come nel gioco: limited-rules.ts). */
+export function limitedOfferText(fromName: string, amount: number, name: string) {
+  return {
+    title: '💎 Hai ricevuto un’offerta!',
+    body: `${fromName} ti offre ${amount.toLocaleString('it-IT')} € per ${name}. Entra in Casa dolce casa per accettare o rifiutare.`,
+  };
+}
+
+/**
+ * Avvisa sul telefono chi ha ricevuto un'offerta per un oggetto in edizione limitata e non sta
+ * giocando (chi gioca la vede nel gioco). Ogni offerta si avvisa una volta sola: le resta
+ * `notified`. Le offerte non scadono: restano finché il proprietario non risponde.
+ * Restituisce quanti avvisi sono partiti.
+ */
+export async function notifyLimitedOffers(
+  database: MaintenanceDatabase,
+  now: number,
+  send: PushSender,
+): Promise<number> {
+  const all = (await database.ref('sims_ltd_offers').get()).val();
+  if (!record(all)) return 0;
+  let sent = 0;
+  for (const [owner, box] of Object.entries(all)) {
+    if (!record(box)) continue;
+    const pending = Object.entries(box).filter(([, o]) => record(o) && o.notified !== true);
+    if (!pending.length) continue;
+    // chi ha salvato negli ultimi minuti sta giocando: l'offerta gli compare nel gioco
+    const savedAt = (await database.ref(`sims_saves/${owner}/savedAt`).get()).val();
+    if (typeof savedAt === 'number' && now - savedAt < 10 * 60000) continue;
+    const push = (await database.ref('sims_push/' + owner).get()).val();
+    for (const [id, raw] of pending) {
+      const o = raw as Record<string, unknown>;
+      const text = limitedOfferText(
+        typeof o.fromName === 'string' ? o.fromName : 'Un giocatore',
+        Number(o.amt) || 0,
+        typeof o.name === 'string' ? o.name : 'un oggetto in edizione limitata',
+      );
+      if (record(push) && record(push.tokens))
+        for (const [key, entry] of Object.entries(push.tokens)) {
+          if (!record(entry) || typeof entry.token !== 'string') continue;
+          const result = await send(entry.token, {
+            ...text,
+            link: GAME_URL,
+            tag: 'sims-offer-' + id,
+          });
+          if (result === 'sent') sent++;
+          if (result === 'gone') await database.ref(`sims_push/${owner}/tokens/${key}`).remove();
+        }
+      await database.ref(`sims_ltd_offers/${owner}/${id}`).update({ notified: true });
+    }
+  }
+  return sent;
+}
