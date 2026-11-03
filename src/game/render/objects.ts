@@ -1678,6 +1678,8 @@ function drawFrontDoor(it: GameValue): void {
     H = 112;
   const W: number = it.w;
   const dy: number = game.Y0 + T / 2;
+  // gradino di pietra davanti al portone: si disegna per primo, così le ante aperte ci passano sopra
+  box(it.x, dy + T / 2 + 5, W + 10, 10, 2, '#a89f91', { top: '#bfb6a6' });
   const b: GameValue = box(it.x, dy, W, T, H, '#cfc6b4');
   const open = doorOpenAmount('saloon:courtyard', it.x, it.y, true, true);
   // misure sulla faccia (unità della scena, dall'alto): arco, imposta dell'arco, ante
@@ -1806,8 +1808,9 @@ function drawFrontDoor(it: GameValue): void {
     }
   });
   if (open >= 0.02) {
-    // le due ante girano sui cardini verso l'interno del salone
-    const a = open * 1.35;
+    // le due ante girano sui cardini verso il salone fino a quasi appoggiarsi al muro:
+    // aperte solo a 90° la destra, vista da qui, coprirebbe metà del passaggio
+    const a = open * FRONT_DOOR_OPEN_ANGLE;
     const zLeaf = b.z1 - spring - 1.5;
     for (const left of [true, false]) {
       const hinge = [left ? b.x0 + side : b.x1 - side, b.y1, zLeaf];
@@ -1822,9 +1825,10 @@ function drawFrontDoor(it: GameValue): void {
       }
     }
   }
-  // gradino di pietra davanti al portone
-  box(it.x, b.y1 + 5, W + 10, 10, 3, '#bdb6aa', { top: '#d2ccc0' });
 }
+
+/** Di quanto si aprono le ante del portone (radianti): circa 150°, quasi contro il muro. */
+const FRONT_DOOR_OPEN_ANGLE = 2.6;
 
 export function drawSaloonDoor(key?: GameValue, it?: GameValue): GameValue {
   if (key === 'courtyard') return drawFrontDoor(it);
