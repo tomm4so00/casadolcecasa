@@ -14,6 +14,7 @@ export const BUSINESSES = [
     theta: 0.0008,
     sigma: 0.0008,
     daily: 0.004,
+    liquidity: 40000,
   },
   {
     id: 'app',
@@ -26,6 +27,7 @@ export const BUSINESSES = [
     theta: 0.0006,
     sigma: 0.0025,
     daily: 0.008,
+    liquidity: 20000,
   },
   {
     id: 'crypto',
@@ -38,14 +40,145 @@ export const BUSINESSES = [
     theta: 0.0004,
     sigma: 0.0055,
     daily: 0.012,
+    liquidity: 8000,
+  },
+  {
+    id: 'pizza',
+    name: 'Pizzeria del quartiere',
+    emoji: '🍕',
+    color: '#e17055',
+    risk: 'Rischio basso',
+    desc: 'La gente mangia sempre la pizza: crescita lenta ma sicura.',
+    seed: 404,
+    theta: 0.0009,
+    sigma: 0.0007,
+    daily: 0.003,
+    liquidity: 45000,
+  },
+  {
+    id: 'house',
+    name: 'Immobiliare',
+    emoji: '🏠',
+    color: '#8e5a3c',
+    risk: 'Rischio basso',
+    desc: 'Case e appartamenti: si muovono piano, ma tengono il valore.',
+    seed: 505,
+    theta: 0.001,
+    sigma: 0.0006,
+    daily: 0.0035,
+    liquidity: 60000,
+  },
+  {
+    id: 'green',
+    name: 'Energia verde',
+    emoji: '⚡',
+    color: '#00b894',
+    risk: 'Rischio medio',
+    desc: 'Pannelli solari e pale eoliche: il futuro, con qualche scossone.',
+    seed: 606,
+    theta: 0.0006,
+    sigma: 0.0018,
+    daily: 0.007,
+    liquidity: 25000,
+  },
+  {
+    id: 'games',
+    name: 'Studio di videogiochi',
+    emoji: '🎮',
+    color: '#6c5ce7',
+    risk: 'Rischio medio',
+    desc: 'Un gioco di successo fa volare le azioni, un flop le affonda.',
+    seed: 707,
+    theta: 0.0005,
+    sigma: 0.0028,
+    daily: 0.009,
+    liquidity: 18000,
+  },
+  {
+    id: 'ev',
+    name: 'Auto elettriche',
+    emoji: '🚗',
+    color: '#0984e3',
+    risk: 'Rischio alto',
+    desc: 'Corrono veloci in borsa, in su e in giù.',
+    seed: 808,
+    theta: 0.0004,
+    sigma: 0.0042,
+    daily: 0.011,
+    liquidity: 12000,
+  },
+  {
+    id: 'space',
+    name: 'Turismo spaziale',
+    emoji: '🚀',
+    color: '#2d3436',
+    risk: 'Rischio molto alto',
+    desc: 'Viaggi sulla luna per tutti: si può guadagnare tantissimo o perdere quasi tutto.',
+    seed: 909,
+    theta: 0.0003,
+    sigma: 0.007,
+    daily: 0.014,
+    liquidity: 6000,
   },
 ] as const;
+/** Le tre attività di sempre: nel database ci sono da subito (le altre nascono al primo aggiornamento). */
+export const ORIGINAL_BUSINESSES: readonly string[] = ['shop', 'app', 'crypto'];
+
+// ---------------------------------------------------------------- domanda e offerta
+
+/**
+ * Commissione su ogni acquisto e ogni vendita. Serve anche a non far guadagnare di sicuro chi
+ * compra tanto per far salire il prezzo e poi rivende subito.
+ */
+export const TRADE_FEE = 0.01;
+/** Di quanto al massimo può muovere il prezzo la domanda (o l'offerta) in un quarto d'ora. */
+export const MAX_FLOW_IMPACT = 0.02;
+
+/** Quanto hanno investito in tutto i giocatori in un'attività. */
+export interface Holding {
+  units: number;
+  holders: number;
+}
+
+/** Somma gli investimenti di tutti i giocatori (stanze del database), attività per attività. */
+export function holdingsFromRooms(rooms: unknown): Record<string, Holding> {
+  const out: Record<string, Holding> = {};
+  for (const b of BUSINESSES) out[b.id] = { units: 0, holders: 0 };
+  if (!rooms || typeof rooms !== 'object') return out;
+  for (const room of Object.values(rooms as Record<string, unknown>)) {
+    const invest = (room as { economy?: { invest?: unknown } } | null)?.economy?.invest;
+    if (!invest || typeof invest !== 'object') continue;
+    for (const b of BUSINESSES) {
+      const units = (invest as Record<string, { units?: unknown }>)[b.id]?.units;
+      if (typeof units === 'number' && Number.isFinite(units) && units > 0) {
+        out[b.id].units += units;
+        out[b.id].holders++;
+      }
+    }
+  }
+  return out;
+}
+
+/**
+ * Effetto della domanda sul prezzo: quanti euro sono entrati (o usciti) nell'ultimo quarto d'ora,
+ * diviso la liquidità dell'attività, al massimo ±2%. Restituisce il fattore (es. 1.01 = +1%).
+ */
+export function flowImpact(netFlowEuro: number, liquidity: number): number {
+  if (!Number.isFinite(netFlowEuro) || !(liquidity > 0)) return 1;
+  const k = Math.max(-MAX_FLOW_IMPACT, Math.min(MAX_FLOW_IMPACT, netFlowEuro / liquidity));
+  return 1 + k;
+}
 export type Business = (typeof BUSINESSES)[number];
 export type BusinessId = Business['id'];
 export interface MarketQuote {
   price: number;
   log: number;
   history: Record<string, number>;
+  /** Quote possedute in tutto dai giocatori all'ultimo aggiornamento, e da quanti giocatori. */
+  held?: number;
+  holders?: number;
+  /** Euro comprati (positivi) o venduti (negativi) da tutti nell'ultimo quarto d'ora. */
+  flow?: number;
 }
 /** Crollo o boom della borsa: per un'ora tutte le quotazioni scendono o salgono del 20%. */
 export interface MarketEvent {
@@ -133,6 +266,7 @@ export function decodeMarket(value: unknown): MarketSnapshot | null {
     return null;
   for (const business of BUSINESSES) {
     const quote = value.quotes[business.id];
+    if (quote === undefined && !ORIGINAL_BUSINESSES.includes(business.id)) continue;
     if (
       !record(quote) ||
       typeof quote.price !== 'number' ||
@@ -167,6 +301,18 @@ function price(business: Business, minute: number, log: number): number {
     Math.min(1e9, Math.exp(log + (sinceEpoch * Math.log1p(business.daily)) / 1440) * 100),
   );
 }
+/** Prima quotazione di un'attività (anche di una appena aggiunta), con la storia delle ultime 24 ore. */
+function bootstrapQuote(business: Business, minute: number): MarketQuote {
+  const elapsed = Math.max(0, minute - MARKET_EPOCH / MARKET_INTERVAL_MS);
+  let log = 0;
+  const history: Record<string, number> = {};
+  for (let k = 0; k <= elapsed; k++) {
+    if (k) log = log * (1 - business.theta) + business.sigma * legacyNoise(business.seed, k);
+    const at = minute - elapsed + k;
+    if (at >= minute - 1440 && at % 15 === 0) history[at] = price(business, at, log);
+  }
+  return { log, price: price(business, minute, log), history };
+}
 function bootstrap(minute: number): MarketSnapshot {
   const quotes = {} as Record<BusinessId, MarketQuote>;
   const elapsed = Math.max(0, minute - MARKET_EPOCH / MARKET_INTERVAL_MS);
@@ -189,6 +335,7 @@ export function advanceMarket(
   now: number,
   noise: (id: BusinessId) => number,
   eventRolls?: { roll: number; kind: number },
+  holdings?: Record<string, Holding>,
 ): MarketSnapshot | null {
   if (!Number.isFinite(now) || now < MARKET_EPOCH) throw new Error('Invalid market time');
   const minute =
@@ -202,13 +349,27 @@ export function advanceMarket(
   const next = structuredClone(current);
   const gap = minute - current.minute;
   for (const business of BUSINESSES) {
+    // attività appena aggiunta al gioco: nasce adesso, con la sua storia
+    if (!next.quotes[business.id]) {
+      next.quotes[business.id] = bootstrapQuote(business, current.minute);
+    }
     const quote = next.quotes[business.id];
+    const before = quote.price;
     const decay = 1 - business.theta;
     const sample = noise(business.id);
     if (!Number.isFinite(sample)) throw new Error('Invalid market noise');
     quote.log =
       quote.log * decay ** gap +
       business.sigma * sample * Math.sqrt((1 - decay ** (2 * gap)) / (1 - decay ** 2));
+    // domanda e offerta: se i giocatori hanno comprato più di quanto hanno venduto il prezzo sale
+    const h = holdings?.[business.id];
+    if (h) {
+      const flow = quote.held !== undefined ? (h.units - quote.held) * before : 0;
+      quote.log += Math.log(flowImpact(flow, business.liquidity));
+      quote.flow = Math.round(flow);
+      quote.held = Math.round(h.units * 1e6) / 1e6;
+      quote.holders = h.holders;
+    }
     quote.price = price(business, minute, quote.log);
     // One sample per 15-minute bucket; history remains bounded to the last 24 hours.
     quote.history[Math.floor(minute / 15) * 15] = quote.price;
@@ -231,6 +392,7 @@ export function marketPriceAt(snapshot: MarketSnapshot, id: BusinessId, at: numb
 }
 function basePriceAt(snapshot: MarketSnapshot, id: BusinessId, at: number): number {
   const quote = snapshot.quotes[id];
+  if (!quote) return 0; // attività nuova non ancora quotata
   if (at >= snapshot.updatedAt) return quote.price;
   const entries = Object.entries(quote.history).sort((a, b) => Number(a[0]) - Number(b[0]));
   let previous = entries[0]?.[1] ?? quote.price;

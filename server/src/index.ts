@@ -1,7 +1,7 @@
 import { randomBytes } from 'node:crypto';
 import { cert, deleteApp, initializeApp } from 'firebase-admin/app';
 import { getDatabase } from 'firebase-admin/database';
-import { advanceMarket, BUSINESSES } from '../../shared/market.js';
+import { advanceMarket, BUSINESSES, holdingsFromRooms } from '../../shared/market.js';
 import { getMessaging } from 'firebase-admin/messaging';
 import {
   type PushSender,
@@ -61,12 +61,17 @@ async function main() {
     // Crollo o boom della borsa: si decide qui, una volta, e vale per tutti i giocatori.
     const uniform01 = () => (randomBytes(4).readUInt32BE() + 0.5) / 4294967296;
     const eventRolls = { roll: uniform01(), kind: uniform01() };
+    // Domanda e offerta: quanto hanno investito in tutto i giocatori, attività per attività.
+    const holdings = holdingsFromRooms(
+      (await getDatabase(app).ref('sims_rooms_state').get()).val(),
+    );
     const reference = getDatabase(app).ref('sims_market');
     const listener = reference.on('value', () => {});
     await reference.once('value');
     const result = await reference.transaction(
       (current: unknown) =>
-        advanceMarket(current, scheduledAt, (id) => samples.get(id)!, eventRolls) ?? undefined,
+        advanceMarket(current, scheduledAt, (id) => samples.get(id)!, eventRolls, holdings) ??
+        undefined,
     );
     reference.off('value', listener);
     await maintainGame(getDatabase(app), scheduledAt);

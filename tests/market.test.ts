@@ -6,6 +6,9 @@ import {
   MARKET_EPOCH,
   MARKET_PUBLISH_INTERVAL_MS,
   BUSINESSES,
+  MAX_FLOW_IMPACT,
+  flowImpact,
+  holdingsFromRooms,
   MARKET_EVENT_MS,
   MARKET_EVENT_COOLDOWN_MS,
   eventAt,
@@ -44,7 +47,7 @@ describe('server market updates', () => {
       expect(Object.keys(quote.history).length).toBeLessThanOrEqual(97);
       expect(Number.isFinite(quote.price) && quote.price > 0).toBe(true);
     }
-  });
+  }, 20000); // simula 1.500 aggiornamenti di tutte le attività
   it('rejects corrupted state rather than resetting everybody’s market', () => {
     expect(decodeMarket({ version: 1, minute: 1, quotes: {} })).toBeNull();
     expect(() => advanceMarket({ broken: true }, MARKET_EPOCH, () => 0)).toThrow();
@@ -96,5 +99,46 @@ describe('crollo / boom della borsa', () => {
     const later = (boom.event.end + MARKET_EVENT_COOLDOWN_MS) / 60000;
     expect(rollMarketEvent(boom.event, later - 15, 0, 0)).toBeNull();
     expect(rollMarketEvent(boom.event, later, 0, 0)).not.toBeNull();
+  });
+});
+
+describe('domanda e offerta e nuove attività', () => {
+  it('le attività nuove nascono al primo aggiornamento senza toccare le vecchie', () => {
+    const full = advanceMarket(null, MARKET_EPOCH + 86400000, () => 0)!;
+    // un mercato salvato prima che esistessero le attività nuove
+    const old = structuredClone(full) as typeof full;
+    for (const id of Object.keys(old.quotes))
+      if (!['shop', 'app', 'crypto'].includes(id))
+        delete (old.quotes as Record<string, unknown>)[id];
+    const decoded = decodeMarket(JSON.parse(JSON.stringify(old)));
+    expect(decoded).not.toBeNull();
+    expect(marketPriceAt(decoded!, 'space' as never, decoded!.updatedAt)).toBe(0);
+    const next = advanceMarket(decoded, decoded!.updatedAt + MARKET_PUBLISH_INTERVAL_MS, () => 0)!;
+    expect(Object.keys(next.quotes).sort()).toEqual(BUSINESSES.map((b) => b.id).sort());
+    expect(next.quotes.space.price).toBeGreaterThan(0);
+    expect(next.quotes.shop.log).toBe(full.quotes.shop.log * (1 - BUSINESSES[0].theta) ** 15);
+  });
+
+  it('se i giocatori comprano il prezzo sale, se vendono scende (al massimo del 2%)', () => {
+    expect(flowImpact(400, 40000)).toBeCloseTo(1.01);
+    expect(flowImpact(1e9, 40000)).toBeCloseTo(1 + MAX_FLOW_IMPACT);
+    expect(flowImpact(-1e9, 40000)).toBeCloseTo(1 - MAX_FLOW_IMPACT);
+    const start = advanceMarket(null, MARKET_EPOCH + 86400000, () => 0)!;
+    const t = start.updatedAt + MARKET_PUBLISH_INTERVAL_MS;
+    const none = holdingsFromRooms({});
+    const base = advanceMarket(start, t, () => 0, undefined, none)!;
+    // un quarto d'ora dopo: un giocatore ha comprato quote di "app" per circa 2.000 €
+    const units = 2000 / base.quotes.app.price;
+    const rooms = { 0: { economy: { invest: { app: { units, cost: 2000 } } } } };
+    const t2 = t + MARKET_PUBLISH_INTERVAL_MS;
+    const quiet = advanceMarket(base, t2, () => 0, undefined, none)!;
+    const bought = advanceMarket(base, t2, () => 0, undefined, holdingsFromRooms(rooms))!;
+    expect(bought.quotes.app.flow).toBe(2000);
+    expect(bought.quotes.app.holders).toBe(1);
+    expect(bought.quotes.app.price / quiet.quotes.app.price).toBeCloseTo(1.02, 3); // 2000/20000 → max 2%
+    expect(bought.quotes.shop.price).toBe(quiet.quotes.shop.price);
+    // poi vende tutto: il prezzo scende
+    const sold = advanceMarket(bought, t2 + MARKET_PUBLISH_INTERVAL_MS, () => 0, undefined, none)!;
+    expect(sold.quotes.app.flow).toBeLessThan(0);
   });
 });

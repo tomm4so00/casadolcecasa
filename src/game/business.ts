@@ -1,5 +1,5 @@
 import { notePersonality } from './personality.js';
-import { marketPriceAt, type Business, type BusinessId } from '../../shared/market.js';
+import { TRADE_FEE, marketPriceAt, type Business, type BusinessId } from '../../shared/market.js';
 import { marketSnapshot, canTradeMarket } from './market-client.js';
 import { updateEconomy } from './economy.js';
 import type { GameValue } from './context.js';
@@ -49,6 +49,7 @@ export function bizBuild(..._args: GameValue[]): GameValue {
           <div style="font-size:0.75rem;color:#aaa;">${b.desc}</div>
           <div style="display:flex;justify-content:space-between;align-items:baseline;"><span>Quotazione: <b id="biz-p-${b.id}"></b></span><span id="biz-d-${b.id}" style="font-weight:bold;"></span></div>
           <canvas id="biz-c-${b.id}" width="320" height="56" style="width:100%;height:56px;background:rgba(0,0,0,0.25);border-radius:6px;"></canvas>
+          <div id="biz-x-${b.id}" style="font-size:0.75rem;color:#aaa;"></div>
           <div id="biz-m-${b.id}" style="font-size:0.8rem;"></div>
           <div style="display:flex;gap:8px;"><button type="button" class="btn-buy" style="background:#2ed573;flex:1;" data-action="bizInvest" data-arg="${b.id}">💶 Investi</button><button type="button" class="btn-buy" id="biz-w-${b.id}" style="background:#e74c3c;flex:1;" data-action="bizWithdraw" data-arg="${b.id}">💰 Ritira</button></div>`;
     box.appendChild(c);
@@ -62,8 +63,8 @@ export function bizUpdate(..._args: GameValue[]): GameValue {
   const status = dom('market-status');
   if (status)
     status.textContent = snapshot
-      ? `${game.session.OFFLINE ? 'Simulazione locale' : 'Mercato condiviso'} ? aggiornato alle ${new Date(snapshot.updatedAt).toLocaleTimeString('it-IT')}${ready ? '' : ' ? negoziazioni sospese'}`
-      : 'In attesa delle quotazioni del mercato?';
+      ? `${game.session.OFFLINE ? 'Simulazione locale' : 'Mercato condiviso'} · aggiornato alle ${new Date(snapshot.updatedAt).toLocaleTimeString('it-IT')}${ready ? '' : ' · negoziazioni sospese'}`
+      : 'In attesa delle quotazioni del mercato…';
   for (const button of document.querySelectorAll<HTMLButtonElement>('#biz-list button'))
     button.disabled = !ready;
   if (!snapshot) return;
@@ -72,11 +73,25 @@ export function bizUpdate(..._args: GameValue[]): GameValue {
     cost: GameValue = 0;
   game.BIZ.forEach((b?: GameValue): GameValue => {
     const p: GameValue = mktPrice(b),
-      p24: GameValue = mktPrice(b, now - 24 * 3600000),
+      p24: GameValue = mktPrice(b, now - 24 * 3600000) || p,
       v: GameValue = game.player.invest[b.id],
       val: GameValue = v ? v.units * p : 0;
     tot += val;
     cost += v ? v.cost : 0;
+    // attività nuova: il server la quota al prossimo aggiornamento
+    const listed = p > 0;
+    for (const btn of document.querySelectorAll<HTMLButtonElement>(
+      `#biz-list [data-arg="${b.id}"]`,
+    ))
+      btn.disabled = !ready || !listed;
+    dom('biz-x-' + b.id).innerHTML = crowdText(snapshot.quotes[b.id as BusinessId], p);
+    if (!listed) {
+      dom('biz-p-' + b.id).textContent = 'in arrivo…';
+      dom('biz-d-' + b.id).textContent = '';
+      dom('biz-m-' + b.id).innerHTML =
+        '<span style="color:#888;">Nuova attività: sarà quotata al prossimo aggiornamento del mercato.</span>';
+      return;
+    }
     dom('biz-p-' + b.id).textContent = p.toFixed(2).replace('.', ',');
     const d: GameValue = dom('biz-d-' + b.id),
       ch: GameValue = (p / p24 - 1) * 100;
@@ -95,6 +110,23 @@ export function bizUpdate(..._args: GameValue[]): GameValue {
     `Cassaforte: <b>${game.moneyLevel} €</b> · Investito ora: <b>${game.fmtEur(tot)}</b> <span style="color:${pl >= 0 ? '#2ed573' : '#ff4757'}">(${pl >= 0 ? '+' : ''}${game.fmtEur(pl)})</span>`;
 }
 
+/** Cosa fanno tutti i giocatori: quanto hanno investito e se nell'ultimo quarto d'ora comprano o vendono. */
+function crowdText(
+  q: { held?: number; holders?: number; flow?: number } | undefined,
+  price: number,
+): string {
+  if (!q || q.held === undefined || !(price > 0)) return '👥 Domanda dei giocatori: in arrivo…';
+  const total = Math.round(q.held * price);
+  const flow = q.flow || 0;
+  const trend =
+    flow > 0
+      ? `<span style="color:#2ed573">▲ si compra (+${flow.toLocaleString('it-IT')} €)</span>`
+      : flow < 0
+        ? `<span style="color:#ff4757">▼ si vende (${flow.toLocaleString('it-IT')} €)</span>`
+        : '<span>= stabile</span>';
+  return `👥 Investiti da tutti: <b>${total.toLocaleString('it-IT')} €</b> (${q.holders || 0} ${q.holders === 1 ? 'giocatore' : 'giocatori'}) · ${trend}`;
+}
+
 export function openBizSite(..._args: GameValue[]): GameValue {
   if (!game.bizBuilt) bizBuild();
   dom('biz-modal').classList.remove('hidden');
@@ -110,7 +142,7 @@ export async function bizInvest(id: BusinessId): Promise<void> {
   if (!b) return;
   const res = await openDialog({
     title: `${b.emoji} Investi in ${b.name}`,
-    text: `Disponibili in cassaforte: ${game.moneyLevel} €\n${b.risk}. Il valore sale e scende nel tempo: puoi anche perdere soldi.`,
+    text: `Disponibili in cassaforte: ${game.moneyLevel} €\n${b.risk}. Il valore sale e scende nel tempo: puoi anche perdere soldi.\nCommissione: ${Math.round(TRADE_FEE * 100)}%. Quando tanti giocatori comprano il prezzo sale, quando vendono scende.`,
     input: { placeholder: 'Importo in €', numeric: true, maxLength: 6 },
     buttons: [
       { label: 'Annulla', value: null, color: '#57606f' },
@@ -136,7 +168,9 @@ export async function bizInvest(id: BusinessId): Promise<void> {
       if (!canTradeMarket() || balance < amt) return null;
       const price = mktPrice(b);
       const investment = (economy.invest[id] ??= { units: 0, cost: 0 });
-      investment.units += amt / price;
+      if (!(price > 0)) return null;
+      // la commissione resta al mercato: si comprano quote per l'importo meno l'1%
+      investment.units += (amt * (1 - TRADE_FEE)) / price;
       investment.cost += amt;
       return -amt;
     }))
@@ -167,7 +201,7 @@ export async function bizWithdraw(id: BusinessId): Promise<void> {
   }
   const res = await openDialog({
     title: `${b.emoji} Ritira da ${b.name}`,
-    text: `Valore attuale: ${game.fmtEur(val)}`,
+    text: `Valore attuale: ${game.fmtEur(val)}\nSu quello che ritiri c'è una commissione dell'${Math.round(TRADE_FEE * 100)}%.`,
     input: { placeholder: 'Importo in €', numeric: true, maxLength: 7 },
     buttons: [
       { label: 'Annulla', value: null, color: '#57606f' },
@@ -192,12 +226,15 @@ export async function bizWithdraw(id: BusinessId): Promise<void> {
       if (!canTradeMarket() || !investment) return null;
       const price = mktPrice(b);
       const value = investment.units * price;
-      amount = res.action === 'all' ? Math.floor(value) : Math.min(requested, Math.floor(value));
-      if (amount < 1) return null;
-      const fraction = amount / value;
+      const gross =
+        res.action === 'all' ? Math.floor(value) : Math.min(requested, Math.floor(value));
+      if (gross < 1) return null;
+      const fraction = res.action === 'all' ? 1 : gross / value;
       investment.units *= 1 - fraction;
       investment.cost *= 1 - fraction;
       if (res.action === 'all' || investment.units * price < 1) delete economy.invest[id];
+      // in cassaforte arriva quanto si vende meno la commissione
+      amount = Math.floor(gross * (1 - TRADE_FEE));
       return amount;
     }))
   )
