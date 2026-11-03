@@ -28,6 +28,7 @@ import { nameHash } from './scenes.js';
 import { fmtDuration, toast } from '../missions.js';
 import { openDialog } from '../interface.js';
 import { sortIsoParts } from './iso-sort.js';
+import { drawCached } from './sprite-cache.js';
 import { SAFE_CORRIDOR } from '../room-layout.js';
 import { nextUpgrade, tierOf, tierOfPlaced, tiersOf } from '../furniture-tiers.js';
 import { LAMP_LIGHT } from '../furniture-benefits.js';
@@ -2421,13 +2422,21 @@ function drawFacade(
 export function drawCourtyardDoor(key?: GameValue, it?: GameValue): GameValue {
   const mine: GameValue = hasRoom() && game.aptOfRoom(game.myAssignedRoomIdx) === it.aptIdx;
   const free: number = freeRoomsInApt(it.aptIdx);
-  drawFacade(it, {
+  const o = {
     no: it.aptIdx + 1,
     doorColor: mine ? '#2e86de' : free === 0 ? '#7f8c8d' : '#27ae60',
     building: free === game.ROOMS_PER_APT,
     open: doorOpenAmount('cortile:' + key, it.x, it.y, true),
-  });
+  };
+  // la palazzina si ridisegna solo se cambia qualcosa che si vede (notte, portone, colore…)
+  const hour = realHour(new Date());
+  const night = hour >= 19 || hour < 7;
+  const sig = [it.x, it.y, it.side, o.no, o.doorColor, o.building, o.open.toFixed(2), night].join();
+  drawCached('facade:' + key, sig, it.x, it.y, FACADE_BOUNDS, () => drawFacade(it, o));
 }
+
+/** Spazio occupato sullo schermo da una palazzina (tetto e camino compresi). */
+const FACADE_BOUNDS = { left: 120, right: 120, up: 380, down: 90 };
 
 // ---------------------------------------------------------------- RAZZO DEL LABORATORIO
 /** Rampa del laboratorio ingegneristico: il razzo cresce con i soldi versati dai giocatori. */
@@ -3943,10 +3952,32 @@ export function drawMapItem(
 
 // ---------------------------------------------------------------- OGGETTI DEGLI AMBIENTI
 // Circa un albero su quattro è un pino; la scelta dipende dalla posizione, quindi resta stabile.
+/**
+ * Albero: si disegna una volta (fermo) in un'immagine e la si incolla a ogni fotogramma,
+ * inclinandola appena per farlo ondeggiare al vento come prima.
+ */
 export function drawTreeProp(it?: GameValue, t?: GameValue): GameValue {
-  const k: GameValue = it.size || 1;
+  const k: number = it.size || 1;
+  const pine = rnd(it.x * 0.37 + it.y * 1.91) > 0.74;
+  const s: number = isoScale();
+  // la chioma si sposta di "sway" pixel in cima (z = 80, o 98 per i pini) e meno più in basso
+  const sway = pine ? Math.sin(t * 0.7 + it.y) * 1.2 * s : Math.sin(t * 0.8 + it.x) * 1.6 * s;
+  const top = (pine ? 98 : 80) * k * s;
+  const r = 60 * k;
+  drawCached(
+    `tree:${game.view.activeEnvironment}:${it.x},${it.y}`,
+    String(k),
+    it.x,
+    it.y,
+    { left: r, right: r, up: 140 * k, down: r },
+    () => drawTreeShape(it, k),
+    sway / top,
+  );
+}
+
+function drawTreeShape(it: GameValue, k: number): void {
   const seed: GameValue = rnd(it.x * 0.37 + it.y * 1.91);
-  if (seed > 0.74) return drawPineTree(it, t, k);
+  if (seed > 0.74) return drawPineTree(it, k);
   const ctx: GameValue = game.view.ctx,
     s: GameValue = isoScale();
   ellipseShadow(it.x + 10 * k, it.y + 8 * k, 42 * k, 22 * k, 0.24);
@@ -3966,7 +3997,7 @@ export function drawTreeProp(it?: GameValue, t?: GameValue): GameValue {
     'right',
     (W?: GameValue, H?: GameValue): GameValue => woodGrain(W, H, 'rgba(0,0,0,0.2)', true, 3),
   );
-  const sway: GameValue = Math.sin(t * 0.8 + it.x) * 1.6 * s;
+  const sway = 0; // l'ondeggiare lo fa drawTreeProp
   // Rami che portano alla chioma.
   ctx.strokeStyle = '#6b3f26';
   ctx.lineCap = 'round';
@@ -4047,12 +4078,12 @@ export function drawTreeProp(it?: GameValue, t?: GameValue): GameValue {
   ctx.globalAlpha = 1;
 }
 
-function drawPineTree(it: GameValue, t: GameValue, k: GameValue): void {
+function drawPineTree(it: GameValue, k: GameValue): void {
   const ctx: GameValue = game.view.ctx,
     s: GameValue = isoScale();
   ellipseShadow(it.x + 8 * k, it.y + 6 * k, 30 * k, 16 * k, 0.24);
   box(it.x, it.y, 8 * k, 8 * k, 22 * k, '#6b3f26');
-  const sway: GameValue = Math.sin(t * 0.7 + it.y) * 1.2 * s;
+  const sway = 0; // l'ondeggiare lo fa drawTreeProp
   // Quattro strati di rami, sempre più stretti verso la punta.
   [
     [18, 28, 50],

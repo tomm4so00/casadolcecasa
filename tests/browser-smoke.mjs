@@ -48,7 +48,7 @@ try {
     catalog.clothes === 75 &&
       catalog.furniture === 21 &&
       catalog.jobs === 4 &&
-      catalog.business === 3,
+      catalog.business === 9,
   );
   await page.evaluate(async () => (await import('/src/game/character.ts')).openClothesShop('top'));
   await page.locator('#clothes-modal').waitFor({ state: 'visible' });

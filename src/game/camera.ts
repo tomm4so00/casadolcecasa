@@ -16,6 +16,9 @@ const phoneQuery =
   typeof matchMedia === 'function'
     ? matchMedia('(max-width: 760px), (pointer: coarse) and (max-height: 520px)')
     : null;
+// letto una volta e aggiornato quando cambia: chiederlo al browser a ogni punto disegnato è lento
+let isPhone = !!phoneQuery?.matches;
+phoneQuery?.addEventListener?.('change', (e) => (isPhone = e.matches));
 
 /**
  * Superficie convessa (la luna): più ci si allontana dal centro, più il terreno scende, come su
@@ -31,7 +34,16 @@ export function cameraScale(): number {
   const w = game.view.canvas.width,
     h = game.view.canvas.height;
   const fit = Math.min(w / 450, h / 600, 1.2);
-  return phoneQuery?.matches ? Math.min(fit * PHONE_ZOOM, MAX_SCALE) : fit;
+  return isPhone ? Math.min(fit * PHONE_ZOOM, MAX_SCALE) : fit;
+}
+
+/**
+ * Spostamento della telecamera in pixel interi: pavimento, oggetti e personaggi si spostano
+ * tutti dello stesso numero di pixel, così non tremolano l'uno rispetto all'altro.
+ */
+export function cameraPx(s: number): { u: number; v: number } {
+  const cam = game.cam;
+  return cam ? { u: Math.round(cam.u * s), v: Math.round(cam.v * s) } : { u: 0, v: 0 };
 }
 
 /** Limiti (in unità isometriche prima della scala) di pavimento e pareti della stanza. */

@@ -13,6 +13,7 @@ import { petDrawables, updatePets } from './pets.js';
 import { updateSpaceHelmet } from './space-helmet.js';
 import { collarPoint, drawLeash, drawQuadruped } from './render/pets.js';
 import {
+  benchWalkDir,
   drawCoinToss,
   drawIceCream,
   drawSofaRelax,
@@ -23,12 +24,18 @@ import {
   updateIceCream,
 } from './courtyard-fun.js';
 import { nearSickPlayer } from './flu.js';
+import { addSample, newMotion, positionAt, type Motion } from './remote-motion.js';
 import { realHour } from './game-clock.js';
 import type { GameValue } from './context.js';
 import { canPlaySession } from './accounts.js';
 import { game } from './context.js';
 import { lifetime } from './runtime.js';
-import { checkProximity, getCurrentFurnitureMap, setFurniturePosition } from './world.js';
+import {
+  checkProximity,
+  getCurrentFurnitureMap,
+  keepOwnPillow,
+  setFurniturePosition,
+} from './world.js';
 import {
   drawActor,
   drawFaintedAvatar,
@@ -60,7 +67,7 @@ import {
 } from './character.js';
 import { presenceAlive } from './saves.js';
 import { tickNeeds, updateSocialPanel } from './needs.js';
-import { footprintOf } from './render/primitives.js';
+import { footprintOf, isoProject } from './render/primitives.js';
 import { overlapsCorridor } from './room-layout.js';
 import { approachKissPartner, drawKissHearts, kissActive } from './romance.js';
 import { faintAmount } from './faint.js';
@@ -103,6 +110,18 @@ export function collidesAt(x?: GameValue, y?: GameValue, obstacles?: GameValue):
   );
 }
 
+/**
+ * Un personaggio in (x, y) si vede sullo schermo? Chi è fuori dall'inquadratura (nel cortile,
+ * più grande dello schermo) non si disegna: con tanti giocatori fa risparmiare molto.
+ */
+function onScreen(x: number, y: number): boolean {
+  const p = isoProject(x, y, 0);
+  const W = game.view.canvas.width,
+    H = game.view.canvas.height;
+  // margini larghi: nome, fumetto e cappello stanno sopra i piedi
+  return p.x > -160 && p.x < W + 160 && p.y > -40 && p.y < H + 260;
+}
+
 export function renderEnvironment(delta?: GameValue, animTime?: GameValue): GameValue {
   const ctx = game.view.ctx;
   if (!canPlaySession()) {
@@ -131,6 +150,7 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
   }
   game.isWalking = false;
   // ---- animazioni: sonno e doccia
+  keepOwnPillow();
   const sleepTarget: GameValue =
     game.player.isSleeping && game.view.activeEnvironment === 'PLAYER_ROOM' && map.bed ? 1 : 0;
   if (game.view.activeEnvironment !== 'PLAYER_ROOM' || !map.bed) game.sleepK = 0;
@@ -184,8 +204,12 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
     if (bot.env === game.view.activeEnvironment) {
       bot.x += bot.vx * delta;
       bot.y += bot.vy * delta;
-      if (bot.x > 120 || bot.x < -120) bot.vx *= -1;
-      if (bot.y > 120 || bot.y < -120) bot.vy *= -1;
+      // al bordo si gira verso l'interno (invertire e basta, se si è andati oltre di un
+      // fotogramma lento, lo faceva girare avanti e indietro sul posto)
+      if (bot.x > 120) bot.vx = -Math.abs(bot.vx);
+      else if (bot.x < -120) bot.vx = Math.abs(bot.vx);
+      if (bot.y > 120) bot.vy = -Math.abs(bot.vy);
+      else if (bot.y < -120) bot.vy = Math.abs(bot.vy);
     }
   });
   const st: GameValue = getEnvStyle();
@@ -339,7 +363,7 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
               game.sleepK,
               map.bed,
               game.bedSlot,
-              { x: game.moveRight, y: -game.moveForward },
+              benchWalkDir() || { x: game.moveRight, y: -game.moveForward },
               myBathPose() || myBenchPose(),
             ),
     });
@@ -384,12 +408,23 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
         bot.nextSayAt = animTime + 10 + Math.random() * 15;
       }
       const say: GameValue = animTime < bot.sayUntil ? bot.say : '';
+      if (!onScreen(bot.x, bot.y)) return;
       drawables.push({
         depth: bot.x + bot.y,
         draw: (): GameValue =>
-          drawPlayerAvatar(bot.x, bot.y, bot.name, animTime, botLook(bot.name), true, say, {
-            walkDir: { x: bot.vx, y: bot.vy },
-          }),
+          drawPlayerAvatar(
+            bot.x,
+            bot.y,
+            bot.name,
+            animTime,
+            botLook(bot.name),
+            !!(bot.vx || bot.vy),
+            say,
+            {
+              walkDir: { x: bot.vx, y: bot.vy },
+              speed: Math.hypot(bot.vx, bot.vy),
+            },
+          ),
       });
     }
   });
@@ -423,11 +458,18 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
       s.sayShownAt = now;
     }
     const say: GameValue = !isOffline && op.say && now - s.sayShownAt < 6000 ? op.say : '';
-    let k: GameValue = Math.min(1, delta * 10);
-    let dx: GameValue = op.x - s.x,
-      dy: GameValue = op.y - s.y;
-    s.x += dx * k;
-    s.y += dy * k;
+    // posizione fluida: a metà strada fra le ultime posizioni ricevute (vedi remote-motion)
+    const motion: Motion = s.motion || (s.motion = newMotion());
+    const tNow = performance.now();
+    addSample(motion, Number(op.t), op.x, op.y, tNow);
+    const at = positionAt(motion, tNow) || { x: op.x, y: op.y };
+    let dx: GameValue = at.x - s.x,
+      dy: GameValue = at.y - s.y;
+    s.x = at.x;
+    s.y = at.y;
+    // cammina se va più veloce di un passo lento; fermo, resta girato com'era
+    const stepping = delta > 0 && Math.hypot(dx, dy) / delta > 15;
+    if (stepping) s.dir = { x: dx, y: dy };
     {
       const dd: GameValue = Math.hypot(game.playerPos.x - s.x, game.playerPos.y - s.y);
       // con chi è offline o svenuto non si può interagire
@@ -436,7 +478,7 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
       // l'influenza si attacca a chi si avvicina troppo
       if (op.sick && dd < game.SOC_RANGE) nearSickPlayer(op.name || 'Qualcuno');
     }
-    let moving: GameValue = !isOffline && Math.hypot(dx, dy) > 1;
+    let moving: GameValue = !isOffline && stepping;
     const shownName: string = isOffline ? '' : op.name;
     if (isOffline) {
       const lz = state === 'fainted' ? 34 : state === 'sleeping' ? 70 : 92;
@@ -518,6 +560,8 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
       s.y +
       ((map.bed ? map.bed.x + map.bed.y + 0.5 : s.x + s.y) - (s.x + s.y)) *
         (sk * sk * (3 - 2 * sk));
+    // fuori dall'inquadratura non si disegna (chi dorme è sul letto, sempre in vista)
+    if (sk <= 0 && !onScreen(s.x, s.y)) return;
     drawables.push({
       depth: rd,
       draw: (): GameValue =>
@@ -534,7 +578,7 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
               sk,
               map.bed,
               typeof op.bed === 'number' ? op.bed : null,
-              { x: dx, y: dy },
+              s.dir || null,
               pose,
             ),
     });

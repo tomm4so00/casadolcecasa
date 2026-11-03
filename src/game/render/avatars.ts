@@ -1340,7 +1340,12 @@ export function drawPlayerAvatar(
     ctx.ellipse(g0.x, g0.y, 13 * s, 6.5 * s, 0, 0, 6.3);
     ctx.fill();
   }
-  const phase: GameValue = animTime * 12 + (hsh % 10);
+  // Con la velocità (opts.speed, unità al secondo) il passo va a tempo con lo spostamento:
+  // chi cammina piano fa passi più lenti invece di "pattinare" muovendo le gambe in fretta.
+  const STRIDE = 7.5;
+  const stepRate: number =
+    opts && opts.speed > 0 ? Math.max(4, Math.min(12, (opts.speed * Math.PI) / (2 * STRIDE))) : 12;
+  const phase: GameValue = animTime * stepRate + (hsh % 10);
   const swing: GameValue = moving ? Math.sin(phase) : 0;
   const pose: string = (opts && opts.pose) || '';
   const sitting = pose === 'sit' || pose === 'bench';
@@ -1357,7 +1362,6 @@ export function drawPlayerAvatar(
   const wl = wd ? Math.hypot(wd.x, wd.y) : 0;
   const dX: number = wl > 0.01 ? wd.x / wl : Math.SQRT1_2,
     dY: number = wl > 0.01 ? wd.y / wl : -Math.SQRT1_2;
-  const STRIDE = 7.5;
   // si alza il piede che sta andando avanti
   const liftFront: number = moving ? Math.max(0, Math.cos(phase)) * 4 : 0,
     liftBack: number = moving ? Math.max(0, -Math.cos(phase)) * 4 : 0;

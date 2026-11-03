@@ -8,13 +8,15 @@ import { sfx } from './audio.js';
 import { spendMoney } from './economy.js';
 import { saySocial } from './social.js';
 import { isoProject, isoScale, rotateAround } from './render/primitives.js';
+import { presenceAlive } from './saves.js';
+import { presenceState } from './presence-rules.js';
 
 export const COIN_PRICE = 5;
 export const ICE_CREAM_PRICE = 5;
 const ICE_CREAM_HUNGER = 50;
 /** Secondi per finire il gelato (il cono si vede in mano e si rimpicciolisce). */
 const ICE_CREAM_EAT = 8;
-const SIT = { approach: 0.5, down: 0.3, up: 0.3 };
+const SIT = { down: 0.3, up: 0.3 };
 const TOSS = { fly: 1.0, splash: 1.2 };
 /** Ogni quanto si guadagna un po' di felicità stando seduti (in panchina o sul divano). */
 const RELAX_EVERY = 30;
@@ -67,12 +69,74 @@ export const isSittingOnBench = (): boolean => !!game.benchSit;
 /** Posa da mostrare (e da mandare agli altri) mentre si è seduti. */
 export const myBenchPose = (): string => (game.benchSit?.pose === 'bench' ? 'bench' : '');
 
-function walk(a: { x: number; y: number }, b: { x: number; y: number }, k: number): void {
+type Pt = { x: number; y: number };
+
+/** Spostamento "da seduti" (sedersi, alzarsi): un passo breve e morbido da a a b. */
+function slide(a: Pt, b: Pt, k: number, walking: boolean): void {
   const t = Math.max(0, Math.min(1, k));
   const e = t * t * (3 - 2 * t);
   game.playerPos.x = a.x + (b.x - a.x) * e;
   game.playerPos.y = a.y + (b.y - a.y) * e;
-  game.isWalking = k < 1;
+  game.isWalking = walking && k < 1;
+}
+
+/** Cammina lungo il percorso a velocità costante; true quando è arrivato in fondo. */
+function walkPath(s: GameValue, dist: number): boolean {
+  const path: Pt[] = s.path;
+  for (let i = 1; i < path.length; i++) {
+    const a = path[i - 1],
+      b = path[i];
+    const len = Math.hypot(b.x - a.x, b.y - a.y);
+    if (dist <= len && len > 0) {
+      game.playerPos.x = a.x + ((b.x - a.x) * dist) / len;
+      game.playerPos.y = a.y + ((b.y - a.y) * dist) / len;
+      s.dir = { x: b.x - a.x, y: b.y - a.y };
+      game.isWalking = true;
+      return false;
+    }
+    dist -= len;
+  }
+  const end = path[path.length - 1];
+  game.playerPos.x = end.x;
+  game.playerPos.y = end.y;
+  return true;
+}
+
+const pathLength = (path: Pt[]): number =>
+  path.reduce((n, p, i) => (i ? n + Math.hypot(p.x - path[i - 1].x, p.y - path[i - 1].y) : 0), 0);
+
+// ---------------------------------------------------------------- posti occupati
+
+/** Gli altri giocatori che si vedono qui (stesso ambiente, stessa stanza o appartamento). */
+export function othersHere(): [string, GameValue][] {
+  const env = game.view.activeEnvironment;
+  const now = Date.now();
+  const out: [string, GameValue][] = [];
+  for (const [id, op] of Object.entries(game.onlinePlayers || {}) as [string, GameValue][]) {
+    if (id === game.session.myPlayerId || !op || op.env !== env) continue;
+    if (env === 'PLAYER_ROOM' && op.roomIdx !== game.currentRoomIdx) continue;
+    if (game.APT_ENVS.includes(env) && (op.apt || 0) !== game.currentApt) continue;
+    const state = presenceState(
+      op,
+      presenceAlive(id, op, now),
+      now + (game.session.serverOffset || 0),
+      game.SLEEP_DEPLETION_SEC,
+    );
+    // chi è andato via non si vede più; chi è svenuto è a terra, non seduto
+    if (state === 'gone' || state === 'fainted') continue;
+    out.push([id, op]);
+  }
+  return out;
+}
+
+/** Distanza sotto la quale due persone sedute starebbero una sopra l'altra. */
+const SEAT_GAP = 12;
+
+/** Chi è già seduto su questo posto (anche se è uscito dal gioco seduto lì), o null. */
+function seatTakenBy(seat: Pt): string | null {
+  for (const [id, op] of othersHere())
+    if (op.act === 'bench' && Math.hypot(op.x - seat.x, op.y - seat.y) < SEAT_GAP) return id;
+  return null;
 }
 
 // ---------------------------------------------------------------- panchine
@@ -85,30 +149,53 @@ export function toggleBench(key: string): void {
   }
   const b = funSpots()[key];
   if (!b || game.player.isSleeping) return;
-  // due posti per panchina: ci si siede su quello dalla propria parte
-  const side = game.playerPos.x < b.x ? -1 : 1;
+  // due posti per panchina: prima quello dalla propria parte, se è preso l'altro
+  const near = game.playerPos.x < b.x ? -1 : 1;
+  const side = [near, -near].find((sd) => !seatTakenBy({ x: b.x + sd * b.w * 0.22, y: b.y + 2 }));
+  if (side === undefined) {
+    toast('🪑 La panchina è occupata: ci sono già seduti in due.');
+    sfx('error');
+    return;
+  }
   const seat = { x: b.x + side * b.w * 0.22, y: b.y + 2 };
-  startSit('bench', seat, { x: seat.x, y: b.y + b.h / 2 + 18 }, null);
+  const front = { x: seat.x, y: b.y + b.h / 2 + 18 };
+  const from = { x: game.playerPos.x, y: game.playerPos.y };
+  // da dietro la panchina si gira attorno al bracciolo invece di attraversarla
+  const path: Pt[] = [from];
+  if (from.y < b.y + b.h / 2) {
+    const clear = b.w / 2 + 16;
+    if (Math.abs(from.x - b.x) < clear) {
+      const aside = b.x + side * clear;
+      path.push({ x: aside, y: from.y }, { x: aside, y: front.y });
+    } else path.push({ x: from.x, y: front.y });
+  }
+  path.push(front);
+  startSit('bench', seat, front, path, null);
 }
 
-function startSit(
-  kind: 'bench' | 'sofa',
-  seat: { x: number; y: number },
-  front: { x: number; y: number },
-  item: GameValue,
-): void {
+/** Velocità con cui si va a sedersi (come camminare). */
+const SIT_WALK_SPEED = 130;
+
+function startSit(kind: 'bench' | 'sofa', seat: Pt, front: Pt, path: Pt[], item: GameValue): void {
   game.benchSit = {
     kind,
     env: game.view.activeEnvironment,
     item,
     t0: game.animClock,
-    from: { x: game.playerPos.x, y: game.playerPos.y },
+    path,
+    walk: pathLength(path) / SIT_WALK_SPEED,
     front,
     seat,
+    // seduti si guarda in avanti, dal posto verso chi sta davanti
+    face: { x: front.x - seat.x, y: front.y - seat.y },
+    dir: null,
     pose: '',
     relaxAt: game.animClock + RELAX_EVERY,
   };
 }
+
+/** Direzione in cui guarda chi si sta sedendo o è seduto (null = quella dei tasti). */
+export const benchWalkDir = (): Pt | null => game.benchSit?.dir || null;
 
 // ---------------------------------------------------------------- divano
 
@@ -127,10 +214,19 @@ export function toggleSofa(item: GameValue): void {
   const local = rotateAround(game.playerPos.x, game.playerPos.y, item.x, item.y, (4 - k) % 4);
   const arm = Math.max(6, item.w * 0.11);
   const off = (item.w - arm * 2) / 4;
-  const sx = item.x + (local.x < item.x ? -off : off);
+  const near = local.x < item.x ? -1 : 1;
+  const side = [near, -near].find(
+    (sd) => !seatTakenBy(rotateAround(item.x + sd * off, item.y + 4, item.x, item.y, k)),
+  );
+  if (side === undefined) {
+    toast('🛋️ Il divano è occupato: ci sono già seduti in due.');
+    sfx('error');
+    return;
+  }
+  const sx = item.x + side * off;
   const seat = rotateAround(sx, item.y + 4, item.x, item.y, k);
   const front = rotateAround(sx, item.y + item.h / 2 + 22, item.x, item.y, k);
-  startSit('sofa', seat, front, item);
+  startSit('sofa', seat, front, [{ x: game.playerPos.x, y: game.playerPos.y }, front], item);
 }
 
 /** Seduti sul divano (per il pulsante "Alzati"). */
@@ -148,6 +244,29 @@ export function standUp(): void {
   s.upAt = game.animClock;
 }
 
+/**
+ * Se nel frattempo il posto l'ha preso qualcun altro: chi stava ancora arrivando rinuncia;
+ * se ci si è seduti nello stesso istante, si alza chi ha l'id "più grande" (lo decidono
+ * allo stesso modo tutti e due, così se ne alza uno solo).
+ */
+function checkSeatConflict(s: GameValue): boolean {
+  if (s.upAt !== undefined) return false;
+  const other = seatTakenBy(s.seat);
+  if (!other) return false;
+  if (s.pose !== 'bench') {
+    game.benchSit = null;
+    game.isWalking = false;
+    toast('🪑 Qualcuno si è seduto lì prima di te.');
+    return true;
+  }
+  if (other < String(game.session.myPlayerId)) {
+    toast('🪑 Vi siete seduti nello stesso posto: ti alzi e lo lasci libero.');
+    standUp();
+    return true;
+  }
+  return false;
+}
+
 /** Ogni fotogramma: avvicinarsi, sedersi, restare seduti, alzarsi. */
 export function updateBench(now: number): void {
   const s: GameValue = game.benchSit;
@@ -156,10 +275,13 @@ export function updateBench(now: number): void {
     game.benchSit = null;
     return;
   }
+  if (checkSeatConflict(s)) return;
   if (s.upAt !== undefined) {
+    // ci si alza con un passo in avanti
     const e = (now - s.upAt) / SIT.up;
     s.pose = '';
-    walk(s.seat, s.front, e);
+    s.dir = s.face;
+    slide(s.seat, s.front, e, true);
     if (e >= 1) {
       game.benchSit = null;
       game.isWalking = false;
@@ -167,14 +289,16 @@ export function updateBench(now: number): void {
     return;
   }
   let e = now - s.t0;
-  if (e < SIT.approach) return walk(s.from, s.front, e / SIT.approach);
-  e -= SIT.approach;
-  if (e < SIT.down) {
-    s.pose = 'bench';
-    return walk(s.front, s.seat, e / SIT.down);
+  if (e < s.walk) {
+    walkPath(s, e * SIT_WALK_SPEED);
+    return;
   }
+  e -= s.walk;
+  // arrivati davanti al posto: ci si gira e ci si lascia andare all'indietro sulla seduta
+  s.dir = s.face;
   s.pose = 'bench';
-  walk(s.seat, s.seat, 1);
+  if (e < SIT.down) return slide(s.front, s.seat, e / SIT.down, false);
+  slide(s.seat, s.seat, 1, false);
   if (s.kind === 'sofa') {
     // appena seduti: tonfo sui cuscini, sospiro e la pausa sul divano (felicità)
     if (!s.seatedAt) {

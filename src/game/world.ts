@@ -9,6 +9,7 @@ import {
   buyIceCream,
   funSpots,
   onSofa,
+  othersHere,
   toggleBench,
   toggleSofa,
   tossCoin,
@@ -40,12 +41,10 @@ import {
   hasRoom,
   hashPin,
   isMyRoomNow,
-  presenceAlive,
   saveGame,
   withTimeout,
 } from './saves.js';
 import { applyRoomBounds } from './room-size.js';
-import { presenceState } from './presence-rules.js';
 import { openDialog } from './interface.js';
 import { relaxWith, toast } from './missions.js';
 import {
@@ -884,27 +883,49 @@ function backToMall(fromEnv?: string): void {
     : { x: 0, y: game.mallFurniture.doorExit.y - 45 };
 }
 
+/**
+ * Cuscini presi dagli altri che dormono nel letto di questa stanza: cuscino → id di chi ci dorme
+ * (se per sbaglio sono in due sullo stesso, vale l'id "più piccolo").
+ */
+function bedSlotsTaken(): Map<number, string> {
+  const taken = new Map<number, string>();
+  if (game.view.activeEnvironment !== 'PLAYER_ROOM') return taken;
+  for (const [id, op] of othersHere()) {
+    if (op.act !== 'sleep') continue;
+    // le versioni vecchie non dicono il cuscino: dormono al centro e occupano il primo
+    const slot = typeof op.bed === 'number' ? op.bed : taken.has(0) ? 1 : 0;
+    const prev = taken.get(slot);
+    if (prev === undefined || id < prev) taken.set(slot, id);
+  }
+  return taken;
+}
+
 /** Cuscino libero nel letto di questa stanza (ci stanno al massimo due persone), o null se è pieno. */
 function freeBedSlot(): number | null {
-  const now = Date.now();
-  const taken = new Set<number>();
-  for (const [id, op] of Object.entries(game.onlinePlayers || {})) {
-    if (id === game.session.myPlayerId || !op || op.act !== 'sleep') continue;
-    if (op.env !== 'PLAYER_ROOM' || op.roomIdx !== game.currentRoomIdx) continue;
-    const alive = presenceAlive(id, op, now);
-    const state = presenceState(
-      op,
-      alive,
-      now + (game.session.serverOffset || 0),
-      game.SLEEP_DEPLETION_SEC,
-    );
-    if (state === 'gone') continue;
-    // le versioni vecchie non dicono il cuscino: dormono al centro e occupano il primo
-    taken.add(typeof op.bed === 'number' ? op.bed : taken.has(0) ? 1 : 0);
-  }
+  const taken = bedSlotsTaken();
   if (!taken.has(0)) return 0;
   if (!taken.has(1)) return 1;
   return null;
+}
+
+/**
+ * Ogni fotogramma, mentre si dorme: se ci si è coricati nello stesso istante di un altro sullo
+ * stesso cuscino (o al rientro il proprio cuscino è stato preso), chi ha l'id "più grande" passa
+ * all'altro cuscino; se il letto è pieno si alza. Così due persone non si sovrappongono mai.
+ */
+export function keepOwnPillow(): void {
+  if (!game.player.isSleeping || game.view.activeEnvironment !== 'PLAYER_ROOM') return;
+  const taken = bedSlotsTaken();
+  const other = taken.get(game.bedSlot);
+  if (other === undefined || other > String(game.session.myPlayerId)) return;
+  const alt = game.bedSlot === 0 ? 1 : 0;
+  if (!taken.has(alt)) {
+    game.bedSlot = alt;
+    return;
+  }
+  game.player.isSleeping = false;
+  sfx('wake');
+  toast('🛏️ Letto pieno, prova un altro letto.');
 }
 
 export async function handleObjectInteract(..._args: GameValue[]): Promise<void> {
@@ -1092,7 +1113,7 @@ export async function handleObjectInteract(..._args: GameValue[]): Promise<void>
       if (!game.player.isSleeping) {
         const slot = freeBedSlot();
         if (slot === null) {
-          toast('🛏️ Il letto è pieno: ci dormono già in due.');
+          toast('🛏️ Letto pieno, prova un altro letto.');
           return;
         }
         game.bedSlot = slot;

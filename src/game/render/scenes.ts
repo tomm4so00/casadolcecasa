@@ -2,7 +2,7 @@ import { launchPhase } from '../project-rules.js';
 import { realHour } from '../game-clock.js';
 import type { GameValue } from '../context.js';
 import { game } from '../context.js';
-import { cameraRange, cameraScale } from '../camera.js';
+import { cameraPx, cameraRange, cameraScale } from '../camera.js';
 import { isoProject, isoScale, mixColor, poly, rnd, setPlane } from './primitives.js';
 import { resetPlane } from './objects.js';
 import { getMyRoomMap, isMyRoomNow } from '../saves.js';
@@ -1153,12 +1153,16 @@ export function drawStaticScene(st?: GameValue, hour?: GameValue): GameValue {
   let off = game.bgCache.canvas;
   if (game.bgCache.key !== key || !off) {
     off ||= document.createElement('canvas');
-    off.width = Math.ceil(W + (r.u1 - r.u0) * s);
-    off.height = Math.ceil(H + (r.v1 - r.v0) * s);
+    off.width = Math.ceil(W + (r.u1 - r.u0) * s) + 2;
+    off.height = Math.ceil(H + (r.v1 - r.v0) * s) + 2;
     const mainCtx = game.view.ctx;
     const mainOverride = game.viewOverride;
     game.view.ctx = off.getContext('2d')!;
-    game.viewOverride = { cx: W / 2 - r.u0 * s, cy: H / 2 + 55 - r.v0 * s, scale: s };
+    game.viewOverride = {
+      cx: W / 2 - Math.round(r.u0 * s),
+      cy: H / 2 + 55 - Math.round(r.v0 * s),
+      scale: s,
+    };
     try {
       game.view.ctx.clearRect(0, 0, off.width, off.height);
       drawFloorPattern(st);
@@ -1169,8 +1173,9 @@ export function drawStaticScene(st?: GameValue, hour?: GameValue): GameValue {
     }
     game.bgCache = { key, canvas: off };
   }
-  const cam = game.cam || { u: 0, v: 0 };
-  game.view.ctx.drawImage(off, Math.round(-(cam.u - r.u0) * s), Math.round(-(cam.v - r.v0) * s));
+  // stesso spostamento in pixel interi usato per oggetti e personaggi (vedi cameraPx)
+  const cam = cameraPx(s);
+  game.view.ctx.drawImage(off, Math.round(r.u0 * s) - cam.u, Math.round(r.v0 * s) - cam.v);
 }
 
 export function drawDynamicFloor(st?: GameValue, t?: GameValue): GameValue {
