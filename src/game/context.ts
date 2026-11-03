@@ -145,6 +145,8 @@ export interface GameContext {
   labDoorForceUntil: number;
   /** Fino a quando (performance.now) si vede il fumo della canna. */
   smokeUntil: number;
+  /** Porte tenute aperte mentre le si attraversa: id → fino a quando (performance.now). */
+  doorForce: Record<string, number>;
   /** Curvatura del terreno (solo sulla luna). */
   moonCurve: number;
   /** Ultimi decolli verso la luna e dalla luna (ora del server). */

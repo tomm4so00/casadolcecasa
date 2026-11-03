@@ -389,6 +389,7 @@ export function initializeGame() {
   game.sleepRoom = null;
   game.labDoorForceUntil = 0;
   game.smokeUntil = 0;
+  game.doorForce = {};
   game.engineeringYardFurniture = structuredClone(ENGINEERING_YARD_FURNITURE);
   game.rocketStage = 0;
   game.rocketLaunchAt = 0;

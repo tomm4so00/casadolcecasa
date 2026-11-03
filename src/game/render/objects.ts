@@ -1684,7 +1684,10 @@ export function drawSaloonDoor(key?: GameValue, it?: GameValue): GameValue {
   const dx: number = thinX ? (it.x < 0 ? game.X0 + T / 2 : game.X1 - T / 2) : it.x;
   const dy: number = thinX ? it.y : it.y < 0 ? game.Y0 + T / 2 : game.Y1 - T / 2;
   const b: GameValue = box(dx, dy, thinX ? T : it.w, thinX ? it.h : T, 96, '#ecf0f1');
-  onFace(b, thinX ? 'right' : 'left', (W?: GameValue, H?: GameValue): GameValue => {
+  // la porta si apre quando ci si avvicina (le stanze vuote restano chiuse a chiave)
+  const locked = it.roomIdx !== undefined && doorC === '#7f8c8d';
+  const open = doorOpenAmount('saloon:' + key, it.x, it.y, !locked);
+  const paintLeaf = (W: number, H: number): void => {
     ctx.fillStyle = doorC;
     ctx.fillRect(5, 7, W - 10, H - 7);
     woodGrain(W, H, 'rgba(0,0,0,0.12)', true, 6);
@@ -1704,7 +1707,53 @@ export function drawSaloonDoor(key?: GameValue, it?: GameValue): GameValue {
       ctx.textAlign = 'center';
       ctx.fillText(sign, W / 2, 24.5);
     }
+  };
+  const W: number = thinX ? it.h : it.w,
+    H = 96;
+  // vano della porta: buio con un po' di luce calda dall'altra parte
+  onFace(b, thinX ? 'right' : 'left', (FW: number, FH: number): void => {
+    const g = ctx.createLinearGradient(0, 7, 0, FH);
+    g.addColorStop(0, '#1e140e');
+    g.addColorStop(1, '#5a3b22');
+    ctx.fillStyle = g;
+    ctx.fillRect(5, 7, FW - 10, FH - 7);
+    if (open < 0.02) paintLeaf(FW, FH);
   });
+  if (open < 0.02) return;
+  // anta che gira sui cardini verso chi guarda
+  const a = open * 1.45;
+  const zTop = b.z1;
+  const hinge = thinX ? [b.x1, b.y1 - 5, zTop] : [b.x0 + 5, b.y1, zTop];
+  const u = thinX ? [Math.sin(a), -Math.cos(a), 0] : [Math.cos(a), Math.sin(a), 0];
+  setPlane(hinge, u, [0, 0, -1]);
+  try {
+    ctx.translate(-5, 0);
+    paintLeaf(W, H);
+    // più l'anta è aperta, più è in ombra
+    ctx.fillStyle = `rgba(0,0,0,${0.25 * open})`;
+    ctx.fillRect(5, 7, W - 10, H - 7);
+  } finally {
+    resetPlane();
+  }
+}
+
+// Apertura delle porte (0 = chiusa, 1 = aperta), che si muove piano verso quella voluta.
+const doorOpenState = new Map<string, { k: number; t: number }>();
+
+/**
+ * Quanto è aperta una porta: si apre quando il giocatore le si avvicina o la sta attraversando
+ * (game.doorForce), e si richiude quando si allontana.
+ */
+export function doorOpenAmount(id: string, x: number, y: number, enabled: boolean): number {
+  const now = performance.now();
+  const st = doorOpenState.get(id) || { k: 0, t: now };
+  const dt = Math.min(0.1, Math.max(0, (now - st.t) / 1000));
+  const near = Math.hypot(game.playerPos.x - x, game.playerPos.y - y) < 75;
+  const target = enabled && (near || (game.doorForce[id] || 0) > now) ? 1 : 0;
+  st.k += (target - st.k) * Math.min(1, dt * 6);
+  st.t = now;
+  doorOpenState.set(id, st);
+  return st.k * st.k * (3 - 2 * st.k);
 }
 
 // ---------------------------------------------------------------- PALAZZINE DEL CORTILE
@@ -2092,7 +2141,10 @@ function drawFacadeRoof(
  * balcone, cantonali in pietra, tetti di tipi diversi, portone ad arco con pensilina,
  * lampioncini e vasi. `side: 'left'` = sulla parete di sinistra, altrimenti su quella di fondo.
  */
-function drawFacade(it: GameValue, o: { no: number; doorColor: string; building?: boolean }): void {
+function drawFacade(
+  it: GameValue,
+  o: { no: number; doorColor: string; building?: boolean; open?: number },
+): void {
   const ctx = game.view.ctx;
   const side = it.side === 'left';
   const idx = (o.no - 1) % FACADE_COLORS.length;
@@ -2177,12 +2229,23 @@ function drawFacade(it: GameValue, o: { no: number; doorColor: string; building?
     ctx.arc(dx + dw / 2, dy + dw / 2, dw / 2 + 4, Math.PI, 0);
     ctx.lineTo(dx + dw + 4, H - 10);
     ctx.fill();
-    ctx.fillStyle = o.doorColor;
+    const opening = o.open || 0;
+    // androne buio dietro il portone
+    ctx.fillStyle = '#20160f';
     ctx.beginPath();
     ctx.moveTo(dx, H - 10);
     ctx.lineTo(dx, dy + dw / 2);
     ctx.arc(dx + dw / 2, dy + dw / 2, dw / 2, Math.PI, 0);
     ctx.lineTo(dx + dw, H - 10);
+    ctx.fill();
+    // battenti: si stringono verso i lati mentre si aprono
+    const leafW = (dw / 2) * (1 - 0.8 * opening);
+    ctx.fillStyle = opening > 0.02 ? game.darken(o.doorColor, 0.25 * opening) : o.doorColor;
+    ctx.fillRect(dx, dy + dw / 2, leafW, H - 10 - (dy + dw / 2));
+    ctx.fillRect(dx + dw - leafW, dy + dw / 2, leafW, H - 10 - (dy + dw / 2));
+    ctx.fillStyle = o.doorColor;
+    ctx.beginPath();
+    ctx.arc(dx + dw / 2, dy + dw / 2, dw / 2, Math.PI, 0);
     ctx.fill();
     // lunetta a vetri sopra il portone
     ctx.fillStyle = night ? '#ffe08a' : 'rgba(205,238,253,0.9)';
@@ -2349,13 +2412,14 @@ function drawFacade(it: GameValue, o: { no: number; doorColor: string; building?
 
 // Ingresso di un appartamento visto dal cortile: il colore del portone dice se è il tuo o se è pieno;
 // il nastro bianco e rosso resta finché nell'appartamento non abita ancora nessuno.
-export function drawCourtyardDoor(_key?: GameValue, it?: GameValue): GameValue {
+export function drawCourtyardDoor(key?: GameValue, it?: GameValue): GameValue {
   const mine: GameValue = hasRoom() && game.aptOfRoom(game.myAssignedRoomIdx) === it.aptIdx;
   const free: number = freeRoomsInApt(it.aptIdx);
   drawFacade(it, {
     no: it.aptIdx + 1,
     doorColor: mine ? '#2e86de' : free === 0 ? '#7f8c8d' : '#27ae60',
     building: free === game.ROOMS_PER_APT,
+    open: doorOpenAmount('cortile:' + key, it.x, it.y, true),
   });
 }
 

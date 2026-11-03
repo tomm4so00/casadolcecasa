@@ -711,6 +711,13 @@ export async function resumeLastSpot(): Promise<boolean> {
 }
 
 // Ritorno al salone davanti alla porta da cui si esce: stanza, cucina, bagno o uscita di casa.
+/** La porta si spalanca (con il suo rumore) e dopo un attimo si passa dall'altra parte. */
+function throughDoor(id: string): Promise<void> {
+  game.doorForce[id] = performance.now() + 900;
+  sfx('door');
+  return new Promise((resolve) => lifetime.setTimeout(() => resolve(), 380));
+}
+
 function backToSaloon(): void {
   const env: GameValue = game.view.activeEnvironment;
   if (MALL_SHOPS[env]) {
@@ -732,6 +739,8 @@ function backToSaloon(): void {
   game.view.activeEnvironment = 'SALOON';
   game.view.currentRoomTitle = game.saloonTitle();
   spawnAtDoor(door);
+  const doorKey = Object.keys(doors).find((k) => doors[k] === door);
+  if (doorKey) game.doorForce['saloon:' + doorKey] = performance.now() + 500;
 }
 
 // ---------------------------------------------------------------- centro commerciale
@@ -809,6 +818,7 @@ export async function handleObjectInteract(..._args: GameValue[]): Promise<void>
         toast('🔒 Questa stanza è vuota.');
         return;
       }
+      await throughDoor('saloon:' + game.activeTargetProp);
       game.view.currentRoomTitle =
         gi === game.myAssignedRoomIdx ? `La tua stanza 🏠` : `Stanza di ${room.owner}`;
       game.currentRoomIdx = gi;
@@ -816,6 +826,7 @@ export async function handleObjectInteract(..._args: GameValue[]): Promise<void>
       if (gi !== game.myAssignedRoomIdx) notePersonality('enterOtherRoom');
       spawnAtDoor(getCurrentFurnitureMap().doorExit);
     } else {
+      await throughDoor('saloon:' + game.activeTargetProp);
       game.view.currentRoomTitle = item.title;
       game.view.activeEnvironment = item.targetEnv;
       if (item.targetEnv === 'CORTILE')
@@ -824,6 +835,7 @@ export async function handleObjectInteract(..._args: GameValue[]): Promise<void>
     }
   } else if (game.view.activeEnvironment === 'CORTILE') {
     if (item && item.aptIdx !== undefined) {
+      await throughDoor('cortile:' + game.activeTargetProp);
       game.currentApt = item.aptIdx;
       backToSaloon();
     }
