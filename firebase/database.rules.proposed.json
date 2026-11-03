@@ -718,8 +718,56 @@
             }
           }
         },
+        "launchAt": {
+          ".write": "(auth != null && auth.token.firebase.sign_in_provider === 'google.com') && root.child('sims_accounts').child(auth.uid).child('playerId').isString() && !data.exists() && root.child('sims_projects').child($project).child('funded').val() >= 15000",
+          ".validate": "newData.isNumber() && newData.val() >= now + 5000 && newData.val() <= now + 20000"
+        },
+        "launchBy": {
+          ".write": "(auth != null && auth.token.firebase.sign_in_provider === 'google.com') && root.child('sims_accounts').child(auth.uid).child('playerId').isString() && !data.exists()",
+          ".validate": "newData.isString() && newData.val().length <= 20"
+        },
+        "notified": {
+          ".validate": "newData.isNumber()"
+        },
         "$other": {
           ".validate": false
+        }
+      }
+    },
+    "sims_theft": {
+      "$pid": {
+        ".read": "(auth != null && auth.token.firebase.sign_in_provider === 'google.com') && root.child('sims_accounts').child(auth.uid).child('playerId').val() === $pid",
+        "$room": {
+          ".write": "(auth != null && auth.token.firebase.sign_in_provider === 'google.com') && root.child('sims_accounts').child(auth.uid).child('playerId').val() === $pid && newData.exists()",
+          ".validate": "newData.hasChildren(['n','since']) && newData.child('since').val() <= now && ((data.exists() && data.child('since').val() + 86400000 > now && newData.child('since').val() === data.child('since').val() && newData.child('n').val() === data.child('n').val() + 1 && (newData.child('n').val() <= 3 || (newData.child('n').val() === 4 && root.child('sims_saves').child($pid).child('personality').child('announced').child('criminal').val() === true))) || ((!data.exists() || data.child('since').val() + 86400000 <= now) && newData.child('n').val() === 1 && newData.child('since').val() > now - 300000))",
+          "n": {
+            ".validate": "newData.isNumber()"
+          },
+          "since": {
+            ".validate": "newData.isNumber()"
+          },
+          "$other": {
+            ".validate": false
+          }
+        }
+      }
+    },
+    "sims_push": {
+      "$pid": {
+        "tokens": {
+          "$key": {
+            ".write": "(auth != null && auth.token.firebase.sign_in_provider === 'google.com') && root.child('sims_accounts').child(auth.uid).child('playerId').val() === $pid",
+            ".validate": "newData.hasChildren(['token','t']) && $key.matches(/^[0-9a-f]{64}$/)",
+            "token": {
+              ".validate": "newData.isString() && newData.val().length >= 20 && newData.val().length <= 500"
+            },
+            "t": {
+              ".validate": "newData.isNumber() && newData.val() <= now + 60000"
+            },
+            "$other": {
+              ".validate": false
+            }
+          }
         }
       }
     }

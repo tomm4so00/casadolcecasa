@@ -139,6 +139,12 @@ export interface GameContext {
   engineeringYardFurniture: SceneMap;
   /** Fase del razzo del laboratorio ingegneristico: 0 niente, 1 pezzi, 2 completo. */
   rocketStage: number;
+  /** Ora (del server) del lancio del razzo, 0 se non è ancora fissata. */
+  rocketLaunchAt: number;
+  /** Momento (animClock) in cui si è premuto il pulsante rosso, per l'animazione. */
+  launchPressedAt: number;
+  /** Chi ha versato per il razzo (codice giocatore → euro): per la targhetta in camera. */
+  rocketDonors: Record<string, number>;
   saloonDoors: SceneMap;
   courtyardDoors: SceneMap;
   ABSENT_DEATH_MS: GameValue;

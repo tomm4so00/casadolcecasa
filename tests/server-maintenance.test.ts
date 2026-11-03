@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { maintainGame } from '../server/src/maintenance.js';
+import {
+  type PushSender,
+  deathWarningText,
+  maintainGame,
+  sendDeathWarnings,
+} from '../server/src/maintenance.js';
 import { localDatabase } from '../src/game/database.js';
 import { Lifetime } from '../src/game/lifetime.js';
 import { MemoryStorage } from './helpers.js';
@@ -78,5 +83,50 @@ describe('trusted game maintenance', () => {
     const first = (await database.ref('sims_graveyard/player_absent').get()).val();
     await maintainGame(database, now + 60000);
     expect((await database.ref('sims_graveyard/player_absent').get()).val()).toEqual(first);
+  });
+});
+
+describe('avviso sul telefono prima della morte per assenza', () => {
+  const now = 1_800_000_000_000;
+  const setup = async (awayHours: number) => {
+    const database = localDatabase(new Lifetime(), new MemoryStorage());
+    await database.ref('sims_accounts/g1').set({ playerId: 'player_a' });
+    await database.ref('sims_rooms_state/0').set({
+      id: 1,
+      ownerId: 'player_a',
+      owner: 'Mario',
+      lastSeen: now - awayHours * 3600000,
+      vaultMoney: 0,
+    });
+    await database.ref('sims_push/player_a/tokens/k1').set({ token: 'tok-ok', t: now });
+    await database.ref('sims_push/player_a/tokens/k2').set({ token: 'tok-old', t: now });
+    const calls: { token: string; title: string; body: string }[] = [];
+    const send: PushSender = async (token, m) => {
+      calls.push({ token, title: m.title, body: m.body });
+      return token === 'tok-old' ? 'gone' : 'sent';
+    };
+    return { database, calls, send };
+  };
+
+  it('avvisa 12 ore prima, una volta sola, e toglie i dispositivi non più validi', async () => {
+    const { database, calls, send } = await setup(69);
+    expect(await sendDeathWarnings(database, now, send)).toBe(1);
+    expect(calls.map((c) => c.token).sort()).toEqual(['tok-ok', 'tok-old']);
+    expect(calls[0].title).toBe('⚠️ Mario sta per morire!');
+    expect(calls[0].body).toContain('entro 11 ore');
+    expect((await database.ref('sims_push/player_a/tokens/k2').get()).exists()).toBe(false);
+    // il giro successivo non lo avvisa di nuovo
+    expect(await sendDeathWarnings(database, now + 15 * 60000, send)).toBe(0);
+  });
+
+  it('non avvisa chi è entrato da poco o è già morto', async () => {
+    for (const hours of [60, 81]) {
+      const { database, send } = await setup(hours);
+      expect(await sendDeathWarnings(database, now, send)).toBe(0);
+    }
+  });
+
+  it('il testo dice quante ore restano', () => {
+    expect(deathWarningText('Ada', now - 79.6 * 3600000, now).body).toContain('entro 1 ora');
   });
 });

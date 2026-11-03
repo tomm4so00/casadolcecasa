@@ -1540,6 +1540,15 @@ export const ENGINEERING_FURNITURE = {
 // Zona esterna del laboratorio: la rampa del razzo e la porta per rientrare.
 export const ENGINEERING_YARD_FURNITURE = {
   rocketPad: { x: -100, y: -50, w: 96, h: 96, z: 60, name: 'Razzo spaziale 🚀', moveable: false },
+  launchButton: {
+    x: 60,
+    y: 50,
+    w: 22,
+    h: 22,
+    z: 40,
+    name: 'Pulsante di lancio 🔴',
+    moveable: false,
+  },
   doorLab: {
     x: 0,
     y: 160,
@@ -2286,6 +2295,7 @@ export const ENV_STYLE = {
       ],
       left: [
         { t: 'wallSafe', side: 'left' },
+        { t: 'rocketPlaque', side: 'left', u: 85 },
         { t: 'roomPainting', side: 'left' },
       ],
     },

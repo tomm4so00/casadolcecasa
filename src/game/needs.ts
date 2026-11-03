@@ -1,3 +1,4 @@
+import { disablePush, enablePush, needsHomeScreen, showPhoneNotification } from './push.js';
 import { startNewLife } from './rebirth.js';
 import { clockText, dayNumber, isNight, realHour } from './game-clock.js';
 import { spendMoney } from './economy.js';
@@ -398,17 +399,22 @@ export function updateNotifyButton(..._args: GameValue[]): GameValue {
 
 export function sendNotify(title?: GameValue, body?: GameValue, tag?: GameValue): GameValue {
   if (!game.notifyOn || typeof browser.Notification === 'undefined') return;
-  try {
-    const options: NotificationOptions & { renotify: boolean } = { body, tag, renotify: true };
-    new browser.Notification(title, options);
-  } catch (e: GameValue) {
-    /* alcuni telefoni richiedono un service worker: restano titolo e avvisi in gioco */
-  }
+  // sui telefoni le notifiche passano dal service worker; sul computer basta Notification
+  void showPhoneNotification(String(title), String(body), String(tag)).then((ok) => {
+    if (ok) return;
+    try {
+      const options: NotificationOptions & { renotify: boolean } = { body, tag, renotify: true };
+      new browser.Notification(title, options);
+    } catch (e: GameValue) {
+      /* restano il titolo della scheda e gli avvisi in gioco */
+    }
+  });
 }
 
 export async function toggleNotify(..._args: GameValue[]): Promise<GameValue> {
   if (game.notifyOn) {
     game.notifyOn = false;
+    void disablePush();
     try {
       localStorage.setItem(game.session.LS_PREFIX + 'sims_notify', 'off');
     } catch (e: GameValue) {}
@@ -438,9 +444,14 @@ export async function toggleNotify(..._args: GameValue[]): Promise<GameValue> {
     localStorage.setItem(game.session.LS_PREFIX + 'sims_notify', 'on');
   } catch (e: GameValue) {}
   updateNotifyButton();
+  const remote = await enablePush();
   toast(
-    '🔔 Notifiche attive: ti avviso quando il personaggio ha fame, sonno, sporco o salute bassa. La scheda deve restare aperta.',
-    5500,
+    remote
+      ? '🔔 Notifiche attive! Ti avviso anche a gioco chiuso se il personaggio sta per morire.'
+      : needsHomeScreen()
+        ? '🔔 Notifiche attive a gioco aperto. Per riceverle anche a gioco chiuso su iPhone, aggiungi il gioco alla schermata Home (Condividi → Aggiungi a Home) e riattivale da lì.'
+        : '🔔 Notifiche attive: ti avviso quando il personaggio ha fame, sonno, sporco o salute bassa. La scheda deve restare aperta.',
+    7000,
   );
   sendNotify('Casa dolce casa', 'Notifiche attive ✅', 'sims-test');
 }

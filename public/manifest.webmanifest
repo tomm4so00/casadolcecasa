@@ -1,0 +1,10 @@
+{
+  "name": "Casa dolce casa",
+  "short_name": "Casa dolce casa",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0f0f18",
+  "theme_color": "#0f0f18",
+  "lang": "it"
+}

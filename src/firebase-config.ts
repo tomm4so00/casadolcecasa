@@ -9,6 +9,7 @@ export const FIREBASE_CONFIG: FirebaseOptions = {
     'https://casadolcecasa-6d92a-default-rtdb.firebaseio.com',
   projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || 'casadolcecasa-6d92a',
   appId: import.meta.env.VITE_FIREBASE_APP_ID || '1:676472374684:web:390bc444b30e45d7ca7459',
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || '676472374684',
 };
 export const isFirebaseConfigured = () =>
   Object.values(FIREBASE_CONFIG).every((value) => typeof value === 'string' && value.length > 0);

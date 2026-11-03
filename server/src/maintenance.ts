@@ -84,3 +84,122 @@ export async function maintainGame(database: MaintenanceDatabase, now: number): 
       await database.ref('sims_chat').update(Object.fromEntries(oldKeys.map((key) => [key, null])));
   }
 }
+
+// ---------------------------------------------------------------- avviso prima della morte
+
+/** Dopo 80 ore senza entrare il personaggio muore: l'avviso parte 12 ore prima. */
+export const DEATH_AFTER_MS = 80 * 3600000;
+export const WARN_BEFORE_MS = 12 * 3600000;
+export const GAME_URL = 'https://tomm4so00.github.io/casadolcecasa/';
+
+export type PushResult = 'sent' | 'gone' | 'error';
+export type PushSender = (
+  token: string,
+  message: { title: string; body: string; link: string; tag: string },
+) => Promise<PushResult>;
+
+/** Testo dell'avviso, con le ore che restano prima della morte. */
+export function deathWarningText(name: string, lastSeen: number, now: number) {
+  const hours = Math.max(1, Math.round((lastSeen + DEATH_AFTER_MS - now) / 3600000));
+  return {
+    title: `⚠️ ${name} sta per morire!`,
+    body: `Non entri in Casa dolce casa da più di 3 giorni. Entra entro ${hours} ${hours === 1 ? 'ora' : 'ore'}, altrimenti il tuo personaggio morirà.`,
+  };
+}
+
+/**
+ * Manda l'avviso sul telefono a chi sta per morire per assenza. Ogni assenza viene avvisata una
+ * volta sola (warnedFor = lastSeen); i dispositivi non più validi vengono tolti.
+ * Restituisce quanti avvisi sono partiti.
+ */
+export async function sendDeathWarnings(
+  database: MaintenanceDatabase,
+  now: number,
+  send: PushSender,
+): Promise<number> {
+  const [rooms, accounts] = await Promise.all([
+    database.ref('sims_rooms_state').get(),
+    database.ref('sims_accounts').get(),
+  ]);
+  const linked = new Set(
+    record(accounts.val())
+      ? Object.values(accounts.val() as Record<string, unknown>).flatMap((a) =>
+          record(a) && typeof a.playerId === 'string' ? [a.playerId] : [],
+        )
+      : [],
+  );
+  const roomList = rooms.val();
+  if (!record(roomList)) return 0;
+  let sent = 0;
+  for (const room of Object.values(roomList)) {
+    if (!record(room) || room.pendingDeath) continue;
+    const { ownerId, lastSeen } = room;
+    if (typeof ownerId !== 'string' || !linked.has(ownerId) || typeof lastSeen !== 'number')
+      continue;
+    const away = now - lastSeen;
+    if (away < DEATH_AFTER_MS - WARN_BEFORE_MS || away >= DEATH_AFTER_MS) continue;
+    const pushRef = database.ref('sims_push/' + ownerId);
+    const push = (await pushRef.get()).val();
+    if (!record(push) || push.warnedFor === lastSeen || !record(push.tokens)) continue;
+    const name = typeof room.owner === 'string' ? room.owner : 'Il tuo personaggio';
+    const text = deathWarningText(name, lastSeen, now);
+    for (const [key, entry] of Object.entries(push.tokens)) {
+      if (!record(entry) || typeof entry.token !== 'string') continue;
+      const result = await send(entry.token, { ...text, link: GAME_URL, tag: 'sims-death' });
+      if (result === 'sent') sent++;
+      if (result === 'gone') await database.ref(`sims_push/${ownerId}/tokens/${key}`).remove();
+    }
+    await pushRef.update({ warnedFor: lastSeen });
+  }
+  return sent;
+}
+
+// ---------------------------------------------------------------- razzo quasi pronto
+
+/** Soglie del razzo (come nel gioco: project-rules.ts). */
+export const ROCKET_GOAL = 15000;
+export const ROCKET_NOTIFY_AT = 14000;
+
+/**
+ * Quando i giocatori arrivano a 14.000 € avvisa tutti sul telefono: manca poco e, a 15.000 €,
+ * qualcuno potrà premere il pulsante rosso per lanciare il razzo. Succede una volta sola.
+ * Restituisce quanti avvisi sono partiti (-1 se non era il momento di avvisare).
+ */
+export async function notifyRocketAlmostReady(
+  database: MaintenanceDatabase,
+  now: number,
+  send: PushSender,
+): Promise<number> {
+  const current = (await database.ref('sims_projects/rocket').get()).val();
+  if (!record(current) || current.notified || current.launchAt) return -1;
+  const funded = Number(current.funded) || 0;
+  if (funded < ROCKET_NOTIFY_AT) return -1;
+  const result = await database
+    .ref('sims_projects/rocket/notified')
+    .transaction((value) => (value ? undefined : now));
+  if (!result.committed) return -1;
+  const left = ROCKET_GOAL - funded;
+  const message =
+    left > 0
+      ? {
+          title: '🚀 Il razzo è quasi pronto!',
+          body: `Mancano solo ${left.toLocaleString('it-IT')} € per completare il razzo. Al traguardo si potrà premere il pulsante rosso per lanciarlo: entra in Casa dolce casa!`,
+        }
+      : {
+          title: '🚀 Il razzo è pronto!',
+          body: 'Il razzo è completo: entra in Casa dolce casa, vai nella zona esterna del laboratorio ingegneristico e premi il pulsante rosso per lanciarlo!',
+        };
+  const everyone = (await database.ref('sims_push').get()).val();
+  if (!record(everyone)) return 0;
+  let sent = 0;
+  for (const [pid, push] of Object.entries(everyone)) {
+    if (!record(push) || !record(push.tokens)) continue;
+    for (const [key, entry] of Object.entries(push.tokens)) {
+      if (!record(entry) || typeof entry.token !== 'string') continue;
+      const res = await send(entry.token, { ...message, link: GAME_URL, tag: 'sims-rocket' });
+      if (res === 'sent') sent++;
+      if (res === 'gone') await database.ref(`sims_push/${pid}/tokens/${key}`).remove();
+    }
+  }
+  return sent;
+}

@@ -1,3 +1,4 @@
+import { countdownText, launchLift, launchPhase } from '../project-rules.js';
 import { clockText, realHour } from '../game-clock.js';
 import { spendMoney } from '../economy.js';
 import type { GameValue } from '../context.js';
@@ -2360,7 +2361,119 @@ export function drawCourtyardDoor(_key?: GameValue, it?: GameValue): GameValue {
 // ---------------------------------------------------------------- RAZZO DEL LABORATORIO
 /** Rampa del laboratorio ingegneristico: il razzo cresce con i soldi versati dai giocatori. */
 export function drawRocketPad(it?: GameValue, t?: GameValue): GameValue {
+  const now = Date.now() + (game.session.serverOffset || 0);
+  const { phase, left, since } = launchPhase(game.rocketStage || 0, game.rocketLaunchAt, now);
+  if (phase === 'launched') {
+    drawRocketProp({ ...it, stage: 2, gone: true }, t);
+    return;
+  }
+  if (phase === 'launching') {
+    drawLaunchSmoke(it, since);
+    drawRocketProp({ ...it, stage: 2, lift: launchLift(since), flame: since }, t);
+    return;
+  }
   drawRocketProp({ ...it, stage: game.rocketStage || 0 }, t);
+  if (phase === 'countdown') drawCountdownSign(it, countdownText(left), left < 10000);
+}
+
+/**
+ * Pulsante rosso per lanciare il razzo, su una colonnina gialla e nera. Si illumina quando il
+ * razzo è completo e si abbassa quando qualcuno lo preme.
+ */
+export function drawLaunchButton(it?: GameValue, t?: GameValue): GameValue {
+  const ctx = game.view.ctx;
+  const s: number = isoScale();
+  const now = Date.now() + (game.session.serverOffset || 0);
+  const { phase } = launchPhase(game.rocketStage || 0, game.rocketLaunchAt, now);
+  const ready = phase === 'waiting';
+  const pole: GameValue = box(it.x, it.y, 16, 16, 30, '#f1c40f');
+  for (const face of ['left', 'right'])
+    onFace(pole, face, (W: number, H: number): void => {
+      // strisce gialle e nere, solo dentro la faccia della colonnina
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(0, 0, W, H);
+      ctx.clip();
+      ctx.fillStyle = '#2d3436';
+      for (let i = -2; i < 8; i++) {
+        ctx.beginPath();
+        ctx.moveTo(i * 8, H);
+        ctx.lineTo(i * 8 + 4, H);
+        ctx.lineTo(i * 8 + 4 + H, 0);
+        ctx.lineTo(i * 8 + H, 0);
+        ctx.fill();
+      }
+      ctx.restore();
+    });
+  box(it.x, it.y, 20, 20, 3, '#636e72', { z0: 30 });
+  // si abbassa per mezzo secondo dopo averlo premuto (o resta giù dopo il lancio)
+  const pressed =
+    (t || 0) - game.launchPressedAt < 0.5 ||
+    phase === 'countdown' ||
+    phase === 'launching' ||
+    phase === 'launched';
+  const c = isoProject(it.x, it.y, pressed ? 34 : 37);
+  const r = 7 * s;
+  if (ready) {
+    const glow = 0.35 + 0.25 * Math.sin((t || 0) * 5);
+    ctx.fillStyle = `rgba(255,71,87,${glow})`;
+    ctx.beginPath();
+    ctx.arc(c.x, c.y, r * 2.2, 0, 6.3);
+    ctx.fill();
+  }
+  const g = ctx.createRadialGradient(c.x - r * 0.35, c.y - r * 0.45, 1, c.x, c.y, r);
+  g.addColorStop(0, ready ? '#ff9f9f' : '#c98b8b');
+  g.addColorStop(1, ready ? '#d63031' : '#7f3a3a');
+  ctx.fillStyle = g;
+  ctx.beginPath();
+  ctx.ellipse(c.x, c.y, r, r * 0.75, 0, Math.PI, 0);
+  ctx.ellipse(c.x, c.y, r, r * 0.45, 0, 0, Math.PI);
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(0,0,0,0.35)';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+}
+
+/** Cartellone luminoso con il conto alla rovescia sopra la rampa. */
+function drawCountdownSign(it: GameValue, text: string, last: boolean): void {
+  const ctx = game.view.ctx;
+  const s: number = isoScale();
+  const p = isoProject(it.x + 75, it.y - 45, 110);
+  const w = 74 * s,
+    h = 26 * s;
+  ctx.fillStyle = 'rgba(10,15,30,0.9)';
+  ctx.strokeStyle = last ? '#ff4757' : '#feca57';
+  ctx.lineWidth = 2 * s;
+  ctx.beginPath();
+  ctx.roundRect
+    ? ctx.roundRect(p.x - w / 2, p.y - h / 2, w, h, 5 * s)
+    : ctx.rect(p.x - w / 2, p.y - h / 2, w, h);
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = last ? '#ff4757' : '#feca57';
+  ctx.font = `bold ${Math.round(15 * s)}px monospace`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('T-' + text, p.x, p.y + 1 * s);
+  ctx.textBaseline = 'alphabetic';
+}
+
+/** Nuvole di fumo che si allargano dalla rampa durante il lancio. */
+function drawLaunchSmoke(it: GameValue, since: number): void {
+  const ctx = game.view.ctx;
+  const s: number = isoScale();
+  const k = Math.min(1, since / 3000);
+  const fade = since > 15000 ? Math.max(0, 1 - (since - 15000) / 10000) : 1;
+  for (let i = 0; i < 14; i++) {
+    const a = i * 2.4;
+    const r = (30 + (i % 4) * 22) * k + 10;
+    const p = isoProject(it.x + Math.cos(a) * r, it.y + Math.sin(a) * r, 8 + (i % 3) * 8);
+    const grey = 200 + (i % 3) * 18;
+    ctx.fillStyle = `rgba(${grey},${grey},${grey},${0.75 * fade})`;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, (14 + (i % 5) * 5) * s * (0.5 + k), 0, 6.3);
+    ctx.fill();
+  }
 }
 
 /** Razzo sulla rampa. stage: 0 = solo la rampa, 1 = pezzi in costruzione, 2 = razzo completo. */
@@ -2369,6 +2482,7 @@ export function drawRocketProp(it?: GameValue, t?: GameValue): GameValue {
   const s: number = isoScale();
   const { x, y } = it;
   const stage: number = it.stage ?? 2;
+  const lift: number = it.lift || 0;
   // rampa di lancio con bordo a strisce
   const pad: GameValue = box(x, y, it.w, it.h, 10, '#8d99ae');
   onFace(pad, 'top', (W: number, H: number): void => {
@@ -2425,10 +2539,25 @@ export function drawRocketProp(it?: GameValue, t?: GameValue): GameValue {
       ctx.lineTo(p3.x, p3.y);
       ctx.stroke();
     }
-  // braccio che tiene il razzo
-  if (stage >= 2) box(x - 15, y - 15, 26, 4, 4, '#7f8c8d', { z0: 190 });
+  // braccio che tiene il razzo (si stacca al lancio)
+  if (stage >= 2 && !lift && it.flame === undefined && !it.gone)
+    box(x - 15, y - 15, 26, 4, 4, '#7f8c8d', { z0: 190 });
+  if (it.gone) {
+    // il razzo è partito: sulla rampa restano le bruciature e la scritta della missione
+    const ctx2 = game.view.ctx;
+    const c = isoProject(x, y, 10);
+    ctx2.fillStyle = 'rgba(30,30,30,0.45)';
+    ctx2.beginPath();
+    ctx2.ellipse(c.x, c.y, 26 * s, 13 * s, 0, 0, 6.3);
+    ctx2.fill();
+    ctx2.fillStyle = '#feca57';
+    ctx2.font = `bold ${Math.round(9 * s)}px sans-serif`;
+    ctx2.textAlign = 'center';
+    ctx2.fillText('CDC-1 · MISSIONE COMPIUTA', c.x, c.y + 24 * s);
+    return;
+  }
   // razzo: corpo cilindrico, ogiva, finestrino e alette (disegnati a schermo sull'asse verticale)
-  const P = (z: number) => isoProject(x, y, z);
+  const P = (z: number) => isoProject(x, y, z + lift);
   const cx = P(0).x,
     R = 17 * s;
   const yB = P(26).y,
@@ -2442,6 +2571,22 @@ export function drawRocketProp(it?: GameValue, t?: GameValue): GameValue {
     g.addColorStop(1, game.darken(c1, 0.45));
     return g;
   };
+  // fiamma dei motori durante il lancio
+  if (it.flame !== undefined) {
+    const k = Math.min(1, it.flame / 1500);
+    const len = (30 + 50 * k + Math.sin(it.flame / 40) * 6) * s;
+    const top = P(11).y;
+    const fg = ctx.createLinearGradient(0, top, 0, top + len);
+    fg.addColorStop(0, 'rgba(255,255,220,0.95)');
+    fg.addColorStop(0.3, 'rgba(255,190,60,0.9)');
+    fg.addColorStop(1, 'rgba(255,80,20,0)');
+    ctx.fillStyle = fg;
+    ctx.beginPath();
+    ctx.moveTo(cx - R * 0.75, top);
+    ctx.quadraticCurveTo(cx, top + len * 1.4, cx + R * 0.75, top);
+    ctx.closePath();
+    ctx.fill();
+  }
   // ugello
   ctx.fillStyle = shade('#57606f', '#a4b0be');
   ctx.beginPath();

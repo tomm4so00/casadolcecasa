@@ -61,6 +61,7 @@ import {
   drawFlowersProp,
   drawRocketProp,
   drawRocketPad,
+  drawLaunchButton,
   drawProjectBoard,
   drawWorkbench,
   drawMoonSignProp,
@@ -122,6 +123,7 @@ import {
   wallRoomPainting,
   wallSafe,
   wallWindow,
+  wallRocketPlaque,
 } from './render/scenes.js';
 import { firebaseOptions, isLocalMode, createDatabase } from './runtime.js';
 export function initializeGame() {
@@ -358,6 +360,9 @@ export function initializeGame() {
   game.engineeringFurniture = structuredClone(ENGINEERING_FURNITURE);
   game.engineeringYardFurniture = structuredClone(ENGINEERING_YARD_FURNITURE);
   game.rocketStage = 0;
+  game.rocketLaunchAt = 0;
+  game.launchPressedAt = -10;
+  game.rocketDonors = {};
   game.saloonDoors = structuredClone(SALOON_DOORS);
   game.courtyardDoors = structuredClone(COURTYARD_DOORS);
   lifetime.listen(browser, 'load', (): GameValue => {
@@ -607,6 +612,7 @@ export function initializeGame() {
     projectBoard: drawProjectBoard,
     workbench: drawWorkbench,
     rocketPad: drawRocketPad,
+    launchButton: drawLaunchButton,
     coffee: drawCoffeeMachine,
     toilet: drawToilet,
     sink: drawSink,
@@ -707,6 +713,7 @@ export function initializeGame() {
     neon: wallNeon,
     roomPainting: wallRoomPainting,
     wallSafe,
+    rocketPlaque: wallRocketPlaque,
   };
   game.bgCache = { key: '', canvas: null };
   game.lightCanvas = null;

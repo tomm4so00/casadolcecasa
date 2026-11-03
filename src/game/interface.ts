@@ -1,3 +1,5 @@
+import { applyDailyPerks } from './personality.js';
+import { enablePush } from './push.js';
 import { startPlayersHud } from './players-hud.js';
 import { dayNumber } from './game-clock.js';
 import { renderArtSite, startArtMarket } from './art-market.js';
@@ -247,6 +249,10 @@ export async function startGame(..._args: GameValue[]): Promise<GameValue> {
     .ref('sims_graveyard')
     .on('value', (snap?: GameValue): GameValue => rebuildGraveyard(snap.val()));
   startPresence();
+  if (game.notifyOn) void enablePush();
+  // premi giornalieri delle personalità (dopo che le finestre d'avvio si sono chiuse)
+  lifetime.setTimeout(() => void applyDailyPerks(), 4000);
+  lifetime.setInterval(() => void applyDailyPerks(), 60000);
   startPlayersHud();
   startArtMarket();
   startProjects();

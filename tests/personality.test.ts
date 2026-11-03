@@ -1,7 +1,12 @@
+import fs from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import {
   BEDTIME_THOUGHTS,
   PERSONALITY_ACTIONS,
+  PERSONALITY_PERKS,
+  artistOffer,
+  bankInterest,
+  hasPersonality,
   PERSONALITY_DAILY_MAX,
   PERSONALITY_THRESHOLD,
   type PersonalityAction,
@@ -108,6 +113,53 @@ describe('frasi delle azioni sociali', () => {
     );
     expect(SOCIAL_LINES.shared.praise).toContain(
       socialLine('praise', 'romantic', seq(OWN_LINE_CHANCE + 0.01, 0.5)),
+    );
+  });
+});
+
+describe('premi delle personalità', () => {
+  it('ogni personalità ha il suo premio, scritto nel messaggio', () => {
+    expect(PERSONALITY_PERKS.artist).toContain('25%');
+    expect(PERSONALITY_PERKS.business).toContain('1%');
+    expect(PERSONALITY_PERKS.criminal).toContain('4 invece di 3');
+    expect(PERSONALITY_PERKS.romantic).toContain('salute');
+  });
+
+  it('il premio vale solo dopo aver raggiunto la personalità', () => {
+    const s = emptyPersonality();
+    expect(hasPersonality(s, 'artist')).toBe(false);
+    s.announced.artist = true;
+    expect(hasPersonality(s, 'artist')).toBe(true);
+    expect(artistOffer(100, true)).toBe(125);
+    expect(artistOffer(100, false)).toBe(100);
+  });
+
+  it('interessi in banca: 1% al giorno, al massimo una settimana', () => {
+    expect(bankInterest(10000, undefined, '2026-11-05')).toBe(0);
+    expect(bankInterest(10000, '2026-11-04', '2026-11-05')).toBe(100);
+    expect(bankInterest(10000, '2026-11-03', '2026-11-05')).toBe(201);
+    expect(bankInterest(10000, '2026-10-01', '2026-11-05')).toBe(
+      Math.floor(10000 * (1.01 ** 7 - 1)),
+    );
+    expect(bankInterest(50, '2026-11-04', '2026-11-05')).toBe(0);
+    expect(bankInterest(10000, '2026-11-05', '2026-11-05')).toBe(0);
+  });
+
+  it('il salvataggio ricorda i giorni dei premi', () => {
+    const s = decodePersonality({
+      points: {},
+      announced: {},
+      perks: { interestDay: '2026-11-04', romanceDay: 'ieri' },
+    });
+    expect(s.perks).toEqual({ interestDay: '2026-11-04' });
+  });
+
+  it('le regole permettono il 4° tentativo di furto solo al Criminale', () => {
+    const rules = JSON.parse(
+      fs.readFileSync('firebase/database.rules.proposed.json', 'utf8'),
+    ).rules;
+    expect(rules.sims_theft.$pid.$room['.validate']).toContain(
+      "child('announced').child('criminal').val() === true",
     );
   });
 });

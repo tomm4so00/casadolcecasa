@@ -2,7 +2,13 @@ import { randomBytes } from 'node:crypto';
 import { cert, deleteApp, initializeApp } from 'firebase-admin/app';
 import { getDatabase } from 'firebase-admin/database';
 import { advanceMarket, BUSINESSES } from '../../shared/market.js';
-import { maintainGame } from './maintenance.js';
+import { getMessaging } from 'firebase-admin/messaging';
+import {
+  type PushSender,
+  maintainGame,
+  notifyRocketAlmostReady,
+  sendDeathWarnings,
+} from './maintenance.js';
 
 async function main() {
   const projectId = process.env.FIREBASE_PROJECT_ID;
@@ -60,6 +66,36 @@ async function main() {
     );
     reference.off('value', listener);
     await maintainGame(getDatabase(app), scheduledAt);
+    // Avvisi sul telefono a chi sta per morire per assenza; un errore qui non blocca il resto.
+    try {
+      const messaging = getMessaging(app);
+      const send: PushSender = async (token, m) => {
+        try {
+          await messaging.send({
+            token,
+            data: { title: m.title, body: m.body, link: m.link, tag: m.tag },
+            webpush: { headers: { Urgency: 'high', TTL: String(12 * 3600) } },
+          });
+          return 'sent';
+        } catch (error) {
+          const code = (error as { code?: string }).code || '';
+          if (
+            code === 'messaging/registration-token-not-registered' ||
+            code === 'messaging/invalid-registration-token' ||
+            code === 'messaging/invalid-argument'
+          )
+            return 'gone';
+          console.log('Push not sent:', code || 'unknown error');
+          return 'error';
+        }
+      };
+      const rocket = await notifyRocketAlmostReady(getDatabase(app), scheduledAt, send);
+      if (rocket >= 0) console.log(`Rocket almost ready, notifications sent: ${rocket}`);
+      const warned = await sendDeathWarnings(getDatabase(app), scheduledAt, send);
+      if (warned) console.log(`Death warnings sent: ${warned}`);
+    } catch (error) {
+      console.log('Death warnings skipped:', (error as { code?: string }).code || 'unknown error');
+    }
     await getDatabase(app)
       .ref('sims_meta/version')
       .transaction((value: unknown) => (typeof value === 'number' && value >= 8 ? undefined : 8));

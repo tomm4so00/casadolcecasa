@@ -1,7 +1,8 @@
 // Progetti di gruppo del laboratorio ingegneristico: la bacheca, il sito e i versamenti.
 import type { GameValue } from './context.js';
 import { game } from './context.js';
-import { dom } from './runtime.js';
+import { dom, lifetime } from './runtime.js';
+import { sendNotify } from './needs.js';
 import { toast } from './missions.js';
 import { openDialog } from './interface.js';
 import { saveGame } from './saves.js';
@@ -19,6 +20,9 @@ import {
   projectStage,
   toNextStage,
   topDonors,
+  countdownText,
+  launchPhase,
+  LAUNCH_DELAY_MS,
 } from './project-rules.js';
 
 const rocket = PROJECTS.rocket;
@@ -32,7 +36,12 @@ export const rocketStage = (): number => projectStage(rocket, state.funded);
 const setState = (s: ProjectState) => {
   state = s;
   game.rocketStage = rocketStage();
+  game.rocketLaunchAt = s.launchAt || 0;
+  game.rocketDonors = Object.fromEntries(Object.entries(s.donors).map(([id, d]) => [id, d.amount]));
 };
+const serverNow = (): number => Date.now() + (game.session.serverOffset || 0);
+/** Fase del lancio adesso (uguale per tutti). */
+export const rocketLaunch = () => launchPhase(rocketStage(), state.launchAt, serverNow());
 export const rocketFunded = (): number => state.funded;
 
 export function startProjects(): void {
@@ -49,7 +58,60 @@ export function startProjects(): void {
       );
     loaded = true;
     renderProjects();
+    updateLaunchBanner();
   });
+  lifetime.setInterval(updateLaunchBanner, 1000);
+}
+
+// ---------------------------------------------------------------- conto alla rovescia
+
+let lastPhase = '';
+
+/** Striscia in alto con il conto alla rovescia, visibile ovunque ci si trovi nel gioco. */
+function updateLaunchBanner(): void {
+  const banner = dom('launch-banner');
+  if (!banner) return;
+  const { phase, left } = rocketLaunch();
+  // avvisi quando cambia la fase (non al primo caricamento)
+  if (lastPhase && phase !== lastPhase) {
+    if (phase === 'countdown') {
+      sfx('mission');
+      const who = state.launchBy || 'Qualcuno';
+      toast(`🔴 ${who} ha premuto il pulsante rosso! Decollo tra 10 secondi!`, 6000);
+      sendNotify(
+        '🚀 Il razzo sta per partire!',
+        `${who} ha premuto il pulsante rosso.`,
+        'sims-rocket',
+      );
+    } else if (phase === 'launching') {
+      toast('🚀 Decollo! Il razzo CDC-1 sta partendo!', 6000);
+    } else if (
+      phase === 'launched' &&
+      lastPhase === 'launching' &&
+      state.donors[game.session.myPlayerId]
+    )
+      toast(
+        '🏅 Missione compiuta! In camera trovi una targhetta per ricordare il tuo contributo.',
+        7000,
+      );
+  }
+  lastPhase = phase;
+  const show = phase === 'waiting' || phase === 'countdown' || phase === 'launching';
+  banner.classList.toggle('hidden', !show || game.player.isDead);
+  if (!show) return;
+  const atSite = game.view.activeEnvironment === 'ingegneria_esterno';
+  const text =
+    phase === 'waiting'
+      ? atSite
+        ? '🔴 Razzo pronto! Premi il pulsante rosso accanto alla rampa per lanciarlo.'
+        : '🚀 Razzo completo! Premi il pulsante rosso nella zona esterna del laboratorio per lanciarlo.'
+      : phase === 'countdown'
+        ? `🔴 ${escapeHtmlSafe(state.launchBy || 'Qualcuno')} ha premuto il pulsante! Decollo tra <b>${countdownText(left)}</b>`
+        : '🚀 Il razzo sta partendo!';
+  const html =
+    `<span>${text}</span>` +
+    (!atSite ? '<button type="button" data-action="goToLaunchSite">Vai a vedere</button>' : '');
+  if (banner.innerHTML !== html) banner.innerHTML = html;
 }
 
 // ---------------------------------------------------------------- bacheca e sito
@@ -121,7 +183,9 @@ export function renderProjects(): void {
     .join('');
   const status =
     stage >= 2
-      ? '✅ <b>Razzo completo!</b> Grazie a tutti quelli che hanno contribuito.'
+      ? state.launchAt
+        ? '🚀 <b>Razzo lanciato!</b> Grazie a tutti quelli che hanno contribuito.'
+        : '✅ <b>Razzo completo!</b> Vai nella zona esterna del laboratorio e premi il pulsante rosso per lanciarlo.'
       : `Mancano <b>${euro(toNextStage(rocket, funded))}</b> per: ${rocket.stages[stage].label.toLowerCase()}.`;
   const mine = state.donors[game.session.myPlayerId]?.amount || 0;
   const donors = topDonors(state)
@@ -218,4 +282,41 @@ export async function donate(amount: number): Promise<boolean> {
     5500,
   );
   return true;
+}
+
+// ---------------------------------------------------------------- pulsante rosso
+
+/** Chi preme il pulsante rosso fa partire il conto alla rovescia di 10 secondi per tutti. */
+export async function pressLaunchButton(): Promise<void> {
+  const { phase } = rocketLaunch();
+  if (phase === 'building') {
+    toast(
+      `🔒 Il razzo non è ancora completo: mancano ${euro(projectGoal(rocket) - state.funded)}.`,
+      4500,
+    );
+    return;
+  }
+  if (phase !== 'waiting') return;
+  game.launchPressedAt = game.animClock;
+  sfx('click');
+  let committed = false;
+  try {
+    const result = await game.session.db
+      .ref('sims_projects/rocket/launchAt')
+      .transaction((cur: GameValue) => (cur ? undefined : serverNow() + LAUNCH_DELAY_MS));
+    committed = result.committed;
+  } catch (e) {
+    console.warn('[razzo]', e);
+  }
+  if (!committed) {
+    if (!state.launchAt) toast('📡 Il pulsante non ha risposto: riprova tra poco.', 4000);
+    return;
+  }
+  try {
+    await game.session.db
+      .ref('sims_projects/rocket/launchBy')
+      .set(String(game.player.myData.nick || 'Giocatore').slice(0, 20));
+  } catch (e) {
+    console.warn('[razzo] nome', e);
+  }
 }

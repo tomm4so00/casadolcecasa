@@ -1,3 +1,12 @@
+import { CRIMINAL_THEFT_TRIES, hasPersonality } from './personality-rules.js';
+import {
+  THEFT_TRIES,
+  type TheftRecord,
+  decodeTheftRecord,
+  recordTheftAttempt,
+  theftLockLeft,
+  theftTriesLeft,
+} from './theft-rules.js';
 import { bedtimeThought, notePersonality } from './personality.js';
 import { purchaseItem, spendMoney, creditMoney } from './economy.js';
 import type { GameValue } from './context.js';
@@ -34,7 +43,7 @@ import { showGraveInfo } from './render/objects.js';
 import { startShower, startToilet, startWash } from './bathroom.js';
 import { sfx } from './audio.js';
 import { openBankCounter } from './bank.js';
-import { openProjects, rocketFunded } from './projects.js';
+import { openProjects, pressLaunchButton, rocketFunded, rocketLaunch } from './projects.js';
 import { PROJECTS, projectGoal } from './project-rules.js';
 import { avoidWallSafe, pushOutOfCorridor } from './room-layout.js';
 import { managePainting, openPaintStudio } from './paint-studio.js';
@@ -372,8 +381,20 @@ export function checkProximity(..._args: GameValue[]): GameValue {
     } else if (game.view.activeEnvironment === 'ingegneria_esterno') {
       btnMain.classList.remove('btn-pop-locked');
       btnSub.classList.add('hidden');
-      btnMain.innerText =
-        found === 'rocketPad' ? '🚀 Guarda il progetto del razzo' : '🔧 Torna nel laboratorio';
+      if (found === 'launchButton') {
+        const phase = rocketLaunch().phase;
+        btnMain.innerText =
+          phase === 'waiting'
+            ? '🔴 Premi il pulsante: lancia il razzo!'
+            : phase === 'building'
+              ? '🔒 Pulsante di lancio (razzo non completo)'
+              : phase === 'launched'
+                ? '✅ Razzo già lanciato'
+                : '⏳ Lancio in corso…';
+        btnMain.classList.toggle('btn-pop-locked', phase !== 'waiting');
+      } else
+        btnMain.innerText =
+          found === 'rocketPad' ? '🚀 Guarda il progetto del razzo' : '🔧 Torna nel laboratorio';
     } else if (game.view.activeEnvironment === 'banca') {
       btnMain.classList.remove('btn-pop-locked');
       btnSub.classList.add('hidden');
@@ -735,6 +756,7 @@ export async function handleObjectInteract(..._args: GameValue[]): Promise<void>
     else if (game.activeTargetProp === 'doorExit') backToSaloon();
   } else if (game.view.activeEnvironment === 'ingegneria_esterno') {
     if (game.activeTargetProp === 'rocketPad') openProjects(false);
+    else if (game.activeTargetProp === 'launchButton') await pressLaunchButton();
     else if (game.activeTargetProp === 'doorLab') goToEngineering(false);
   } else if (game.view.activeEnvironment === 'banca') {
     if (game.activeTargetProp === 'bankCounter') await openBankCounter();
@@ -871,14 +893,36 @@ export async function handleSafeInteraction(..._args: GameValue[]): Promise<Game
     toast("🚫 La cassaforte di questo giocatore è vuota! Non c'è nulla da rubare.");
     return;
   }
-  let tries: GameValue = game.theftAttempts[room.id] || 0;
-  if (tries >= 3) {
-    toast('🚨 Allarme attivo! Hai già fallito 3 volte con questa cassaforte.');
+  // I tentativi sono salvati online: ricaricare la pagina non li azzera.
+  const theftRef = game.session.db.ref(`sims_theft/${game.session.myPlayerId}/${room.id}`);
+  // ora del server, con un piccolo margine perché il database non accetta orari nel futuro
+  const serverNow = (): number => Date.now() + (game.session.serverOffset || 0) - 2000;
+  let record: TheftRecord | null = null;
+  try {
+    record = decodeTheftRecord((await withTimeout(theftRef.get(), 8000)).val());
+  } catch {
+    toast('📡 Connessione assente: riprova tra poco.');
+    return;
+  }
+  const alarmOn = (r: TheftRecord | null): void => {
+    const hours = Math.max(1, Math.ceil(theftLockLeft(r, serverNow(), maxTries) / 3600000));
+    toast(
+      `🚨 Allarme attivo! Hai già sbagliato ${maxTries} volte con questa cassaforte. Riprova tra ${hours} ${hours === 1 ? 'ora' : 'ore'}.`,
+      4500,
+    );
+  };
+  // il Criminale ha un tentativo in più
+  const maxTries = hasPersonality(game.player.personality, 'criminal')
+    ? CRIMINAL_THEFT_TRIES
+    : THEFT_TRIES;
+  const tries = maxTries - theftTriesLeft(record, serverNow(), maxTries);
+  if (tries >= maxTries) {
+    alarmOn(record);
     return;
   }
   const res: GameValue = await openDialog({
     title: '🕵️ Tentativo di scasso',
-    text: `Inserisci la combinazione segreta di 3 cifre (da 1 a 4).\nTentativi rimasti: ${3 - tries}`,
+    text: `Inserisci la combinazione segreta di 3 cifre (da 1 a 4).\nTentativi rimasti: ${maxTries - tries}`,
     input: { placeholder: '???', numeric: true, maxLength: 3 },
     buttons: [
       { label: 'Lascia stare', value: null, color: '#57606f' },
@@ -891,7 +935,25 @@ export async function handleSafeInteraction(..._args: GameValue[]): Promise<Game
     toast('❌ La combinazione è fatta di ' + SAFE_PIN_HINT + '.');
     return;
   }
-  game.theftAttempts[room.id] = tries + 1;
+  // il tentativo si registra online prima di sapere se la combinazione è giusta
+  let saved: TheftRecord | null = null;
+  try {
+    const result = await withTimeout(
+      theftRef.transaction((cur: GameValue) => {
+        saved = recordTheftAttempt(decodeTheftRecord(cur), serverNow(), maxTries);
+        return saved ?? undefined;
+      }),
+      8000,
+    );
+    if (!result.committed) saved = null;
+  } catch {
+    saved = null;
+  }
+  if (!saved) {
+    alarmOn(record);
+    return;
+  }
+  game.theftAttempts[room.id] = (saved as TheftRecord).n;
   notePersonality('theftAttempt');
   if (room.pin === hashPin(res.value, room.id) || room.pin === res.value) {
     let stolen: GameValue = 0;
@@ -908,7 +970,13 @@ export async function handleSafeInteraction(..._args: GameValue[]): Promise<Game
       toast('🚫 Qualcuno è stato più veloce di te: la cassaforte è vuota.');
     }
   } else {
-    toast('🚨 CODICE ERRATO! Il sistema di sicurezza ha sventato il furto!');
+    const left = maxTries - (saved as TheftRecord).n;
+    toast(
+      left > 0
+        ? `🚨 CODICE ERRATO! Il sistema di sicurezza ha sventato il furto! Tentativi rimasti: ${left}`
+        : '🚨 CODICE ERRATO! Allarme attivo: con questa cassaforte potrai riprovare tra 24 ore.',
+      4500,
+    );
   }
 }
 
@@ -998,6 +1066,27 @@ export async function doActivity(type?: GameValue): Promise<void> {
     return;
   }
   game.playerPos = { x: 0, y: 80 };
+}
+
+/** Porta il personaggio davanti al razzo per vedere il lancio (dal pulsante del conto alla rovescia). */
+export function goToLaunchSite(): void {
+  if (game.player.isDead || game.fainted) return;
+  if (game.activeShift || game.MG.active) {
+    toast('💼 Finisci prima il turno di lavoro!');
+    return;
+  }
+  if (game.player.isSleeping) {
+    toast('😴 Prima svegliati: scendi dal letto!');
+    return;
+  }
+  if (game.showerAnim || game.bathAnim) return;
+  game.view.isOutsideMenuOpen = false;
+  game.view.outsideSubmenu = '';
+  dom('pop-interaction').classList.add('hidden');
+  dom('btn-return-home').classList.add('hidden');
+  game.view.activeEnvironment = 'ingegneria_esterno';
+  game.view.currentRoomTitle = 'Zona esterna del laboratorio 🚀';
+  game.playerPos = { x: 20, y: 100 };
 }
 
 /** Passa tra il laboratorio ingegneristico e la sua zona esterna (dove si costruisce il razzo). */

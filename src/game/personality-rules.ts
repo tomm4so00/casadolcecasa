@@ -53,6 +53,8 @@ export interface PersonalityState {
   today: Partial<Record<PersonalityAction, number>>;
   /** Punti già guadagnati oggi da ogni personalità (al massimo PERSONALITY_DAILY_MAX). */
   todayPoints: Partial<Record<PersonalityId, number>>;
+  /** Giorni (AAAA-MM-GG) in cui sono già stati dati i premi giornalieri. */
+  perks?: { interestDay?: string; romanceDay?: string };
 }
 
 export const emptyPersonality = (): PersonalityState => ({
@@ -124,8 +126,65 @@ export function decodePersonality(value: unknown): PersonalityState {
     if (Number.isFinite(n) && (n as number) >= 0)
       state.todayPoints[id] = Math.min(PERSONALITY_DAILY_MAX, n as number);
   }
+  const perks = (v.perks || {}) as Record<string, unknown>;
+  const isDay = (d: unknown): d is string => typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d);
+  if (isDay(perks.interestDay) || isDay(perks.romanceDay)) {
+    state.perks = {};
+    if (isDay(perks.interestDay)) state.perks.interestDay = perks.interestDay;
+    if (isDay(perks.romanceDay)) state.perks.romanceDay = perks.romanceDay;
+  }
   return state;
 }
+
+// ---------------------------------------------------------------- premi delle personalità
+
+/** Premio che si ottiene diventando una personalità (dal messaggio "Stai diventando…"). */
+export const PERSONALITY_PERKS: Record<PersonalityId, string> = {
+  artist: 'I collezionisti ti offrono il 25% in più per i tuoi quadri.',
+  business: "Il tuo conto in banca ti dà l'1% di interessi al giorno.",
+  criminal:
+    'Hai un tentativo in più per indovinare le combinazioni delle casseforti (4 invece di 3).',
+  romantic: 'Da oggi, ogni giorno ricevi +10% di salute e +10% di felicità.',
+};
+
+/** Offerte dei collezionisti per l'Artista. */
+export const ARTIST_OFFER_BONUS = 1.25;
+/** Interesse giornaliero sul conto per l'Imprenditore. */
+export const BANK_INTEREST_PER_DAY = 0.01;
+/** Al massimo si recuperano gli interessi di una settimana di assenza. */
+export const INTEREST_MAX_DAYS = 7;
+/** Tentativi di furto per il Criminale. */
+export const CRIMINAL_THEFT_TRIES = 4;
+/** Premio giornaliero del Romanticone. */
+export const ROMANTIC_DAILY_BONUS = 10;
+
+/** true se la personalità è già stata raggiunta (il messaggio è comparso). */
+export const hasPersonality = (state: PersonalityState | undefined, id: PersonalityId): boolean =>
+  !!state?.announced?.[id];
+
+/** Offerta del collezionista con il premio dell'Artista. */
+export const artistOffer = (amount: number, artist: boolean): number =>
+  artist ? Math.round(amount * ARTIST_OFFER_BONUS) : amount;
+
+const dayNumber = (day: string): number => {
+  const [y, m, d] = day.split('-').map(Number);
+  return Math.round(Date.UTC(y, m - 1, d) / 86400000);
+};
+
+/**
+ * Interessi da accreditare oggi all'Imprenditore: un giorno per ogni giorno passato dall'ultima
+ * volta (al massimo una settimana), con l'interesse composto e arrotondato per difetto.
+ * Il primo giorno con il premio non dà interessi: si comincia a contare da lì.
+ */
+export function bankInterest(balance: number, lastDay: string | undefined, today: string): number {
+  if (!lastDay || !(balance > 0)) return 0;
+  const days = Math.min(INTEREST_MAX_DAYS, dayNumber(today) - dayNumber(lastDay));
+  if (days <= 0) return 0;
+  return Math.floor(balance * (Math.pow(1 + BANK_INTEREST_PER_DAY, days) - 1));
+}
+
+/** Giorno (AAAA-MM-GG) dell'ora locale, come per i limiti giornalieri. */
+export const todayKey = (now: Date): string => dayKey(now);
 
 /** Pensieri prima di dormire: suggeriscono che personalità si sta diventando. */
 export const BEDTIME_THOUGHTS: Record<PersonalityId, string[]> = {

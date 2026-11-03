@@ -15,7 +15,7 @@ export const PROJECTS: Record<ProjectId, ProjectDef> = {
     id: 'rocket',
     name: 'Razzo spaziale 🚀',
     description:
-      'Costruiamo insieme un razzo nella zona esterna del laboratorio. Con 5.000 € iniziano i lavori e si vedono i primi pezzi; con altri 10.000 € il razzo è completo.',
+      'Costruiamo insieme un razzo nella zona esterna del laboratorio. Con 5.000 € iniziano i lavori e si vedono i primi pezzi; con altri 10.000 € il razzo è completo e si può premere il pulsante rosso per lanciarlo!',
     stages: [
       { at: 5000, label: 'Lavori iniziati: primi pezzi del razzo' },
       { at: 15000, label: 'Razzo completo' },
@@ -31,6 +31,10 @@ export interface ProjectState {
   funded: number;
   /** Quanto ha versato ogni giocatore. */
   donors: Record<string, { name: string; amount: number }>;
+  /** Ora (del server) del lancio, fissata da chi preme il pulsante rosso. */
+  launchAt?: number;
+  /** Nome di chi ha premuto il pulsante. */
+  launchBy?: string;
 }
 
 /** Obiettivo finale (l'ultima soglia). */
@@ -70,6 +74,9 @@ export function decodeProject(value: unknown): ProjectState {
   const v = value as Record<string, unknown>;
   if (typeof v.funded === 'number' && Number.isFinite(v.funded) && v.funded > 0)
     out.funded = Math.floor(v.funded);
+  if (typeof v.launchAt === 'number' && Number.isFinite(v.launchAt) && v.launchAt > 0)
+    out.launchAt = v.launchAt;
+  if (typeof v.launchBy === 'string') out.launchBy = v.launchBy.slice(0, 20);
   const donors = (v.donors || {}) as Record<string, unknown>;
   for (const [pid, d] of Object.entries(donors)) {
     if (!d || typeof d !== 'object') continue;
@@ -89,4 +96,46 @@ export function topDonors(
     .map(([id, d]) => ({ id, ...d }))
     .sort((a, b) => b.amount - a.amount)
     .slice(0, n);
+}
+
+// ---------------------------------------------------------------- lancio del razzo
+
+/** Dopo aver premuto il pulsante rosso il razzo parte tra 10 secondi. */
+export const LAUNCH_DELAY_MS = 10 * 1000;
+/** Somma raccolta a cui parte la notifica sul telefono per tutti. */
+export const ROCKET_NOTIFY_AT = 14000;
+/** Accensione dei motori prima del decollo. */
+export const LAUNCH_IGNITION_MS = 4000;
+/** Durata di tutto il lancio (accensione + salita fino a sparire in cielo). */
+export const LAUNCH_ANIM_MS = 25000;
+
+export type LaunchPhase = 'building' | 'waiting' | 'countdown' | 'launching' | 'launched';
+
+/**
+ * Fase del lancio, uguale per tutti perché usa l'ora del server.
+ * waiting = razzo completo, si aspetta che qualcuno prema il pulsante rosso.
+ */
+export function launchPhase(
+  stage: number,
+  launchAt: number | undefined,
+  now: number,
+): { phase: LaunchPhase; left: number; since: number } {
+  if (stage < 2) return { phase: 'building', left: 0, since: 0 };
+  if (!launchAt) return { phase: 'waiting', left: 0, since: 0 };
+  if (now < launchAt) return { phase: 'countdown', left: launchAt - now, since: 0 };
+  const since = now - launchAt;
+  return { phase: since < LAUNCH_ANIM_MS ? 'launching' : 'launched', left: 0, since };
+}
+
+/** Quanto è salito il razzo (unità del mondo) dopo `since` ms dal via: prima si accende, poi accelera. */
+export function launchLift(since: number): number {
+  const t = (since - LAUNCH_IGNITION_MS) / 1000;
+  if (t <= 0) return 0;
+  return 9 * t * t + 6 * t;
+}
+
+/** Testo del conto alla rovescia, es. "09:42". */
+export function countdownText(ms: number): string {
+  const s = Math.max(0, Math.ceil(ms / 1000));
+  return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
 }

@@ -1,3 +1,4 @@
+import { artistOffer, hasPersonality } from './personality-rules.js';
 import { notePersonality } from './personality.js';
 import { escapeHtmlSafe } from './needs.js';
 import type { GameValue } from './context.js';
@@ -33,6 +34,7 @@ import {
 
 const euro = (n: number) => `${n.toLocaleString('it-IT')} €`;
 const sold = () => game.player.stats.paintingsSold || 0;
+const isArtist = () => hasPersonality(game.player.personality, 'artist');
 let tab: 'gallery' | 'mine' = 'gallery';
 let offerOpen = false;
 
@@ -53,7 +55,8 @@ export function renderArtSite(): void {
   if (!modal || modal.classList.contains('hidden')) return;
   const tier = botTier(sold());
   dom('art-summary').innerHTML =
-    `🖼️ Quadri venduti: <b>${sold()}</b> · Offerte dei collezionisti: <b>${tier.min}–${tier.max} €</b>` +
+    `🖼️ Quadri venduti: <b>${sold()}</b> · Offerte dei collezionisti: <b>${artistOffer(tier.min, isArtist())}–${artistOffer(tier.max, isArtist())} €</b>` +
+    (isArtist() ? ' <span style="color:#fdcb6e">(🎨 +25% da Artista)</span>' : '') +
     `<br><span style="color:#aaa">Più quadri vendi, più alte diventano le offerte.</span>`;
   for (const b of document.querySelectorAll<HTMLButtonElement>('[data-art-tab]'))
     b.classList.toggle('active', b.dataset.artTab === tab);
@@ -313,7 +316,8 @@ export async function checkBotOffers(): Promise<void> {
 
 async function showBotOffer(slot: PaintingSlot, listing: GameValue): Promise<void> {
   const seed = listingSeed(myIdx(), slot, listing.t);
-  const amount = botOfferAmount(sold(), seed, listing.round);
+  // l'Artista riceve offerte più alte
+  const amount = artistOffer(botOfferAmount(sold(), seed, listing.round), isArtist());
   const n = slot.slice(1);
   sendNotify(
     '🖼️ Offerta per il tuo quadro',
@@ -369,7 +373,7 @@ async function acceptBotOffer(slot: PaintingSlot, listing: GameValue, amount: nu
   sfx('coin');
   const tier = botTier(sold());
   toast(
-    `💰 Quadro venduto al collezionista per ${euro(amount)}! Quadri venduti: ${sold()} (prossime offerte ${tier.min}–${tier.max} €).`,
+    `💰 Quadro venduto al collezionista per ${euro(amount)}! Quadri venduti: ${sold()} (prossime offerte ${artistOffer(tier.min, isArtist())}–${artistOffer(tier.max, isArtist())} €).`,
     6000,
   );
 }

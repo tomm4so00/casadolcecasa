@@ -1,3 +1,4 @@
+import { launchPhase } from '../project-rules.js';
 import { realHour } from '../game-clock.js';
 import type { GameValue } from '../context.js';
 import { game } from '../context.js';
@@ -1290,4 +1291,67 @@ export function wallSafe(d?: GameValue, t?: GameValue): GameValue {
   ctx.beginPath();
   ctx.arc(left + size - 6, top + 6, 2, 0, 6.3);
   ctx.fill();
+}
+
+/**
+ * Targhetta di ottone sulla parete di sinistra della camera (vicino all'ingresso) di chi ha versato soldi per il razzo.
+ * Compare dopo il lancio; la vedono anche i visitatori. Sta sotto i quadri, così non li copre.
+ */
+export function wallRocketPlaque(d?: GameValue): GameValue {
+  const room: GameValue = game.roomsState[game.currentRoomIdx ?? -1];
+  const owner: string | undefined = isMyRoomNow() ? game.session.myPlayerId : room?.ownerId;
+  const amount = owner ? game.rocketDonors[owner] : 0;
+  if (!amount) return;
+  const now = Date.now() + (game.session.serverOffset || 0);
+  if (launchPhase(game.rocketStage, game.rocketLaunchAt, now).phase !== 'launched') return;
+  const ctx: GameValue = game.view.ctx;
+  const w = 46,
+    h = 30,
+    left = d.u - w / 2,
+    top = 88;
+  ctx.fillStyle = 'rgba(0,0,0,0.3)';
+  ctx.fillRect(left + 2, top + 2, w, h);
+  // legno scuro con la lastra d'ottone
+  ctx.fillStyle = '#5d4037';
+  ctx.fillRect(left, top, w, h);
+  const g = ctx.createLinearGradient(left, top, left + w, top + h);
+  g.addColorStop(0, '#f6e27a');
+  g.addColorStop(0.5, '#c9a227');
+  g.addColorStop(1, '#f1d36b');
+  ctx.fillStyle = g;
+  ctx.fillRect(left + 3, top + 3, w - 6, h - 6);
+  ctx.strokeStyle = 'rgba(90,60,10,0.6)';
+  ctx.lineWidth = 0.6;
+  ctx.strokeRect(left + 4.5, top + 4.5, w - 9, h - 9);
+  // razzetto inciso
+  ctx.fillStyle = '#7a5c12';
+  ctx.beginPath();
+  ctx.moveTo(left + 10, top + 8);
+  ctx.quadraticCurveTo(left + 13, top + 12, left + 13, top + 16);
+  ctx.lineTo(left + 13, top + 21);
+  ctx.lineTo(left + 7, top + 21);
+  ctx.lineTo(left + 7, top + 16);
+  ctx.quadraticCurveTo(left + 7, top + 12, left + 10, top + 8);
+  ctx.fill();
+  ctx.fillRect(left + 5, top + 19, 2, 4);
+  ctx.fillRect(left + 13, top + 19, 2, 4);
+  ctx.fillStyle = '#4a3508';
+  ctx.textAlign = 'center';
+  ctx.font = 'bold 5.5px sans-serif';
+  ctx.fillText('CDC-1', left + 29, top + 12);
+  ctx.font = '4px sans-serif';
+  ctx.fillText('ho aiutato a', left + 29, top + 17.5);
+  ctx.fillText('lanciarlo!', left + 29, top + 22);
+  // viti
+  ctx.fillStyle = '#8d6e63';
+  for (const [vx, vy] of [
+    [left + 1.8, top + 1.8],
+    [left + w - 1.8, top + 1.8],
+    [left + 1.8, top + h - 1.8],
+    [left + w - 1.8, top + h - 1.8],
+  ]) {
+    ctx.beginPath();
+    ctx.arc(vx, vy, 1, 0, 6.3);
+    ctx.fill();
+  }
 }
