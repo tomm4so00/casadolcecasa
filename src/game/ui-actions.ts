@@ -18,6 +18,7 @@ import { reloadForUpdate } from './saves.js';
 import { openChat, openProfile, restoreFromCode, showIntro } from './interface.js';
 import { toggleNotify } from './needs.js';
 import { bizInvest, bizWithdraw, openBizSite } from './business.js';
+import { BUSINESSES, type BusinessId } from '../../shared/market.js';
 import { closeGlobalChat, openGlobalChat, sendChat } from './chat.js';
 import {
   buyFurnitureItem,
@@ -35,6 +36,9 @@ import {
 } from './world.js';
 import { closeModal } from './render/primitives.js';
 import { finishCreator, openCharacterCreator, randomizeCreator } from './render/avatars.js';
+
+/** Attività del sito degli investimenti (tutte, non solo le tre di partenza). */
+const isBusinessId = (id: unknown): id is BusinessId => BUSINESSES.some((b) => b.id === id);
 export type UiArgument = string | number | boolean | null;
 export type UiAction = (args: readonly UiArgument[]) => unknown;
 export const uiActions: Readonly<Record<string, UiAction>> = {
@@ -79,11 +83,12 @@ export const uiActions: Readonly<Record<string, UiAction>> = {
   randomizeCreator: () => randomizeCreator(),
   openCharacterCreator: ([arg0]) => openCharacterCreator(Boolean(arg0)),
   closeWardrobe: () => closeWardrobe(),
+  // tutte le attività del sito degli investimenti (non solo le tre di partenza)
   bizInvest: ([id]) => {
-    if (id === 'shop' || id === 'app' || id === 'crypto') return bizInvest(id);
+    if (isBusinessId(id)) return bizInvest(id);
   },
   bizWithdraw: ([id]) => {
-    if (id === 'shop' || id === 'app' || id === 'crypto') return bizWithdraw(id);
+    if (isBusinessId(id)) return bizWithdraw(id);
   },
   buyFurnitureItem: ([arg0]) => buyFurnitureItem(String(arg0)),
   sellFurnitureItem: ([arg0]) => void sellFurnitureItem(String(arg0)),

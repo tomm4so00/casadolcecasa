@@ -69,9 +69,8 @@ try {
   );
   await page.evaluate(async () => (await import('/src/game/business.ts')).openBizSite());
   await page.locator('#biz-modal').waitFor({ state: 'visible' });
-  await page.evaluate(async () => {
-    void (await import('/src/game/business.ts')).bizInvest('shop');
-  });
+  // si clicca il pulsante vero, su un'attività aggiunta dopo le tre di partenza
+  await page.locator('#biz-modal [data-action="bizInvest"][data-arg="pizza"]').click();
   await page.locator('#dialog-input').fill('100');
   await page
     .locator('#dialog-buttons')
@@ -91,7 +90,7 @@ try {
       turns: game.player.jobExperience.ufficio,
       owned: game.player.ownedItems.item_hoodie,
       bed: game.player.ownedFurniture.bed_lux,
-      invest: game.player.invest.shop.cost,
+      invest: game.player.invest.pizza?.cost,
     };
   });
   assert.deepEqual(shift, { turns: 1, owned: true, bed: true, invest: 100 });
@@ -147,7 +146,7 @@ try {
     return (
       game.player.ownedItems.item_hoodie &&
       game.player.jobExperience.ufficio === 1 &&
-      game.player.invest.shop?.cost === 100
+      game.player.invest.pizza?.cost === 100
     );
   });
   await page.reload();
