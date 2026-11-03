@@ -5,14 +5,16 @@ import { type FurnitureTier, tierOf } from './furniture-tiers.js';
 export const BED_SLEEP_SPEED: Record<FurnitureTier, number> = { std: 1, premium: 1.25, lux: 1.5 };
 /** Quanto velocemente cala la felicità con la pianta in stanza (1 = senza pianta). */
 export const PLANT_HAPPINESS_DECAY: Record<FurnitureTier, number> = {
-  std: 0.5,
-  premium: 0.35,
-  lux: 0.2,
+  std: 0.6,
+  premium: 0.45,
+  lux: 0.3,
 };
+/** Tempo minimo fra una pausa e l'altra su divano o TV (la pausa è in comune fra i due). */
+export const RELAX_COOLDOWN_MS = 10 * 60_000;
 /** Felicità guadagnata con una pausa su divano o davanti alla TV. */
 export const RELAX_GAIN: Record<'sofa' | 'tv', Record<FurnitureTier, number>> = {
-  sofa: { std: 10, premium: 15, lux: 20 },
-  tv: { std: 15, premium: 20, lux: 25 },
+  sofa: { std: 5, premium: 7, lux: 10 },
+  tv: { std: 8, premium: 10, lux: 12 },
 };
 /** Raggio della luce della lampada. */
 export const LAMP_LIGHT: Record<FurnitureTier, number> = { std: 150, premium: 170, lux: 190 };
@@ -50,9 +52,9 @@ export function furnitureBenefit(def: { id: string; category: string }): string 
     case 'plant':
       return `🌿 Con la pianta in stanza la felicità cala il ${percent(PLANT_HAPPINESS_DECAY[tier])}% più lentamente.`;
     case 'sofa':
-      return `🛋️ Una pausa sul divano dà +${RELAX_GAIN.sofa[tier]}% di felicità (una ogni 30 secondi).`;
+      return `🛋️ Una pausa sul divano dà +${RELAX_GAIN.sofa[tier]}% di felicità (una ogni ${RELAX_COOLDOWN_MS / 60_000} minuti).`;
     case 'tv':
-      return `📺 Guardare la TV dà +${RELAX_GAIN.tv[tier]}% di felicità (ma −3% di sonno).`;
+      return `📺 Guardare la TV dà +${RELAX_GAIN.tv[tier]}% di felicità (ma −3% di sonno), una volta ogni ${RELAX_COOLDOWN_MS / 60_000} minuti.`;
     case 'lamp':
       return tier === 'std'
         ? '💡 Illumina la stanza.'

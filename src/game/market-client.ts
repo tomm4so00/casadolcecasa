@@ -1,4 +1,5 @@
 import { game } from './context.js';
+import { updateMarketEvent } from './market-event.js';
 import { lifetime } from './runtime.js';
 import {
   advanceMarket,
@@ -24,9 +25,13 @@ export function startMarket() {
     // A separate simulation for local tests only. Online clients never generate quotes.
     const step = () => {
       snapshot =
-        advanceMarket(snapshot, Date.now(), () =>
-          legacyNoise(9001, Math.floor(Date.now() / 60000)),
+        advanceMarket(
+          snapshot,
+          Date.now(),
+          () => legacyNoise(9001, Math.floor(Date.now() / 60000)),
+          { roll: Math.random(), kind: Math.random() },
         ) ?? snapshot;
+      updateMarketEvent();
     };
     step();
     lifetime.setInterval(step, 60000);
@@ -40,5 +45,8 @@ export function startMarket() {
   });
   game.session.db.ref('sims_market').on('value', (value) => {
     snapshot = decodeMarket(value.val());
+    updateMarketEvent();
   });
+  // il ticker sparisce da solo quando finisce l'ora anche se non arrivano nuove quotazioni
+  lifetime.setInterval(updateMarketEvent, 15000);
 }

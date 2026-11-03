@@ -57,12 +57,15 @@ async function main() {
         ] as const;
       }),
     );
+    // Crollo o boom della borsa: si decide qui, una volta, e vale per tutti i giocatori.
+    const uniform01 = () => (randomBytes(4).readUInt32BE() + 0.5) / 4294967296;
+    const eventRolls = { roll: uniform01(), kind: uniform01() };
     const reference = getDatabase(app).ref('sims_market');
     const listener = reference.on('value', () => {});
     await reference.once('value');
     const result = await reference.transaction(
       (current: unknown) =>
-        advanceMarket(current, scheduledAt, (id) => samples.get(id)!) ?? undefined,
+        advanceMarket(current, scheduledAt, (id) => samples.get(id)!, eventRolls) ?? undefined,
     );
     reference.off('value', listener);
     await maintainGame(getDatabase(app), scheduledAt);

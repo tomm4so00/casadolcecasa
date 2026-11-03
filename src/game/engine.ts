@@ -6,7 +6,19 @@ import {
   updateBathroom,
   updateShower,
 } from './bathroom.js';
-import { drawClothesPile, drawSmokePuffs, undressedLook } from './render/avatars.js';
+import { drawClothesPile, drawFluGerms, drawSmokePuffs, undressedLook } from './render/avatars.js';
+import { isSick } from './flu-rules.js';
+import {
+  drawCoinToss,
+  drawIceCream,
+  drawSofaRelax,
+  myBenchPose,
+  standUp,
+  updateBench,
+  updateCoinToss,
+  updateIceCream,
+} from './courtyard-fun.js';
+import { nearSickPlayer } from './flu.js';
 import { realHour } from './game-clock.js';
 import type { GameValue } from './context.js';
 import { canPlaySession } from './accounts.js';
@@ -126,12 +138,18 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
   if (game.bathAnim && game.view.activeEnvironment !== 'BATHROOM') game.bathAnim = null;
   if (game.showerAnim) updateShower(animTime);
   if (game.bathAnim) updateBathroom(animTime);
+  // seduti in panchina: muoversi fa alzare
+  if (game.benchSit && (game.moveRight !== 0 || game.moveForward !== 0)) standUp();
+  if (game.benchSit) updateBench(animTime);
+  if (game.coinToss) updateCoinToss(animTime);
+  if (game.iceCream) updateIceCream(animTime);
   if (kissActive()) approachKissPartner(delta);
   if (
     !game.player.isSleeping &&
     game.sleepK < 0.01 &&
     !game.showerAnim &&
     !game.bathAnim &&
+    !game.benchSit &&
     !game.rocketTrip &&
     !game.isMovingFurnitureMode &&
     !kissActive() &&
@@ -310,13 +328,29 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
               map.bed,
               game.bedSlot,
               { x: game.moveRight, y: -game.moveForward },
-              myBathPose(),
+              myBathPose() || myBenchPose(),
             ),
     });
+    if (game.coinToss) labels.push((): GameValue => drawCoinToss(animTime));
+    if (game.benchSit?.kind === 'sofa') {
+      const px = game.playerPos.x,
+        py = game.playerPos.y;
+      labels.push((): GameValue => drawSofaRelax(px, py, animTime));
+    }
+    if (game.iceCream && faintK <= 0) {
+      const px = game.playerPos.x,
+        py = game.playerPos.y;
+      labels.push((): GameValue => drawIceCream(px, py, animTime));
+    }
     if (performance.now() < game.smokeUntil) {
       const px = game.playerPos.x,
         py = game.playerPos.y;
       labels.push((): GameValue => drawSmokePuffs(px, py, animTime));
+    }
+    if (isSick(game.player.flu, Date.now()) && faintK <= 0 && !game.player.isSleeping) {
+      const px = game.playerPos.x,
+        py = game.playerPos.y;
+      labels.push((): GameValue => drawFluGerms(px, py, animTime));
     }
     if (kissActive()) {
       const since: number = game.kissAnim.start;
@@ -385,6 +419,8 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
       // con chi è offline o svenuto non si può interagire
       if (dd < game.SOC_RANGE && !isOffline && state !== 'fainted')
         game.frameNear.push({ id, name: op.name || 'Giocatore', d: dd });
+      // l'influenza si attacca a chi si avvicina troppo
+      if (op.sick && dd < game.SOC_RANGE) nearSickPlayer(op.name || 'Qualcuno');
     }
     let moving: GameValue = !isOffline && Math.hypot(dx, dy) > 1;
     const shownName: string = isOffline ? '' : op.name;
@@ -419,11 +455,16 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
         sy = s.y;
       labels.push((): GameValue => drawSmokePuffs(sx, sy, animTime));
     }
+    if (op.sick && state !== 'fainted' && sTarget === 0) {
+      const sx = s.x,
+        sy = s.y;
+      labels.push((): GameValue => drawFluGerms(sx, sy, animTime));
+    }
     const und: number = act === 'shower' ? Number(op.und) || 0 : 0;
     const shownLook: GameValue = und ? undressedLook(s.look, und) : s.look;
     addPile(s.look, und);
     if (act === 'wash') game.frameSinkRunning = true;
-    const pose: string = act === 'sit' || act === 'wash' ? act : '';
+    const pose: string = act === 'sit' || act === 'wash' || act === 'bench' ? act : '';
     if (act === 'shower' && inCabin(s.x, s.y)) {
       const rx: GameValue = s.x,
         ry: GameValue = s.y;
@@ -475,19 +516,20 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
   applyLighting(dark, lights, st);
   labels.forEach((l?: GameValue): GameValue => l());
   drawSleepThoughts();
-  // Titolo stanza
+  // Titolo stanza (più in basso se in alto scorre il ticker della borsa)
+  const ty: number = document.body.classList.contains('ticker-on') ? 26 : 0;
   ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
   ctx.beginPath();
   ctx.roundRect
-    ? ctx.roundRect(game.view.canvas.width / 2 - 120, 16, 240, 30, 15)
-    : ctx.rect(game.view.canvas.width / 2 - 120, 16, 240, 30);
+    ? ctx.roundRect(game.view.canvas.width / 2 - 120, 16 + ty, 240, 30, 15)
+    : ctx.rect(game.view.canvas.width / 2 - 120, 16 + ty, 240, 30);
   ctx.fill();
   ctx.fillStyle = '#fff';
   ctx.font = 'bold 14px sans-serif';
   ctx.textAlign = 'center';
   ctx.shadowColor = 'rgba(0,0,0,0.7)';
   ctx.shadowBlur = 6;
-  ctx.fillText(game.view.currentRoomTitle, game.view.canvas.width / 2, 36);
+  ctx.fillText(game.view.currentRoomTitle, game.view.canvas.width / 2, 36 + ty);
   ctx.shadowBlur = 0;
   checkProximity();
 }

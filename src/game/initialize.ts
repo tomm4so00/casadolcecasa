@@ -213,6 +213,9 @@ export function initializeGame() {
   game.player.isSleeping = false;
   game.showerAnim = null;
   game.bathAnim = null;
+  game.benchSit = null;
+  game.coinToss = null;
+  game.iceCream = null;
   game.toiletFlushAt = -10;
   game.frameSinkRunning = false;
   game.sleepK = 0;
@@ -596,6 +599,16 @@ export function initializeGame() {
       name: 'Igiene',
     },
     {
+      key: 'happiness',
+      get: (): GameValue => game.player.happinessLevel,
+      low: 20,
+      crit: 10,
+      emoji: '😢',
+      label: 'è triste',
+      name: 'Felicità',
+      critText: ' – sta perdendo salute! Fai qualcosa di bello',
+    },
+    {
       key: 'health',
       get: (): GameValue => game.player.healthLevel,
       low: 50,
@@ -679,7 +692,7 @@ export function initializeGame() {
     return `${f(5)},${f(3)},${f(1)}`;
   };
   game.DISCO_PRICE = 20;
-  game.DISCO_HAPPY = 50;
+  game.DISCO_HAPPY = 35;
   game.DISCO_SLEEP = 15;
   game.PROP_DRAW = {
     grave: drawGraveProp,

@@ -1,4 +1,15 @@
 import { buyPlant, plantLabel, smokeJoint, tendPlant } from './weed.js';
+import { DAILY_LIMITS, recordUse, usesLeftToday } from './daily-limits.js';
+import {
+  COIN_PRICE,
+  ICE_CREAM_PRICE,
+  buyIceCream,
+  funSpots,
+  onSofa,
+  toggleBench,
+  toggleSofa,
+  tossCoin,
+} from './courtyard-fun.js';
 import { STRAINS, type StrainId } from './weed-rules.js';
 import { earthFlight, moonFlight, moonOpen, returnToEarth, travelToMoon } from './moon.js';
 import { MOON_TRIP_PRICE } from './project-rules.js';
@@ -340,6 +351,18 @@ export function checkProximity(..._args: GameValue[]): GameValue {
       found = key;
     } // l'oggetto più vicino
   });
+  // seduti sul divano il pulsante resta quello per alzarsi
+  if (onSofa() && map.sofa) found = 'sofa';
+  // panchine e fontana del cortile, carretto dei gelati (seduti si resta sulla propria panchina)
+  const spots = funSpots();
+  for (const key of Object.keys(spots)) {
+    const sp = spots[key];
+    const d = Math.hypot(game.playerPos.x - sp.x, game.playerPos.y - sp.y) - sp.reach;
+    if (d < bestDist || (game.benchSit && sp.fun === 'bench' && d < 40)) {
+      bestDist = d;
+      found = key;
+    }
+  }
   const pop: GameValue = dom('pop-interaction');
   const btnMove: GameValue = dom('btn-act-move');
   const btnMain: GameValue = dom('btn-act-main');
@@ -348,7 +371,7 @@ export function checkProximity(..._args: GameValue[]): GameValue {
   if (found) {
     game.activeTargetProp = found;
     pop.classList.remove('hidden');
-    let item: GameValue = map[found];
+    let item: GameValue = map[found] || spots[found];
     if (game.view.activeEnvironment === 'SALOON') {
       if (found === 'exitHouse') {
         if (!game.view.isOutsideMenuOpen) {
@@ -406,7 +429,12 @@ export function checkProximity(..._args: GameValue[]): GameValue {
     } else if (game.view.activeEnvironment === 'centro_commerciale') {
       btnMain.classList.remove('btn-pop-locked');
       btnSub.classList.add('hidden');
-      btnMain.innerText = item.enter ? `🚪 Entra: ${item.name}` : '🏠 Torna a casa';
+      if (item.fun === 'iceCream') {
+        btnMain.innerText = game.iceCream
+          ? '🍦 Stai mangiando il gelato…'
+          : `🍦 Compra un gelato (${ICE_CREAM_PRICE} €)`;
+        btnMain.classList.toggle('btn-pop-locked', !!game.iceCream);
+      } else btnMain.innerText = item.enter ? `🚪 Entra: ${item.name}` : '🏠 Torna a casa';
     } else if (game.view.activeEnvironment === 'scommesse') {
       btnMain.classList.remove('btn-pop-locked');
       btnSub.classList.add('hidden');
@@ -492,6 +520,15 @@ export function checkProximity(..._args: GameValue[]): GameValue {
           : `⚰️ Leggi la lapide di ${item.who}`;
       btnMain.classList.remove('btn-pop-locked');
       btnSub.classList.add('hidden');
+    } else if (game.view.activeEnvironment === 'CORTILE' && item.fun) {
+      btnSub.classList.add('hidden');
+      btnMain.classList.remove('btn-pop-locked');
+      if (item.fun === 'bench')
+        btnMain.innerText = game.benchSit ? '🧍 Alzati' : '🪑 Siediti sulla panchina';
+      else {
+        btnMain.innerText = `⛲ Lancia una moneta nella fontana (${COIN_PRICE} €)`;
+        btnMain.classList.toggle('btn-pop-locked', !!game.coinToss);
+      }
     } else if (game.view.activeEnvironment === 'CORTILE') {
       const mine: GameValue = hasRoom() && game.aptOfRoom(game.myAssignedRoomIdx) === item.aptIdx;
       btnMain.innerText = mine
@@ -523,7 +560,8 @@ export function checkProximity(..._args: GameValue[]): GameValue {
         btnMain.classList.remove('btn-pop-locked');
         btnSub.classList.add('hidden');
       } else if (found === 'sofa' || found === 'tv') {
-        btnMain.innerText = found === 'tv' ? '📺 Guarda la TV' : '🛋️ Rilassati sul Divano';
+        btnMain.innerText =
+          found === 'tv' ? '📺 Guarda la TV' : onSofa() ? '🧍 Alzati' : '🛋️ Siediti sul Divano';
         btnMain.classList.remove('btn-pop-locked');
         btnSub.classList.add('hidden');
       } else {
@@ -593,7 +631,10 @@ export function checkProximity(..._args: GameValue[]): GameValue {
       const busy = !!(game.showerAnim || game.bathAnim);
       const labels: Record<string, [string, string]> = {
         shower: ['🚿 Fai la doccia', '🚿 Doccia in corso…'],
-        toilet: ['🚽 Usa il WC', '🚽 Occupato…'],
+        toilet: [
+          `🚽 Usa il WC (${usesLeftToday(game.player.daily, 'wc', new Date())}/${DAILY_LIMITS.wc} oggi)`,
+          '🚽 Occupato…',
+        ],
         sink: ['🚰 Lavati le mani', '🚰 Ti stai lavando…'],
       };
       if (labels[found]) {
@@ -743,6 +784,13 @@ function backToSaloon(): void {
   if (doorKey) game.doorForce['saloon:' + doorKey] = performance.now() + 500;
 }
 
+// ---------------------------------------------------------------- viaggio
+
+/** Viaggio: uno al giorno, a prezzo fisso. */
+const TRIP_PRICE = 100;
+const TRIP_HAPPY = 50;
+const TRIP_HEALTH = 15;
+
 // ---------------------------------------------------------------- centro commerciale
 
 /** Negozi del centro commerciale: ambiente → vetrina (e attività per entrarci). */
@@ -834,7 +882,10 @@ export async function handleObjectInteract(..._args: GameValue[]): Promise<void>
       else spawnAtDoor(getCurrentFurnitureMap().doorExit);
     }
   } else if (game.view.activeEnvironment === 'CORTILE') {
-    if (item && item.aptIdx !== undefined) {
+    const spot = funSpots()[game.activeTargetProp];
+    if (spot?.fun === 'bench') toggleBench(game.activeTargetProp);
+    else if (spot?.fun === 'fountain') await tossCoin();
+    else if (item && item.aptIdx !== undefined) {
       await throughDoor('cortile:' + game.activeTargetProp);
       game.currentApt = item.aptIdx;
       backToSaloon();
@@ -858,7 +909,8 @@ export async function handleObjectInteract(..._args: GameValue[]): Promise<void>
   } else if (game.view.activeEnvironment === 'luna') {
     if (game.activeTargetProp === 'moonRocket') await returnToEarth();
   } else if (game.view.activeEnvironment === 'centro_commerciale') {
-    if (item?.enter) await doActivity(item.enter);
+    if (game.activeTargetProp === 'iceCream') await buyIceCream();
+    else if (item?.enter) await doActivity(item.enter);
     else if (game.activeTargetProp === 'doorExit') backToSaloon();
   } else if (game.view.activeEnvironment === 'scommesse') {
     if (String(game.activeTargetProp).startsWith('slot')) openSlot();
@@ -934,7 +986,14 @@ export async function handleObjectInteract(..._args: GameValue[]): Promise<void>
     } else if (game.activeTargetProp === 'sink') {
       startWash();
     } else if (game.activeTargetProp === 'toilet') {
+      if (game.showerAnim || game.bathAnim) return;
+      if (usesLeftToday(game.player.daily, 'wc', new Date()) <= 0) {
+        toast(`🚽 Oggi hai già usato il WC ${DAILY_LIMITS.wc} volte: riprova domani.`);
+        return;
+      }
+      game.player.daily = recordUse(game.player.daily, 'wc', new Date());
       startToilet();
+      saveGame();
     } else if (game.activeTargetProp === 'doorExit') {
       backToSaloon();
     }
@@ -965,7 +1024,9 @@ export async function handleObjectInteract(..._args: GameValue[]): Promise<void>
       else toast("🚫 Non puoi frugare nell'armadio di un altro!");
     } else if (game.activeTargetProp === 'desk') {
       openComputerShopModal();
-    } else if (game.activeTargetProp === 'sofa' || game.activeTargetProp === 'tv') {
+    } else if (game.activeTargetProp === 'sofa') {
+      toggleSofa(item);
+    } else if (game.activeTargetProp === 'tv') {
       relaxWith(game.activeTargetProp, item);
     } else if (game.activeTargetProp === 'safe') {
       handleSafeInteraction();
@@ -1104,12 +1165,24 @@ export async function doActivity(type?: GameValue): Promise<void> {
   dom('pop-interaction').classList.add('hidden');
   dom('btn-return-home').classList.remove('hidden');
   if (type === 'walk') {
+    if (usesLeftToday(game.player.daily, 'walk', new Date()) <= 0) {
+      toast(`🌳 Hai già fatto ${DAILY_LIMITS.walk} passeggiate oggi: riprova domani!`);
+      returnHomeFromActivity();
+      return;
+    }
+    game.player.daily = recordUse(game.player.daily, 'walk', new Date());
+    saveGame();
     game.player.happinessLevel = Math.min(100, game.player.happinessLevel + 10);
     game.player.healthLevel = Math.min(100, game.player.healthLevel + 5);
     game.player.sleepLevel = Math.max(0, game.player.sleepLevel - 5); // la passeggiata stanca un po'
     game.view.activeEnvironment = 'passeggiata';
     game.view.currentRoomTitle = 'Passeggiata nel Parco 🌳';
   } else if (type === 'bar') {
+    if (usesLeftToday(game.player.daily, 'bar', new Date()) <= 0) {
+      toast(`☕ Sei già andato al bar ${DAILY_LIMITS.bar} volte oggi: riprova domani!`);
+      returnHomeFromActivity();
+      return;
+    }
     if (game.moneyLevel < 10) {
       toast('Non hai abbastanza soldi! Ti servono almeno 10 €.');
       returnHomeFromActivity();
@@ -1119,11 +1192,18 @@ export async function doActivity(type?: GameValue): Promise<void> {
       returnHomeFromActivity();
       return;
     }
+    game.player.daily = recordUse(game.player.daily, 'bar', new Date());
+    saveGame();
     game.player.happinessLevel = Math.min(100, game.player.happinessLevel + 15);
     game.player.hungerLevel = Math.min(100, game.player.hungerLevel + 15);
     game.view.activeEnvironment = 'bar';
     game.view.currentRoomTitle = "Bar all'Aperto ☕";
   } else if (type === 'disco') {
+    if (usesLeftToday(game.player.daily, 'disco', new Date()) <= 0) {
+      toast(`🕺 Sei già andato in discoteca ${DAILY_LIMITS.disco} volte oggi: riprova domani!`);
+      returnHomeFromActivity();
+      return;
+    }
     if (game.moneyLevel < game.DISCO_PRICE) {
       toast(`Non hai abbastanza soldi! L'ingresso costa ${game.DISCO_PRICE} €.`);
       returnHomeFromActivity();
@@ -1133,6 +1213,8 @@ export async function doActivity(type?: GameValue): Promise<void> {
       returnHomeFromActivity();
       return;
     }
+    game.player.daily = recordUse(game.player.daily, 'disco', new Date());
+    saveGame();
     game.player.happinessLevel = Math.min(100, game.player.happinessLevel + game.DISCO_HAPPY);
     game.player.sleepLevel = Math.max(0, game.player.sleepLevel - game.DISCO_SLEEP);
     game.view.activeEnvironment = 'discoteca';
@@ -1143,13 +1225,28 @@ export async function doActivity(type?: GameValue): Promise<void> {
     game.view.currentRoomTitle = `Cimitero ⚰️ (${game.graveList.length} ${game.graveList.length === 1 ? 'lapide' : 'lapidi'})`;
     game.playerPos = { x: 0, y: 140 };
   } else if (type === 'trip') {
-    let cost: GameValue = Math.floor(game.moneyLevel * 0.2);
-    if (!(await spendMoney(cost))) {
+    if (usesLeftToday(game.player.daily, 'trip', new Date()) <= 0) {
+      toast('✈️ Hai già fatto un viaggio oggi: il prossimo domani!');
       returnHomeFromActivity();
       return;
     }
-    toast(`✈️ Viaggio pagato: -${cost} €`);
-    game.player.happinessLevel = Math.min(100, game.player.happinessLevel + 70);
+    if (game.moneyLevel < TRIP_PRICE) {
+      toast(`Non hai abbastanza soldi! Il viaggio costa ${TRIP_PRICE} €.`);
+      returnHomeFromActivity();
+      return;
+    }
+    if (!(await spendMoney(TRIP_PRICE))) {
+      returnHomeFromActivity();
+      return;
+    }
+    game.player.daily = recordUse(game.player.daily, 'trip', new Date());
+    game.player.happinessLevel = Math.min(100, game.player.happinessLevel + TRIP_HAPPY);
+    game.player.healthLevel = Math.min(100, game.player.healthLevel + TRIP_HEALTH);
+    toast(
+      `✈️ Buon viaggio! −${TRIP_PRICE} €, Felicità +${TRIP_HAPPY}%, Salute +${TRIP_HEALTH}%`,
+      4000,
+    );
+    saveGame();
     game.view.activeEnvironment = 'viaggio';
     game.view.currentRoomTitle = 'Viaggio ✈️';
   } else if (type === 'clothesshop') {

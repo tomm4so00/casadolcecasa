@@ -1,5 +1,9 @@
 <canvas id="game-canvas"></canvas>
 <div id="toast-container"></div>
+<!-- Crollo / boom della borsa: ticker che scorre in alto -->
+<div id="market-ticker" class="hidden" aria-live="polite">
+  <div id="market-ticker-text"></div>
+</div>
 <!-- Versione del gioco: si aggiorna in package.json a ogni fix grande -->
 <div id="app-version"></div>
 
@@ -41,6 +45,12 @@
       <div class="need-info"><span>💊 Dipendenza</span><span id="drug-text">0%</span></div>
       <div class="bar-bg">
         <div id="drug-bar-fill" class="bar-fill" style="width: 0%; background: #a29bfe"></div>
+      </div>
+    </div>
+    <div class="need-row hidden" id="flu-row">
+      <div class="need-info"><span>🤒 Influenza</span><span id="flu-text"></span></div>
+      <div class="bar-bg">
+        <div id="flu-bar-fill" class="bar-fill" style="width: 0%; background: #7bc96f"></div>
       </div>
     </div>
     <div class="need-row">
@@ -156,7 +166,7 @@
     data-action="doActivity"
     data-args='["walk"]'
   >
-    🚶 Passeggiata (+10% Felicità, +5% Salute, -5% Sonno)
+    🚶 Passeggiata (+10% Felicità, +5% Salute, -5% Sonno, 3 al giorno)
   </button>
   <button
     class="btn-pop btn-pop-exit hidden"
@@ -182,7 +192,7 @@
     data-action="doActivity"
     data-args='["bar"]'
   >
-    ☕ Bar (-10 €, +15% Felicità, +15% Fame)
+    ☕ Bar (-10 €, +15% Felicità, +15% Fame, 3 al giorno)
   </button>
   <button
     class="btn-pop btn-pop-exit hidden"
@@ -190,7 +200,7 @@
     data-action="doActivity"
     data-args='["trip"]'
   >
-    ✈️ Viaggio (+70% Felicità, -20% Soldi)
+    ✈️ Viaggio (-100 €, +50% Felicità, +15% Salute, 1 al giorno)
   </button>
   <button
     class="btn-pop btn-pop-furniture hidden"
@@ -238,7 +248,7 @@
     data-action="doActivity"
     data-args='["disco"]'
   >
-    🕺 Discoteca (-20 €, +50% Felicità, -15% Sonno)
+    🕺 Discoteca (-20 €, +35% Felicità, -15% Sonno, 2 al giorno)
   </button>
   <button
     class="btn-pop hidden"
@@ -868,13 +878,13 @@
       <span class="shop-money paint-hint">Disegna con il mouse o con il dito</span>
     </div>
     <div class="paint-frame">
-      <canvas id="paint-canvas" width="400" height="300"></canvas>
+      <canvas id="paint-canvas" width="640" height="480"></canvas>
     </div>
     <div id="paint-palette" class="paint-palette"></div>
     <div class="paint-tools">
       <button type="button" data-paint-tool="1">✏️ Fine</button>
-      <button type="button" data-paint-tool="2">🖌️ Medio</button>
-      <button type="button" data-paint-tool="4">🖌️ Grosso</button>
+      <button type="button" data-paint-tool="3">🖌️ Medio</button>
+      <button type="button" data-paint-tool="6">🖌️ Grosso</button>
       <button type="button" data-paint-tool="fill">💧 Riempi</button>
       <button type="button" id="paint-undo">↩️ Annulla</button>
       <button type="button" id="paint-clear">🧽 Ricomincia</button>

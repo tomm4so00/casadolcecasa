@@ -28,7 +28,7 @@ describe('vantaggi dei mobili', () => {
 
   it('ogni mobile ha un messaggio che spiega cosa fa', () => {
     for (const def of FURNITURE_CATALOG) expect(furnitureBenefit(def), def.id).not.toBe('');
-    expect(furnitureBenefit({ id: 'plant_lux', category: 'plant' })).toContain('80%');
+    expect(furnitureBenefit({ id: 'plant_lux', category: 'plant' })).toContain('70%');
     expect(furnitureBenefit({ id: 'bed_pre', category: 'bed' })).toContain('25%');
   });
 });

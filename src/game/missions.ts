@@ -5,28 +5,35 @@ import { lifetime, dom } from './runtime.js';
 import { sfx } from './audio.js';
 import { saveGame, withTimeout } from './saves.js';
 import { openDialog } from './interface.js';
-import { RELAX_GAIN } from './furniture-benefits.js';
+import { RELAX_COOLDOWN_MS, RELAX_GAIN } from './furniture-benefits.js';
 import { tierOfPlaced } from './furniture-tiers.js';
 // ---------- Divano e TV ----------
-export function relaxWith(kind?: GameValue, item?: GameValue): GameValue {
+/** Pausa su divano o TV. Con `quiet` non avvisa se è troppo presto. Restituisce true se è andata. */
+export function relaxWith(kind?: GameValue, item?: GameValue, quiet = false): boolean {
   const now: GameValue = Date.now();
   if (now < game.relaxCooldownUntil) {
-    toast(
-      `⏳ Hai appena fatto una pausa: riprova tra ${Math.ceil((game.relaxCooldownUntil - now) / 1000)} s`,
-    );
-    return;
+    if (!quiet) {
+      const left = game.relaxCooldownUntil - now;
+      toast(
+        `⏳ Hai appena fatto una pausa: riprova tra ${
+          left >= 60_000 ? Math.ceil(left / 60_000) + ' min' : Math.ceil(left / 1000) + ' s'
+        }`,
+      );
+    }
+    return false;
   }
   const gain: number = RELAX_GAIN[kind === 'tv' ? 'tv' : 'sofa'][tierOfPlaced(item)];
   game.player.happinessLevel = Math.min(100, game.player.happinessLevel + gain);
   if (kind === 'tv') game.player.sleepLevel = Math.max(0, game.player.sleepLevel - 3);
   else game.player.sleepLevel = Math.min(100, game.player.sleepLevel + 3);
   game.player.stats.relax++;
-  game.relaxCooldownUntil = now + 30000;
+  game.relaxCooldownUntil = now + RELAX_COOLDOWN_MS;
   toast(
     kind === 'tv'
       ? `📺 Ti sei goduto un po' di TV (Felicità +${gain}%)`
       : `🛋️ Ti sei rilassato sul divano (Felicità +${gain}%)`,
   );
+  return true;
 }
 
 export function getWealth(..._args: GameValue[]): GameValue {

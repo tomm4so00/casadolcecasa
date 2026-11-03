@@ -1781,3 +1781,48 @@ input[type='number'] {
 .rps-player span {
   text-align: left;
 }
+
+/* Crollo / boom della borsa: striscia che scorre in cima allo schermo */
+#market-ticker {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 24px;
+  z-index: 1500;
+  overflow: hidden;
+  white-space: nowrap;
+  pointer-events: none;
+  font: bold 13px/24px sans-serif;
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+}
+#market-ticker.crash {
+  background: linear-gradient(90deg, #8e0e16, #e74c3c, #8e0e16);
+}
+#market-ticker.boom {
+  background: linear-gradient(90deg, #0b6b34, #2ecc71, #0b6b34);
+}
+#market-ticker-text {
+  display: inline-block;
+  padding-left: 100%;
+  animation: market-ticker-scroll 40s linear infinite;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+@keyframes market-ticker-scroll {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-100%);
+  }
+}
+body.ticker-on #hud-top-left {
+  top: 32px;
+}
+body.ticker-on #toast-container {
+  top: 84px;
+}
+body.ticker-on #app-version {
+  display: none;
+}

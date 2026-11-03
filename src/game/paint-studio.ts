@@ -22,11 +22,11 @@ import {
   slotOfKey,
 } from './painting-rules.js';
 
-type Tool = 1 | 2 | 4 | 'fill';
+type Tool = 1 | 3 | 6 | 'fill';
 const studio = {
   grid: blankPainting(),
   color: 1,
-  tool: 2 as Tool,
+  tool: 3 as Tool,
   undo: [] as PaintGrid[],
   drawing: false,
   last: null as { x: number; y: number } | null,
@@ -47,7 +47,7 @@ function render(): void {
       ctx.fillRect(x * cw, y * ch, cw, ch);
     }
   // griglia leggera per aiutare a disegnare
-  ctx.strokeStyle = 'rgba(0,0,0,0.06)';
+  ctx.strokeStyle = 'rgba(0,0,0,0.04)';
   ctx.lineWidth = 1;
   ctx.beginPath();
   for (let x = 1; x < PAINT_W; x++) {
@@ -161,7 +161,7 @@ export function openPaintStudio(): void {
   studio.grid = blankPainting();
   studio.undo = [];
   studio.color = 1;
-  studio.tool = 2;
+  studio.tool = 3;
   renderTools();
   render();
   dom('paint-modal').classList.remove('hidden');

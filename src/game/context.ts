@@ -46,6 +46,12 @@ export interface GameContext {
   showerAnim: GameValue;
   /** Animazione del WC o del lavandino in corso (kind: 'toilet' | 'wash'). */
   bathAnim: GameValue;
+  /** Seduti su una panchina del cortile (o mentre ci si siede/alza). */
+  benchSit: GameValue;
+  /** Moneta lanciata nella fontana del cortile. */
+  coinToss: GameValue;
+  /** Gelato che si sta mangiando (comprato al centro commerciale). */
+  iceCream: GameValue;
   /** Momento (animClock) dell'ultimo scarico del WC, per il vortice d'acqua. */
   toiletFlushAt: number;
   /** Qualcuno si sta lavando le mani in questo fotogramma (acqua dal rubinetto). */

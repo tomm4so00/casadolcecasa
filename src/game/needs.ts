@@ -23,6 +23,7 @@ import { socDo } from './social.js';
 import { box, onFace } from './render/objects.js';
 import { isoProject, isoScale } from './render/primitives.js';
 import { sfx } from './audio.js';
+import { updateFlu } from './flu.js';
 export async function reapAbsentPlayers(..._args: GameValue[]): Promise<GameValue> {
   if (!game.session.OFFLINE) return; // The trusted scheduled process handles other characters.
   let reaped: GameValue = [];
@@ -466,7 +467,7 @@ export function checkAlerts(..._args: GameValue[]): GameValue {
     if (lvl > prev) {
       const msg: GameValue =
         `${a.emoji} ${game.player.myData.nick} ${a.label} (${a.name} ${Math.round(v)}%)` +
-        (lvl === 2 ? ' – è critico!' : '');
+        (lvl === 2 ? a.critText || ' – è critico!' : '');
       if (document.hidden)
         sendNotify(
           lvl === 2 ? '⚠️ Casa dolce casa: urgente' : 'Casa dolce casa',
@@ -537,6 +538,7 @@ export function updateNeeds(delta?: GameValue): GameValue {
   dom('happiness-bar-fill').style.width = Math.round(game.player.happinessLevel) + '%';
   dom('happiness-text').innerText = Math.round(game.player.happinessLevel) + '%';
   updateDrugHud();
+  updateFlu();
   // Sotto i 1000 € in cassaforte la barra si riempie solo di verde, verso 1000 €.
   // Da 1000 € in su è piena e divisa in proporzione: verde cassaforte, azzurro banca.
   const bankMoney: number = game.bankBalance || 0;

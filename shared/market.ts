@@ -47,11 +47,58 @@ export interface MarketQuote {
   log: number;
   history: Record<string, number>;
 }
+/** Crollo o boom della borsa: per un'ora tutte le quotazioni scendono o salgono del 20%. */
+export interface MarketEvent {
+  kind: 'boom' | 'crash';
+  /** Inizio e fine (ms, ora del server): l'effetto vale per le quotazioni pubblicate in [start, end). */
+  start: number;
+  end: number;
+}
 export interface MarketSnapshot {
   version: 1;
   minute: number;
   updatedAt: number;
   quotes: Record<BusinessId, MarketQuote>;
+  /** Ultimo evento (in corso o passato: serve anche per la pausa fra un evento e l'altro). */
+  event?: MarketEvent;
+}
+export const MARKET_EVENT_MS = 3_600_000;
+export const MARKET_EVENT_EFFECT = 0.2;
+/** Probabilità che un evento parta a ogni pubblicazione (ogni 15 minuti): in media uno ogni 12 ore… */
+export const MARKET_EVENT_CHANCE = 1 / 48;
+/** …ma mai prima di 12 ore dalla fine del precedente. */
+export const MARKET_EVENT_COOLDOWN_MS = 12 * 3_600_000;
+
+/** L'ultimo evento, se è scritto bene. */
+export function marketEvent(snapshot: MarketSnapshot | null | undefined): MarketEvent | null {
+  const e: unknown = snapshot?.event;
+  if (!record(e)) return null;
+  if (e.kind !== 'boom' && e.kind !== 'crash') return null;
+  if (!Number.isSafeInteger(e.start) || !Number.isSafeInteger(e.end)) return null;
+  if ((e.end as number) <= (e.start as number)) return null;
+  return e as unknown as MarketEvent;
+}
+/** Evento che vale per le quotazioni di quell'istante (null se non ce n'è). */
+export function eventAt(snapshot: MarketSnapshot, at: number): MarketEvent | null {
+  const e = marketEvent(snapshot);
+  return e && at >= e.start && at < e.end ? e : null;
+}
+/** Moltiplicatore dei prezzi in quell'istante: 1.2 nel boom, 0.8 nel crollo, altrimenti 1. */
+export function eventFactor(snapshot: MarketSnapshot, at: number): number {
+  const e = eventAt(snapshot, at);
+  return !e ? 1 : e.kind === 'boom' ? 1 + MARKET_EVENT_EFFECT : 1 - MARKET_EVENT_EFFECT;
+}
+/** Decide (sul server) se a questa pubblicazione parte un evento. `roll` e `kindRoll` fra 0 e 1. */
+export function rollMarketEvent(
+  previous: MarketEvent | null,
+  minute: number,
+  roll: number,
+  kindRoll: number,
+): MarketEvent | null {
+  const start = minute * MARKET_INTERVAL_MS;
+  if (previous && start < previous.end + MARKET_EVENT_COOLDOWN_MS) return null;
+  if (!(roll < MARKET_EVENT_CHANCE)) return null;
+  return { kind: kindRoll < 0.5 ? 'crash' : 'boom', start, end: start + MARKET_EVENT_MS };
 }
 export function hash01(a: number, b: number): number {
   let h = Math.imul(a ^ 0x9e3779b9, 0x85ebca6b) ^ Math.imul(b + 0x7f4a7c15, 0xc2b2ae35);
@@ -141,6 +188,7 @@ export function advanceMarket(
   value: unknown,
   now: number,
   noise: (id: BusinessId) => number,
+  eventRolls?: { roll: number; kind: number },
 ): MarketSnapshot | null {
   if (!Number.isFinite(now) || now < MARKET_EPOCH) throw new Error('Invalid market time');
   const minute =
@@ -169,9 +217,19 @@ export function advanceMarket(
   }
   next.minute = minute;
   next.updatedAt = minute * MARKET_INTERVAL_MS;
+  const previous = marketEvent(next);
+  if (!previous) delete next.event;
+  if (eventRolls) {
+    const started = rollMarketEvent(previous, minute, eventRolls.roll, eventRolls.kind);
+    if (started) next.event = started;
+  }
   return next;
 }
+/** Quotazione in un istante, compreso l'effetto di un crollo o di un boom della borsa. */
 export function marketPriceAt(snapshot: MarketSnapshot, id: BusinessId, at: number): number {
+  return basePriceAt(snapshot, id, at) * eventFactor(snapshot, Math.min(at, snapshot.updatedAt));
+}
+function basePriceAt(snapshot: MarketSnapshot, id: BusinessId, at: number): number {
   const quote = snapshot.quotes[id];
   if (at >= snapshot.updatedAt) return quote.price;
   const entries = Object.entries(quote.history).sort((a, b) => Number(a[0]) - Number(b[0]));

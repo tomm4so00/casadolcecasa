@@ -6,6 +6,10 @@ import {
   MARKET_EPOCH,
   MARKET_PUBLISH_INTERVAL_MS,
   BUSINESSES,
+  MARKET_EVENT_MS,
+  MARKET_EVENT_COOLDOWN_MS,
+  eventAt,
+  rollMarketEvent,
 } from '../shared/market.js';
 
 describe('server market updates', () => {
@@ -44,5 +48,53 @@ describe('server market updates', () => {
   it('rejects corrupted state rather than resetting everybody’s market', () => {
     expect(decodeMarket({ version: 1, minute: 1, quotes: {} })).toBeNull();
     expect(() => advanceMarket({ broken: true }, MARKET_EPOCH, () => 0)).toThrow();
+  });
+});
+
+describe('crollo / boom della borsa', () => {
+  it('per un’ora tutte le quotazioni salgono o scendono del 20%, uguale per tutti', () => {
+    const start = advanceMarket(null, MARKET_EPOCH + 86400000, () => 0)!;
+    const base = start.quotes.app.price;
+    // il server tira un numero basso: parte un crollo
+    const crash = advanceMarket(start, start.updatedAt + MARKET_PUBLISH_INTERVAL_MS, () => 0, {
+      roll: 0,
+      kind: 0.1,
+    })!;
+    expect(crash.event).toEqual({
+      kind: 'crash',
+      start: crash.updatedAt,
+      end: crash.updatedAt + MARKET_EVENT_MS,
+    });
+    const copy = decodeMarket(JSON.parse(JSON.stringify(crash)))!;
+    expect(marketPriceAt(copy, 'app', copy.updatedAt)).toBeCloseTo(crash.quotes.app.price * 0.8);
+    // il prezzo di prima dell’evento non cambia
+    expect(marketPriceAt(copy, 'app', start.updatedAt)).toBeCloseTo(base);
+    // dopo un’ora l’effetto finisce
+    let m = crash;
+    for (let i = 0; i < 4; i++)
+      m = advanceMarket(m, m.updatedAt + MARKET_PUBLISH_INTERVAL_MS, () => 0, {
+        roll: 0,
+        kind: 0.9,
+      })!;
+    expect(eventAt(m, m.updatedAt)).toBeNull();
+    expect(marketPriceAt(m, 'app', m.updatedAt)).toBe(m.quotes.app.price);
+    // pausa: anche con un numero basso non riparte subito
+    expect(m.event!.start).toBe(crash.updatedAt);
+  });
+
+  it('un boom fa salire del 20% e l’evento non parte con un numero alto', () => {
+    const s = advanceMarket(null, MARKET_EPOCH + 86400000, () => 0)!;
+    const none = advanceMarket(s, s.updatedAt + MARKET_PUBLISH_INTERVAL_MS, () => 0, {
+      roll: 0.9,
+      kind: 0.9,
+    })!;
+    expect(none.event).toBeUndefined();
+    expect(rollMarketEvent(null, 1000, 0, 0.9)?.kind).toBe('boom');
+    const boom = { ...none, event: rollMarketEvent(null, none.minute, 0, 0.9)! };
+    expect(marketPriceAt(boom, 'shop', boom.updatedAt)).toBeCloseTo(none.quotes.shop.price * 1.2);
+    // dopo 12 ore dalla fine può ripartire
+    const later = (boom.event.end + MARKET_EVENT_COOLDOWN_MS) / 60000;
+    expect(rollMarketEvent(boom.event, later - 15, 0, 0)).toBeNull();
+    expect(rollMarketEvent(boom.event, later, 0, 0)).not.toBeNull();
   });
 });

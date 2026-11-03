@@ -3,6 +3,8 @@ import fs from 'node:fs';
 import {
   PAINT_CELLS,
   PAINT_W,
+  OLD_PAINT_CELLS,
+  OLD_PAINT_W,
   blankPainting,
   decodePainting,
   encodePainting,
@@ -27,6 +29,21 @@ describe('quadri del laboratorio artistico', () => {
     expect(decodePainting(code)).toEqual(grid);
     expect(decodePainting('xyz')).toBeNull();
     expect(decodePainting(code.slice(1))).toBeNull();
+  });
+
+  it('i quadri vecchi 40×30 si leggono ancora, ingranditi al doppio', () => {
+    const old = '0'.repeat(OLD_PAINT_CELLS).split('');
+    old[OLD_PAINT_W + 1] = 'a'; // quadretto (1, 1)
+    const grid = decodePainting(old.join(''))!;
+    expect(grid).not.toBeNull();
+    for (const [x, y] of [
+      [2, 2],
+      [3, 2],
+      [2, 3],
+      [3, 3],
+    ])
+      expect(grid[y * PAINT_W + x]).toBe(10);
+    expect(grid.filter((c) => c === 10).length).toBe(4);
   });
 
   it('pennello, linea e secchiello colorano i quadretti giusti', () => {
@@ -65,6 +82,7 @@ describe('quadri del laboratorio artistico', () => {
     const room = JSON.parse(fs.readFileSync('firebase/database.rules.proposed.json', 'utf8')).rules
       .sims_rooms_state.$room;
     expect(room.paintings.$slot['.validate']).toContain(`length === ${PAINT_CELLS}`);
+    expect(room.paintings.$slot['.validate']).toContain(`length === ${OLD_PAINT_CELLS}`);
     for (const slot of PAINTING_SLOTS)
       expect(room['.validate']).toContain(`newData.child('paintings/${slot}').val() === data`);
   });

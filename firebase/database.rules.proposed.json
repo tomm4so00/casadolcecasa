@@ -577,7 +577,7 @@
         },
         "paintings": {
           "$slot": {
-            ".validate": "$slot.matches(/^p[1-3]$/) && newData.isString() && newData.val().length === 1200 && newData.val().matches(/^[0-9a-f]+$/)"
+            ".validate": "$slot.matches(/^p[1-3]$/) && newData.isString() && (newData.val().length === 4800 || newData.val().length === 1200) && newData.val().matches(/^[0-9a-f]+$/)"
           }
         },
         "sale": {

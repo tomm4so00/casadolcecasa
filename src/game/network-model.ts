@@ -29,6 +29,8 @@ export interface OnlinePlayer extends PresenceInfo {
   und?: number;
   /** Cuscino su cui dorme (0 o 1), solo mentre è a letto. */
   bed?: number;
+  /** 1 se ha l'influenza (si attacca a chi gli si avvicina). */
+  sick?: number;
 }
 
 export function decodeChatMessage(value: unknown): ChatMessage | null {

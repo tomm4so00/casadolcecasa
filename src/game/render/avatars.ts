@@ -1339,7 +1339,7 @@ export function drawPlayerAvatar(
   const phase: GameValue = animTime * 12 + (hsh % 10);
   const swing: GameValue = moving ? Math.sin(phase) : 0;
   const pose: string = (opts && opts.pose) || '';
-  const sitting = pose === 'sit';
+  const sitting = pose === 'sit' || pose === 'bench';
   const bob: GameValue = sitting
     ? -4
     : moving
@@ -2564,4 +2564,45 @@ export function drawSmokePuffs(x: number, y: number, t: number): void {
   ctx.beginPath();
   ctx.arc(mouth.x + 7 * s, mouth.y + 2 * s, 1.4 * s, 0, 6.3);
   ctx.fill();
+}
+
+/** Influenza: germi verdi che girano intorno alla testa e un'aria un po' verdognola. */
+export function drawFluGerms(x: number, y: number, t: number): void {
+  const ctx = game.view.ctx;
+  const s: number = isoScale();
+  const head = isoProject(x, y, 70);
+  // alone verdognolo sul viso
+  const g = ctx.createRadialGradient(head.x, head.y, 0, head.x, head.y, 22 * s);
+  g.addColorStop(0, 'rgba(120,200,90,0.28)');
+  g.addColorStop(1, 'rgba(120,200,90,0)');
+  ctx.fillStyle = g;
+  ctx.beginPath();
+  ctx.arc(head.x, head.y, 22 * s, 0, 6.3);
+  ctx.fill();
+  for (let i = 0; i < 5; i++) {
+    const a = t * 1.6 + (i * Math.PI * 2) / 5;
+    const r = (17 + Math.sin(t * 3 + i) * 3) * s;
+    const px = head.x + Math.cos(a) * r;
+    const py = head.y - 6 * s + Math.sin(a) * r * 0.45 + Math.sin(t * 4 + i * 2) * 2 * s;
+    const rr = (2.4 + (i % 2)) * s;
+    // corpo del germe con le zampette
+    ctx.strokeStyle = 'rgba(46,125,50,0.85)';
+    ctx.lineWidth = Math.max(0.6, 0.8 * s);
+    ctx.beginPath();
+    for (let k = 0; k < 6; k++) {
+      const b = (k * Math.PI) / 3 + t * 2;
+      ctx.moveTo(px + Math.cos(b) * rr, py + Math.sin(b) * rr);
+      ctx.lineTo(px + Math.cos(b) * rr * 1.7, py + Math.sin(b) * rr * 1.7);
+    }
+    ctx.stroke();
+    ctx.fillStyle = 'rgba(124,205,82,0.95)';
+    ctx.beginPath();
+    ctx.arc(px, py, rr, 0, 6.3);
+    ctx.fill();
+    ctx.fillStyle = 'rgba(27,94,32,0.9)';
+    ctx.beginPath();
+    ctx.arc(px - rr * 0.3, py - rr * 0.2, rr * 0.25, 0, 6.3);
+    ctx.arc(px + rr * 0.35, py - rr * 0.2, rr * 0.25, 0, 6.3);
+    ctx.fill();
+  }
 }

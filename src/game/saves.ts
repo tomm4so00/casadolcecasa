@@ -1,4 +1,7 @@
 import { decodeWeed } from './weed-rules.js';
+import { decodeFlu, isSick } from './flu-rules.js';
+import { myBenchPose } from './courtyard-fun.js';
+import { decodeDailyUses } from './daily-limits.js';
 import { weedRoomItems } from './weed.js';
 import { publishVitals } from './players-hud-rules.js';
 import { advanceNeeds } from './simulation.js';
@@ -154,9 +157,12 @@ export function buildSaveData(..._args: GameValue[]): SaveV8 {
     data.romance = game.player.romance;
   if (game.player.personality) data.personality = game.player.personality;
   if (game.player.workDay) data.workDay = game.player.workDay;
+  if (game.player.daily) data.daily = game.player.daily;
   if (game.player.weed && (game.player.weed.plantedAt || game.player.weed.grams))
     data.weed = game.player.weed;
   if (game.player.coffeeAt) data.coffeeAt = game.player.coffeeAt;
+  if (game.player.flu && (game.player.flu.nextAt || game.player.flu.sickAt))
+    data.flu = { ...game.player.flu };
   if (Object.keys(game.player.invest).length) {
     data.invest = {};
     Object.keys(game.player.invest).forEach((k?: GameValue): GameValue => {
@@ -213,7 +219,9 @@ export function applySave(value: unknown): void {
   game.player.romance = decodeRomance(s.romance);
   game.player.personality = decodePersonality(s.personality);
   game.player.workDay = decodeWorkDay(s.workDay);
+  game.player.daily = decodeDailyUses(s.daily);
   game.player.weed = decodeWeed(s.weed);
+  game.player.flu = decodeFlu(s.flu);
   game.player.coffeeAt = num(s.coffeeAt, 0);
   game.player.invest = {};
   game.BIZ.forEach((b?: GameValue): GameValue => {
@@ -605,12 +613,15 @@ export function startPresence(..._args: GameValue[]): GameValue {
                 ? 'shower'
                 : game.bathAnim
                   ? game.bathAnim.pose || ''
-                  : game.player.isSleeping
-                    ? 'sleep'
-                    : '',
+                  : game.benchSit
+                    ? myBenchPose()
+                    : game.player.isSleeping
+                      ? 'sleep'
+                      : '',
       ...(game.showerAnim?.und ? { und: game.showerAnim.und } : {}),
       say: game.mySay,
       sayT: game.mySayT,
+      ...(isSick(game.player.flu, Date.now()) ? { sick: 1 } : {}),
       ...(game.player.isSleeping ? { bed: game.bedSlot } : {}),
     };
     const key: GameValue = JSON.stringify(payload);

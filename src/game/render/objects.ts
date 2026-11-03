@@ -1684,9 +1684,9 @@ export function drawSaloonDoor(key?: GameValue, it?: GameValue): GameValue {
   const dx: number = thinX ? (it.x < 0 ? game.X0 + T / 2 : game.X1 - T / 2) : it.x;
   const dy: number = thinX ? it.y : it.y < 0 ? game.Y0 + T / 2 : game.Y1 - T / 2;
   const b: GameValue = box(dx, dy, thinX ? T : it.w, thinX ? it.h : T, 96, '#ecf0f1');
-  // la porta si apre quando ci si avvicina (le stanze vuote restano chiuse a chiave)
+  // la porta si apre solo quando si preme per entrare (le stanze vuote restano chiuse a chiave)
   const locked = it.roomIdx !== undefined && doorC === '#7f8c8d';
-  const open = doorOpenAmount('saloon:' + key, it.x, it.y, !locked);
+  const open = doorOpenAmount('saloon:' + key, it.x, it.y, !locked, false);
   const paintLeaf = (W: number, H: number): void => {
     ctx.fillStyle = doorC;
     ctx.fillRect(5, 7, W - 10, H - 7);
@@ -1741,14 +1741,20 @@ export function drawSaloonDoor(key?: GameValue, it?: GameValue): GameValue {
 const doorOpenState = new Map<string, { k: number; t: number }>();
 
 /**
- * Quanto è aperta una porta: si apre quando il giocatore le si avvicina o la sta attraversando
- * (game.doorForce), e si richiude quando si allontana.
+ * Quanto è aperta una porta: si apre quando il giocatore la sta attraversando (game.doorForce)
+ * e, se `byProximity`, anche quando le si avvicina; poi si richiude.
  */
-export function doorOpenAmount(id: string, x: number, y: number, enabled: boolean): number {
+export function doorOpenAmount(
+  id: string,
+  x: number,
+  y: number,
+  enabled: boolean,
+  byProximity = true,
+): number {
   const now = performance.now();
   const st = doorOpenState.get(id) || { k: 0, t: now };
   const dt = Math.min(0.1, Math.max(0, (now - st.t) / 1000));
-  const near = Math.hypot(game.playerPos.x - x, game.playerPos.y - y) < 75;
+  const near = byProximity && Math.hypot(game.playerPos.x - x, game.playerPos.y - y) < 75;
   const target = enabled && (near || (game.doorForce[id] || 0) > now) ? 1 : 0;
   st.k += (target - st.k) * Math.min(1, dt * 6);
   st.t = now;

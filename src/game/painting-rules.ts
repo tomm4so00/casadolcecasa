@@ -1,9 +1,14 @@
 // Quadri del laboratorio artistico (senza dipendenze dal browser, così sono testabili).
 // La tela è una griglia di quadretti; ogni quadretto è un indice della tavolozza (0-f).
 
-export const PAINT_W = 40;
-export const PAINT_H = 30;
+export const PAINT_W = 80;
+export const PAINT_H = 60;
 export const PAINT_CELLS = PAINT_W * PAINT_H;
+
+/** I primi quadri erano su una tela 40×30: si leggono ancora, ingranditi al doppio. */
+export const OLD_PAINT_W = 40;
+export const OLD_PAINT_H = 30;
+export const OLD_PAINT_CELLS = OLD_PAINT_W * OLD_PAINT_H;
 
 /** Tavolozza a 16 colori: l'indice 0 è il bianco della tela. */
 export const PAINT_PALETTE = [
@@ -39,12 +44,23 @@ export function encodePainting(grid: PaintGrid): string {
 }
 
 export function isValidPainting(value: unknown): value is string {
-  return typeof value === 'string' && value.length === PAINT_CELLS && /^[0-9a-f]+$/.test(value);
+  return (
+    typeof value === 'string' &&
+    (value.length === PAINT_CELLS || value.length === OLD_PAINT_CELLS) &&
+    /^[0-9a-f]+$/.test(value)
+  );
 }
 
 export function decodePainting(value: unknown): PaintGrid | null {
   if (!isValidPainting(value)) return null;
   const grid = blankPainting();
+  if (value.length === OLD_PAINT_CELLS) {
+    // quadro vecchio: ogni quadretto diventa un blocco 2×2
+    for (let y = 0; y < PAINT_H; y++)
+      for (let x = 0; x < PAINT_W; x++)
+        grid[y * PAINT_W + x] = parseInt(value[(y >> 1) * OLD_PAINT_W + (x >> 1)], 16);
+    return grid;
+  }
   for (let i = 0; i < PAINT_CELLS; i++) grid[i] = parseInt(value[i], 16);
   return grid;
 }

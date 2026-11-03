@@ -66,3 +66,28 @@ describe('shared needs simulation', () => {
     expect(state).toEqual(before);
   });
 });
+
+describe('felicità bassa', () => {
+  it('sotto il 10% di felicità si perde l’1% di salute all’ora, anche a gioco chiuso', () => {
+    const calm: NeedsRules = {
+      ...rules,
+      sleepDepletion: 1e12,
+      hungerAwake: 1e12,
+      hungerSleeping: 1e12,
+      hygieneDepletion: 1e12,
+      happinessDepletion: 360000, // −1% di felicità ogni ora
+    };
+    const closed = createCharacterState();
+    closed.healthLevel = 80;
+    closed.happinessLevel = 12;
+    const open = structuredClone(closed);
+    const seconds = 10 * 3600;
+    const start = 1_800_000_000_000;
+    advanceNeeds(closed, seconds, start + seconds * 1000, calm);
+    for (let i = 1; i <= seconds / 60; i++) advanceNeeds(open, 60, start + i * 60_000, calm);
+    // 2 ore per scendere al 10%, poi 8 ore da tristi: −8% di salute
+    expect(closed.happinessLevel).toBeCloseTo(2, 6);
+    expect(closed.healthLevel).toBeCloseTo(72, 6);
+    expect(open.healthLevel).toBeCloseTo(closed.healthLevel, 6);
+  });
+});

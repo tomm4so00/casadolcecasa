@@ -1,4 +1,6 @@
 import type { WeedState } from './weed-rules.js';
+import type { FluState } from './flu-rules.js';
+import type { DailyUses } from './daily-limits.js';
 import type { PersonalityState } from './personality-rules.js';
 import type { WorkDay } from './job-pay.js';
 import type { RomanceBook } from './romance-rules.js';
@@ -129,6 +131,10 @@ export interface CharacterState {
   workDay?: WorkDay;
   /** Pianta in vaso e barattolo d'erba nella propria stanza. */
   weed?: WeedState;
+  /** Influenza: in corso, in arrivo per contagio o la prossima spontanea. */
+  flu?: FluState;
+  /** Azioni con un massimo al giorno già fatte oggi (viaggio, WC). */
+  daily?: DailyUses;
 }
 export interface SessionState {
   authUid: string | null;
