@@ -37,7 +37,7 @@ const WALK_ENVS = new Set(['PLAYER_ROOM', 'SALOON', 'KITCHEN', 'BATHROOM', 'CORT
 
 /** Dove compaiono le casette appena comprate (poi si spostano come i mobili). */
 const HOME_SPOTS: Partial<Record<PetKind, { x: number; y: number }>> = {
-  bird: { x: -165, y: 60 },
+  bird: { x: -30, y: 60 },
   hamster: { x: 40, y: 150 },
   snake: { x: -150, y: 140 },
   fish: { x: 150, y: 140 },
