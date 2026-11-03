@@ -168,12 +168,12 @@
   </button>
   <button
     class="btn-pop btn-pop-furniture hidden"
-    id="btn-act-shops"
+    id="btn-act-mall"
     style="background: #e84393"
-    data-action="openOutsideSubmenu"
-    data-args='["shops"]'
+    data-action="doActivity"
+    data-args='["mall"]'
   >
-    🛍️ Negozi
+    🏬 Centro Commerciale
   </button>
   <button
     class="btn-pop btn-pop-exit hidden"
@@ -190,23 +190,6 @@
     data-args='["trip"]'
   >
     ✈️ Viaggio (+70% Felicità, -20% Soldi)
-  </button>
-  <button
-    class="btn-pop btn-pop-furniture hidden"
-    id="btn-act-furnitureshop"
-    data-action="doActivity"
-    data-args='["furnitureshop"]'
-  >
-    🛋️ Negozio di Mobili
-  </button>
-  <button
-    class="btn-pop btn-pop-furniture hidden"
-    id="btn-act-clothesshop"
-    style="background: #e84393"
-    data-action="doActivity"
-    data-args='["clothesshop"]'
-  >
-    👗 Negozio di Vestiti
   </button>
   <button
     class="btn-pop btn-pop-furniture hidden"
@@ -628,6 +611,52 @@
       <div id="art-list" class="art-list"></div>
     </div>
     <button class="btn-primary" data-action="closeModal" data-args='["art-modal"]'>Chiudi</button>
+  </div>
+</div>
+
+<!-- SALA SCOMMESSE: SLOT -->
+<div id="slot-modal" class="fullscreen-modal hidden">
+  <div class="slot-panel">
+    <h3>🎰 Slot machine</h3>
+    <div class="slot-reels">
+      <div class="slot-reel" id="slot-reel-0">🍒</div>
+      <div class="slot-reel" id="slot-reel-1">🔔</div>
+      <div class="slot-reel" id="slot-reel-2">7️⃣</div>
+    </div>
+    <div id="slot-result" class="slot-result"></div>
+    <div class="slot-table">
+      🍒🍒🍒 ×5 · 🍋🍋🍋 ×10 · 🔔🔔🔔 ×20 · ⭐⭐⭐ ×50 · 💎💎💎 ×100 · 7️⃣7️⃣7️⃣ ×300<br />
+      Due 🍒 riprendi la puntata · due 💎 ×2 · due 7️⃣ ×3
+    </div>
+    <div class="slot-buttons">
+      <button
+        class="btn-primary"
+        style="background: #57606f"
+        data-action="closeModal"
+        data-args='["slot-modal"]'
+      >
+        Esci
+      </button>
+      <button class="btn-primary" id="slot-spin" style="background: #e1b12c" data-action="spinSlot">
+        🎰 Gira (5 €)
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- SALA SCOMMESSE: MORRA CINESE -->
+<div id="rps-modal" class="fullscreen-modal hidden">
+  <div class="slot-panel">
+    <h3>✊ Morra cinese ✋ ✌️</h3>
+    <div id="rps-body"></div>
+    <button
+      class="btn-primary"
+      style="background: #57606f"
+      data-action="closeModal"
+      data-args='["rps-modal"]'
+    >
+      Chiudi
+    </button>
   </div>
 </div>
 

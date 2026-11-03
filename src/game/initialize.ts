@@ -19,6 +19,8 @@ import {
   BANK_FURNITURE,
   ART_STUDIO_FURNITURE,
   ENGINEERING_FURNITURE,
+  BETTING_FURNITURE,
+  MALL_FURNITURE,
   ENGINEERING_YARD_FURNITURE,
   STORE_FLOOR_FURNITURE,
   SALOON_DOORS,
@@ -61,6 +63,9 @@ import {
   drawFlowersProp,
   drawRocketProp,
   drawRocketPad,
+  drawSlotMachine,
+  drawRpsTable,
+  drawShopFacade,
   drawLaunchButton,
   drawProjectBoard,
   drawWorkbench,
@@ -358,6 +363,8 @@ export function initializeGame() {
   game.bankFurniture = structuredClone(BANK_FURNITURE);
   game.artStudioFurniture = structuredClone(ART_STUDIO_FURNITURE);
   game.engineeringFurniture = structuredClone(ENGINEERING_FURNITURE);
+  game.bettingFurniture = structuredClone(BETTING_FURNITURE);
+  game.mallFurniture = structuredClone(MALL_FURNITURE);
   game.engineeringYardFurniture = structuredClone(ENGINEERING_YARD_FURNITURE);
   game.rocketStage = 0;
   game.rocketLaunchAt = 0;
@@ -612,6 +619,13 @@ export function initializeGame() {
     projectBoard: drawProjectBoard,
     workbench: drawWorkbench,
     rocketPad: drawRocketPad,
+    slot1: drawSlotMachine,
+    slot2: drawSlotMachine,
+    slot3: drawSlotMachine,
+    rpsTable: drawRpsTable,
+    shopFurniture: drawShopFacade,
+    shopClothes: drawShopFacade,
+    shopBetting: drawShopFacade,
     launchButton: drawLaunchButton,
     coffee: drawCoffeeMachine,
     toilet: drawToilet,

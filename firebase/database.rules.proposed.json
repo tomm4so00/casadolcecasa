@@ -770,6 +770,67 @@
           }
         }
       }
+    },
+    "sims_rps": {
+      "$target": {
+        ".read": "(auth != null && auth.token.firebase.sign_in_provider === 'google.com') && root.child('sims_accounts').child(auth.uid).child('playerId').isString()",
+        ".write": "(auth != null && auth.token.firebase.sign_in_provider === 'google.com') && ($target === root.child('sims_accounts').child(auth.uid).child('playerId').val() || data.child('a').val() === root.child('sims_accounts').child(auth.uid).child('playerId').val() || (newData.child('a').val() === root.child('sims_accounts').child(auth.uid).child('playerId').val() && (!data.exists() || data.child('state').val() === 'done' || data.child('state').val() === 'declined' || data.child('state').val() === 'cancelled' || data.child('moveT').val() < now - 600000 || (!data.child('moveT').exists() && data.child('t').val() < now - 600000))))",
+        ".validate": "newData.hasChildren(['a','b','bet','state','t']) && newData.child('b').val() === $target",
+        "a": {
+          ".validate": "newData.isString() && newData.val().length <= 140"
+        },
+        "b": {
+          ".validate": "newData.isString()"
+        },
+        "aName": {
+          ".validate": "newData.isString() && newData.val().length <= 20"
+        },
+        "bName": {
+          ".validate": "newData.isString() && newData.val().length <= 20"
+        },
+        "bet": {
+          ".validate": "newData.isNumber() && newData.val() >= 10 && newData.val() <= 500"
+        },
+        "state": {
+          ".validate": "newData.val() === 'invited' || newData.val() === 'playing' || newData.val() === 'done' || newData.val() === 'declined' || newData.val() === 'cancelled'"
+        },
+        "t": {
+          ".validate": "newData.isNumber()"
+        },
+        "moveT": {
+          ".validate": "newData.isNumber()"
+        },
+        "round": {
+          ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1000"
+        },
+        "aHash": {
+          ".validate": "newData.isString() && newData.val().matches(/^[0-9a-f]{64}$/)"
+        },
+        "aChoice": {
+          ".validate": "newData.isString() && newData.val().length <= 10"
+        },
+        "aSalt": {
+          ".validate": "newData.isString() && newData.val().length <= 40"
+        },
+        "bChoice": {
+          ".validate": "newData.isString() && newData.val().length <= 10"
+        },
+        "winner": {
+          ".validate": "newData.isString()"
+        },
+        "paid": {
+          ".validate": "newData.isBoolean()"
+        },
+        "aBack": {
+          ".validate": "newData.isBoolean()"
+        },
+        "bBack": {
+          ".validate": "newData.isBoolean()"
+        },
+        "$other": {
+          ".validate": false
+        }
+      }
     }
   }
 }

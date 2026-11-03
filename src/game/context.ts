@@ -136,6 +136,8 @@ export interface GameContext {
   bankFurniture: SceneMap;
   artStudioFurniture: SceneMap;
   engineeringFurniture: SceneMap;
+  bettingFurniture: SceneMap;
+  mallFurniture: SceneMap;
   engineeringYardFurniture: SceneMap;
   /** Fase del razzo del laboratorio ingegneristico: 0 niente, 1 pezzi, 2 completo. */
   rocketStage: number;

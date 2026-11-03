@@ -1,3 +1,5 @@
+import { openRpsTable, openSlot } from './betting.js';
+import { SLOT_BET } from './betting-rules.js';
 import { CRIMINAL_THEFT_TRIES, hasPersonality } from './personality-rules.js';
 import {
   THEFT_TRIES,
@@ -302,6 +304,8 @@ export function getCurrentFurnitureMap(..._args: GameValue[]): SceneMap {
   if (game.view.activeEnvironment === 'banca') return game.bankFurniture;
   if (game.view.activeEnvironment === 'laboratorio') return game.artStudioFurniture;
   if (game.view.activeEnvironment === 'ingegneria') return game.engineeringFurniture;
+  if (game.view.activeEnvironment === 'scommesse') return game.bettingFurniture;
+  if (game.view.activeEnvironment === 'centro_commerciale') return game.mallFurniture;
   if (game.view.activeEnvironment === 'ingegneria_esterno') return game.engineeringYardFurniture;
   if (game.view.activeEnvironment === 'CIMITERO') return game.graveMap;
   if (game.MG.active && game.view.activeEnvironment === 'lavoro_' + game.MG.job) return game.MG.map;
@@ -378,6 +382,18 @@ export function checkProximity(..._args: GameValue[]): GameValue {
         doorYard: '🚀 Vai nella zona esterna',
       };
       btnMain.innerText = labels[found] || '🚪 Torna Fuori';
+    } else if (game.view.activeEnvironment === 'centro_commerciale') {
+      btnMain.classList.remove('btn-pop-locked');
+      btnSub.classList.add('hidden');
+      btnMain.innerText = item.enter ? `🚪 Entra: ${item.name}` : '🏠 Torna a casa';
+    } else if (game.view.activeEnvironment === 'scommesse') {
+      btnMain.classList.remove('btn-pop-locked');
+      btnSub.classList.add('hidden');
+      btnMain.innerText = found.startsWith('slot')
+        ? `🎰 Gioca alla slot (${SLOT_BET} €)`
+        : found === 'rpsTable'
+          ? '✊ Sfida qualcuno a morra cinese'
+          : '🚪 Torna Fuori';
     } else if (game.view.activeEnvironment === 'ingegneria_esterno') {
       btnMain.classList.remove('btn-pop-locked');
       btnSub.classList.add('hidden');
@@ -560,10 +576,10 @@ export function checkProximity(..._args: GameValue[]): GameValue {
 
 // Menu "Esci di casa": i luoghi principali, più due gruppi che si aprono con un tocco
 // (attività ricreative e negozi) e il pulsante Indietro per tornare all'elenco principale.
-const OUTSIDE_MENU: Record<'' | 'fun' | 'shops', string[]> = {
+const OUTSIDE_MENU: Record<'' | 'fun', string[]> = {
   '': [
     'btn-act-fun',
-    'btn-act-shops',
+    'btn-act-mall',
     'btn-act-work',
     'btn-act-bank',
     'btn-act-art',
@@ -571,7 +587,6 @@ const OUTSIDE_MENU: Record<'' | 'fun' | 'shops', string[]> = {
     'btn-act-cemetery',
   ],
   fun: ['btn-act-walk', 'btn-act-bar', 'btn-act-trip', 'btn-act-disco', 'btn-act-back'],
-  shops: ['btn-act-furnitureshop', 'btn-act-clothesshop', 'btn-act-back'],
 };
 const OUTSIDE_BUTTONS = [...new Set(Object.values(OUTSIDE_MENU).flat())];
 
@@ -583,7 +598,7 @@ export function renderOutsideMenu(): void {
 
 /** Apre un gruppo del menu di uscita ('' torna all'elenco principale). */
 export function openOutsideSubmenu(sub: string): void {
-  game.view.outsideSubmenu = sub === 'fun' || sub === 'shops' ? sub : '';
+  game.view.outsideSubmenu = sub === 'fun' ? sub : '';
   renderOutsideMenu();
 }
 
@@ -654,6 +669,10 @@ export async function resumeLastSpot(): Promise<boolean> {
 // Ritorno al salone davanti alla porta da cui si esce: stanza, cucina, bagno o uscita di casa.
 function backToSaloon(): void {
   const env: GameValue = game.view.activeEnvironment;
+  if (MALL_SHOPS[env]) {
+    backToMall(env);
+    return;
+  }
   const doors: GameValue = game.saloonDoors;
   let door: GameValue = doors.exitHouse;
   if (env === 'KITCHEN') door = doors.kitchen;
@@ -669,6 +688,25 @@ function backToSaloon(): void {
   game.view.activeEnvironment = 'SALOON';
   game.view.currentRoomTitle = game.saloonTitle();
   spawnAtDoor(door);
+}
+
+// ---------------------------------------------------------------- centro commerciale
+
+/** Negozi del centro commerciale: ambiente → vetrina (e attività per entrarci). */
+const MALL_SHOPS: Record<string, { facade: string; activity: string }> = {
+  negozio_mobili: { facade: 'shopFurniture', activity: 'furnitureshop' },
+  negozio_vestiti: { facade: 'shopClothes', activity: 'clothesshop' },
+  scommesse: { facade: 'shopBetting', activity: 'betting' },
+};
+
+/** Esce da un negozio e torna nel centro commerciale, davanti alla sua vetrina. */
+function backToMall(fromEnv?: string): void {
+  game.view.activeEnvironment = 'centro_commerciale';
+  game.view.currentRoomTitle = 'Centro Commerciale 🏬';
+  const facade: GameValue = fromEnv ? game.mallFurniture[MALL_SHOPS[fromEnv].facade] : null;
+  game.playerPos = facade
+    ? { x: facade.x, y: facade.y + facade.h / 2 + 30 }
+    : { x: 0, y: game.mallFurniture.doorExit.y - 45 };
 }
 
 /** Cuscino libero nel letto di questa stanza (ci stanno al massimo due persone), o null se è pieno. */
@@ -753,6 +791,13 @@ export async function handleObjectInteract(..._args: GameValue[]): Promise<void>
     if (game.activeTargetProp === 'projectBoard') openProjects(false);
     else if (game.activeTargetProp === 'workbench') workbenchMessage();
     else if (game.activeTargetProp === 'doorYard') goToEngineering(true);
+    else if (game.activeTargetProp === 'doorExit') backToSaloon();
+  } else if (game.view.activeEnvironment === 'centro_commerciale') {
+    if (item?.enter) await doActivity(item.enter);
+    else if (game.activeTargetProp === 'doorExit') backToSaloon();
+  } else if (game.view.activeEnvironment === 'scommesse') {
+    if (String(game.activeTargetProp).startsWith('slot')) openSlot();
+    else if (game.activeTargetProp === 'rpsTable') openRpsTable();
     else if (game.activeTargetProp === 'doorExit') backToSaloon();
   } else if (game.view.activeEnvironment === 'ingegneria_esterno') {
     if (game.activeTargetProp === 'rocketPad') openProjects(false);
@@ -1043,6 +1088,16 @@ export async function doActivity(type?: GameValue): Promise<void> {
   } else if (type === 'art') {
     game.view.activeEnvironment = 'laboratorio';
     game.view.currentRoomTitle = 'Laboratorio Artistico 🎨';
+    dom('btn-return-home').classList.add('hidden');
+    game.playerPos = { x: 0, y: 110 };
+    return;
+  } else if (type === 'mall') {
+    backToMall();
+    dom('btn-return-home').classList.add('hidden');
+    return;
+  } else if (type === 'betting') {
+    game.view.activeEnvironment = 'scommesse';
+    game.view.currentRoomTitle = 'Sala Scommesse 🎰';
     dom('btn-return-home').classList.add('hidden');
     game.playerPos = { x: 0, y: 110 };
     return;

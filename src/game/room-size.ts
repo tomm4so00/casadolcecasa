@@ -9,7 +9,10 @@ const BASE_Y = 180;
 /** Quanto si allarga ogni ambiente rispetto alla misura di base; mobili e decorazioni lo seguono. */
 const ENV_GROW: Record<string, number> = { SALOON: 1.25, KITCHEN: 1.25 };
 /** Ambienti con una misura propria e gli oggetti già sistemati a mano (metà larghezza e profondità). */
-const ENV_HALF: Record<string, { x: number; y: number }> = { CORTILE: { x: 480, y: 220 } };
+const ENV_HALF: Record<string, { x: number; y: number }> = {
+  CORTILE: { x: 480, y: 220 },
+  centro_commerciale: { x: 300, y: 200 },
+};
 /** Chi sta più vicino di così a una parete (porte, piante d'angolo) resta attaccato alla parete. */
 const WALL_HUG = 45;
 

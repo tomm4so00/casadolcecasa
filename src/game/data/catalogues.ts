@@ -1560,6 +1560,89 @@ export const ENGINEERING_YARD_FURNITURE = {
   },
 };
 
+// Centro commerciale (600×400): le vetrine dei tre negozi lungo la parete di fondo; avvicinandosi
+// si entra. `enter` è l'attività che porta dentro il negozio.
+export const MALL_FURNITURE = {
+  shopFurniture: {
+    x: -190,
+    y: -189,
+    w: 150,
+    h: 22,
+    z: 128,
+    name: 'Negozio di Mobili 🛋️',
+    shop: 'mobili',
+    enter: 'furnitureshop',
+    moveable: false,
+  },
+  shopClothes: {
+    x: 0,
+    y: -189,
+    w: 150,
+    h: 22,
+    z: 128,
+    name: 'Boutique Dolce Casa 👗',
+    shop: 'vestiti',
+    enter: 'clothesshop',
+    moveable: false,
+  },
+  shopBetting: {
+    x: 190,
+    y: -189,
+    w: 150,
+    h: 22,
+    z: 128,
+    name: 'Sala Scommesse 🎰',
+    shop: 'scommesse',
+    enter: 'betting',
+    moveable: false,
+  },
+  doorExit: { x: 0, y: 180, w: 60, h: 15, z: 110, name: 'Uscita 🚪', moveable: false },
+};
+
+// Sala scommesse: tre slot lungo la parete di fondo, il tavolo della morra cinese e l'uscita.
+export const BETTING_FURNITURE = {
+  slot1: {
+    x: -165,
+    y: -150,
+    w: 40,
+    h: 30,
+    z: 92,
+    name: 'Slot machine 🎰',
+    seed: 0,
+    moveable: false,
+  },
+  slot2: {
+    x: -105,
+    y: -150,
+    w: 40,
+    h: 30,
+    z: 92,
+    name: 'Slot machine 🎰',
+    seed: 1,
+    moveable: false,
+  },
+  slot3: {
+    x: -45,
+    y: -150,
+    w: 40,
+    h: 30,
+    z: 92,
+    name: 'Slot machine 🎰',
+    seed: 2,
+    moveable: false,
+  },
+  rpsTable: {
+    x: 70,
+    y: 30,
+    w: 74,
+    h: 54,
+    z: 38,
+    name: 'Tavolo della morra cinese ✊',
+    moveable: false,
+  },
+  doorExit: { x: 0, y: 160, w: 60, h: 15, z: 110, name: 'Torna Fuori 🚪', moveable: false },
+};
+
 // Banca: lo sportello per depositare e prelevare, e l'uscita.
 export const BANK_FURNITURE = {
   bankCounter: {
@@ -2200,6 +2283,23 @@ export const ENV_DECOR = {
     { kind: 'plant', x: -168, y: -160, w: 26, h: 26, z: 60 },
     { kind: 'plant', x: 168, y: 150, w: 26, h: 26, z: 60 },
   ],
+  centro_commerciale: [
+    { kind: 'fountain', x: 0, y: 40, w: 70, h: 70, label: 'Fontana ⛲', z: 60 },
+    { kind: 'bench', x: -170, y: 50, w: 50, h: 16 },
+    { kind: 'bench', x: 170, y: 50, w: 50, h: 16 },
+    { kind: 'plant', x: -270, y: -120, w: 26, h: 26, z: 60 },
+    { kind: 'plant', x: 270, y: -120, w: 26, h: 26, z: 60 },
+    { kind: 'plant', x: -270, y: 170, w: 26, h: 26, z: 60 },
+    { kind: 'plant', x: 270, y: 170, w: 26, h: 26, z: 60 },
+    { kind: 'plant', x: -95, y: -150, w: 22, h: 22, z: 55 },
+    { kind: 'plant', x: 95, y: -150, w: 22, h: 22, z: 55 },
+  ],
+  scommesse: [
+    { kind: 'plant', x: 168, y: -160, w: 26, h: 26, z: 60 },
+    { kind: 'plant', x: -168, y: 150, w: 26, h: 26, z: 60 },
+    { kind: 'stool', x: 70, y: -6, w: 12, h: 12, z: 32 },
+    { kind: 'stool', x: 70, y: 66, w: 12, h: 12, z: 32 },
+  ],
   ingegneria: [
     { kind: 'cooler', x: 160, y: -150, w: 22, h: 22, z: 70 },
     { kind: 'plant', x: 168, y: 150, w: 26, h: 26, z: 60 },
@@ -2323,6 +2423,43 @@ export const ENV_STYLE = {
     lights: [
       { x: -80, y: -40, z: 0, r: 220, color: '255,245,225' },
       { x: 90, y: 0, z: 0, r: 220, color: '255,245,225' },
+    ],
+  },
+  centro_commerciale: {
+    floor: 'tiles',
+    floorColor: '#ece6dc',
+    wall: '#f4efe7',
+    wallStyle: 'plain',
+    trim: '#b8860b',
+    decor: {
+      back: [],
+      left: [
+        { t: 'logo', u: 120, text: 'CENTRO COMMERCIALE', sub: 'Dolce Casa', color: '#b8860b' },
+        { t: 'window', u: 280, w: 90, h: 56 },
+      ],
+    },
+    lights: [
+      { x: -190, y: -80, z: 0, r: 230, color: '255,240,215' },
+      { x: 190, y: -80, z: 0, r: 230, color: '255,240,215' },
+      { x: 0, y: 80, z: 0, r: 260, color: '255,245,225' },
+    ],
+  },
+  scommesse: {
+    floor: 'carpet',
+    floorColor: '#5a1424',
+    wall: '#24122e',
+    wallStyle: 'plain',
+    trim: '#d4ac0d',
+    decor: {
+      back: [{ t: 'neon', u: 95, text: 'JACKPOT', color: '255,200,40' }],
+      left: [
+        { t: 'neon', u: 120, text: '🎰', color: '255,70,120' },
+        { t: 'neon', u: 260, text: '✊✋✌️', color: '90,220,255' },
+      ],
+    },
+    lights: [
+      { x: -105, y: -100, z: 0, r: 200, color: '255,190,90' },
+      { x: 70, y: 30, z: 0, r: 160, color: '120,255,160' },
     ],
   },
   ingegneria: {

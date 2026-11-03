@@ -144,8 +144,8 @@ export interface ViewState {
   canvas: HTMLCanvasElement;
   ctx: CanvasRenderingContext2D;
   isOutsideMenuOpen: boolean;
-  /** Gruppo aperto nel menu di uscita: '' (principale), 'fun' (attività ricreative) o 'shops' (negozi). */
-  outsideSubmenu: '' | 'fun' | 'shops';
+  /** Gruppo aperto nel menu di uscita: '' (principale) o 'fun' (attività ricreative). */
+  outsideSubmenu: '' | 'fun';
   fridgeIsOpen: boolean;
 }
 export const createCharacterState = (): CharacterState => ({

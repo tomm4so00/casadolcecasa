@@ -2737,6 +2737,264 @@ function drawRocketWorks(
   box(it.x - 34, it.y + 34, 18, 18, 14, '#b9884f', { z0: 10 });
 }
 
+// ---------------------------------------------------------------- CENTRO COMMERCIALE
+const FACADE_STYLE: Record<
+  string,
+  { wall: string; sign: string; text: string; awning: [string, string]; title: string }
+> = {
+  mobili: {
+    wall: '#a0522d',
+    sign: '#3e2723',
+    text: '#ffcc80',
+    awning: ['#d35400', '#fbe5c8'],
+    title: '🛋️ ARREDO CASA',
+  },
+  vestiti: {
+    wall: '#f8c8dc',
+    sign: '#6d214f',
+    text: '#ffffff',
+    awning: ['#e84393', '#ffffff'],
+    title: '👗 BOUTIQUE',
+  },
+  scommesse: {
+    wall: '#2c2c54',
+    sign: '#120a1a',
+    text: '#feca57',
+    awning: ['#b33939', '#2c2c54'],
+    title: '🎰 SALA SCOMMESSE',
+  },
+};
+
+/** Vetrina di un negozio del centro commerciale: insegna, tenda, due vetrine e la porta a vetri. */
+export function drawShopFacade(it?: GameValue, t?: GameValue): GameValue {
+  const ctx = game.view.ctx;
+  const st = FACADE_STYLE[it.shop] || FACADE_STYLE.mobili;
+  const front: GameValue = box(it.x, it.y, it.w, it.h, it.z, st.wall);
+  onFace(front, 'left', (W: number, H: number): void => {
+    // insegna
+    ctx.fillStyle = st.sign;
+    ctx.fillRect(4, 6, W - 8, 22);
+    ctx.fillStyle = st.text;
+    ctx.font = 'bold 11px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    if (it.shop === 'scommesse') {
+      // insegna al neon che lampeggia
+      const on = Math.floor((t || 0) * 2) % 2 === 0;
+      ctx.shadowColor = '#feca57';
+      ctx.shadowBlur = on ? 8 : 2;
+      ctx.fillStyle = on ? '#feca57' : '#c79a2b';
+    }
+    ctx.fillText(st.title, W / 2, 17);
+    ctx.shadowBlur = 0;
+    ctx.textBaseline = 'alphabetic';
+    // tenda a strisce
+    for (let i = 0; i < 12; i++) {
+      ctx.fillStyle = st.awning[i % 2];
+      const sw = (W - 8) / 12;
+      ctx.beginPath();
+      ctx.moveTo(4 + i * sw, 30);
+      ctx.lineTo(4 + (i + 1) * sw, 30);
+      ctx.lineTo(4 + (i + 1) * sw, 40);
+      ctx.quadraticCurveTo(4 + (i + 0.5) * sw, 45, 4 + i * sw, 40);
+      ctx.fill();
+    }
+    // vetrine ai lati della porta
+    const doorW = 30,
+      doorX = W / 2 - doorW / 2,
+      top = 50,
+      bottom = H - 4;
+    const win = (x: number, w: number) => {
+      const g = ctx.createLinearGradient(x, top, x + w, bottom);
+      g.addColorStop(0, 'rgba(190,225,245,0.95)');
+      g.addColorStop(1, 'rgba(120,170,210,0.95)');
+      ctx.fillStyle = g;
+      ctx.fillRect(x, top, w, bottom - top - 8);
+      ctx.strokeStyle = '#636e72';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(x, top, w, bottom - top - 8);
+      drawWindowDisplay(it.shop, x, top, w, bottom - top - 8, t || 0);
+      // riflesso sul vetro
+      ctx.strokeStyle = 'rgba(255,255,255,0.6)';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(x + 6, top + 18);
+      ctx.lineTo(x + 18, top + 6);
+      ctx.stroke();
+    };
+    win(6, doorX - 12);
+    win(doorX + doorW + 6, W - (doorX + doorW + 6) - 6);
+    // porta a vetri
+    ctx.fillStyle = 'rgba(160,210,235,0.85)';
+    ctx.fillRect(doorX, top, doorW, bottom - top);
+    ctx.strokeStyle = '#2d3436';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(doorX, top, doorW, bottom - top);
+    ctx.beginPath();
+    ctx.moveTo(W / 2, top);
+    ctx.lineTo(W / 2, bottom);
+    ctx.stroke();
+    ctx.fillStyle = '#b2bec3';
+    ctx.fillRect(W / 2 - 4, (top + bottom) / 2, 2, 10);
+    ctx.fillRect(W / 2 + 2, (top + bottom) / 2, 2, 10);
+    ctx.fillStyle = st.sign;
+    ctx.font = 'bold 6px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('APERTO', W / 2, top + 9);
+  });
+}
+
+/** Cosa si vede in vetrina: mobili, abiti sui manichini o slot machine. */
+function drawWindowDisplay(shop: string, x: number, y: number, w: number, h: number, t: number) {
+  const ctx = game.view.ctx;
+  const base = y + h;
+  if (shop === 'mobili') {
+    // divano e lampada
+    ctx.fillStyle = '#6c5ce7';
+    ctx.fillRect(x + 6, base - 18, w * 0.55, 12);
+    ctx.fillRect(x + 6, base - 26, w * 0.55, 8);
+    ctx.fillStyle = '#4834d4';
+    ctx.fillRect(x + 4, base - 22, 4, 16);
+    ctx.fillRect(x + 6 + w * 0.55 - 2, base - 22, 4, 16);
+    ctx.fillStyle = '#636e72';
+    ctx.fillRect(x + w - 14, base - 34, 2, 30);
+    ctx.fillStyle = '#feca57';
+    ctx.beginPath();
+    ctx.moveTo(x + w - 19, base - 34);
+    ctx.lineTo(x + w - 7, base - 34);
+    ctx.lineTo(x + w - 10, base - 44);
+    ctx.lineTo(x + w - 16, base - 44);
+    ctx.fill();
+  } else if (shop === 'vestiti') {
+    // due manichini con abiti colorati
+    const colors = ['#e84393', '#0984e3'];
+    for (let i = 0; i < 2; i++) {
+      const cx = x + (w * (i + 1)) / 3;
+      ctx.fillStyle = '#dfe6e9';
+      ctx.beginPath();
+      ctx.arc(cx, base - 40, 4, 0, 6.3);
+      ctx.fill();
+      ctx.fillStyle = colors[i];
+      ctx.beginPath();
+      ctx.moveTo(cx - 6, base - 35);
+      ctx.lineTo(cx + 6, base - 35);
+      ctx.lineTo(cx + 8, base - 14);
+      ctx.lineTo(cx - 8, base - 14);
+      ctx.fill();
+      ctx.fillStyle = '#636e72';
+      ctx.fillRect(cx - 0.5, base - 14, 1, 12);
+      ctx.fillRect(cx - 5, base - 3, 10, 2);
+    }
+  } else {
+    // slot machine con le luci
+    for (let i = 0; i < 2; i++) {
+      const sx = x + 6 + i * (w / 2);
+      ctx.fillStyle = i ? '#8e44ad' : '#c0392b';
+      ctx.fillRect(sx, base - 36, w / 2 - 12, 34);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(sx + 3, base - 30, w / 2 - 18, 10);
+      ctx.fillStyle = '#e74c3c';
+      ctx.font = 'bold 8px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('777', sx + (w / 2 - 12) / 2, base - 22);
+      const on = Math.floor(t * 4 + i) % 2 === 0;
+      ctx.fillStyle = on ? '#feca57' : '#7f6000';
+      ctx.beginPath();
+      ctx.arc(sx + (w / 2 - 12) / 2, base - 40, 2.5, 0, 6.3);
+      ctx.fill();
+    }
+  }
+}
+
+// ---------------------------------------------------------------- SALA SCOMMESSE
+const SLOT_FACES = ['🍒', '🔔', '7️⃣', '💎', '⭐', '🍋'];
+
+/** Slot machine: mobile con schermo, luci che lampeggiano in cima e leva sul fianco. */
+export function drawSlotMachine(it?: GameValue, t?: GameValue): GameValue {
+  const ctx = game.view.ctx;
+  const { x, y, w, h, z } = it;
+  const seed: number = it.seed || 0;
+  const color = ['#c0392b', '#8e44ad', '#2980b9'][seed % 3];
+  box(x, y, w + 4, h + 4, 8, '#2d3436');
+  const body: GameValue = box(x, y, w, h, z - 20, color, { z0: 8 });
+  onFace(body, 'left', (W: number, H: number): void => {
+    // schermo con i tre rulli
+    ctx.fillStyle = '#0d0710';
+    ctx.fillRect(4, 8, W - 8, 26);
+    ctx.fillStyle = '#ffffff';
+    for (let i = 0; i < 3; i++) ctx.fillRect(6 + i * ((W - 12) / 3), 10, (W - 12) / 3 - 2, 22);
+    ctx.font = '11px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    for (let i = 0; i < 3; i++) {
+      const k = Math.floor((t || 0) * 0.5 + seed * 2 + i * 3) % SLOT_FACES.length;
+      ctx.fillText(SLOT_FACES[k], 6 + (i + 0.5) * ((W - 12) / 3) - 1, 21);
+    }
+    ctx.textBaseline = 'alphabetic';
+    // pulsanti e fessura delle monete
+    ctx.fillStyle = '#feca57';
+    ctx.fillRect(6, 40, 8, 4);
+    ctx.fillStyle = '#2ed573';
+    ctx.fillRect(18, 40, 8, 4);
+    ctx.fillStyle = '#111';
+    ctx.fillRect(W - 10, 39, 3, 7);
+    // vassoio delle vincite
+    ctx.fillStyle = '#b2bec3';
+    ctx.fillRect(5, H - 14, W - 10, 6);
+    ctx.fillStyle = '#d4ac0d';
+    ctx.font = 'bold 6px sans-serif';
+    ctx.fillText('SLOT', W / 2, 6);
+  });
+  // insegna con le luci che si accendono a turno
+  const top: GameValue = box(x, y, w, h * 0.6, 12, '#2d3436', { z0: z - 12 });
+  onFace(top, 'left', (W: number, H: number): void => {
+    for (let i = 0; i < 6; i++) {
+      const on = Math.floor((t || 0) * 6 + i + seed) % 3 === 0;
+      ctx.fillStyle = on ? '#feca57' : '#7f6000';
+      ctx.beginPath();
+      ctx.arc(4 + i * ((W - 8) / 5), H / 2, 2, 0, 6.3);
+      ctx.fill();
+    }
+  });
+  // leva sul fianco destro con il pomello rosso
+  box(x + w / 2 + 3, y, 3, 3, 26, '#b2bec3', { z0: z - 46 });
+  const knob = isoProject(x + w / 2 + 3, y, z - 18);
+  ctx.fillStyle = '#e74c3c';
+  ctx.beginPath();
+  ctx.arc(knob.x, knob.y, 3.5 * isoScale(), 0, 6.3);
+  ctx.fill();
+}
+
+/** Tavolo della morra cinese: panno verde con il bordo dorato e le tre mani disegnate. */
+export function drawRpsTable(it?: GameValue): GameValue {
+  const ctx = game.view.ctx;
+  const { x, y, w, h, z } = it;
+  for (const [dx, dy] of [
+    [-1, -1],
+    [1, -1],
+    [-1, 1],
+    [1, 1],
+  ])
+    box(x + dx * (w / 2 - 6), y + dy * (h / 2 - 6), 5, 5, z - 6, '#3e2723');
+  box(x, y, w + 6, h + 6, 4, '#6d4c41', { z0: z - 6 });
+  const felt: GameValue = box(x, y, w, h, 2, '#1e8449', { z0: z - 2 });
+  onFace(felt, 'top', (W: number, H: number): void => {
+    ctx.strokeStyle = '#d4ac0d';
+    ctx.lineWidth = 1.2;
+    ctx.strokeRect(4, 4, W - 8, H - 8);
+    ctx.font = '13px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('✊', W * 0.25, H / 2);
+    ctx.fillText('✋', W * 0.5, H / 2);
+    ctx.fillText('✌️', W * 0.75, H / 2);
+    ctx.textBaseline = 'alphabetic';
+    ctx.fillStyle = 'rgba(255,255,255,0.7)';
+    ctx.font = 'bold 5px sans-serif';
+    ctx.fillText('MORRA CINESE', W / 2, H - 7);
+  });
+}
+
 // ---------------------------------------------------------------- LABORATORIO INGEGNERISTICO
 /** Bacheca dei progetti: pannello di sughero con i fogli appesi; il primo è il razzo. */
 export function drawProjectBoard(it?: GameValue): GameValue {

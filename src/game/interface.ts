@@ -1,3 +1,4 @@
+import { startBetting } from './betting.js';
 import { applyDailyPerks } from './personality.js';
 import { enablePush } from './push.js';
 import { startPlayersHud } from './players-hud.js';
@@ -256,6 +257,7 @@ export async function startGame(..._args: GameValue[]): Promise<GameValue> {
   startPlayersHud();
   startArtMarket();
   startProjects();
+  startBetting();
   updateSoundButton();
   updateNotifyButton();
   checkMissions();

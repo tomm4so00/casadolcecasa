@@ -1622,3 +1622,139 @@ input[type='number'] {
     bottom: 96px;
   }
 }
+
+/* Sala scommesse: slot e morra cinese */
+.slot-panel {
+  background: linear-gradient(180deg, #3a1442, #1e0b24);
+  border: 2px solid #d4ac0d;
+  border-radius: 14px;
+  padding: 14px;
+  width: min(92vw, 380px);
+  color: #fff;
+  text-align: center;
+  box-shadow: 0 0 30px rgba(212, 172, 13, 0.35);
+}
+.slot-panel h3 {
+  margin: 0 0 10px;
+  color: #feca57;
+}
+.slot-reels {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px;
+  background: #0d0710;
+  border-radius: 10px;
+  border: 2px solid #8e44ad;
+}
+.slot-reel {
+  width: 74px;
+  height: 84px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 44px;
+  background: linear-gradient(180deg, #ddd, #fff 35%, #fff 65%, #ccc);
+  border-radius: 8px;
+  box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.5);
+}
+.slot-reel.spinning {
+  filter: blur(1.5px);
+  animation: reel-shake 0.12s linear infinite;
+}
+@keyframes reel-shake {
+  50% {
+    transform: translateY(3px);
+  }
+}
+.slot-result {
+  min-height: 22px;
+  margin: 10px 0 6px;
+  font-weight: bold;
+}
+.slot-result.win {
+  color: #feca57;
+  font-size: 1.1rem;
+  text-shadow: 0 0 10px rgba(254, 202, 87, 0.8);
+}
+.slot-table {
+  font-size: 0.68rem;
+  color: #d1c4e9;
+  line-height: 1.6;
+  margin-bottom: 10px;
+}
+.slot-buttons {
+  display: flex;
+  gap: 8px;
+}
+.slot-buttons .btn-primary {
+  flex: 1;
+}
+.rps-help,
+.rps-empty,
+.rps-wait {
+  font-size: 0.82rem;
+  line-height: 1.4;
+}
+.rps-bet input {
+  width: 70px;
+  padding: 4px;
+  border-radius: 6px;
+  border: none;
+  text-align: center;
+}
+.rps-player {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 4px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+.rps-player button,
+.rps-choices button {
+  border: none;
+  border-radius: 8px;
+  padding: 6px 10px;
+  background: #e17055;
+  color: #fff;
+  font-weight: bold;
+  cursor: pointer;
+}
+.rps-choices {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  margin: 8px 0 12px;
+}
+.rps-choices button {
+  font-size: 1rem;
+  padding: 12px 10px;
+  background: #6c5ce7;
+}
+.rps-pot {
+  margin-bottom: 6px;
+  color: #feca57;
+}
+.rps-tie {
+  color: #74b9ff;
+}
+.rps-hands {
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  margin: 10px 0;
+}
+.rps-hands span {
+  font-size: 1.3rem;
+}
+.rps-final {
+  font-size: 1.1rem;
+  font-weight: bold;
+}
+.rps-final.win {
+  color: #feca57;
+}
+.rps-again {
+  width: 100%;
+  margin-bottom: 8px;
+}
