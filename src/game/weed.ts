@@ -18,6 +18,7 @@ import {
   emptyWeed,
   growLeftText,
   growProgress,
+  growTimeText,
   harvest,
   takeJoint,
 } from './weed-rules.js';
@@ -102,7 +103,7 @@ export async function buyPlant(strain: StrainId): Promise<void> {
   }
   const res: GameValue = await openDialog({
     title: `🌱 ${s.name}`,
-    text: `Una pianta di ${s.name} costa ${euro(s.price)}.\nLa troverai nella tua stanza: cresce in 5 giorni, poi potrai raccoglierla e avere 100 grammi d'erba.`,
+    text: `Una pianta di ${s.name} costa ${euro(s.price)}.\nLa troverai nella tua stanza: cresce in ${growTimeText(strain)} (le varietà più care crescono un po' più in fretta), poi potrai raccoglierla e avere 100 grammi d'erba.`,
     buttons: [
       { label: 'Annulla', value: null, color: '#57606f' },
       { label: `Compra (${euro(s.price)})`, value: 'ok', color: '#2e7d32' },
@@ -122,9 +123,9 @@ export function plantLabel(): string {
   const w = weed();
   if (!w.plantedAt || !w.strain) return '';
   const name = STRAINS[w.strain].name;
-  return growProgress(w.plantedAt, Date.now()) >= 1
+  return growProgress(w.plantedAt, Date.now(), w.strain) >= 1
     ? `🌿 Raccogli ${name}`
-    : `🌱 ${name}: pronta tra ${growLeftText(w.plantedAt, Date.now())}`;
+    : `🌱 ${name}: pronta tra ${growLeftText(w.plantedAt, Date.now(), w.strain)}`;
 }
 
 export function tendPlant(): void {
@@ -133,7 +134,7 @@ export function tendPlant(): void {
   const done = harvest(w, Date.now());
   if (!done) {
     toast(
-      `🌱 La tua ${STRAINS[w.strain].name} sta crescendo: sarà pronta tra ${growLeftText(w.plantedAt, Date.now())}.`,
+      `🌱 La tua ${STRAINS[w.strain].name} sta crescendo: sarà pronta tra ${growLeftText(w.plantedAt, Date.now(), w.strain)}.`,
       4500,
     );
     return;

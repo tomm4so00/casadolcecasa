@@ -1,4 +1,5 @@
 import { offerJoint, onJointOffer, onJointPaid, onJointRefused } from './weed.js';
+import { postGossip } from './gossip.js';
 import { myLine, notePersonality } from './personality.js';
 import { onArtSold } from './art-market.js';
 import { transferMoney, creditMoney } from './economy.js';
@@ -63,6 +64,11 @@ export async function socDo(act?: GameValue): Promise<GameValue> {
     saySocial(myLine('punch'));
     sendSocial(t.id, { type: 'punch' });
     toast(`👊 Hai picchiato ${t.name}`);
+    postGossip(
+      `${game.player.myData.nick} ha preso a pugni ${t.name} 👊 Tira una brutta aria…`,
+      [t.id],
+      2 * 3600_000,
+    );
     notePersonality('punch');
   } else if (act === 'food') {
     if (!game.player.foodIsCooked) return;

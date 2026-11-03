@@ -9,6 +9,13 @@ import { escapeHtmlSafe } from './needs.js';
 import type { OnlinePlayer } from './network-model.js';
 import { onlineVitals, type VitalKey } from './players-hud-rules.js';
 import { roomLabel } from './realty-rules.js';
+import {
+  PERSONALITY_BADGE,
+  type PersonalityId,
+  obtainedPersonality,
+  personalityBadgeText,
+  personalityLevel,
+} from './personality-rules.js';
 
 const FULL_KEY = 'sims_hud_full';
 const ICON_PX = 64; // risoluzione del disegno; a schermo è 32 px
@@ -83,6 +90,30 @@ function placeFor(op: OnlinePlayer, place: string): string {
   return place.replace(/^La tua stanza/, 'La sua stanza');
 }
 
+/** Etichetta della personalità ottenuta (vuota se non ne ha ancora una). */
+function personalityTag(id: unknown, level: unknown, extraClass = ''): string {
+  const text = personalityBadgeText(id, level);
+  if (!text) return '';
+  const color = PERSONALITY_BADGE[id as PersonalityId].color;
+  return `<div class="pers-tag ${extraClass}" style="border-color:${color};color:${color}">${text}</div>`;
+}
+
+/** Scritta con la mia personalità, sopra il riquadro dei parametri (solo dopo averla ottenuta). */
+function updatePersonalityTag(hudHidden: boolean): void {
+  const tag = dom('my-pers-tag');
+  if (!tag) return;
+  const id = obtainedPersonality(game.player.personality);
+  const text =
+    !hudHidden && id
+      ? personalityBadgeText(id, personalityLevel(game.player.personality)) || ''
+      : '';
+  if (tag.textContent !== text) {
+    tag.textContent = text;
+    tag.style.borderColor = tag.style.color = id ? PERSONALITY_BADGE[id].color : '';
+  }
+  tag.classList.toggle('hidden', !text);
+}
+
 function renderCard(op: OnlinePlayer, icon: HTMLElement): void {
   const card = dom('player-card');
   const v = onlineVitals(op);
@@ -98,7 +129,8 @@ function renderCard(op: OnlinePlayer, icon: HTMLElement): void {
   card.innerHTML =
     `<div class="pc-head"><span class="pc-name">${escapeHtmlSafe(String(op.name))}${status}</span><button type="button" class="pc-close" title="Chiudi">✕</button></div>` +
     `<div class="pc-place">📍 ${escapeHtmlSafe(placeFor(op, v.place) || 'Posizione sconosciuta')}</div>` +
-    rows;
+    rows +
+    personalityTag(op.pers, op.persLv);
   const list: HTMLElement = dom('players-online');
   card.style.left = list.offsetLeft + list.offsetWidth + 6 + 'px';
   card.style.top = Math.max(0, icon.offsetTop - list.scrollTop) + 'px';
@@ -131,6 +163,7 @@ function refresh(): void {
   updateRoomTag();
   const list: HTMLElement = dom('players-online');
   const hudHidden = dom('needs-hud').classList.contains('hidden');
+  updatePersonalityTag(hudHidden);
   const players = hudHidden ? [] : onlineList();
   list.classList.toggle('hidden', !players.length);
   const ids = new Set(players.map(([id]) => id));

@@ -23,7 +23,7 @@ import { startInbox } from './social.js';
 import { startChat } from './chat.js';
 import { bestOwnedByProp } from './furniture-tiers.js';
 import { decodeRomance } from './romance-rules.js';
-import { decodePersonality } from './personality-rules.js';
+import { decodePersonality, obtainedPersonality, personalityLevel } from './personality-rules.js';
 import { decodeWorkDay } from './job-pay.js';
 import { pushOutOfCorridor } from './room-layout.js';
 import { footprintOf } from './render/primitives.js';
@@ -619,6 +619,13 @@ export function startPresence(..._args: GameValue[]): GameValue {
       sayT: game.mySayT,
       ...(isSick(game.player.flu, Date.now()) ? { sick: 1 } : {}),
       ...(game.dogWalk ? { dog: 1 } : {}),
+      // personalità ottenuta: la vedono gli altri nella scheda del giocatore
+      ...(obtainedPersonality(game.player.personality)
+        ? {
+            pers: obtainedPersonality(game.player.personality),
+            persLv: personalityLevel(game.player.personality),
+          }
+        : {}),
       ...(game.player.isSleeping ? { bed: game.bedSlot } : {}),
     };
     const key: GameValue = JSON.stringify(payload);

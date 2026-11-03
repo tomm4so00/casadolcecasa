@@ -1,4 +1,5 @@
-import { artistOffer, hasPersonality } from './personality-rules.js';
+import { artistOffer, levelOf } from './personality-rules.js';
+import { postGossip } from './gossip.js';
 import { notePersonality } from './personality.js';
 import { escapeHtmlSafe } from './needs.js';
 import type { GameValue } from './context.js';
@@ -34,7 +35,8 @@ import {
 
 const euro = (n: number) => `${n.toLocaleString('it-IT')} €`;
 const sold = () => game.player.stats.paintingsSold || 0;
-const isArtist = () => hasPersonality(game.player.personality, 'artist');
+/** Livello da Artista (0 = non lo è): più è alto, più offrono i collezionisti. */
+const isArtist = () => levelOf(game.player.personality, 'artist');
 let tab: 'gallery' | 'mine' = 'gallery';
 let offerOpen = false;
 
@@ -279,6 +281,10 @@ async function buyPainting(item: MarketItem): Promise<void> {
   saveGame(true);
   sfx('success');
   toast(`🖼️ Hai comprato il quadro di ${item.owner}! È appeso nella tua stanza.`, 4500);
+  postGossip(
+    `${game.player.myData.nick} ha comprato un quadro di ${item.owner} per ${euro(item.listing.price)} 🖼️`,
+    [item.ownerId],
+  );
   renderArtSite();
 }
 
@@ -371,6 +377,9 @@ async function acceptBotOffer(slot: PaintingSlot, listing: GameValue, amount: nu
   notePersonality('sellPainting');
   saveGame(true);
   sfx('coin');
+  postGossip(
+    `${game.player.myData.nick} ha venduto un quadro a un collezionista per ${euro(amount)} 🖼️`,
+  );
   const tier = botTier(sold());
   toast(
     `💰 Quadro venduto al collezionista per ${euro(amount)}! Quadri venduti: ${sold()} (prossime offerte ${artistOffer(tier.min, isArtist())}–${artistOffer(tier.max, isArtist())} €).`,

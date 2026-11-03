@@ -93,6 +93,15 @@ export async function maintainGame(database: MaintenanceDatabase, now: number): 
     if (oldKeys.length)
       await database.ref('sims_chat').update(Object.fromEntries(oldKeys.map((key) => [key, null])));
   }
+  // bacheca dei pettegolezzi: si tengono solo i fatti più recenti
+  const gossip = (await database.ref('sims_gossip').get()).val();
+  if (record(gossip)) {
+    const oldKeys = Object.keys(gossip).sort().slice(0, -200);
+    if (oldKeys.length)
+      await database
+        .ref('sims_gossip')
+        .update(Object.fromEntries(oldKeys.map((key) => [key, null])));
+  }
 }
 
 // ---------------------------------------------------------------- avviso prima della morte

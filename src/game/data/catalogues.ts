@@ -1995,9 +1995,10 @@ export const STORE_FLOOR_FURNITURE = {
 
 export const SALOON_DOORS = {
   courtyard: {
+    // portone di casa (vedi drawFrontDoor): più largo delle altre porte
     x: 0,
     y: -180,
-    w: 50,
+    w: 64,
     h: 10,
     z: 110,
     name: 'Vai al Cortile 🌳',
@@ -2384,6 +2385,8 @@ export const ENV_DECOR = {
   CORTILE: [
     // bacheca immobiliare, sull'erba accanto al vialetto che porta all'uscita: si cambia stanza
     { kind: 'realtyBoard', x: -95, y: 115, w: 58, h: 6, z: 95, label: 'Bacheca Immobiliare 🏘️' },
+    // accanto, la bacheca dei pettegolezzi: i fatti del condominio compaiono da soli
+    { kind: 'gossipBoard', x: -168, y: 115, w: 52, h: 6, z: 95, label: 'Pettegolezzi 📰' },
     // piazzetta della fontana
     { kind: 'fountain', x: 0, y: 0, w: 70, h: 70, label: 'Fontana ⛲', z: 60 },
     // due panchine sul bordo del vialetto che va all'ala sinistra, rivolte verso di lui
@@ -2396,7 +2399,7 @@ export const ENV_DECOR = {
     { kind: 'tree', x: 150, y: -110, w: 16, h: 16, size: 0.9, z: 80 },
     { kind: 'tree', x: 320, y: -110, w: 18, h: 18, size: 1.05, z: 90 },
     { kind: 'tree', x: -260, y: 120, w: 18, h: 18, size: 1.15, z: 95 },
-    { kind: 'tree', x: -150, y: 150, w: 16, h: 16, size: 0.95, z: 85 },
+    { kind: 'tree', x: -225, y: 175, w: 16, h: 16, size: 0.95, z: 85 },
     { kind: 'tree', x: -350, y: 175, w: 16, h: 16, size: 0.9, z: 80 },
     { kind: 'tree', x: 150, y: 150, w: 16, h: 16, size: 0.95, z: 85 },
     { kind: 'tree', x: 440, y: -110, w: 18, h: 18, size: 1.1, z: 90 },

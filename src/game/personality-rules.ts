@@ -3,18 +3,34 @@
 export type PersonalityId = 'artist' | 'business' | 'criminal' | 'romantic';
 
 /**
- * Punti dopo i quali compare il messaggio della personalità. Ogni personalità può guadagnare al
- * massimo PERSONALITY_DAILY_MAX punti al giorno, quindi servono almeno 7 giorni di gioco dedicato
- * (di solito qualche settimana), uguali per tutte e quattro.
+ * Come si diventa una personalità: ogni giorno le azioni danno punti (al massimo
+ * PERSONALITY_DAILY_MAX per personalità). A fine giornata quella con più punti è la "prevalente"
+ * e guadagna 1 punto prevalenza (a pari merito nessuna). Con PREVAIL_TO_BECOME punti prevalenza
+ * il personaggio diventa quella personalità, per sempre: se ne può avere una sola.
  */
-export const PERSONALITY_THRESHOLD = 70;
 export const PERSONALITY_DAILY_MAX = 10;
+export const PREVAIL_TO_BECOME = 5;
 
 export const PERSONALITIES: Record<PersonalityId, { name: string; message: string }> = {
-  artist: { name: 'Artista', message: 'Stai diventando un Artista!' },
-  business: { name: 'Imprenditore', message: 'Stai diventando un Imprenditore!' },
-  criminal: { name: 'Criminale', message: 'Stai diventando un Criminale!' },
-  romantic: { name: 'Romanticone', message: 'Stai diventando un Romanticone!' },
+  artist: { name: 'Artista', message: 'Sei diventato un Artista!' },
+  business: { name: 'Imprenditore', message: 'Sei diventato un Imprenditore!' },
+  criminal: { name: 'Criminale', message: 'Sei diventato un Criminale!' },
+  romantic: { name: 'Romanticone', message: 'Sei diventato un Romanticone!' },
+};
+
+/**
+ * Livelli della personalità ottenuta, contando le giornate in cui ha prevalso: livello 1 quando
+ * la si diventa (5), livello 2 con altre 10 (15 in tutto), livello 3 a 30.
+ */
+export const LEVEL_PREVAIL = [PREVAIL_TO_BECOME, 15, 30] as const;
+export type PersonalityLevel = 1 | 2 | 3;
+
+/** Titolo per livello: cambia salendo di livello. */
+export const PERSONALITY_TITLES: Record<PersonalityId, [string, string, string]> = {
+  artist: ['Artista', 'Pittore affermato', "Maestro d'arte"],
+  business: ['Imprenditore', 'Manager', 'Magnate'],
+  criminal: ['Criminale', 'Ladro esperto', 'Boss del condominio'],
+  romantic: ['Romanticone', "Cuore d'oro", "Leggenda dell'amore"],
 };
 
 /**
@@ -43,10 +59,15 @@ export const PERSONALITY_ACTIONS = {
 export type PersonalityAction = keyof typeof PERSONALITY_ACTIONS;
 
 export interface PersonalityState {
-  /** Punti di ogni personalità. */
+  /** Punti di ogni personalità (in totale: servono per i pensieri e il tono delle frasi). */
   points: Partial<Record<PersonalityId, number>>;
-  /** Personalità per cui il messaggio è già stato mostrato. */
+  /**
+   * La personalità ottenuta (una sola chiave). Il nome resta "announced" perché le regole del
+   * database lo leggono per il tentativo in più del Criminale.
+   */
   announced: Partial<Record<PersonalityId, boolean>>;
+  /** Giornate in cui ogni personalità è stata la prevalente. */
+  prevail?: Partial<Record<PersonalityId, number>>;
   /** Giorno (AAAA-MM-GG) a cui si riferiscono i conteggi giornalieri. */
   day: string;
   /** Quante volte ogni azione ha già dato punti oggi. */
@@ -55,6 +76,8 @@ export interface PersonalityState {
   todayPoints: Partial<Record<PersonalityId, number>>;
   /** Giorni (AAAA-MM-GG) in cui sono già stati dati i premi giornalieri. */
   perks?: { interestDay?: string; romanceDay?: string };
+  /** Un'altra personalità è arrivata a PREVAIL_TO_BECOME: si propone di cambiare (in attesa di risposta). */
+  offer?: PersonalityId;
 }
 
 export const emptyPersonality = (): PersonalityState => ({
@@ -68,9 +91,124 @@ export const emptyPersonality = (): PersonalityState => ({
 const dayKey = (now: Date) =>
   `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
+const IDS = Object.keys(PERSONALITIES) as PersonalityId[];
+
+/** La personalità ottenuta, oppure null. */
+export const obtainedPersonality = (state: PersonalityState | undefined): PersonalityId | null =>
+  IDS.find((id) => state?.announced?.[id]) ?? null;
+
+/** Personalità con più punti in una giornata (null se nessun punto o pari merito). */
+export function dayWinner(
+  todayPoints: Partial<Record<PersonalityId, number>>,
+): PersonalityId | null {
+  let best: PersonalityId | null = null,
+    bestPts = 0,
+    tie = false;
+  for (const id of IDS) {
+    const p = todayPoints[id] || 0;
+    if (p > bestPts) {
+      best = id;
+      bestPts = p;
+      tie = false;
+    } else if (p > 0 && p === bestPts) tie = true;
+  }
+  return tie ? null : best;
+}
+
+/** Livello per un numero di giornate prevalse (0 = non ancora ottenuta). */
+export function levelFor(prevailDays: number): 0 | PersonalityLevel {
+  if (prevailDays >= LEVEL_PREVAIL[2]) return 3;
+  if (prevailDays >= LEVEL_PREVAIL[1]) return 2;
+  if (prevailDays >= LEVEL_PREVAIL[0]) return 1;
+  return 0;
+}
+
+/** Livello della personalità ottenuta (0 se non ce n'è una). */
+export function personalityLevel(state: PersonalityState | undefined): 0 | PersonalityLevel {
+  const got = obtainedPersonality(state);
+  return got ? levelFor(state?.prevail?.[got] || 0) || 1 : 0;
+}
+
+/** Livello che il giocatore ha in una data personalità (0 se non è la sua). */
+export const levelOf = (state: PersonalityState | undefined, id: PersonalityId): number =>
+  obtainedPersonality(state) === id ? personalityLevel(state) : 0;
+
+/** Titolo attuale, es. "Pittore affermato" (null senza personalità). */
+export function personalityTitle(state: PersonalityState | undefined): string | null {
+  const got = obtainedPersonality(state);
+  return got ? PERSONALITY_TITLES[got][personalityLevel(state) - 1] : null;
+}
+
+/** Diventa `id` (prima volta o cambio): le altre ripartono da zero, così si contano da adesso. */
+function become(state: PersonalityState, id: PersonalityId): void {
+  state.announced = { [id]: true };
+  state.prevail = { [id]: Math.max(PREVAIL_TO_BECOME, state.prevail?.[id] || 0) };
+  delete state.offer;
+}
+
+export interface DayOutcome {
+  /** Chi ha prevalso nella giornata chiusa. */
+  won: PersonalityId | null;
+  /** Personalità appena ottenuta (la prima volta). */
+  reached: PersonalityId | null;
+  /** Nuovo livello appena raggiunto dalla personalità ottenuta. */
+  levelUp: PersonalityLevel | null;
+  /** Un'altra personalità è arrivata a PREVAIL_TO_BECOME: va proposto il cambio. */
+  offer: PersonalityId | null;
+}
+
 /**
- * Registra un'azione. Restituisce la personalità che ha appena superato la soglia
- * (per mostrare il messaggio una sola volta), altrimenti null.
+ * Chiude la giornata salvata se ora è un altro giorno: la personalità prevalente prende 1 punto
+ * prevalenza. Senza personalità, a PREVAIL_TO_BECOME la si diventa; con una personalità, se
+ * prevale la propria si sale di livello, se un'altra arriva a PREVAIL_TO_BECOME si propone il cambio.
+ */
+export function settlePersonalityDay(state: PersonalityState, now: Date): DayOutcome {
+  const day = dayKey(now);
+  const out: DayOutcome = { won: null, reached: null, levelUp: null, offer: null };
+  if (state.day === day) return out;
+  const won = state.day ? dayWinner(state.todayPoints) : null;
+  if (won) {
+    const prevail = (state.prevail ??= {});
+    const got = obtainedPersonality(state);
+    const before = got ? personalityLevel(state) : 0;
+    prevail[won] = (prevail[won] || 0) + 1;
+    out.won = won;
+    if (!got) {
+      if (prevail[won] >= PREVAIL_TO_BECOME) {
+        become(state, won);
+        out.reached = won;
+      }
+    } else if (won === got) {
+      const after = personalityLevel(state);
+      if (after > before) out.levelUp = after as PersonalityLevel;
+    } else if (prevail[won] >= PREVAIL_TO_BECOME && !state.offer) {
+      state.offer = won;
+      out.offer = won;
+    }
+  }
+  state.day = day;
+  state.today = {};
+  state.todayPoints = {};
+  return out;
+}
+
+/** Risposta alla proposta di cambiare personalità. */
+export function answerSwitchOffer(state: PersonalityState, accept: boolean): PersonalityId | null {
+  const id = state.offer;
+  if (!id) return null;
+  if (accept) {
+    become(state, id);
+    return id;
+  }
+  // si resta come si è: quella personalità riparte da zero (si riproporrà dopo altre 5 giornate)
+  delete state.offer;
+  if (state.prevail) delete state.prevail[id];
+  return null;
+}
+
+/**
+ * Registra un'azione. Restituisce la personalità appena ottenuta (se, chiudendo la giornata
+ * precedente, una personalità è arrivata a PREVAIL_TO_BECOME), altrimenti null.
  */
 export function addPersonalityPoints(
   state: PersonalityState,
@@ -78,29 +216,60 @@ export function addPersonalityPoints(
   now: Date,
 ): PersonalityId | null {
   const rule = PERSONALITY_ACTIONS[action];
-  const day = dayKey(now);
-  if (state.day !== day) {
-    state.day = day;
-    state.today = {};
-    state.todayPoints = {};
-  }
+  const { reached } = settlePersonalityDay(state, now);
   const used = state.today[action] || 0;
-  if (used >= rule.perDay) return null; // tetto giornaliero: niente punti ripetendo sempre la stessa azione
+  if (used >= rule.perDay) return reached; // tetto giornaliero: niente punti ripetendo sempre la stessa azione
   const gainedToday = state.todayPoints[rule.to] || 0;
   const gain = Math.min(rule.points, PERSONALITY_DAILY_MAX - gainedToday);
-  if (gain <= 0) return null; // la personalità ha già preso il massimo di oggi
+  if (gain <= 0) return reached; // la personalità ha già preso il massimo di oggi
   state.today[action] = used + 1;
   state.todayPoints[rule.to] = gainedToday + gain;
-  const total = (state.points[rule.to] || 0) + gain;
-  state.points[rule.to] = total;
-  if (total >= PERSONALITY_THRESHOLD && !state.announced[rule.to]) {
-    state.announced[rule.to] = true;
-    return rule.to;
-  }
-  return null;
+  state.points[rule.to] = (state.points[rule.to] || 0) + gain;
+  return reached;
 }
 
-const IDS = Object.keys(PERSONALITIES) as PersonalityId[];
+/** Etichetta della personalità ottenuta (sopra i parametri e nella scheda degli altri). */
+export const PERSONALITY_BADGE: Record<PersonalityId, { emoji: string; color: string }> = {
+  artist: { emoji: '🎨', color: '#a29bfe' },
+  business: { emoji: '💼', color: '#feca57' },
+  criminal: { emoji: '😈', color: '#ff6b6b' },
+  romantic: { emoji: '💘', color: '#fd79a8' },
+};
+
+/**
+ * Testo dell'etichetta con titolo e livello, es. "🎨 Pittore affermato · Lv 2"
+ * (null se l'id non è una personalità).
+ */
+export function personalityBadgeText(id: unknown, level: unknown = 1): string | null {
+  if (typeof id !== 'string' || !(id in PERSONALITIES)) return null;
+  const p = id as PersonalityId;
+  const lv = level === 2 || level === 3 ? level : 1;
+  return `${PERSONALITY_BADGE[p].emoji} ${PERSONALITY_TITLES[p][lv - 1]} · Lv ${lv}`;
+}
+
+/** A che punto è il giocatore (testo per il profilo). */
+export function personalityStatusText(state: PersonalityState | undefined): string {
+  const got = obtainedPersonality(state);
+  if (got) {
+    const lv = personalityLevel(state);
+    const days = state?.prevail?.[got] || 0;
+    const next =
+      lv < 3
+        ? ` · livello ${lv + 1} tra ${(LEVEL_PREVAIL[lv as 1 | 2] ?? 0) - days} giornate`
+        : ' · livello massimo';
+    return `✨ ${PERSONALITY_TITLES[got][lv - 1]} (${PERSONALITIES[got].name}, livello ${lv})${next}`;
+  }
+  const prevail = state?.prevail || {};
+  const growing = IDS.filter((id) => (prevail[id] || 0) > 0).sort(
+    (a, b) => (prevail[b] || 0) - (prevail[a] || 0),
+  );
+  if (!growing.length)
+    return `✨ Personalità: ancora nessuna. Ogni giorno prevale quella con più punti; dopo ${PREVAIL_TO_BECOME} giornate la diventi.`;
+  return (
+    '✨ Personalità in crescita: ' +
+    growing.map((id) => `${PERSONALITIES[id].name} ${prevail[id]}/${PREVAIL_TO_BECOME}`).join(' · ')
+  );
+}
 
 /** Legge lo stato dal salvataggio scartando i valori non validi. */
 export function decodePersonality(value: unknown): PersonalityState {
@@ -109,11 +278,26 @@ export function decodePersonality(value: unknown): PersonalityState {
   const v = value as Record<string, unknown>;
   const points = (v.points || {}) as Record<string, unknown>;
   const announced = (v.announced || {}) as Record<string, unknown>;
+  const prevail = (v.prevail || {}) as Record<string, unknown>;
   for (const id of IDS) {
     const p = points[id];
     if (Number.isFinite(p) && (p as number) >= 0) state.points[id] = Math.min(1e6, p as number);
-    if (announced[id] === true) state.announced[id] = true;
+    const d = prevail[id];
+    if (Number.isSafeInteger(d) && (d as number) > 0)
+      (state.prevail ??= {})[id] = Math.min(1000, d as number);
   }
+  // una sola personalità: chi ne aveva più d'una (sistema precedente) tiene quella con più punti
+  const had = IDS.filter((id) => announced[id] === true).sort(
+    (a, b) => (state.points[b] || 0) - (state.points[a] || 0),
+  );
+  if (had.length) {
+    state.announced = { [had[0]]: true };
+    // chi l'aveva ottenuta col sistema di prima parte dal livello 1
+    if ((state.prevail?.[had[0]] || 0) < PREVAIL_TO_BECOME)
+      (state.prevail ??= {})[had[0]] = PREVAIL_TO_BECOME;
+  }
+  if (had.length && typeof v.offer === 'string' && v.offer in PERSONALITIES && v.offer !== had[0])
+    state.offer = v.offer as PersonalityId;
   if (typeof v.day === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v.day)) state.day = v.day;
   const today = (v.today || {}) as Record<string, unknown>;
   for (const action of Object.keys(PERSONALITY_ACTIONS) as PersonalityAction[]) {
@@ -138,33 +322,54 @@ export function decodePersonality(value: unknown): PersonalityState {
 
 // ---------------------------------------------------------------- premi delle personalità
 
-/** Premio che si ottiene diventando una personalità (dal messaggio "Stai diventando…"). */
-export const PERSONALITY_PERKS: Record<PersonalityId, string> = {
-  artist: 'I collezionisti ti offrono il 25% in più per i tuoi quadri.',
-  business: "Il tuo conto in banca ti dà l'1% di interessi al giorno.",
-  criminal:
-    'Hai un tentativo in più per indovinare le combinazioni delle casseforti (4 invece di 3).',
-  romantic: 'Da oggi, ogni giorno ricevi +10% di salute e +10% di felicità.',
-};
-
-/** Offerte dei collezionisti per l'Artista. */
-export const ARTIST_OFFER_BONUS = 1.25;
-/** Interesse giornaliero sul conto per l'Imprenditore. */
-export const BANK_INTEREST_PER_DAY = 0.01;
+/** Premi per livello (indice 0 = livello 1). */
+/** Offerte dei collezionisti per l'Artista: +25%, +40%, +60%. */
+export const ARTIST_OFFER_BONUS = [1.25, 1.4, 1.6] as const;
+/** Interesse giornaliero sul conto per l'Imprenditore: 1%, 1,5%, 2%. */
+export const BANK_INTEREST_PER_DAY = [0.01, 0.015, 0.02] as const;
 /** Al massimo si recuperano gli interessi di una settimana di assenza. */
 export const INTEREST_MAX_DAYS = 7;
-/** Tentativi di furto per il Criminale. */
-export const CRIMINAL_THEFT_TRIES = 4;
-/** Premio giornaliero del Romanticone. */
-export const ROMANTIC_DAILY_BONUS = 10;
+/** Tentativi di furto per il Criminale: 4, 5, 6 (chi non è Criminale ne ha 3). */
+export const CRIMINAL_THEFT_TRIES = [4, 5, 6] as const;
+/** Premio giornaliero del Romanticone (salute e felicità): +10%, +15%, +20%. */
+export const ROMANTIC_DAILY_BONUS = [10, 15, 20] as const;
+
+const pct = (n: number) => String(Math.round(n * 1000) / 10).replace('.', ',');
+
+/** Premio di una personalità a un livello (testo per i messaggi). */
+export function personalityPerk(id: PersonalityId, level: number): string {
+  const i = Math.max(1, Math.min(3, level)) - 1;
+  switch (id) {
+    case 'artist':
+      return `I collezionisti ti offrono il ${pct(ARTIST_OFFER_BONUS[i] - 1)}% in più per i tuoi quadri.`;
+    case 'business':
+      return `Il tuo conto in banca ti dà il ${pct(BANK_INTEREST_PER_DAY[i])}% di interessi al giorno.`;
+    case 'criminal':
+      return `Hai ${CRIMINAL_THEFT_TRIES[i]} tentativi invece di 3 per indovinare le combinazioni delle casseforti.`;
+    case 'romantic':
+      return `Ogni giorno ricevi +${ROMANTIC_DAILY_BONUS[i]}% di salute e +${ROMANTIC_DAILY_BONUS[i]}% di felicità.`;
+  }
+}
+
+/** Premio al livello 1 (dal messaggio "Sei diventato…"). */
+export const PERSONALITY_PERKS: Record<PersonalityId, string> = {
+  artist: personalityPerk('artist', 1),
+  business: personalityPerk('business', 1),
+  criminal: personalityPerk('criminal', 1),
+  romantic: personalityPerk('romantic', 1),
+};
 
 /** true se la personalità è già stata raggiunta (il messaggio è comparso). */
 export const hasPersonality = (state: PersonalityState | undefined, id: PersonalityId): boolean =>
   !!state?.announced?.[id];
 
-/** Offerta del collezionista con il premio dell'Artista. */
-export const artistOffer = (amount: number, artist: boolean): number =>
-  artist ? Math.round(amount * ARTIST_OFFER_BONUS) : amount;
+/** Offerta del collezionista con il premio dell'Artista (`level` 0 = non è Artista). */
+export const artistOffer = (amount: number, level: number): number =>
+  level > 0 ? Math.round(amount * ARTIST_OFFER_BONUS[Math.min(3, level) - 1]) : amount;
+
+/** Tentativi per indovinare una combinazione (`level` del Criminale, 0 = non lo è). */
+export const theftTriesFor = (level: number, base: number): number =>
+  level > 0 ? CRIMINAL_THEFT_TRIES[Math.min(3, level) - 1] : base;
 
 const dayNumber = (day: string): number => {
   const [y, m, d] = day.split('-').map(Number);
@@ -176,11 +381,18 @@ const dayNumber = (day: string): number => {
  * volta (al massimo una settimana), con l'interesse composto e arrotondato per difetto.
  * Il primo giorno con il premio non dà interessi: si comincia a contare da lì.
  */
-export function bankInterest(balance: number, lastDay: string | undefined, today: string): number {
+export function bankInterest(
+  balance: number,
+  lastDay: string | undefined,
+  today: string,
+  level = 1,
+): number {
   if (!lastDay || !(balance > 0)) return 0;
   const days = Math.min(INTEREST_MAX_DAYS, dayNumber(today) - dayNumber(lastDay));
   if (days <= 0) return 0;
-  return Math.floor(balance * (Math.pow(1 + BANK_INTEREST_PER_DAY, days) - 1));
+  const rate = BANK_INTEREST_PER_DAY[Math.max(1, Math.min(3, level)) - 1];
+  // il piccolo margine evita che 149,9999… (errore dei numeri decimali) diventi 149
+  return Math.floor(balance * (Math.pow(1 + rate, days) - 1) + 1e-6);
 }
 
 /** Giorno (AAAA-MM-GG) dell'ora locale, come per i limiti giornalieri. */
@@ -212,6 +424,9 @@ export const BEDTIME_THOUGHTS: Record<PersonalityId, string[]> = {
 
 /** La personalità più sviluppata (almeno qualche punto), oppure null se non ce n'è ancora una. */
 export function leadingPersonality(state: PersonalityState, minPoints = 3): PersonalityId | null {
+  // con una personalità ottenuta si pensa e si parla da quella
+  const got = obtainedPersonality(state);
+  if (got) return got;
   let best: PersonalityId | null = null;
   for (const id of IDS)
     if (

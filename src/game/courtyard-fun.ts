@@ -36,7 +36,7 @@ interface Spot {
   w: number;
   h: number;
   reach: number;
-  fun: 'bench' | 'fountain' | 'iceCream' | 'realty';
+  fun: 'bench' | 'fountain' | 'iceCream' | 'realty' | 'gossip';
 }
 
 /**
@@ -63,6 +63,8 @@ export function funSpots(): Record<string, Spot> {
       out.fountain = { x: p.x, y: p.y, w: p.w, h: p.h, reach: p.w / 2, fun: 'fountain' };
     else if (p.kind === 'realtyBoard')
       out.realty = { x: p.x, y: p.y, w: p.w, h: p.h, reach: 10, fun: 'realty' };
+    else if (p.kind === 'gossipBoard')
+      out.gossip = { x: p.x, y: p.y, w: p.w, h: p.h, reach: 10, fun: 'gossip' };
   }
   return out;
 }

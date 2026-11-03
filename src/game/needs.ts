@@ -1,4 +1,5 @@
 import { disablePush, enablePush, needsHomeScreen, showPhoneNotification } from './push.js';
+import { postGossip } from './gossip.js';
 import { isValidPin, pinHint } from './safe-pin.js';
 import { startNewLife } from './rebirth.js';
 import { clockText, dayNumber, isNight, realHour } from './game-clock.js';
@@ -100,6 +101,7 @@ export async function die(..._args: GameValue[]): Promise<GameValue> {
     game.session.db.ref('sims_online_players/' + game.session.myPlayerId).remove();
   } catch (e: GameValue) {}
   writeGrave();
+  postGossip(`${game.player.myData.nick} ci ha lasciati ⚰️ Riposa nel cimitero del quartiere.`);
   // La stanza torna libera per un altro giocatore (cassaforte, PIN e arredi si perdono con il personaggio)
   try {
     await withTimeout(

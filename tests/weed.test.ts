@@ -8,7 +8,9 @@ import {
   decodeWeed,
   emptyWeed,
   growLeftText,
+  growMsFor,
   growProgress,
+  growTimeText,
   harvest,
   takeJoint,
 } from '../src/game/weed-rules.js';
@@ -24,11 +26,31 @@ describe('coltivazione', () => {
     ]);
   });
 
-  it('la pianta cresce in 5 giorni e solo allora si raccoglie', () => {
-    const s = { grams: 0, strain: 'lemon' as const, plantedAt: t0 };
+  it('più è cara, un po’ più in fretta cresce (riferimento: Amnesia in 5 giorni)', () => {
+    const h = 3600 * 1000;
+    expect(growMsFor('lemon')).toBe(GROW_MS + 12 * h);
+    expect(growMsFor('amnesia')).toBe(GROW_MS);
+    expect(growMsFor('purple')).toBe(GROW_MS - 12 * h);
+    expect(growTimeText('lemon')).toBe('5 giorni e 12 ore');
+    expect(growTimeText('amnesia')).toBe('5 giorni');
+    expect(growTimeText('purple')).toBe('4 giorni e 12 ore');
+    // a metà della crescita della Purple Haze la Lemon Haze è più indietro
+    const mid = t0 + growMsFor('purple') / 2;
+    expect(growProgress(t0, mid, 'purple')).toBeCloseTo(0.5);
+    expect(growProgress(t0, mid, 'lemon')).toBeLessThan(0.5);
+    // si raccoglie solo quando la propria varietà è pronta
+    const purple = { grams: 0, strain: 'purple' as const, plantedAt: t0 };
+    const lemon = { grams: 0, strain: 'lemon' as const, plantedAt: t0 };
+    expect(harvest(purple, t0 + growMsFor('purple'))).not.toBeNull();
+    expect(harvest(lemon, t0 + growMsFor('purple'))).toBeNull();
+    expect(harvest(lemon, t0 + growMsFor('lemon'))).not.toBeNull();
+  });
+
+  it('la pianta di riferimento cresce in 5 giorni e solo allora si raccoglie', () => {
+    const s = { grams: 0, strain: 'amnesia' as const, plantedAt: t0 };
     expect(growProgress(t0, t0 + GROW_MS / 2)).toBeCloseTo(0.5);
     expect(harvest(s, t0 + GROW_MS - 1)).toBeNull();
-    expect(harvest(s, t0 + GROW_MS)).toEqual({ grams: HARVEST_GRAMS, jarStrain: 'lemon' });
+    expect(harvest(s, t0 + GROW_MS)).toEqual({ grams: HARVEST_GRAMS, jarStrain: 'amnesia' });
     expect(growLeftText(t0, t0 + 36 * 3600 * 1000)).toBe('3 giorni e 12 ore');
     expect(growLeftText(t0, t0 + GROW_MS - 3600 * 1000)).toBe('1 ora');
     expect(growLeftText(t0, t0)).toBe('5 giorni');
@@ -74,7 +96,7 @@ describe('coltivazione', () => {
 describe('vaso spostato nella stanza', () => {
   it('la posizione del vaso resta anche dopo il raccolto e si legge dal salvataggio', () => {
     const planted = { grams: 0, strain: 'lemon' as const, plantedAt: 1, potX: -40, potY: 90 };
-    const after = harvest(planted, 1 + GROW_MS)!;
+    const after = harvest(planted, 1 + growMsFor('lemon'))!;
     expect(after.potX).toBe(-40);
     expect(after.potY).toBe(90);
     expect(decodeWeed({ grams: 0, potX: 999, potY: 10 })).toEqual({

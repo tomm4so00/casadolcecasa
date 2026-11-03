@@ -718,6 +718,29 @@
         }
       }
     },
+    "sims_gossip": {
+      ".read": "(auth != null && (auth.token.firebase.sign_in_provider === 'google.com' || (auth.token.firebase.sign_in_provider === 'password' && auth.token.email.endsWith('@giocatori.casadolcecasa.app')))) && root.child('sims_accounts').child(auth.uid).child('playerId').isString()",
+      ".indexOn": ["t"],
+      "$key": {
+        ".write": "((auth != null && (auth.token.firebase.sign_in_provider === 'google.com' || (auth.token.firebase.sign_in_provider === 'password' && auth.token.email.endsWith('@giocatori.casadolcecasa.app')))) && root.child('sims_accounts').child(auth.uid).child('playerId').isString()) && !data.exists() && newData.child('by').val() === root.child('sims_accounts').child(auth.uid).child('playerId').val()",
+        ".validate": "newData.hasChildren(['by','text','t']) && newData.child('t').val() <= now + 60000",
+        "by": {
+          ".validate": "newData.isString() && newData.val().length <= 140"
+        },
+        "text": {
+          ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 140"
+        },
+        "t": {
+          ".validate": "newData.isNumber() && newData.val() >= 0"
+        },
+        "about": {
+          ".validate": "newData.isString() && newData.val().length <= 300"
+        },
+        "$other": {
+          ".validate": false
+        }
+      }
+    },
     "sims_interactions": {
       "$pid": {
         ".read": "(auth != null && (auth.token.firebase.sign_in_provider === 'google.com' || (auth.token.firebase.sign_in_provider === 'password' && auth.token.email.endsWith('@giocatori.casadolcecasa.app')))) && root.child('sims_accounts').child(auth.uid).child('playerId').val() === $pid",
@@ -834,7 +857,7 @@
         ".read": "(auth != null && (auth.token.firebase.sign_in_provider === 'google.com' || (auth.token.firebase.sign_in_provider === 'password' && auth.token.email.endsWith('@giocatori.casadolcecasa.app')))) && root.child('sims_accounts').child(auth.uid).child('playerId').val() === $pid",
         "$room": {
           ".write": "(auth != null && (auth.token.firebase.sign_in_provider === 'google.com' || (auth.token.firebase.sign_in_provider === 'password' && auth.token.email.endsWith('@giocatori.casadolcecasa.app')))) && root.child('sims_accounts').child(auth.uid).child('playerId').val() === $pid && newData.exists()",
-          ".validate": "newData.hasChildren(['n','since']) && newData.child('since').val() <= now && ((data.exists() && data.child('since').val() + 86400000 > now && newData.child('since').val() === data.child('since').val() && newData.child('n').val() === data.child('n').val() + 1 && (newData.child('n').val() <= 3 || (newData.child('n').val() === 4 && root.child('sims_saves').child($pid).child('personality').child('announced').child('criminal').val() === true))) || ((!data.exists() || data.child('since').val() + 86400000 <= now) && newData.child('n').val() === 1 && newData.child('since').val() > now - 300000))",
+          ".validate": "newData.hasChildren(['n','since']) && newData.child('since').val() <= now && ((data.exists() && data.child('since').val() + 86400000 > now && newData.child('since').val() === data.child('since').val() && newData.child('n').val() === data.child('n').val() + 1 && (newData.child('n').val() <= 3 || ((newData.child('n').val() === 4 && root.child('sims_saves').child($pid).child('personality').child('announced').child('criminal').val() === true) || (newData.child('n').val() === 5 && root.child('sims_saves').child($pid).child('personality').child('announced').child('criminal').val() === true && root.child('sims_saves').child($pid).child('personality').child('prevail').child('criminal').val() >= 15) || (newData.child('n').val() === 6 && root.child('sims_saves').child($pid).child('personality').child('announced').child('criminal').val() === true && root.child('sims_saves').child($pid).child('personality').child('prevail').child('criminal').val() >= 30)))) || ((!data.exists() || data.child('since').val() + 86400000 <= now) && newData.child('n').val() === 1 && newData.child('since').val() > now - 300000))",
           "n": {
             ".validate": "newData.isNumber()"
           },

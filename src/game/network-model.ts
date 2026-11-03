@@ -33,6 +33,10 @@ export interface OnlinePlayer extends PresenceInfo {
   sick?: number;
   /** 1 se porta a spasso il suo cane al guinzaglio. */
   dog?: number;
+  /** Personalità ottenuta (artist, business, criminal, romantic). */
+  pers?: string;
+  /** Livello della personalità (1-3). */
+  persLv?: number;
 }
 
 export function decodeChatMessage(value: unknown): ChatMessage | null {

@@ -1,4 +1,5 @@
 import { notePersonality } from './personality.js';
+import { postGossip } from './gossip.js';
 import type { GameValue } from './context.js';
 import { game } from './context.js';
 import { lifetime } from './runtime.js';
@@ -80,6 +81,8 @@ export async function onKissAsk(m: GameValue, who: string): Promise<void> {
   if (res.action === 'yes') {
     await send(m.from, { type: 'kissYes' });
     startKiss(m.from, who);
+    // lo scrive solo chi accetta, così il fatto compare una volta sola
+    postGossip(`${game.player.myData.nick} e ${who} si sono baciati 💋`, [m.from], 6 * 3600_000);
   } else {
     await send(m.from, { type: 'kissNo' });
     endRomance(book(), m.from, Date.now());

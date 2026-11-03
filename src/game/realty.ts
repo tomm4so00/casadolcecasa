@@ -3,6 +3,7 @@ import type { GameValue } from './context.js';
 import { game } from './context.js';
 import { openDialog } from './interface.js';
 import { toast } from './missions.js';
+import { postGossip } from './gossip.js';
 import { sfx } from './audio.js';
 import { hasRoom, normalizeRooms, saveGame, withTimeout } from './saves.js';
 import { hashPin } from './safe-pin.js';
@@ -125,4 +126,7 @@ async function moveMyRoom(target: number): Promise<void> {
   saveGame(false);
   sfx('success');
   toast(`📦 Trasloco fatto! Ora abiti in: ${label(target)} 🏠`, 5000);
+  postGossip(
+    `${game.player.myData.nick} ha traslocato: ora abita nell'Appartamento ${game.aptOfRoom(target) + 1} 📦`,
+  );
 }

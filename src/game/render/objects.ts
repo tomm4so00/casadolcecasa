@@ -29,6 +29,7 @@ import { fmtDuration, toast } from '../missions.js';
 import { openDialog } from '../interface.js';
 import { sortIsoParts } from './iso-sort.js';
 import { drawCached } from './sprite-cache.js';
+import { unreadGossip } from '../gossip.js';
 import { SAFE_CORRIDOR } from '../room-layout.js';
 import { nextUpgrade, tierOf, tierOfPlaced, tiersOf } from '../furniture-tiers.js';
 import { LAMP_LIGHT } from '../furniture-benefits.js';
@@ -1666,7 +1667,167 @@ export function drawExitMat(it?: GameValue, text?: GameValue): GameValue {
   });
 }
 
+/**
+ * Portone di casa verso il cortile: arco in pietra con vetrata, due ante in legno con pannelli e
+ * maniglie in ottone, gradino davanti. È l'unica porta del salone che si apre da sola quando ci
+ * si avvicina; dietro si intravede il cortile.
+ */
+function drawFrontDoor(it: GameValue): void {
+  const ctx = game.view.ctx;
+  const T = 10,
+    H = 112;
+  const W: number = it.w;
+  const dy: number = game.Y0 + T / 2;
+  const b: GameValue = box(it.x, dy, W, T, H, '#cfc6b4');
+  const open = doorOpenAmount('saloon:courtyard', it.x, it.y, true, true);
+  // misure sulla faccia (unità della scena, dall'alto): arco, imposta dell'arco, ante
+  const side = 7,
+    top = 14;
+  const rw = (W - side * 2) / 2;
+  const spring = top + rw; // dove finisce l'arco e iniziano le ante
+  const leafW = rw,
+    leafH = H - spring;
+  const wood = '#6b3e26';
+  const paintLeaf = (LW: number, LH: number, mirror: boolean): void => {
+    const g = ctx.createLinearGradient(0, 0, LW, 0);
+    g.addColorStop(0, mirror ? '#5a321e' : '#7a4a2e');
+    g.addColorStop(1, mirror ? '#7a4a2e' : '#5a321e');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, LW, LH);
+    woodGrain(LW, LH, 'rgba(0,0,0,0.14)', true, 5);
+    // due pannelli in rilievo
+    for (const [py, ph] of [
+      [6, LH * 0.38],
+      [LH * 0.5, LH * 0.38],
+    ]) {
+      ctx.fillStyle = 'rgba(255,255,255,0.07)';
+      ctx.fillRect(4, py, LW - 8, ph);
+      ctx.strokeStyle = 'rgba(0,0,0,0.35)';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(4, py, LW - 8, ph);
+      ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+      ctx.strokeRect(6, py + 2, LW - 12, ph - 4);
+    }
+    // maniglia in ottone vicino al centro e piastra in basso
+    const hx = mirror ? 4 : LW - 6;
+    ctx.fillStyle = '#d4a017';
+    ctx.fillRect(hx, LH * 0.44, 2, 9);
+    ctx.beginPath();
+    ctx.arc(hx + 1, LH * 0.44, 2, 0, 6.3);
+    ctx.fill();
+    ctx.fillStyle = 'rgba(212,160,23,0.55)';
+    ctx.fillRect(2, LH - 7, LW - 4, 4);
+  };
+  onFace(b, 'left', (FW: number, FH: number): void => {
+    // cornice in pietra a conci
+    ctx.fillStyle = '#d8d0bf';
+    ctx.fillRect(0, 0, FW, FH);
+    ctx.strokeStyle = 'rgba(0,0,0,0.12)';
+    ctx.lineWidth = 0.8;
+    for (let v = 0, r = 0; v < FH; v += 9, r++) {
+      ctx.beginPath();
+      ctx.moveTo(0, v);
+      ctx.lineTo(side, v);
+      ctx.moveTo(FW - side, v);
+      ctx.lineTo(FW, v);
+      ctx.stroke();
+    }
+    // vano ad arco: dietro, il cortile (cielo e prato) che si vede quando le ante si aprono
+    const cx = FW / 2;
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(side, FH);
+    ctx.lineTo(side, spring);
+    ctx.arc(cx, spring, rw, Math.PI, 0);
+    ctx.lineTo(FW - side, FH);
+    ctx.closePath();
+    ctx.clip();
+    const sky = ctx.createLinearGradient(0, top, 0, FH);
+    sky.addColorStop(0, '#8fd3fe');
+    sky.addColorStop(0.55, '#cdeffd');
+    sky.addColorStop(0.56, '#6fbf4a');
+    sky.addColorStop(1, '#4c9a34');
+    ctx.fillStyle = sky;
+    ctx.fillRect(side, top, FW - side * 2, FH - top);
+    // un albero lontano
+    ctx.fillStyle = '#3f8a2e';
+    ctx.beginPath();
+    ctx.arc(cx + rw * 0.45, FH * 0.5, 9, 0, 6.3);
+    ctx.fill();
+    ctx.fillStyle = '#5d3a1a';
+    ctx.fillRect(cx + rw * 0.45 - 1.5, FH * 0.5 + 6, 3, 10);
+    ctx.restore();
+    // lunetta a vetri sopra le ante, con le razze
+    ctx.fillStyle = 'rgba(205,238,253,0.85)';
+    ctx.beginPath();
+    ctx.arc(cx, spring, rw - 2, Math.PI, 0);
+    ctx.fill();
+    ctx.strokeStyle = wood;
+    ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    ctx.arc(cx, spring, rw - 2, Math.PI, 0);
+    ctx.stroke();
+    for (let i = 1; i < 4; i++) {
+      const ang = Math.PI + (i / 4) * Math.PI;
+      ctx.beginPath();
+      ctx.moveTo(cx, spring);
+      ctx.lineTo(cx + Math.cos(ang) * (rw - 2), spring + Math.sin(ang) * (rw - 2));
+      ctx.stroke();
+    }
+    ctx.beginPath();
+    ctx.arc(cx, spring, rw * 0.35, Math.PI, 0);
+    ctx.stroke();
+    ctx.fillStyle = wood;
+    ctx.fillRect(side, spring - 1.5, FW - side * 2, 3);
+    // chiave di volta con la targhetta
+    ctx.fillStyle = '#c9bfa9';
+    ctx.beginPath();
+    ctx.moveTo(cx - 6, 0);
+    ctx.lineTo(cx + 6, 0);
+    ctx.lineTo(cx + 4, top + 2);
+    ctx.lineTo(cx - 4, top + 2);
+    ctx.fill();
+    ctx.fillStyle = '#b8860b';
+    ctx.fillRect(cx - 13, 2, 26, 8);
+    ctx.fillStyle = '#fff6d5';
+    ctx.font = 'bold 5px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('CORTILE', cx, 8);
+    // ante chiuse
+    if (open < 0.02) {
+      ctx.save();
+      ctx.translate(side, spring + 1.5);
+      paintLeaf(leafW, leafH - 1.5, false);
+      ctx.translate(leafW, 0);
+      paintLeaf(leafW, leafH - 1.5, true);
+      ctx.restore();
+      ctx.fillStyle = 'rgba(0,0,0,0.4)';
+      ctx.fillRect(cx - 0.5, spring + 1.5, 1, leafH - 1.5);
+    }
+  });
+  if (open >= 0.02) {
+    // le due ante girano sui cardini verso l'interno del salone
+    const a = open * 1.35;
+    const zLeaf = b.z1 - spring - 1.5;
+    for (const left of [true, false]) {
+      const hinge = [left ? b.x0 + side : b.x1 - side, b.y1, zLeaf];
+      const u = left ? [Math.cos(a), Math.sin(a), 0] : [-Math.cos(a), Math.sin(a), 0];
+      setPlane(hinge, u, [0, 0, -1]);
+      try {
+        paintLeaf(leafW, leafH - 1.5, false); // da aperta la maniglia sta lontano dal cardine
+        ctx.fillStyle = `rgba(0,0,0,${0.25 * open})`;
+        ctx.fillRect(0, 0, leafW, leafH - 1.5);
+      } finally {
+        resetPlane();
+      }
+    }
+  }
+  // gradino di pietra davanti al portone
+  box(it.x, b.y1 + 5, W + 10, 10, 3, '#bdb6aa', { top: '#d2ccc0' });
+}
+
 export function drawSaloonDoor(key?: GameValue, it?: GameValue): GameValue {
+  if (key === 'courtyard') return drawFrontDoor(it);
   const ctx = game.view.ctx;
   const thinX: GameValue = it.w < it.h;
   let doorC: GameValue = '#8d5a3b',
@@ -2986,7 +3147,7 @@ export function drawWeedPot(it?: GameValue, t?: GameValue): GameValue {
   const g = it.grow || {};
   box(it.x, it.y, 20, 20, 16, '#b5651d', { top: '#4e342e' });
   box(it.x, it.y, 23, 23, 3, '#8d4a17', { z0: 14 });
-  drawWeedPlant(it.x, it.y, 17, g.s, growProgress(g.p, Date.now()), t || 0);
+  drawWeedPlant(it.x, it.y, 17, g.s, growProgress(g.p, Date.now(), g.s), t || 0);
 }
 
 /** Barattolo di vetro con l'erba dentro: più è pieno, più sale il verde. */
@@ -4137,6 +4298,59 @@ function drawPineTree(it: GameValue, k: GameValue): void {
     );
     ctx.stroke();
   });
+}
+
+/** Bacheca dei pettegolezzi del cortile: lavagna verde con fumetti e, se ci sono novità, "NUOVO". */
+export function drawGossipBoardProp(it?: GameValue, t?: GameValue): GameValue {
+  const ctx = game.view.ctx;
+  const W: number = it.w;
+  for (const dx of [-W / 2 + 3, W / 2 - 3]) box(it.x + dx, it.y, 5, 5, 88, '#6d4128');
+  const panel: GameValue = box(it.x, it.y, W, 4, 50, '#5d4037', { z0: 34 });
+  const fresh = unreadGossip() > 0;
+  onFace(panel, 'left', (PW: number, PH: number): void => {
+    ctx.fillStyle = '#2e5e3a';
+    ctx.fillRect(2, 2, PW - 4, PH - 4);
+    ctx.fillStyle = '#fbe9a6';
+    ctx.font = 'bold 6px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('PETTEGOLEZZI', PW / 2, 10);
+    // fumetti con i puntini
+    const bubbles = ['#ffffff', '#ffd6e0', '#d6f0ff'];
+    for (let k = 0; k < 3; k++) {
+      const bx = 6 + k * ((PW - 12) / 3),
+        bw = (PW - 12) / 3 - 4,
+        by = 15 + (k % 2) * 4;
+      ctx.fillStyle = bubbles[k];
+      ctx.beginPath();
+      ctx.roundRect ? ctx.roundRect(bx, by, bw, 14, 3) : ctx.rect(bx, by, bw, 14);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(bx + 4, by + 14);
+      ctx.lineTo(bx + 3, by + 19);
+      ctx.lineTo(bx + 9, by + 14);
+      ctx.fill();
+      ctx.fillStyle = '#2d3436';
+      ctx.font = 'bold 7px sans-serif';
+      ctx.fillText(k === 1 ? '!!' : '…', bx + bw / 2, by + 10);
+    }
+    // gessetti sul bordo
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(6, PH - 6, 6, 2);
+    ctx.fillStyle = '#fd79a8';
+    ctx.fillRect(14, PH - 6, 5, 2);
+    if (fresh) {
+      // bollino "NUOVO" che pulsa
+      const a = 0.75 + 0.25 * Math.sin((t || 0) * 5);
+      ctx.fillStyle = `rgba(255,71,87,${a})`;
+      ctx.beginPath();
+      ctx.roundRect ? ctx.roundRect(PW - 24, PH - 13, 21, 9, 3) : ctx.rect(PW - 24, PH - 13, 21, 9);
+      ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 5px sans-serif';
+      ctx.fillText('NUOVO', PW - 13.5, PH - 7);
+    }
+  });
+  box(it.x, it.y + 1, W + 8, 10, 3, '#3e2723', { z0: 86, top: '#5d4037' });
 }
 
 /** Bacheca immobiliare del cortile: pannello di legno su due pali, con tettoia e annunci. */

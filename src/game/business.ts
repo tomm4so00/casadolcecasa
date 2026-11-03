@@ -1,4 +1,5 @@
 import { notePersonality } from './personality.js';
+import { postGossip } from './gossip.js';
 import { TRADE_FEE, marketPriceAt, type Business, type BusinessId } from '../../shared/market.js';
 import { marketSnapshot, canTradeMarket } from './market-client.js';
 import { updateEconomy } from './economy.js';
@@ -177,6 +178,10 @@ export async function bizInvest(id: BusinessId): Promise<void> {
   )
     return;
   toast(`✅ Hai investito ${amt} € in ${b.name}`);
+  if (amt >= 1000)
+    postGossip(
+      `${game.player.myData.nick} ha investito ${amt.toLocaleString('it-IT')} € in ${b.name} 📈 Chissà cosa sa…`,
+    );
   notePersonality('invest');
   saveGame(true);
   bizUpdate();

@@ -1,4 +1,5 @@
 import { startBetting } from './betting.js';
+import { startGossip } from './gossip.js';
 import { applyDailyPerks } from './personality.js';
 import { enablePush } from './push.js';
 import { startPlayersHud } from './players-hud.js';
@@ -10,6 +11,7 @@ import type { GameValue } from './context.js';
 import type { DialogOptions, DialogResult } from './models.js';
 import { accountLogins, acquirePlayerSession, linkGoogleAccount } from './accounts.js';
 import { roomLabel } from './realty-rules.js';
+import { personalityStatusText } from './personality-rules.js';
 import { game } from './context.js';
 import { lifetime, dom, browser } from './runtime.js';
 import {
@@ -149,6 +151,7 @@ export async function openProfile(..._args: GameValue[]): Promise<GameValue> {
       (hasRoom()
         ? `\n\nLa tua stanza: ${roomLabel(game.myAssignedRoomIdx ?? 0, game.ROOMS_PER_APT)}`
         : '') +
+      `\n\n${personalityStatusText(game.player.personality)}` +
       (game.session.OFFLINE
         ? '\n\n🧪 Sei in modalità prova: niente viene salvato sul server.'
         : ''),
@@ -300,6 +303,7 @@ export async function startGame(..._args: GameValue[]): Promise<GameValue> {
   lifetime.setInterval(() => void applyDailyPerks(), 60000);
   startPlayersHud();
   startArtMarket();
+  startGossip();
   startProjects();
   startBetting();
   updateSoundButton();

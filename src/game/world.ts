@@ -1,4 +1,5 @@
 import { buyPlant, plantLabel, smokeJoint, tendPlant } from './weed.js';
+import { postGossip } from './gossip.js';
 import {
   SAFE_LEVEL2_PRICE,
   isValidPin,
@@ -22,12 +23,12 @@ import {
   toggleSofa,
   tossCoin,
 } from './courtyard-fun.js';
-import { STRAINS, type StrainId } from './weed-rules.js';
+import { STRAINS, type StrainId, growTimeText } from './weed-rules.js';
 import { earthFlight, moonFlight, moonOpen, returnToEarth, travelToMoon } from './moon.js';
 import { MOON_TRIP_PRICE } from './project-rules.js';
 import { openRpsTable, openSlot } from './betting.js';
 import { SLOT_BET } from './betting-rules.js';
-import { CRIMINAL_THEFT_TRIES, hasPersonality } from './personality-rules.js';
+import { levelOf, theftTriesFor } from './personality-rules.js';
 import {
   THEFT_TRIES,
   type TheftRecord,
@@ -54,6 +55,7 @@ import {
 import { applyRoomBounds } from './room-size.js';
 import { openDialog } from './interface.js';
 import { openRealtyBoard } from './realty.js';
+import { openGossipBoard } from './gossip.js';
 import { relaxWith, toast } from './missions.js';
 import {
   freeRoomsInApt,
@@ -456,7 +458,7 @@ export function checkProximity(..._args: GameValue[]): GameValue {
       btnMain.classList.remove('btn-pop-locked');
       btnSub.classList.add('hidden');
       btnMain.innerText = item.strain
-        ? `🌱 Compra ${STRAINS[item.strain as StrainId].name} (${STRAINS[item.strain as StrainId].price} €)`
+        ? `🌱 Compra ${STRAINS[item.strain as StrainId].name} (${STRAINS[item.strain as StrainId].price} €, cresce in ${growTimeText(item.strain as StrainId)})`
         : '🚪 Torna Fuori';
     } else if (game.view.activeEnvironment === 'luna' && found === 'baseDoor') {
       btnSub.classList.add('hidden');
@@ -573,6 +575,7 @@ export function checkProximity(..._args: GameValue[]): GameValue {
       if (item.fun === 'bench')
         btnMain.innerText = game.benchSit ? '🧍 Alzati' : '🪑 Siediti sulla panchina';
       else if (item.fun === 'realty') btnMain.innerText = '🏘️ Bacheca immobiliare: cambia stanza';
+      else if (item.fun === 'gossip') btnMain.innerText = '📰 Leggi i pettegolezzi del condominio';
       else {
         btnMain.innerText = `⛲ Lancia una moneta nella fontana (${COIN_PRICE} €)`;
         btnMain.classList.toggle('btn-pop-locked', !!game.coinToss);
@@ -1003,6 +1006,7 @@ export async function handleObjectInteract(..._args: GameValue[]): Promise<void>
     const spot = funSpots()[game.activeTargetProp];
     if (spot?.fun === 'bench') toggleBench(game.activeTargetProp);
     else if (spot?.fun === 'realty') await openRealtyBoard();
+    else if (spot?.fun === 'gossip') await openGossipBoard();
     else if (spot?.fun === 'fountain') await tossCoin();
     else if (item && item.aptIdx !== undefined) {
       await throughDoor('cortile:' + game.activeTargetProp);
@@ -1225,10 +1229,8 @@ export async function handleSafeInteraction(..._args: GameValue[]): Promise<Game
       4500,
     );
   };
-  // il Criminale ha un tentativo in più
-  const maxTries = hasPersonality(game.player.personality, 'criminal')
-    ? CRIMINAL_THEFT_TRIES
-    : THEFT_TRIES;
+  // il Criminale ha più tentativi, di più a ogni livello
+  const maxTries = theftTriesFor(levelOf(game.player.personality, 'criminal'), THEFT_TRIES);
   const tries = maxTries - theftTriesLeft(record, serverNow(), maxTries);
   if (tries >= maxTries) {
     alarmOn(record);
@@ -1281,6 +1283,11 @@ export async function handleSafeInteraction(..._args: GameValue[]): Promise<Game
       if (!(await creditMoney(stolen))) return;
       saveGame(true);
       toast(`🎉 COLPO RIUSCITO! Hai rubato ${stolen} € dalla cassaforte! 💰`, 4000);
+      // il ladro resta misterioso: si sa solo di chi era la cassaforte
+      postGossip(
+        `La cassaforte di ${room.owner || 'qualcuno'} è stata svuotata da un ladro misterioso 🕵️ (${stolen} €)`,
+        room.ownerId ? [room.ownerId] : [],
+      );
       notePersonality('theftSuccess');
     } else {
       toast('🚫 Qualcuno è stato più veloce di te: la cassaforte è vuota.');
