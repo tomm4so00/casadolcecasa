@@ -1,4 +1,6 @@
 import { decodeWeed } from './weed-rules.js';
+import { hashPin } from './safe-pin.js';
+import { roomLabel } from './realty-rules.js';
 import { decodeFlu, isSick } from './flu-rules.js';
 import { myBenchPose } from './courtyard-fun.js';
 import { decodeDailyUses } from './daily-limits.js';
@@ -51,12 +53,7 @@ export function pinUsesRetiredDigit(pin: unknown, roomId: unknown): boolean {
   return false;
 }
 
-export function hashPin(pin?: GameValue, salt?: GameValue): GameValue {
-  let s: GameValue = 'sims:' + salt + ':' + pin,
-    h: GameValue = 5381;
-  for (let i: GameValue = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) | 0;
-  return 'h' + (h >>> 0).toString(36);
-}
+export { hashPin };
 
 export function hasRoom(..._args: GameValue[]): GameValue {
   return game.myAssignedRoomIdx !== null && game.myAssignedRoomIdx >= 0;
@@ -532,8 +529,7 @@ export async function claimRoom(..._args: GameValue[]): Promise<GameValue> {
       `🏠 Il condominio è pieno (${game.TOTAL_ROOMS} stanze): per ora giochi come ospite senza stanza.`,
       5000,
     );
-  else
-    toast(`🏠 La tua stanza è la n° ${claimed + 1} (Appartamento ${game.aptOfRoom(claimed) + 1})`);
+  else toast(`🏠 Abiti in: ${roomLabel(claimed, game.ROOMS_PER_APT)}`);
 }
 
 export function syncMyPinFromRoom(..._args: GameValue[]): GameValue {

@@ -10,6 +10,13 @@ let wallet: RoomEconomy | null = null;
 export function resetEconomy() {
   wallet = null;
 }
+/** Aspetta le operazioni in corso sui soldi, poi dimentica la stanza (prima di cambiarla). */
+export async function settleEconomy(): Promise<void> {
+  try {
+    await wallet?.settled();
+  } catch {}
+  wallet = null;
+}
 export function syncRoomEconomy(room: RoomState) {
   // Firebase emits local speculative transaction events before the server accepts them.
   if (!wallet?.isPending()) applyConfirmedEconomy(room);

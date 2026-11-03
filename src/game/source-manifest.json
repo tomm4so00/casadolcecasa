@@ -196,7 +196,7 @@
     },
     {
       "name": "hashPin",
-      "module": "saves",
+      "module": "safe-pin",
       "line": 1116
     },
     {

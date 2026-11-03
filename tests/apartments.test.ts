@@ -7,7 +7,9 @@ const rules = JSON.parse(fs.readFileSync('firebase/database.rules.proposed.json'
   .sims_rooms_state;
 
 describe('appartamenti del cortile e regole del database', () => {
-  const apts = Object.values(COURTYARD_DOORS).map((d) => d.aptIdx);
+  const apts = Object.values(COURTYARD_DOORS)
+    .map((d) => (d as { aptIdx?: number }).aptIdx)
+    .filter((i) => i !== undefined);
   const total = apts.length * ROOMS_PER_APT;
 
   it('ha una porta per ogni appartamento, numerate di seguito', () => {

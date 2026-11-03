@@ -12,10 +12,10 @@ import { hasRoom, isMyRoomNow, saveGame } from './saves.js';
 import { sfx } from './audio.js';
 import { closeModal } from './render/primitives.js';
 import {
+  backToCourtyardGate,
   changeSafePin,
   getCurrentFurnitureMap,
   setFurniturePosition,
-  spawnAtDoor,
 } from './world.js';
 export function itemById(id?: GameValue): GameValue {
   return game.shopCatalog.find((i?: GameValue): GameValue => i.id === id) || null;
@@ -426,7 +426,7 @@ export function renderWardrobe(..._args: GameValue[]): GameValue {
     const p: GameValue = document.createElement('div');
     p.style.cssText = 'grid-column: 1 / -1; color: #aaa; font-size: 0.8rem; padding: 8px;';
     p.textContent =
-      '🛍️ Non hai ancora niente qui: passa dal Negozio di Vestiti (Esci di Casa) o compra online dal PC!';
+      '🛍️ Non hai ancora niente qui: passa dal Negozio di Vestiti (uscita del condominio, nel cortile) o compra online dal PC!';
     box.appendChild(p);
   }
 }
@@ -442,9 +442,7 @@ export function equipItem(slot?: GameValue, id?: GameValue): GameValue {
 
 export function returnHomeFromActivity(..._args: GameValue[]): GameValue {
   if (hasRoom()) game.currentApt = game.aptOfRoom(game.myAssignedRoomIdx);
-  game.view.activeEnvironment = 'SALOON';
-  game.view.currentRoomTitle = game.saloonTitle();
-  spawnAtDoor(game.saloonDoors.exitHouse);
+  backToCourtyardGate();
   dom('btn-return-home').classList.add('hidden');
 }
 

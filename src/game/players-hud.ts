@@ -8,6 +8,7 @@ import { drawPlayerAvatar } from './render/avatars.js';
 import { escapeHtmlSafe } from './needs.js';
 import type { OnlinePlayer } from './network-model.js';
 import { onlineVitals, type VitalKey } from './players-hud-rules.js';
+import { roomLabel } from './realty-rules.js';
 
 const FULL_KEY = 'sims_hud_full';
 const ICON_PX = 64; // risoluzione del disegno; a schermo è 32 px
@@ -112,7 +113,22 @@ function closeCard(): void {
     .forEach((el) => el.classList.remove('sel'));
 }
 
+/** Scritta sotto i parametri: in che appartamento e stanza abiti. */
+function updateRoomTag(): void {
+  const tag = dom('room-tag');
+  if (!tag) return;
+  const idx = game.myAssignedRoomIdx;
+  const text =
+    idx !== null && idx >= 0
+      ? '🏠 ' + roomLabel(idx, game.ROOMS_PER_APT)
+      : idx === null
+        ? ''
+        : '🏠 Nessuna stanza (ospite)';
+  if (tag.textContent !== text) tag.textContent = text;
+}
+
 function refresh(): void {
+  updateRoomTag();
   const list: HTMLElement = dom('players-online');
   const hudHidden = dom('needs-hud').classList.contains('hidden');
   const players = hudHidden ? [] : onlineList();

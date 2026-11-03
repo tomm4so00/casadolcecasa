@@ -36,11 +36,12 @@ interface Spot {
   w: number;
   h: number;
   reach: number;
-  fun: 'bench' | 'fountain' | 'iceCream';
+  fun: 'bench' | 'fountain' | 'iceCream' | 'realty';
 }
 
 /**
- * Decorazioni con cui si può interagire: panchine e fontana del cortile (bench0, bench1, fountain)
+ * Decorazioni con cui si può interagire: panchine, fontana e bacheca immobiliare del cortile
+ * (bench0, bench1, fountain, realty)
  * e il carretto dei gelati del centro commerciale (iceCream).
  */
 export function funSpots(): Record<string, Spot> {
@@ -60,6 +61,8 @@ export function funSpots(): Record<string, Spot> {
       out['bench' + benches++] = { x: p.x, y: p.y, w: p.w, h: p.h, reach: 0, fun: 'bench' };
     else if (p.kind === 'fountain')
       out.fountain = { x: p.x, y: p.y, w: p.w, h: p.h, reach: p.w / 2, fun: 'fountain' };
+    else if (p.kind === 'realtyBoard')
+      out.realty = { x: p.x, y: p.y, w: p.w, h: p.h, reach: 10, fun: 'realty' };
   }
   return out;
 }

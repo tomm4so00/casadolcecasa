@@ -37,6 +37,27 @@ html {
 #hud-top-left > * {
   pointer-events: auto;
 }
+/* Colonna con il riquadro dei parametri e, sotto, la scritta con la propria stanza */
+.hud-left-col {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+#room-tag {
+  font-size: 0.6rem;
+  color: #dfe6e9;
+  background: rgba(15, 15, 25, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 6px;
+  padding: 3px 7px;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+#room-tag:empty,
+#needs-hud.hidden + #room-tag {
+  display: none;
+}
 .needs-hud-container {
   position: relative;
   cursor: pointer;
@@ -676,11 +697,15 @@ input[type='number'] {
 }
 #dialog-buttons {
   display: flex;
+  flex-wrap: wrap; /* tanti pulsanti (es. bacheca immobiliare): vanno a capo, 4 per riga */
   gap: 8px;
   margin-top: 14px;
 }
 #dialog-buttons .btn-primary {
-  flex: 1;
+  flex: 1 1 calc(25% - 8px);
+  min-width: 0;
+  white-space: pre-line; /* 
+ nell'etichetta = a capo */
   margin-top: 0;
   padding: 12px 8px;
   font-size: 0.9rem;

@@ -89,7 +89,7 @@ export function getSolidObstacles(..._args: GameValue[]): GameValue {
   return Object.keys(map)
     .filter(
       (k?: GameValue): GameValue =>
-        !k.startsWith('door') && k !== game.movingPropKey && !map[k].wallItem,
+        !k.startsWith('door') && k !== 'exitHouse' && k !== game.movingPropKey && !map[k].wallItem,
     )
     .map((k?: GameValue): GameValue => footprintOf(map[k]))
     .filter(

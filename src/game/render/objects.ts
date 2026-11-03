@@ -4139,6 +4139,57 @@ function drawPineTree(it: GameValue, k: GameValue): void {
   });
 }
 
+/** Bacheca immobiliare del cortile: pannello di legno su due pali, con tettoia e annunci. */
+export function drawRealtyBoardProp(it?: GameValue): GameValue {
+  const ctx = game.view.ctx;
+  const W: number = it.w;
+  const wood = '#8d5a3b';
+  // pali
+  for (const dx of [-W / 2 + 3, W / 2 - 3]) box(it.x + dx, it.y, 5, 5, 88, '#6d4128');
+  // pannello: si legge dalla parte del vialetto (verso chi guarda)
+  const panel: GameValue = box(it.x, it.y, W, 4, 50, wood, { z0: 34 });
+  onFace(panel, 'left', (PW: number, PH: number): void => {
+    // fondo di sughero
+    ctx.fillStyle = '#c8a26b';
+    ctx.fillRect(2, 2, PW - 4, PH - 4);
+    ctx.fillStyle = 'rgba(0,0,0,0.08)';
+    for (let i = 0; i < 40; i++)
+      ctx.fillRect(rnd(i) * (PW - 6) + 3, rnd(i + 50) * (PH - 6) + 3, 1, 1);
+    // titolo
+    ctx.fillStyle = '#2d3436';
+    ctx.fillRect(3, 3, PW - 6, 14);
+    ctx.fillStyle = '#feca57';
+    ctx.font = 'bold 6px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('BACHECA', PW / 2, 9);
+    ctx.fillText('IMMOBILIARE', PW / 2, 15.5);
+    // annunci appuntati con le puntine
+    const notes = ['#ffffff', '#fff3b0', '#d6f5ff', '#ffe0e6'];
+    for (let k = 0; k < 4; k++) {
+      const nx = 5 + k * ((PW - 10) / 4),
+        nw = (PW - 10) / 4 - 3,
+        ny = 21 + (k % 2) * 3;
+      ctx.fillStyle = notes[k];
+      ctx.fillRect(nx, ny, nw, 20);
+      ctx.fillStyle = 'rgba(0,0,0,0.35)';
+      for (let l = 0; l < 4; l++) ctx.fillRect(nx + 2, ny + 6 + l * 3, nw - 4 - (l % 2) * 3, 1);
+      // casetta disegnata sull'annuncio
+      ctx.fillStyle = '#e17055';
+      ctx.beginPath();
+      ctx.moveTo(nx + nw / 2 - 3, ny + 4);
+      ctx.lineTo(nx + nw / 2, ny + 1.5);
+      ctx.lineTo(nx + nw / 2 + 3, ny + 4);
+      ctx.fill();
+      ctx.fillStyle = '#d63031';
+      ctx.beginPath();
+      ctx.arc(nx + nw / 2, ny, 1.2, 0, 6.3);
+      ctx.fill();
+    }
+  });
+  // tettoia
+  box(it.x, it.y + 1, W + 8, 10, 3, '#a0522d', { z0: 86, top: '#b5653a' });
+}
+
 export function drawFountainProp(it?: GameValue, t?: GameValue): GameValue {
   const ctx = game.view.ctx;
   const b: GameValue = box(it.x, it.y, it.w, it.h, 16, '#b8b2a7');

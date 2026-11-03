@@ -11,65 +11,75 @@
 
 <!-- HUD CON 5 BARRE E 1 ETICHETTA SOLDI IN EURO -->
 <div id="hud-top-left">
-  <div
-    id="needs-hud"
-    class="needs-hud-container compact hidden"
-    title="Tocca per vedere o nascondere le barre"
-  >
-    <div class="need-info" style="font-size: 0.6rem; color: #feca57">
-      <span id="clock-text">🕐 08:00</span><span id="day-text">Giorno 1</span>
-    </div>
-    <div class="need-row">
-      <div class="need-info"><span>❤️ Salute</span><span id="health-text">50%</span></div>
-      <div class="bar-bg"><div id="health-bar-fill" class="bar-fill" style="width: 50%"></div></div>
-    </div>
-    <div class="need-row">
-      <div class="need-info"><span>😴 Sonno</span><span id="sleep-text">50%</span></div>
-      <div class="bar-bg"><div id="sleep-bar-fill" class="bar-fill" style="width: 50%"></div></div>
-    </div>
-    <div class="need-row">
-      <div class="need-info"><span>🍕 Fame</span><span id="hunger-text">50%</span></div>
-      <div class="bar-bg"><div id="hunger-bar-fill" class="bar-fill" style="width: 50%"></div></div>
-    </div>
-    <div class="need-row">
-      <div class="need-info"><span>🧼 Igiene</span><span id="hygiene-text">50%</span></div>
-      <div class="bar-bg">
-        <div id="hygiene-bar-fill" class="bar-fill" style="width: 50%"></div>
+  <div class="hud-left-col">
+    <div
+      id="needs-hud"
+      class="needs-hud-container compact hidden"
+      title="Tocca per vedere o nascondere le barre"
+    >
+      <div class="need-info" style="font-size: 0.6rem; color: #feca57">
+        <span id="clock-text">🕐 08:00</span><span id="day-text">Giorno 1</span>
       </div>
+      <div class="need-row">
+        <div class="need-info"><span>❤️ Salute</span><span id="health-text">50%</span></div>
+        <div class="bar-bg">
+          <div id="health-bar-fill" class="bar-fill" style="width: 50%"></div>
+        </div>
+      </div>
+      <div class="need-row">
+        <div class="need-info"><span>😴 Sonno</span><span id="sleep-text">50%</span></div>
+        <div class="bar-bg">
+          <div id="sleep-bar-fill" class="bar-fill" style="width: 50%"></div>
+        </div>
+      </div>
+      <div class="need-row">
+        <div class="need-info"><span>🍕 Fame</span><span id="hunger-text">50%</span></div>
+        <div class="bar-bg">
+          <div id="hunger-bar-fill" class="bar-fill" style="width: 50%"></div>
+        </div>
+      </div>
+      <div class="need-row">
+        <div class="need-info"><span>🧼 Igiene</span><span id="hygiene-text">50%</span></div>
+        <div class="bar-bg">
+          <div id="hygiene-bar-fill" class="bar-fill" style="width: 50%"></div>
+        </div>
+      </div>
+      <div class="need-row">
+        <div class="need-info"><span>🙂 Felicità</span><span id="happiness-text">50%</span></div>
+        <div class="bar-bg">
+          <div id="happiness-bar-fill" class="bar-fill" style="width: 50%"></div>
+        </div>
+      </div>
+      <div class="need-row hidden" id="drug-row">
+        <div class="need-info"><span>💊 Dipendenza</span><span id="drug-text">0%</span></div>
+        <div class="bar-bg">
+          <div id="drug-bar-fill" class="bar-fill" style="width: 0%; background: #a29bfe"></div>
+        </div>
+      </div>
+      <div id="pet-rows"></div>
+      <div class="need-row hidden" id="flu-row">
+        <div class="need-info"><span>🤒 Influenza</span><span id="flu-text"></span></div>
+        <div class="bar-bg">
+          <div id="flu-bar-fill" class="bar-fill" style="width: 0%; background: #7bc96f"></div>
+        </div>
+      </div>
+      <div class="need-row">
+        <div class="need-info">
+          <span class="money-label">💰 Soldi (cassaforte/banca)</span>
+        </div>
+        <div class="need-info money-amounts">
+          <span id="money-text" title="In cassaforte">🔐 0 €</span>
+          <span id="bank-text" title="In banca">🏦 0 €</span>
+        </div>
+        <div class="bar-bg money-split" title="Verde: cassaforte · Azzurro: banca">
+          <div id="money-bar-fill" class="bar-fill" style="width: 0%"></div>
+          <div id="bank-bar-fill" class="bar-fill" style="width: 0%"></div>
+        </div>
+      </div>
+      <div id="mission-text" data-action="openMissions" title="Apri le missioni">📋 Missioni</div>
     </div>
-    <div class="need-row">
-      <div class="need-info"><span>🙂 Felicità</span><span id="happiness-text">50%</span></div>
-      <div class="bar-bg">
-        <div id="happiness-bar-fill" class="bar-fill" style="width: 50%"></div>
-      </div>
-    </div>
-    <div class="need-row hidden" id="drug-row">
-      <div class="need-info"><span>💊 Dipendenza</span><span id="drug-text">0%</span></div>
-      <div class="bar-bg">
-        <div id="drug-bar-fill" class="bar-fill" style="width: 0%; background: #a29bfe"></div>
-      </div>
-    </div>
-    <div id="pet-rows"></div>
-    <div class="need-row hidden" id="flu-row">
-      <div class="need-info"><span>🤒 Influenza</span><span id="flu-text"></span></div>
-      <div class="bar-bg">
-        <div id="flu-bar-fill" class="bar-fill" style="width: 0%; background: #7bc96f"></div>
-      </div>
-    </div>
-    <div class="need-row">
-      <div class="need-info">
-        <span class="money-label">💰 Soldi (cassaforte/banca)</span>
-      </div>
-      <div class="need-info money-amounts">
-        <span id="money-text" title="In cassaforte">🔐 0 €</span>
-        <span id="bank-text" title="In banca">🏦 0 €</span>
-      </div>
-      <div class="bar-bg money-split" title="Verde: cassaforte · Azzurro: banca">
-        <div id="money-bar-fill" class="bar-fill" style="width: 0%"></div>
-        <div id="bank-bar-fill" class="bar-fill" style="width: 0%"></div>
-      </div>
-    </div>
-    <div id="mission-text" data-action="openMissions" title="Apri le missioni">📋 Missioni</div>
+    <!-- la tua stanza: appartamento e numero sulla porta del salone -->
+    <div id="room-tag"></div>
   </div>
   <div id="players-online" class="hidden" title="Giocatori online"></div>
   <div id="player-card" class="hidden"></div>

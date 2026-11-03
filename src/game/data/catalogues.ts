@@ -1253,7 +1253,7 @@ export const INTRO_PAGES = [
   },
   {
     title: '💼 Soldi e consigli',
-    text: 'Per guadagnare vai al lavoro: nel salone esci di casa e apri "Lavoro". Porta gli oggetti ai punti giusti: ogni oggetto consegnato vale euro in più. Puoi andare al lavoro al massimo 4 volte al giorno.\n\nI soldi stanno nella cassaforte della tua stanza: proteggila con un PIN.\n\n🔔 Attiva le notifiche (pulsante a destra) per essere avvisato quando il personaggio sta male.\n\n❓ Puoi rileggere questa guida in ogni momento dal pulsante a destra.',
+    text: 'Per guadagnare vai al lavoro: nel cortile condominiale vai all’uscita del condominio e apri "Lavoro". Porta gli oggetti ai punti giusti: ogni oggetto consegnato vale euro in più. Puoi andare al lavoro al massimo 4 volte al giorno.\n\nI soldi stanno nella cassaforte della tua stanza: proteggila con un PIN.\n\n🔔 Attiva le notifiche (pulsante a destra) per essere avvisato quando il personaggio sta male.\n\n❓ Puoi rileggere questa guida in ogni momento dal pulsante a destra.',
   },
 ];
 
@@ -1972,7 +1972,6 @@ export const STORE_FLOOR_FURNITURE = {
 };
 
 export const SALOON_DOORS = {
-  exitHouse: { x: 0, y: 180, w: 70, h: 15, z: 110, name: 'Uscita di Casa 🚪' },
   courtyard: {
     x: 0,
     y: -180,
@@ -2115,6 +2114,9 @@ export const COURTYARD_DOORS = {
     aptIdx: 7,
     side: 'left',
   },
+  // unica uscita verso la città, per tutti gli appartamenti: in fondo al vialetto che va al
+  // bordo del cortile, tra i due lampioni dell'ingresso
+  exitHouse: { x: 0, y: 190, w: 64, h: 15, z: 110, name: 'Uscita del Condominio 🚪' },
 };
 
 export { BUSINESSES as BIZ } from '../../../shared/market.js';
@@ -2358,6 +2360,8 @@ export const ENV_PROPS = {
 
 export const ENV_DECOR = {
   CORTILE: [
+    // bacheca immobiliare, sull'erba accanto al vialetto che porta all'uscita: si cambia stanza
+    { kind: 'realtyBoard', x: -95, y: 115, w: 58, h: 6, z: 95, label: 'Bacheca Immobiliare 🏘️' },
     // piazzetta della fontana
     { kind: 'fountain', x: 0, y: 0, w: 70, h: 70, label: 'Fontana ⛲', z: 60 },
     // due panchine sul bordo del vialetto che va all'ala sinistra, rivolte verso di lui
@@ -2386,9 +2390,9 @@ export const ENV_DECOR = {
     // - sul vialetto che va dalla piazzetta della fontana alle 6 palazzine
     { kind: 'streetlamp', x: -36, y: -122, w: 8, h: 8 },
     { kind: 'streetlamp', x: 36, y: -122, w: 8, h: 8 },
-    // - all'ingresso del cortile
-    { kind: 'streetlamp', x: -36, y: 196, w: 8, h: 8 },
-    { kind: 'streetlamp', x: 36, y: 196, w: 8, h: 8 },
+    // - ai lati dell'uscita del condominio
+    { kind: 'streetlamp', x: -46, y: 180, w: 8, h: 8 },
+    { kind: 'streetlamp', x: 46, y: 180, w: 8, h: 8 },
   ],
   SALOON: [
     { kind: 'plant', x: -168, y: -160, w: 26, h: 26, z: 60 },

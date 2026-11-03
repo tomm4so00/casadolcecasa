@@ -46,6 +46,7 @@ import {
 } from './saves.js';
 import { applyRoomBounds } from './room-size.js';
 import { openDialog } from './interface.js';
+import { openRealtyBoard } from './realty.js';
 import { relaxWith, toast } from './missions.js';
 import {
   freeRoomsInApt,
@@ -389,16 +390,16 @@ export function checkProximity(..._args: GameValue[]): GameValue {
     game.activeTargetProp = found;
     pop.classList.remove('hidden');
     let item: GameValue = map[found] || spots[found] || pets[found];
-    if (game.view.activeEnvironment === 'SALOON') {
-      if (found === 'exitHouse') {
-        if (!game.view.isOutsideMenuOpen) {
-          btnMain.innerText = '🚪 Esci di Casa';
-          btnMain.classList.remove('btn-pop-locked');
-          btnSub.classList.add('hidden');
-        } else {
-          btnMain.innerText = '🚪 Chiudi Menu Uscita';
-        }
-      } else if (item.roomIdx !== undefined) {
+    // vicino a qualcosa che non è l'uscita del condominio il menu per uscire si chiude
+    if (found !== 'exitHouse') game.view.isOutsideMenuOpen = false;
+    if (found === 'exitHouse') {
+      btnMain.innerText = game.view.isOutsideMenuOpen
+        ? '🚪 Chiudi Menu Uscita'
+        : '🚪 Esci dal Condominio';
+      btnMain.classList.remove('btn-pop-locked');
+      btnSub.classList.add('hidden');
+    } else if (game.view.activeEnvironment === 'SALOON') {
+      if (item.roomIdx !== undefined) {
         game.view.isOutsideMenuOpen = false;
         let room: GameValue = game.roomsState[game.gRoomIdx(item)];
         if (!room || !room.owner) {
@@ -564,6 +565,7 @@ export function checkProximity(..._args: GameValue[]): GameValue {
       btnMain.classList.remove('btn-pop-locked');
       if (item.fun === 'bench')
         btnMain.innerText = game.benchSit ? '🧍 Alzati' : '🪑 Siediti sulla panchina';
+      else if (item.fun === 'realty') btnMain.innerText = '🏘️ Bacheca immobiliare: cambia stanza';
       else {
         btnMain.innerText = `⛲ Lancia una moneta nella fontana (${COIN_PRICE} €)`;
         btnMain.classList.toggle('btn-pop-locked', !!game.coinToss);
@@ -798,7 +800,8 @@ export async function resumeLastSpot(): Promise<boolean> {
   return true;
 }
 
-// Ritorno al salone davanti alla porta da cui si esce: stanza, cucina, bagno o uscita di casa.
+// Ritorno al salone davanti alla porta da cui si esce (stanza, cucina, bagno, cortile);
+// da fuori (lavoro, negozi, gite…) si rientra invece dall'uscita del condominio, nel cortile.
 /** La porta si spalanca (con il suo rumore) e dopo un attimo si passa dall'altra parte. */
 function throughDoor(id: string): Promise<void> {
   game.doorForce[id] = performance.now() + 900;
@@ -813,10 +816,13 @@ function backToSaloon(): void {
     return;
   }
   const doors: GameValue = game.saloonDoors;
-  let door: GameValue = doors.exitHouse;
+  if (!['KITCHEN', 'BATHROOM', 'CORTILE', 'PLAYER_ROOM'].includes(env)) {
+    backToCourtyardGate();
+    return;
+  }
+  let door: GameValue = doors.courtyard;
   if (env === 'KITCHEN') door = doors.kitchen;
   else if (env === 'BATHROOM') door = doors.bathroom;
-  else if (env === 'CORTILE') door = doors.courtyard;
   else if (env === 'PLAYER_ROOM')
     door =
       Object.values(doors).find(
@@ -829,6 +835,14 @@ function backToSaloon(): void {
   spawnAtDoor(door);
   const doorKey = Object.keys(doors).find((k) => doors[k] === door);
   if (doorKey) game.doorForce['saloon:' + doorKey] = performance.now() + 500;
+}
+
+/** Rientro da fuori: si ricompare nel cortile, appena dentro l'uscita del condominio. */
+export function backToCourtyardGate(): void {
+  game.view.activeEnvironment = 'CORTILE';
+  game.view.currentRoomTitle = game.saloonDoors.courtyard.title || 'Cortile Condominiale';
+  applyRoomBounds('CORTILE');
+  spawnAtDoor(game.courtyardDoors.exitHouse);
 }
 
 // ---------------------------------------------------------------- viaggio
@@ -945,15 +959,18 @@ export async function handleObjectInteract(..._args: GameValue[]): Promise<void>
     if (item) openDealer();
     return;
   }
+  if (game.view.activeEnvironment === 'CORTILE' && game.activeTargetProp === 'exitHouse') {
+    // l'uscita del condominio apre il menu dei posti dove andare
+    game.view.isOutsideMenuOpen = !game.view.isOutsideMenuOpen;
+    game.view.outsideSubmenu = '';
+    dom('btn-act-main').innerText = game.view.isOutsideMenuOpen
+      ? '🚪 Chiudi Menu Uscita'
+      : '🚪 Esci dal Condominio';
+    renderOutsideMenu();
+    return;
+  }
   if (game.view.activeEnvironment === 'SALOON') {
-    if (game.activeTargetProp === 'exitHouse') {
-      game.view.isOutsideMenuOpen = !game.view.isOutsideMenuOpen;
-      game.view.outsideSubmenu = '';
-      dom('btn-act-main').innerText = game.view.isOutsideMenuOpen
-        ? '🚪 Chiudi Menu Uscita'
-        : '🚪 Esci di Casa';
-      renderOutsideMenu();
-    } else if (item.targetEnv === 'PLAYER_ROOM') {
+    if (item.targetEnv === 'PLAYER_ROOM') {
       const gi: GameValue = game.gRoomIdx(item);
       let room: GameValue = game.roomsState[gi];
       if (!room || !room.owner) {
@@ -978,6 +995,7 @@ export async function handleObjectInteract(..._args: GameValue[]): Promise<void>
   } else if (game.view.activeEnvironment === 'CORTILE') {
     const spot = funSpots()[game.activeTargetProp];
     if (spot?.fun === 'bench') toggleBench(game.activeTargetProp);
+    else if (spot?.fun === 'realty') await openRealtyBoard();
     else if (spot?.fun === 'fountain') await tossCoin();
     else if (item && item.aptIdx !== undefined) {
       await throughDoor('cortile:' + game.activeTargetProp);
