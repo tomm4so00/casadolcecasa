@@ -45,7 +45,7 @@ try {
   console.log('CATALOG', catalog);
   assert.equal(catalog.rooms, 64);
   assert(
-    catalog.clothes === 74 &&
+    catalog.clothes === 75 &&
       catalog.furniture === 21 &&
       catalog.jobs === 4 &&
       catalog.business === 3,

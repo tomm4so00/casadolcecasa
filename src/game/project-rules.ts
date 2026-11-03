@@ -1,6 +1,6 @@
 // Progetti di gruppo del laboratorio ingegneristico (senza dipendenze dal browser, così è testabile).
 
-export type ProjectId = 'rocket';
+export type ProjectId = 'rocket' | 'moonbase';
 
 export interface ProjectDef {
   id: ProjectId;
@@ -21,7 +21,25 @@ export const PROJECTS: Record<ProjectId, ProjectDef> = {
       { at: 15000, label: 'Razzo completo' },
     ],
   },
+  moonbase: {
+    id: 'moonbase',
+    name: 'Base spaziale lunare 🌙',
+    description:
+      'Dopo il razzo, costruiamo una base sulla luna! Con 15.000 € partono i lavori e sulla luna compaiono i primi moduli; a 30.000 € la base è a metà, a 45.000 € è completa. Nel laboratorio uno schermo la trasmette in diretta.',
+    stages: [
+      { at: 15000, label: 'Lavori avviati: primi moduli della base' },
+      { at: 30000, label: 'Base a metà: secondo modulo e antenna' },
+      { at: 45000, label: 'Base lunare completa' },
+    ],
+  },
 };
+/** Ordine in cui i progetti compaiono sulla bacheca. */
+export const PROJECT_IDS: ProjectId[] = ['rocket', 'moonbase'];
+
+/** Il secondo progetto si sblocca dopo il primo lancio del razzo. */
+export function projectUnlocked(id: ProjectId, rocketLaunchAt: number | undefined): boolean {
+  return id === 'rocket' || !!rocketLaunchAt;
+}
 
 /** Versamento minimo, così la bacheca non si riempie di monetine. */
 export const MIN_DONATION = 10;

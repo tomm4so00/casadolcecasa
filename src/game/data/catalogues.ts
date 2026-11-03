@@ -188,6 +188,15 @@ export const SHOP_CATALOG = [
     style: 'tophat',
   },
   {
+    // serve sulla luna: senza si perde salute (vedi space-helmet.ts)
+    id: 'hat_space',
+    slot: 'hat',
+    name: 'Casco Spaziale 🚀',
+    price: 150,
+    color: '#dfe6e9',
+    style: 'space',
+  },
+  {
     id: 'item_crown',
     slot: 'hat',
     name: 'Corona Dorata 👑',
@@ -1649,6 +1658,20 @@ export const MOON_FURNITURE = {
   },
 };
 
+// Dentro la base spaziale lunare (si entra quando è completa): pannello di controllo e portellone.
+export const MOONBASE_INSIDE_FURNITURE = {
+  baseConsole: {
+    x: 60,
+    y: -140,
+    w: 96,
+    h: 26,
+    z: 50,
+    name: 'Pannello di controllo 🖥️',
+    moveable: false,
+  },
+  doorExit: { x: 0, y: 160, w: 60, h: 15, z: 110, name: 'Portellone 🚀', moveable: false },
+};
+
 // Grow shop: le tre varietà in esposizione (ognuna con la sua lampada) e l'uscita.
 export const GROWSHOP_FURNITURE = {
   strainLemon: {
@@ -1687,8 +1710,8 @@ export const GROWSHOP_FURNITURE = {
 // Negozio di animali: sei espositori (cucce per cane e gatto, gabbie, teca e acquario), il bancone
 // delle adozioni e l'uscita.
 export const PETSHOP_FURNITURE = {
-  shopDog: { x: -120, y: -125, w: 40, h: 30, z: 20, pet: 'dog', name: 'Cane 🐶', moveable: false },
-  shopCat: { x: -40, y: -140, w: 36, h: 28, z: 20, pet: 'cat', name: 'Gatto 🐱', moveable: false },
+  shopDog: { x: -115, y: -118, w: 64, h: 52, z: 16, pet: 'dog', name: 'Cane 🐶', moveable: false },
+  shopCat: { x: -40, y: -128, w: 56, h: 46, z: 16, pet: 'cat', name: 'Gatto 🐱', moveable: false },
   shopBird: {
     x: 40,
     y: -140,
@@ -2418,9 +2441,38 @@ export const ENV_DECOR = {
     { kind: 'plant', x: -168, y: -160, w: 26, h: 26, z: 60 },
     { kind: 'plant', x: 168, y: 150, w: 26, h: 26, z: 60 },
   ],
+  base_lunare: [
+    {
+      kind: 'mbWindow',
+      x: -30,
+      y: -176,
+      w: 100,
+      h: 6,
+      z: 100,
+      solid: false,
+      label: 'Oblò sulla Terra 🌍',
+    },
+    { kind: 'mbBunk', x: -160, y: 30, w: 38, h: 72, z: 60, label: 'Cuccette 🛏️' },
+    { kind: 'mbHydro', x: 165, y: 30, w: 30, h: 72, z: 80, label: 'Serra idroponica 🌱' },
+    { kind: 'mbLockers', x: 168, y: -120, w: 28, h: 50, z: 76 },
+    { kind: 'mbTable', x: -30, y: 50, w: 40, h: 40, z: 27 },
+  ],
   negozio_animali: [
-    { kind: 'plant', x: -168, y: -160, w: 26, h: 26, z: 60 },
+    { kind: 'plant', x: -175, y: -168, w: 24, h: 24, z: 60 },
     { kind: 'plant', x: 168, y: -160, w: 26, h: 26, z: 60 },
+    // scaffali con articoli e cibo per animali
+    { kind: 'petShelf', x: -184, y: -40, w: 22, h: 90, z: 64, label: 'Cibo per animali 🦴' },
+    { kind: 'petShelf', x: 184, y: -45, w: 22, h: 80, z: 64, seed: 1 },
+    {
+      kind: 'petShelf',
+      x: -45,
+      y: 40,
+      w: 60,
+      h: 22,
+      z: 52,
+      seed: 2,
+      label: 'Giochi e accessori 🎾',
+    },
     { kind: 'plant', x: -168, y: 140, w: 26, h: 26, z: 60 },
     { kind: 'plant', x: 168, y: 140, w: 26, h: 26, z: 60 },
   ],
@@ -2432,15 +2484,16 @@ export const ENV_DECOR = {
   ],
   luna: [
     { kind: 'crater', x: -170, y: -150, w: 80, h: 80, r: 40, solid: false, flat: true },
-    { kind: 'crater', x: 160, y: 90, w: 110, h: 110, r: 55, solid: false, flat: true },
+    // (sul lato destro sorge la base lunare: questo cratere è più in là)
+    { kind: 'crater', x: -150, y: -260, w: 110, h: 110, r: 55, solid: false, flat: true },
     { kind: 'crater', x: -60, y: 170, w: 60, h: 60, r: 30, solid: false, flat: true },
     { kind: 'crater', x: 210, y: -180, w: 70, h: 70, r: 35, solid: false, flat: true },
     { kind: 'crater', x: -220, y: 110, w: 90, h: 90, r: 45, solid: false, flat: true },
     { kind: 'crater', x: 60, y: 250, w: 50, h: 50, r: 25, solid: false, flat: true },
-    { kind: 'moonRock', x: 100, y: -40, w: 22, h: 18, z: 14 },
+    { kind: 'moonRock', x: -120, y: 60, w: 22, h: 18, z: 14 },
     { kind: 'moonRock', x: -210, y: -20, w: 28, h: 22, z: 18 },
     { kind: 'moonRock', x: 30, y: 200, w: 18, h: 16, z: 12 },
-    { kind: 'moonRock', x: 250, y: 20, w: 24, h: 20, z: 16 },
+    { kind: 'moonRock', x: -250, y: -60, w: 24, h: 20, z: 16 },
     { kind: 'moonFlag', x: 110, y: -140, w: 8, h: 8, z: 80, label: 'Bandiera CDC-1 🚩' },
   ],
   centro_commerciale: [
@@ -2597,6 +2650,25 @@ export const ENV_STYLE = {
     ],
   },
   luna: { floor: 'moon', floorColor: '#bdbdb6', outdoor: true },
+  base_lunare: {
+    floor: 'tiles',
+    floorColor: '#cfd8dc',
+    wall: '#eceff1',
+    wallStyle: 'plain',
+    trim: '#00a8ff',
+    decor: {
+      back: [{ t: 'neon', u: 300, text: 'BASE CDC', color: '0,210,255' }],
+      left: [
+        { t: 'poster', u: 110, text: 'MISSIONE COMPIUTA', color: '#0984e3' },
+        { t: 'clock', u: 260 },
+      ],
+    },
+    lights: [
+      { x: -90, y: -100, z: 0, r: 200, color: '210,235,255' },
+      { x: 90, y: -60, z: 0, r: 200, color: '210,235,255' },
+      { x: 0, y: 90, z: 0, r: 220, color: '235,245,255' },
+    ],
+  },
   negozio_animali: {
     floor: 'wood',
     floorColor: '#d9b48f',

@@ -1,4 +1,5 @@
 import { updateRocketTrip } from './moon.js';
+import { partVisible } from './render/moonbase.js';
 import {
   myBathPose,
   myUndressStep,
@@ -9,6 +10,7 @@ import {
 import { drawClothesPile, drawFluGerms, drawSmokePuffs, undressedLook } from './render/avatars.js';
 import { isSick } from './flu-rules.js';
 import { petDrawables, updatePets } from './pets.js';
+import { updateSpaceHelmet } from './space-helmet.js';
 import { collarPoint, drawLeash, drawQuadruped } from './render/pets.js';
 import {
   drawCoinToss,
@@ -66,10 +68,14 @@ import { updateCamera } from './camera.js';
 import { applyRoomBounds } from './room-size.js';
 import { presenceState } from './presence-rules.js';
 import type { OnlinePlayer } from './network-model.js';
+/** I pezzi della base lunare si vedono solo dalla loro fase in poi (gli altri oggetti sempre). */
+const shownPart = (p: GameValue): boolean =>
+  p.stage === undefined || partVisible(p, game.moonBaseStage || 0);
+
 export function getSolidObstacles(..._args: GameValue[]): GameValue {
   const extra: GameValue = (game.ENV_PROPS[game.view.activeEnvironment] || [])
     .concat(game.ENV_DECOR[game.view.activeEnvironment] || [])
-    .filter((p?: GameValue): GameValue => p.solid !== false);
+    .filter((p?: GameValue): GameValue => p.solid !== false && shownPart(p));
   if (game.ENV_PROPS[game.view.activeEnvironment]) return extra;
   if (game.view.activeEnvironment === 'SALOON') return extra;
   let map = getCurrentFurnitureMap();
@@ -146,6 +152,7 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
   if (game.coinToss) updateCoinToss(animTime);
   if (game.iceCream) updateIceCream(animTime);
   updatePets(animTime);
+  updateSpaceHelmet(Math.min(delta, 0.25), animTime);
   if (kissActive()) approachKissPartner(delta);
   if (
     !game.player.isSleeping &&
@@ -219,6 +226,7 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
   };
   (game.ENV_PROPS[game.view.activeEnvironment] || [])
     .concat(game.ENV_DECOR[game.view.activeEnvironment] || [])
+    .filter(shownPart)
     .forEach((p?: GameValue): GameValue => {
       const fn: GameValue = game.PROP_DRAW[p.kind];
       addThing(
@@ -231,6 +239,7 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
         (): GameValue => {
           if (
             !p.flat &&
+            p.stage === undefined && // i pezzi della base lunare hanno la loro ombra
             !['tree', 'palm', 'ball', 'cone', 'stool', 'umbrella', 'streetlamp'].includes(p.kind)
           )
             softShadow(p.x, p.y, p.w, p.h);
@@ -544,6 +553,7 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
   if (!game.OUTDOOR_ENVS.includes(game.view.activeEnvironment)) dark *= 0.8;
   if (game.view.activeEnvironment === 'discoteca') dark = 0.6;
   if (game.view.activeEnvironment === 'luna') dark = 0.12; // nello spazio c'è sempre il sole
+  if (game.view.activeEnvironment === 'base_lunare') dark = 0.2; // dentro la base: luci accese
   applyLighting(dark, lights, st);
   labels.forEach((l?: GameValue): GameValue => l());
   drawSleepThoughts();

@@ -21,6 +21,7 @@ import { bizInvest, bizWithdraw, openBizSite } from './business.js';
 import { closeGlobalChat, openGlobalChat, sendChat } from './chat.js';
 import {
   buyFurnitureItem,
+  sellFurnitureItem,
   chooseOrGoToJob,
   continueCurrentJob,
   doActivity,
@@ -85,4 +86,5 @@ export const uiActions: Readonly<Record<string, UiAction>> = {
     if (id === 'shop' || id === 'app' || id === 'crypto') return bizWithdraw(id);
   },
   buyFurnitureItem: ([arg0]) => buyFurnitureItem(String(arg0)),
+  sellFurnitureItem: ([arg0]) => void sellFurnitureItem(String(arg0)),
 };

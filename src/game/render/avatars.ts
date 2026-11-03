@@ -268,6 +268,7 @@ export function drawGlasses(head?: GameValue, s?: GameValue, gl?: GameValue): Ga
 // Altezza del cappello sopra la testa, per spostare in alto la targhetta col nome.
 const HAT_TAG_HEIGHT: Record<string, number> = {
   tophat: 40,
+  space: 40,
   chef: 40,
   party: 42,
   santa: 37,
@@ -283,6 +284,9 @@ export function drawHat(head?: GameValue, s?: GameValue, hat?: GameValue): GameV
     hy = head.y;
   ctx.lineCap = 'round';
   switch (hat.style) {
+    case 'space':
+      // la bolla di vetro si disegna dopo il viso (vedi drawPlayerAvatar)
+      break;
     case 'beanie': {
       const g = ctx.createLinearGradient(hx - 10 * s, 0, hx + 10 * s, 0);
       g.addColorStop(0, game.lighten(c, 0.12));
@@ -2223,8 +2227,8 @@ export function drawPlayerAvatar(
   }
   drawGlasses(head, s, look.glasses);
   drawHat(head, s, look.hat);
-  // sulla luna tutti portano il casco da astronauta (non nelle icone)
-  if (game.view.activeEnvironment === 'luna' && !mannequin && !(opts && opts.noShadow)) {
+  // il casco spaziale (comprato al negozio) si disegna sopra tutto, come una bolla di vetro
+  if (look.hat && look.hat.style === 'space') {
     ctx.fillStyle = 'rgba(200,230,255,0.18)';
     ctx.strokeStyle = 'rgba(255,255,255,0.75)';
     ctx.lineWidth = 1.4 * s;

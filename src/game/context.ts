@@ -146,6 +146,8 @@ export interface GameContext {
   moonFurniture: SceneMap;
   growshopFurniture: SceneMap;
   petshopFurniture: SceneMap;
+  /** Dentro la base spaziale lunare. */
+  moonbaseInsideFurniture: SceneMap;
   /** Cane al guinzaglio che segue il giocatore (null se è a casa). */
   dogWalk: GameValue;
   /** Dove è stato lasciato il cane togliendogli il guinzaglio. */
@@ -171,6 +173,10 @@ export interface GameContext {
   engineeringYardFurniture: SceneMap;
   /** Fase del razzo del laboratorio ingegneristico: 0 niente, 1 pezzi, 2 completo. */
   rocketStage: number;
+  /** Fase della base lunare (0 = non ancora avviata, 3 = completa). */
+  moonBaseStage: number;
+  /** Soldi raccolti per la base lunare (per lo schermo del laboratorio). */
+  moonBaseFunded: number;
   /** Ora (del server) del lancio del razzo, 0 se non è ancora fissata. */
   rocketLaunchAt: number;
   /** Momento (animClock) in cui si è premuto il pulsante rosso, per l'animazione. */

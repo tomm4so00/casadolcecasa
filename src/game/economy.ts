@@ -81,6 +81,22 @@ export function purchaseItem(
     return -price;
   });
 }
+/**
+ * Rivende un oggetto comprato: smette di essere tuo e ricevi `refund` euro, nella stessa
+ * transazione. Le regole del database vogliono vero/falso per ogni oggetto: si segna false.
+ */
+export function sellItem(
+  kind: 'ownedItems' | 'ownedFurniture',
+  id: string,
+  refund: number,
+): Promise<boolean> {
+  if (!Number.isSafeInteger(refund) || refund < 0 || !id) return Promise.resolve(false);
+  return updateEconomy((economy) => {
+    if (!economy[kind][id]) return null;
+    economy[kind][id] = false;
+    return refund;
+  });
+}
 export async function flushEconomy(): Promise<void> {
   await wallet?.settled();
 }

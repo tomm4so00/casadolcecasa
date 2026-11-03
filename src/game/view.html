@@ -1,5 +1,7 @@
 <canvas id="game-canvas"></canvas>
 <div id="toast-container"></div>
+<!-- Sulla luna senza casco: bordo rosso che pulsa -->
+<div id="no-air-overlay" class="hidden"></div>
 <!-- Crollo / boom della borsa: ticker che scorre in alto -->
 <div id="market-ticker" class="hidden" aria-live="polite">
   <div id="market-ticker-text"></div>
@@ -787,7 +789,8 @@
     <div class="browser-body">
       <h3 style="color: #e67e22; text-align: center">🛋️ Showroom Negozio di Mobili</h3>
       <p style="text-align: center; font-size: 0.8rem; color: #aaa; margin-bottom: 10px">
-        Acquista versioni Standard, Pregiate 💎 o di Lusso ✨ per arredare la tua stanza!
+        Acquista versioni Standard, Pregiate 💎 o di Lusso ✨ per arredare la tua stanza, o rivendi
+        quelle che hai (85% del prezzo).
       </p>
       <div
         id="furniture-catalog-container"

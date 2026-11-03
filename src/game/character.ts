@@ -1,4 +1,6 @@
-import { purchaseItem, spendMoney } from './economy.js';
+import { openDialog } from './interface.js';
+import { purchaseItem, sellItem, spendMoney } from './economy.js';
+import { resaleValue } from './resale-rules.js';
 import { startDogWalk } from './pets.js';
 import type { GameValue } from './context.js';
 import { game } from './context.js';
@@ -284,10 +286,15 @@ export function renderClothesShop(..._args: GameValue[]): GameValue {
         (owned
           ? `<div class="owned-tag">✓ Nel tuo armadio</div>`
           : `<div class="price">💰 ${it.price} €</div>`) +
-        `<div class="btn-row"><button type="button" data-act="try">👀 Prova</button>${owned ? '' : '<button type="button" class="buy" data-act="buy">Compra</button>'}</div>`;
+        `<div class="btn-row"><button type="button" data-act="try">👀 Prova</button>${
+          owned
+            ? `<button type="button" class="sell" data-act="sell">💸 Rivendi ${resaleValue(it.price)} €</button>`
+            : '<button type="button" class="buy" data-act="buy">Compra</button>'
+        }</div>`;
       card.onclick = (e?: GameValue): GameValue => {
         const act: GameValue = e.target.dataset && e.target.dataset.act;
         if (act === 'buy') buyClothing(it.id);
+        else if (act === 'sell') void sellClothing(it.id);
         else {
           game.shopState.tryOn = game.shopState.tryOn === it.id ? null : it.id;
           renderClothesShop();
@@ -308,6 +315,29 @@ export async function buyClothing(id: string): Promise<void> {
   if (!(await purchaseItem('ownedItems', id, it.price))) return;
   game.shopState.tryOn = id;
   toast(`✅ Hai comprato ${it.name}! Indossalo dall'armadio della tua stanza 🚪`, 3500);
+  saveGame(true);
+  renderClothesShop();
+}
+
+/** Rivende un vestito comprato: si riprende l'85% del prezzo; se lo indossavi torna quello base. */
+export async function sellClothing(id: string): Promise<void> {
+  const it: GameValue = itemById(id);
+  if (!it || it.starter || !game.player.ownedItems[id]) return;
+  const refund = resaleValue(it.price);
+  const res: GameValue = await openDialog({
+    title: `💸 Rivendere ${it.name}?`,
+    text: `L'avevi pagato ${it.price} €: rivendendolo ricevi ${refund} € (il 15% in meno).`,
+    buttons: [
+      { label: 'Annulla', value: null },
+      { label: `Rivendi (${refund} €)`, value: 'sell', color: '#e67e22' },
+    ],
+  });
+  if (res.action !== 'sell') return;
+  if (!(await sellItem('ownedItems', id, refund))) return;
+  if (game.player.equipped[it.slot] === id)
+    game.player.equipped[it.slot] = game.DEFAULT_LOOK[it.slot];
+  sfx('coin');
+  toast(`💸 Hai rivenduto ${it.name}: +${refund} € in cassaforte.`, 3500);
   saveGame(true);
   renderClothesShop();
 }

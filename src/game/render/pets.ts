@@ -3,7 +3,7 @@
 import type { GameValue } from '../context.js';
 import { game } from '../context.js';
 import { footprintOf, isoProject, isoScale, poly } from './primitives.js';
-import { box, ellipseShadow } from './objects.js';
+import { box, ellipseShadow, onFace } from './objects.js';
 import type { PetKind } from '../pet-rules.js';
 
 type Pt = { x: number; y: number };
@@ -639,22 +639,161 @@ export function drawPetHome(kind: PetKind, it: GameValue, t: number): void {
   else if (kind === 'fish') drawAquarium(it, t);
 }
 
-/** Espositore del negozio: piedistallo con la casetta, o la cuccia con il cane/gatto seduto. */
+/** Espositore del negozio: il recinto con il cane o il gatto, oppure la casetta degli altri. */
 export function drawShopPet(it: GameValue, t: number): void {
   const kind = it.pet as PetKind;
-  if (kind === 'dog' || kind === 'cat') {
-    // cuccia morbida
-    box(it.x, it.y, it.w, it.h, 6, kind === 'dog' ? '#5d4037' : '#8e44ad', {
-      top: kind === 'dog' ? '#a1887f' : '#d2b4de',
-    });
-    const lean = Math.sin(t * 0.5 + (kind === 'dog' ? 0 : 2));
-    drawQuadruped(kind, it.x, it.y + 2, t, {
-      moving: false,
-      dx: lean >= 0 ? 1 : -1,
-      dy: 0,
-      sit: true,
-    });
-    return;
+  if (kind === 'dog' || kind === 'cat') drawPen(kind, it, t);
+  else drawPetHome(kind, it, t);
+}
+
+/**
+ * Piccolo recinto di legno con la paglia, la cuccia e la ciotola: dentro il cane (o il gatto)
+ * cammina avanti e indietro e ogni tanto si siede.
+ */
+function drawPen(kind: 'dog' | 'cat', it: GameValue, t: number): void {
+  const ctx = game.view.ctx;
+  const s = isoScale();
+  const { x, y, w, h } = it;
+  const x0 = x - w / 2,
+    x1 = x + w / 2,
+    y0 = y - h / 2,
+    y1 = y + h / 2;
+  const H = 14;
+  const wood = kind === 'dog' ? '#f5f0e1' : '#f8e1f0';
+  const post = (px: number, py: number) =>
+    box(px, py, 3, 3, H + 2, wood, { edge: 'rgba(0,0,0,0.35)' });
+  const railX = (py: number) => {
+    for (const z of [5, H - 2]) box(x, py, w, 1.6, 1.8, wood, { z0: z, edge: 'rgba(0,0,0,0.3)' });
+  };
+  const railY = (px: number) => {
+    for (const z of [5, H - 2]) box(px, y, 1.6, h, 1.8, wood, { z0: z, edge: 'rgba(0,0,0,0.3)' });
+  };
+  // pavimento: paglia per il cane, tappetino per il gatto
+  poly(
+    [P(x0, y0, 0.5), P(x1, y0, 0.5), P(x1, y1, 0.5), P(x0, y1, 0.5)],
+    kind === 'dog' ? '#e9c46a' : '#cdb4db',
+  );
+  if (kind === 'dog') {
+    ctx.strokeStyle = 'rgba(160,120,40,0.55)';
+    ctx.lineWidth = 0.8;
+    for (let i = 0; i < 22; i++) {
+      const a = P(x0 + 4 + ((i * 37) % (w - 8)), y0 + 4 + ((i * 53) % (h - 8)), 0.6);
+      ctx.beginPath();
+      ctx.moveTo(a.x - 2.5 * s, a.y);
+      ctx.lineTo(a.x + 2.5 * s, a.y - 1 * s);
+      ctx.stroke();
+    }
   }
-  drawPetHome(kind, it, t);
+  // recinto dietro (prima dell'animale)
+  for (let i = 0; i <= 4; i++) post(x0 + (w * i) / 4, y0);
+  for (let i = 1; i <= 3; i++) post(x0, y0 + (h * i) / 4);
+  railX(y0);
+  railY(x0);
+  // cuccia (cane) o tiragraffi con il cuscino (gatto) in un angolo, e la ciotola
+  if (kind === 'dog') {
+    box(x0 + 12, y0 + 11, 18, 16, 12, '#c0392b', { top: '#922b21' });
+    box(x0 + 12, y0 + 11, 20, 18, 3, '#7b241c', { z0: 12 });
+  } else {
+    box(x0 + 10, y0 + 10, 6, 6, 22, '#d7b899');
+    box(x0 + 10, y0 + 10, 12, 12, 3, '#8e44ad', { z0: 22 });
+  }
+  const bowl = P(x1 - 9, y1 - 8, 1);
+  ctx.fillStyle = '#3498db';
+  ctx.beginPath();
+  ctx.ellipse(bowl.x, bowl.y, 5 * s, 2.5 * s, 0, 0, 6.3);
+  ctx.fill();
+  ctx.fillStyle = '#8d5524';
+  ctx.beginPath();
+  ctx.ellipse(bowl.x, bowl.y - 0.6 * s, 3.4 * s, 1.5 * s, 0, 0, 6.3);
+  ctx.fill();
+  // l'animale passeggia nel recinto e ogni tanto si siede
+  const cycle = (t * (kind === 'dog' ? 0.3 : 0.22) + (kind === 'dog' ? 0 : 0.5)) % 2;
+  const resting = cycle > 1.6;
+  const k = resting ? 1.6 : cycle;
+  const ax = x + Math.sin(k * Math.PI) * (w / 2 - 14);
+  const ay = y + Math.cos(k * Math.PI * 0.5) * (h / 2 - 14) * 0.6 + 4;
+  const vx = Math.cos(k * Math.PI);
+  drawQuadruped(kind, ax, ay, t, { moving: !resting, dx: vx >= 0 ? 1 : -1, dy: 0, sit: resting });
+  // recinto davanti (dopo l'animale)
+  for (let i = 0; i <= 4; i++) post(x0 + (w * i) / 4, y1);
+  for (let i = 1; i <= 3; i++) post(x1, y0 + (h * i) / 4);
+  railX(y1);
+  railY(x1);
+}
+
+// ---------------------------------------------------------------- scaffali del negozio
+
+/** Un articolo sullo scaffale: sacchi di crocchette, scatolette, mangime per pesci, giochi. */
+function shelfItem(kind: number, x: number, y: number, z: number, along: 'x' | 'y'): void {
+  const ctx = game.view.ctx;
+  const s = isoScale();
+  const face = along === 'x' ? 'left' : 'right';
+  if (kind === 0) {
+    // sacco di crocchette con l'osso disegnato
+    const b = box(x, y, along === 'x' ? 10 : 6, along === 'x' ? 6 : 10, 14, '#a0522d', {
+      z0: z,
+      top: '#c97c4b',
+    });
+    onFace(b, face, (W: number, H: number): void => {
+      ctx.fillStyle = '#fff3e0';
+      ctx.fillRect(W * 0.25, H * 0.35, W * 0.5, H * 0.18);
+      ctx.beginPath();
+      ctx.arc(W * 0.25, H * 0.44, H * 0.09, 0, 6.3);
+      ctx.arc(W * 0.75, H * 0.44, H * 0.09, 0, 6.3);
+      ctx.fill();
+    });
+  } else if (kind === 1) {
+    // pila di scatolette per gatti
+    for (let i = 0; i < 2; i++)
+      box(x, y, 5, 5, 3.5, i ? '#8e44ad' : '#e84393', { z0: z + i * 3.5, top: '#dfe6e9' });
+  } else if (kind === 2) {
+    // barattolo di mangime per pesci
+    const b = box(x, y, 5, 5, 8, '#00a8ff', { z0: z, top: '#f1c40f' });
+    onFace(b, face, (W: number, H: number): void => {
+      ctx.fillStyle = '#ff7043';
+      ctx.beginPath();
+      ctx.ellipse(W / 2, H * 0.55, W * 0.3, H * 0.15, 0, 0, 6.3);
+      ctx.fill();
+    });
+  } else {
+    // palline da gioco
+    const c = P(x, y, z + 3);
+    ctx.fillStyle = '#c7ec5c';
+    ctx.beginPath();
+    ctx.arc(c.x - 2 * s, c.y, 2.8 * s, 0, 6.3);
+    ctx.fill();
+    ctx.fillStyle = '#ff4757';
+    ctx.beginPath();
+    ctx.arc(c.x + 3 * s, c.y + 0.5 * s, 2.4 * s, 0, 6.3);
+    ctx.fill();
+  }
+}
+
+/** Scaffale di metallo a tre ripiani pieno di articoli e cibo per animali. */
+export function drawPetShelf(it: GameValue): void {
+  const { x, y, w, h, z } = it;
+  const along: 'x' | 'y' = w >= h ? 'x' : 'y';
+  const len = along === 'x' ? w : h;
+  // montanti
+  for (const [dx, dy] of [
+    [-w / 2 + 1.5, -h / 2 + 1.5],
+    [w / 2 - 1.5, -h / 2 + 1.5],
+    [-w / 2 + 1.5, h / 2 - 1.5],
+    [w / 2 - 1.5, h / 2 - 1.5],
+  ])
+    box(x + dx, y + dy, 3, 3, z, '#7f8c8d');
+  const levels = [3, z * 0.36, z * 0.7];
+  levels.forEach((lz, li) => {
+    box(x, y, w, h, 2, '#bdc3c7', { z0: lz });
+    const n = Math.max(3, Math.floor(len / 12));
+    for (let i = 0; i < n; i++) {
+      const u = -len / 2 + 6 + (i * (len - 12)) / (n - 1);
+      const kind = (i + li * 2 + (it.seed || 0)) % 4;
+      shelfItem(kind, along === 'x' ? x + u : x, along === 'x' ? y : y + u, lz + 2, along);
+    }
+  });
+  // cartello arancione in cima
+  box(x, y, along === 'x' ? w * 0.6 : 3, along === 'x' ? 3 : h * 0.6, 8, '#e67e22', {
+    z0: z + 2,
+  });
 }

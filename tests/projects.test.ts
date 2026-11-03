@@ -19,6 +19,7 @@ import {
   FLIGHT_TOTAL_MS,
   MOON_TRIP_PRICE,
   rocketFlight,
+  projectUnlocked,
 } from '../src/game/project-rules.js';
 import { type PushSender, notifyRocketAlmostReady } from '../server/src/maintenance.js';
 import { localDatabase } from '../src/game/database.js';
@@ -176,5 +177,38 @@ describe('viaggi sulla luna', () => {
     const trip = rules.sims_projects.$project.trip;
     expect(trip['.write']).toContain("child('launchAt').exists()");
     expect(trip['.write']).toContain('72000');
+  });
+});
+
+describe('base spaziale lunare', () => {
+  const base = PROJECTS.moonbase;
+  it('si avvia con 15.000 €, è a metà con 30.000 € e finita con 45.000 €', () => {
+    expect(projectGoal(base)).toBe(45000);
+    expect(projectStage(base, 14999)).toBe(0);
+    expect(projectStage(base, 15000)).toBe(1);
+    expect(projectStage(base, 30000)).toBe(2);
+    expect(projectStage(base, 44999)).toBe(2);
+    expect(projectStage(base, 45000)).toBe(3);
+    expect(toNextStage(base, 20000)).toBe(10000);
+    expect(donationError(base, 44990, 20, 500)).toMatch(/mancano solo 10/);
+  });
+
+  it('si sblocca solo dopo il primo lancio del razzo', () => {
+    expect(projectUnlocked('rocket', undefined)).toBe(true);
+    expect(projectUnlocked('moonbase', undefined)).toBe(false);
+    expect(projectUnlocked('moonbase', 1_800_000_000_000)).toBe(true);
+  });
+
+  it('le regole del database accettano la base solo dopo il lancio e fino a 45.000 €', () => {
+    const rules = JSON.parse(
+      fs.readFileSync('firebase/database.rules.proposed.json', 'utf8'),
+    ).rules;
+    const p = rules.sims_projects.$project;
+    expect(p['.validate']).toContain("'moonbase'");
+    expect(p.funded['.validate']).toContain("$project === 'moonbase' && newData.val() <= 45000");
+    expect(p.funded['.validate']).toContain("child('rocket').child('launchAt').exists()");
+    // il pulsante rosso e i viaggi restano solo del razzo
+    expect(p.launchAt['.write']).toMatch(/^\$project === 'rocket'/);
+    expect(p.trip['.write']).toMatch(/^\$project === 'rocket'/);
   });
 });

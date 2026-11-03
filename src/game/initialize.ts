@@ -1,5 +1,13 @@
 import { canSellJoint } from './weed.js';
-import { drawPetBubble, drawPetHome, drawShopPet } from './render/pets.js';
+import {
+  MOONBASE_DRAW,
+  MOONBASE_INSIDE_DRAW,
+  MOONBASE_PARTS,
+  drawBaseConsole,
+  drawBaseDoor,
+  drawMoonScreen,
+} from './render/moonbase.js';
+import { drawPetBubble, drawPetHome, drawPetShelf, drawShopPet } from './render/pets.js';
 import { homeBubble } from './pets.js';
 import type { PetKind } from './pet-rules.js';
 import { canKiss } from './romance.js';
@@ -28,6 +36,7 @@ import {
   MOON_FURNITURE,
   GROWSHOP_FURNITURE,
   PETSHOP_FURNITURE,
+  MOONBASE_INSIDE_FURNITURE,
   ENGINEERING_YARD_FURNITURE,
   STORE_FLOOR_FURNITURE,
   SALOON_DOORS,
@@ -390,6 +399,7 @@ export function initializeGame() {
   game.moonFurniture = structuredClone(MOON_FURNITURE);
   game.growshopFurniture = structuredClone(GROWSHOP_FURNITURE);
   game.petshopFurniture = structuredClone(PETSHOP_FURNITURE);
+  game.moonbaseInsideFurniture = structuredClone(MOONBASE_INSIDE_FURNITURE);
   game.dogWalk = null;
   game.dogLeftAt = null;
   game.visitFreePets = [];
@@ -680,6 +690,11 @@ export function initializeGame() {
     shopBetting: drawShopFacade,
     moonRocket: drawMoonRocket,
     weedPot: drawWeedPot,
+    // schermo del laboratorio con la diretta dalla base lunare
+    moonScreen: drawMoonScreen,
+    // base lunare: ingresso sulla luna e pannello di controllo dentro
+    baseDoor: drawBaseDoor,
+    baseConsole: drawBaseConsole,
     // animali: casette nella stanza (con il fumetto se hanno fame) ed espositori del negozio
     petBird: (it: GameValue, t: GameValue) => drawPetHomeWithBubble('bird', it, t),
     petHamster: (it: GameValue, t: GameValue) => drawPetHomeWithBubble('hamster', it, t),
@@ -729,6 +744,9 @@ export function initializeGame() {
     crater: drawCraterProp,
     moonRock: drawMoonRockProp,
     moonFlag: drawMoonFlagProp,
+    ...MOONBASE_DRAW,
+    ...MOONBASE_INSIDE_DRAW,
+    petShelf: drawPetShelf,
     mallColumn: drawMallColumnProp,
     mallPalm: drawMallPalmProp,
     iceCreamCart: drawIceCreamCartProp,
@@ -773,6 +791,9 @@ export function initializeGame() {
   game.graveMap = {};
   game.ENV_PROPS = structuredClone(ENV_PROPS);
   game.ENV_DECOR = structuredClone(ENV_DECOR);
+  // pezzi della base lunare (si vedono man mano che il progetto avanza: vedi partVisible)
+  game.ENV_DECOR.luna.push(...structuredClone(MOONBASE_PARTS));
+  game.moonBaseStage = 0;
   game.ROOM_WALLS = [
     '#b39ddb',
     '#90caf9',

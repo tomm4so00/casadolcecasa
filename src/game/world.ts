@@ -1,4 +1,5 @@
 import { buyPlant, plantLabel, smokeJoint, tendPlant } from './weed.js';
+import { resaleValue } from './resale-rules.js';
 import { PETS, PET_FOOD_PRICE, type PetKind } from './pet-rules.js';
 import { PET_OF_KEY, buyPet, feed, giveUpForAdoption, petSpots } from './pets.js';
 import { DAILY_LIMITS, recordUse, usesLeftToday } from './daily-limits.js';
@@ -27,7 +28,7 @@ import {
   theftTriesLeft,
 } from './theft-rules.js';
 import { bedtimeThought, notePersonality } from './personality.js';
-import { purchaseItem, spendMoney, creditMoney } from './economy.js';
+import { purchaseItem, sellItem, spendMoney, creditMoney } from './economy.js';
 import type { GameValue } from './context.js';
 import type { SceneMap } from './models.js';
 import { game } from './context.js';
@@ -328,6 +329,7 @@ export function getCurrentFurnitureMap(..._args: GameValue[]): SceneMap {
   if (game.view.activeEnvironment === 'scommesse') return game.bettingFurniture;
   if (game.view.activeEnvironment === 'centro_commerciale') return game.mallFurniture;
   if (game.view.activeEnvironment === 'luna') return game.moonFurniture;
+  if (game.view.activeEnvironment === 'base_lunare') return game.moonbaseInsideFurniture;
   if (game.view.activeEnvironment === 'growshop') return game.growshopFurniture;
   if (game.view.activeEnvironment === 'negozio_animali') return game.petshopFurniture;
   if (game.view.activeEnvironment === 'ingegneria_esterno') return game.engineeringYardFurniture;
@@ -426,6 +428,7 @@ export function checkProximity(..._args: GameValue[]): GameValue {
       btnSub.classList.add('hidden');
       const labels: Record<string, string> = {
         projectBoard: '📌 Guarda i progetti',
+        moonScreen: '📺 Guarda la diretta dalla luna',
         workbench: '🔧 Lavora al bancone',
         doorYard: '🚀 Vai nella zona esterna',
       };
@@ -448,6 +451,15 @@ export function checkProximity(..._args: GameValue[]): GameValue {
       btnMain.innerText = item.strain
         ? `🌱 Compra ${STRAINS[item.strain as StrainId].name} (${STRAINS[item.strain as StrainId].price} €)`
         : '🚪 Torna Fuori';
+    } else if (game.view.activeEnvironment === 'luna' && found === 'baseDoor') {
+      btnSub.classList.add('hidden');
+      btnMain.classList.remove('btn-pop-locked');
+      btnMain.innerText = '🚪 Entra dentro la base spaziale';
+    } else if (game.view.activeEnvironment === 'base_lunare') {
+      btnSub.classList.add('hidden');
+      btnMain.classList.remove('btn-pop-locked');
+      btnMain.innerText =
+        found === 'baseConsole' ? '🖥️ Guarda il pannello di controllo' : '🚀 Esci sulla luna';
     } else if (game.view.activeEnvironment === 'luna') {
       btnSub.classList.add('hidden');
       const flight = moonFlight();
@@ -502,14 +514,14 @@ export function checkProximity(..._args: GameValue[]): GameValue {
     } else if (game.view.activeEnvironment === 'negozio_vestiti') {
       btnMain.classList.remove('btn-pop-locked');
       btnSub.classList.add('hidden');
-      if (found === 'clothesCounter') btnMain.innerText = '🛍️ Sfoglia tutto il catalogo';
+      if (found === 'clothesCounter') btnMain.innerText = '🛍️ Catalogo: compra e rivendi';
       else if (item.slot)
         btnMain.innerText = `${game.SLOT_INFO[item.slot].icon} Guarda ${game.SLOT_INFO[item.slot].label}`;
       else btnMain.innerText = '🚪 Torna Fuori';
     } else if (game.view.activeEnvironment === 'negozio_mobili') {
       btnMain.classList.remove('btn-pop-locked');
       if (found === 'shopCounter') {
-        btnMain.innerText = '🛋️ Apri Catalogo Web Showroom';
+        btnMain.innerText = '🛋️ Catalogo: compra e rivendi';
         btnSub.classList.add('hidden');
       } else if (item.category) {
         // Progressione: standard → pregiato → lusso.
@@ -827,6 +839,30 @@ const TRIP_PRICE = 100;
 const TRIP_HAPPY = 50;
 const TRIP_HEALTH = 15;
 
+// ---------------------------------------------------------------- base spaziale lunare
+
+/** Si entra nella base finita dal portellone del primo modulo. */
+function enterMoonBase(): void {
+  if ((game.moonBaseStage || 0) < 3) {
+    toast('🔒 La base lunare non è ancora finita.');
+    return;
+  }
+  sfx('door');
+  game.view.activeEnvironment = 'base_lunare';
+  game.view.currentRoomTitle = 'Base spaziale lunare 🌙';
+  game.playerPos = { x: 0, y: 120 };
+  toast('🌙 Benvenuto nella base spaziale lunare! Qui puoi toglierti il casco.', 4500);
+}
+
+/** Dal portellone si torna sulla luna, davanti alla base. */
+function exitMoonBase(): void {
+  sfx('door');
+  const d: GameValue = game.moonFurniture.baseDoor || { x: 162, y: -20 };
+  game.view.activeEnvironment = 'luna';
+  game.view.currentRoomTitle = 'Luna 🌙';
+  game.playerPos = { x: d.x + 6, y: d.y + 36 };
+}
+
 // ---------------------------------------------------------------- centro commerciale
 
 /** Negozi del centro commerciale: ambiente → vetrina (e attività per entrarci). */
@@ -933,7 +969,8 @@ export async function handleObjectInteract(..._args: GameValue[]): Promise<void>
       backToSaloon();
     }
   } else if (game.view.activeEnvironment === 'ingegneria') {
-    if (game.activeTargetProp === 'projectBoard') openProjects(false);
+    if (game.activeTargetProp === 'projectBoard' || game.activeTargetProp === 'moonScreen')
+      openProjects(false);
     else if (game.activeTargetProp === 'workbench') workbenchMessage();
     else if (game.activeTargetProp === 'doorYard') {
       game.labDoorForceUntil = performance.now() + 900;
@@ -948,7 +985,11 @@ export async function handleObjectInteract(..._args: GameValue[]): Promise<void>
     if (item?.strain) await buyPlant(item.strain);
     else if (game.activeTargetProp === 'doorExit') backToSaloon();
   } else if (game.view.activeEnvironment === 'luna') {
-    if (game.activeTargetProp === 'moonRocket') await returnToEarth();
+    if (game.activeTargetProp === 'baseDoor') enterMoonBase();
+    else if (game.activeTargetProp === 'moonRocket') await returnToEarth();
+  } else if (game.view.activeEnvironment === 'base_lunare') {
+    if (game.activeTargetProp === 'baseConsole') openProjects(false);
+    else if (game.activeTargetProp === 'doorExit') exitMoonBase();
   } else if (game.view.activeEnvironment === 'centro_commerciale') {
     if (game.activeTargetProp === 'iceCream') await buyIceCream();
     else if (item?.enter) await doActivity(item.enter);
@@ -1417,9 +1458,11 @@ export function openFurnitureShopModal(..._args: GameValue[]): GameValue {
             <p>💰 ${item.price} € · ${TIER_LABEL[tierOf(item)]}</p>
             <p class="shop-item-benefit">${furnitureBenefit(item)}</p>
           </div>
-          <button class="btn-buy ${isOwned ? 'owned' : ''}" data-action="buyFurnitureItem" data-arg="${item.id}">
-            ${isOwned ? 'Acquistato ✓' : 'Acquista'}
-          </button>
+          ${
+            isOwned
+              ? `<button class="btn-buy btn-sell" data-action="sellFurnitureItem" data-arg="${item.id}">💸 Rivendi ${resaleValue(item.price)} €</button>`
+              : `<button class="btn-buy" data-action="buyFurnitureItem" data-arg="${item.id}">Acquista</button>`
+          }
         `;
     container.appendChild(card);
   });
@@ -1453,6 +1496,32 @@ export async function buyFurnitureItem(itemId: string): Promise<void> {
     toast('Mobile standard acquistato e posizionato nella tua stanza! 🛋️');
   }
   announceFurnitureBenefit(definition);
+  openFurnitureShopModal();
+}
+
+/** Rivende un mobile comprato: si riprende l'85% del prezzo e nella stanza torna il modello sotto. */
+export async function sellFurnitureItem(itemId: string): Promise<void> {
+  const definition = game.furnitureCatalog.find((item: { id: string }) => item.id === itemId);
+  if (!definition || !game.player.ownedFurniture[itemId]) return;
+  if (game.isMovingFurnitureMode) {
+    toast('Prima finisci di spostare il mobile.');
+    return;
+  }
+  const refund = resaleValue(definition.price);
+  const res: GameValue = await openDialog({
+    title: `💸 Rivendere ${definition.name}?`,
+    text: `L'avevi pagato ${definition.price} €: rivendendolo ricevi ${refund} € (il 15% in meno).
+Sparirà dalla tua stanza (se hai un modello più semplice, tornerà quello).`,
+    buttons: [
+      { label: 'Annulla', value: null },
+      { label: `Rivendi (${refund} €)`, value: 'sell', color: '#e67e22' },
+    ],
+  });
+  if (res.action !== 'sell') return;
+  if (!(await sellItem('ownedFurniture', itemId, refund))) return;
+  sfx('coin');
+  toast(`💸 Hai rivenduto ${definition.name}: +${refund} € in cassaforte.`, 3500);
+  saveGame(true);
   openFurnitureShopModal();
 }
 
