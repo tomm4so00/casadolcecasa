@@ -1,3 +1,4 @@
+import { updateRocketTrip } from './moon.js';
 import {
   myBathPose,
   myUndressStep,
@@ -89,6 +90,9 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
     delta = 0;
   }
   const speed: GameValue = (game.isSprinting ? 220 : 130) * (game.player.sleepLevel < 20 ? 0.6 : 1); // stanco = più lento
+  // sulla luna il terreno è convesso
+  game.moonCurve = game.view.activeEnvironment === 'luna' ? 1 / 1500 : 0;
+  updateRocketTrip();
   let map = getCurrentFurnitureMap();
   // In modalità "Sposta Mobile" WASD/frecce/joystick muovono il mobile invece del personaggio
   if (
@@ -128,6 +132,7 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
     game.sleepK < 0.01 &&
     !game.showerAnim &&
     !game.bathAnim &&
+    !game.rocketTrip &&
     !game.isMovingFurnitureMode &&
     !kissActive() &&
     !faintAmount() &&
@@ -266,7 +271,9 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
     showerProp &&
     Math.abs(x - showerProp.x) < showerProp.w / 2 - 8 &&
     Math.abs(y - showerProp.y) < showerProp.h / 2 - 8;
-  if (game.showerAnim && inCabin(game.playerPos.x, game.playerPos.y)) {
+  if (game.rocketTrip) {
+    // a bordo del razzo: il personaggio non si vede
+  } else if (game.showerAnim && inCabin(game.playerPos.x, game.playerPos.y)) {
     const px: GameValue = game.playerPos.x,
       py: GameValue = game.playerPos.y;
     game.frameShowerActors.push({ x: px, y: py, look: myShownLook() });
@@ -402,6 +409,7 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
         (s.sleepK || 0) + Math.max(-delta / 0.9, Math.min(delta / 0.9, sTarget - (s.sleepK || 0))),
       ),
     );
+    if (act === 'rocket') return; // a bordo del razzo
     const und: number = act === 'shower' ? Number(op.und) || 0 : 0;
     const shownLook: GameValue = und ? undressedLook(s.look, und) : s.look;
     addPile(s.look, und);
@@ -454,6 +462,7 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
   else if (hour < 8) dark = ((8 - hour) / 2) * 0.55;
   if (!game.OUTDOOR_ENVS.includes(game.view.activeEnvironment)) dark *= 0.8;
   if (game.view.activeEnvironment === 'discoteca') dark = 0.6;
+  if (game.view.activeEnvironment === 'luna') dark = 0.12; // nello spazio c'è sempre il sole
   applyLighting(dark, lights, st);
   labels.forEach((l?: GameValue): GameValue => l());
   drawSleepThoughts();

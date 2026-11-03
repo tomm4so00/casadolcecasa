@@ -729,6 +729,32 @@
         "notified": {
           ".validate": "newData.isNumber()"
         },
+        "trip": {
+          ".write": "(auth != null && auth.token.firebase.sign_in_provider === 'google.com') && root.child('sims_accounts').child(auth.uid).child('playerId').isString() && root.child('sims_projects').child($project).child('launchAt').exists() && root.child('sims_projects').child($project).child('launchAt').val() < now - 72000 && (!data.exists() || data.child('at').val() < now - 72000)",
+          ".validate": "newData.hasChildren(['at','by'])",
+          "at": {
+            ".validate": "newData.isNumber() && newData.val() >= now - 5000 && newData.val() <= now + 15000"
+          },
+          "by": {
+            ".validate": "newData.isString() && newData.val().length <= 20"
+          },
+          "$other": {
+            ".validate": false
+          }
+        },
+        "moonTrip": {
+          ".write": "(auth != null && auth.token.firebase.sign_in_provider === 'google.com') && root.child('sims_accounts').child(auth.uid).child('playerId').isString() && root.child('sims_projects').child($project).child('launchAt').exists() && root.child('sims_projects').child($project).child('launchAt').val() < now - 72000 && (!data.exists() || data.child('at').val() < now - 72000)",
+          ".validate": "newData.hasChildren(['at','by'])",
+          "at": {
+            ".validate": "newData.isNumber() && newData.val() >= now - 5000 && newData.val() <= now + 15000"
+          },
+          "by": {
+            ".validate": "newData.isString() && newData.val().length <= 20"
+          },
+          "$other": {
+            ".validate": false
+          }
+        },
         "$other": {
           ".validate": false
         }

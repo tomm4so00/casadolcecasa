@@ -15,6 +15,10 @@ import {
   countdownText,
   launchLift,
   launchPhase,
+  FLIGHT_AWAY_MS,
+  FLIGHT_TOTAL_MS,
+  MOON_TRIP_PRICE,
+  rocketFlight,
 } from '../src/game/project-rules.js';
 import { type PushSender, notifyRocketAlmostReady } from '../server/src/maintenance.js';
 import { localDatabase } from '../src/game/database.js';
@@ -138,5 +142,39 @@ describe('lancio del razzo', () => {
     expect(launch['.write']).toContain('!data.exists()');
     expect(launch['.write']).toContain('>= 15000');
     expect(launch['.validate']).toContain('now + 5000');
+  });
+});
+
+describe('viaggi sulla luna', () => {
+  const t0 = 1_800_000_000_000;
+  it('il razzo decolla, resta via, atterra e torna pronto', () => {
+    expect(rocketFlight(undefined, t0).phase).toBe('idle');
+    expect(rocketFlight(t0, t0 + 5000).phase).toBe('launching');
+    expect(rocketFlight(t0, t0 + 30000).phase).toBe('away');
+    const landing = rocketFlight(t0, t0 + FLIGHT_AWAY_MS + 1000);
+    expect(landing.phase).toBe('landing');
+    expect(landing.lift).toBeGreaterThan(rocketFlight(t0, t0 + FLIGHT_TOTAL_MS - 1000).lift);
+    expect(rocketFlight(t0, t0 + FLIGHT_TOTAL_MS).phase).toBe('idle');
+    expect(rocketFlight(t0, t0 + 10000).readyIn).toBe(FLIGHT_TOTAL_MS - 10000);
+  });
+
+  it('il viaggio costa 500 € e i decolli sono salvati', () => {
+    expect(MOON_TRIP_PRICE).toBe(500);
+    const s = decodeProject({
+      funded: 15000,
+      trip: { at: t0, by: 'Ada' },
+      moonTrip: { at: t0 + 1 },
+    });
+    expect(s.tripAt).toBe(t0);
+    expect(s.moonTripAt).toBe(t0 + 1);
+  });
+
+  it('le regole permettono un viaggio solo dopo il primo lancio e a razzo fermo', () => {
+    const rules = JSON.parse(
+      fs.readFileSync('firebase/database.rules.proposed.json', 'utf8'),
+    ).rules;
+    const trip = rules.sims_projects.$project.trip;
+    expect(trip['.write']).toContain("child('launchAt').exists()");
+    expect(trip['.write']).toContain('72000');
   });
 });

@@ -573,17 +573,19 @@ export function startPresence(..._args: GameValue[]): GameValue {
         },
         game.view.currentRoomTitle,
       ),
-      act: game.fainted
-        ? 'faint'
-        : kissActive()
-          ? 'kiss'
-          : game.showerAnim
-            ? 'shower'
-            : game.bathAnim
-              ? game.bathAnim.pose || ''
-              : game.player.isSleeping
-                ? 'sleep'
-                : '',
+      act: game.rocketTrip
+        ? 'rocket'
+        : game.fainted
+          ? 'faint'
+          : kissActive()
+            ? 'kiss'
+            : game.showerAnim
+              ? 'shower'
+              : game.bathAnim
+                ? game.bathAnim.pose || ''
+                : game.player.isSleeping
+                  ? 'sleep'
+                  : '',
       ...(game.showerAnim?.und ? { und: game.showerAnim.und } : {}),
       say: game.mySay,
       sayT: game.mySayT,

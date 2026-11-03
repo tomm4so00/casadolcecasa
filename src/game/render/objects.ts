@@ -1,4 +1,4 @@
-import { countdownText, launchLift, launchPhase } from '../project-rules.js';
+import { countdownText, launchPhase, rocketFlight } from '../project-rules.js';
 import { clockText, realHour } from '../game-clock.js';
 import { spendMoney } from '../economy.js';
 import type { GameValue } from '../context.js';
@@ -2362,14 +2362,14 @@ export function drawCourtyardDoor(_key?: GameValue, it?: GameValue): GameValue {
 /** Rampa del laboratorio ingegneristico: il razzo cresce con i soldi versati dai giocatori. */
 export function drawRocketPad(it?: GameValue, t?: GameValue): GameValue {
   const now = Date.now() + (game.session.serverOffset || 0);
-  const { phase, left, since } = launchPhase(game.rocketStage || 0, game.rocketLaunchAt, now);
-  if (phase === 'launched') {
-    drawRocketProp({ ...it, stage: 2, gone: true }, t);
-    return;
-  }
-  if (phase === 'launching') {
-    drawLaunchSmoke(it, since);
-    drawRocketProp({ ...it, stage: 2, lift: launchLift(since), flame: since }, t);
+  const { phase, left } = launchPhase(game.rocketStage || 0, game.rocketLaunchAt, now);
+  if (phase === 'launched' || phase === 'launching') {
+    // dopo il primo lancio il razzo fa avanti e indietro con la luna
+    drawFlight(
+      it,
+      rocketFlight(Math.max(game.rocketLaunchAt || 0, game.rocketTripAt || 0), now),
+      t,
+    );
     return;
   }
   drawRocketProp({ ...it, stage: game.rocketStage || 0 }, t);
@@ -2434,6 +2434,82 @@ export function drawLaunchButton(it?: GameValue, t?: GameValue): GameValue {
   ctx.stroke();
 }
 
+/** Razzo in volo: decolla, sparisce in cielo, torna giù frenando con i motori, poi è pronto. */
+function drawFlight(it: GameValue, flight: ReturnType<typeof rocketFlight>, t: GameValue): void {
+  if (flight.phase === 'launching') {
+    drawLaunchSmoke(it, flight.since);
+    drawRocketProp({ ...it, stage: 2, lift: flight.lift, flame: flight.since }, t);
+  } else if (flight.phase === 'away') drawRocketProp({ ...it, stage: 2, gone: true }, t);
+  else if (flight.phase === 'landing') {
+    drawLaunchSmoke(it, 3000 + Math.max(0, 6000 - flight.lift * 4));
+    drawRocketProp({ ...it, stage: 2, lift: flight.lift, flame: 2000 }, t);
+  } else drawRocketProp({ ...it, stage: 2 }, t);
+}
+
+/** Razzo atterrato sulla luna (senza torre): riporta i giocatori sulla Terra. */
+export function drawMoonRocket(it?: GameValue, t?: GameValue): GameValue {
+  const now = Date.now() + (game.session.serverOffset || 0);
+  drawFlight({ ...it, noTower: true, moonPad: true }, rocketFlight(game.moonTripAt || 0, now), t);
+}
+
+/** Cratere: bordo rialzato chiaro e fondo più scuro, che segue la curva della luna. */
+export function drawCraterProp(it?: GameValue): GameValue {
+  const ctx = game.view.ctx;
+  const ring = (r: number, z: number) => {
+    ctx.beginPath();
+    for (let i = 0; i <= 24; i++) {
+      const a = (i / 24) * Math.PI * 2;
+      const p = isoProject(it.x + Math.cos(a) * r, it.y + Math.sin(a) * r, z);
+      if (i) ctx.lineTo(p.x, p.y);
+      else ctx.moveTo(p.x, p.y);
+    }
+    ctx.closePath();
+  };
+  ring(it.r * 1.15, 0.5);
+  ctx.fillStyle = 'rgba(225,225,218,0.9)';
+  ctx.fill();
+  ring(it.r, 0.5);
+  ctx.fillStyle = '#8f8f88';
+  ctx.fill();
+  ring(it.r * 0.7, 0.5);
+  ctx.fillStyle = '#7d7d76';
+  ctx.fill();
+}
+
+/** Sasso lunare grigio, fatto di due blocchi. */
+export function drawMoonRockProp(it?: GameValue): GameValue {
+  box(it.x, it.y, it.w, it.h, it.z * 0.6, '#9a9a93');
+  box(it.x - it.w * 0.15, it.y + it.h * 0.1, it.w * 0.6, it.h * 0.6, it.z * 0.4, '#a8a8a0', {
+    z0: it.z * 0.6,
+  });
+}
+
+/** Bandiera della missione piantata nel suolo lunare. */
+export function drawMoonFlagProp(it?: GameValue): GameValue {
+  const ctx = game.view.ctx;
+  box(it.x, it.y, 2.5, 2.5, it.z, '#dfe6e9');
+  const a = isoProject(it.x, it.y, it.z - 2),
+    b = isoProject(it.x + 34, it.y, it.z - 2),
+    c = isoProject(it.x + 34, it.y, it.z - 24),
+    d = isoProject(it.x, it.y, it.z - 24);
+  ctx.fillStyle = '#ffffff';
+  ctx.beginPath();
+  ctx.moveTo(a.x, a.y);
+  ctx.lineTo(b.x, b.y);
+  ctx.lineTo(c.x, c.y);
+  ctx.lineTo(d.x, d.y);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = '#b2bec3';
+  ctx.stroke();
+  // razzo rosso e scritta della missione
+  const m = isoProject(it.x + 17, it.y, it.z - 13);
+  ctx.fillStyle = '#e74c3c';
+  ctx.font = `bold ${Math.round(7 * isoScale())}px sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.fillText('CDC-1', m.x, m.y + 2 * isoScale());
+}
+
 /** Cartellone luminoso con il conto alla rovescia sopra la rampa. */
 function drawCountdownSign(it: GameValue, text: string, last: boolean): void {
   const ctx = game.view.ctx;
@@ -2484,7 +2560,7 @@ export function drawRocketProp(it?: GameValue, t?: GameValue): GameValue {
   const stage: number = it.stage ?? 2;
   const lift: number = it.lift || 0;
   // rampa di lancio con bordo a strisce
-  const pad: GameValue = box(x, y, it.w, it.h, 10, '#8d99ae');
+  const pad: GameValue = box(x, y, it.w, it.h, 10, it.moonPad ? '#7f8c8d' : '#8d99ae');
   onFace(pad, 'top', (W: number, H: number): void => {
     ctx.fillStyle = '#5c6370';
     ctx.fillRect(6, 6, W - 12, H - 12);
@@ -2511,36 +2587,38 @@ export function drawRocketProp(it?: GameValue, t?: GameValue): GameValue {
     box(x + 30, y + 30, 14, 14, 12, '#a87b45', { z0: 24 });
     return;
   }
-  // torre di servizio a traliccio, dietro al razzo (a metà durante i lavori)
-  const tx = x - 30,
-    ty = y - 30,
-    tw = 9,
-    tz = stage === 1 ? 130 : 250;
-  const corners = [
-    [-tw, -tw],
-    [tw, -tw],
-    [tw, tw],
-    [-tw, tw],
-  ];
-  for (const [cx, cy] of corners) box(tx + cx, ty + cy, 2.5, 2.5, tz, '#c0392b', { z0: 10 });
-  ctx.strokeStyle = '#a93226';
-  ctx.lineWidth = Math.max(1, 1.2 * s);
-  for (let z = 10; z < tz; z += 24)
-    for (let i = 0; i < 4; i++) {
-      const [ax, ay] = corners[i],
-        [bx, by] = corners[(i + 1) % 4];
-      const p1 = isoProject(tx + ax, ty + ay, z),
-        p2 = isoProject(tx + bx, ty + by, z + 24),
-        p3 = isoProject(tx + bx, ty + by, z);
-      ctx.beginPath();
-      ctx.moveTo(p1.x, p1.y);
-      ctx.lineTo(p2.x, p2.y);
-      ctx.moveTo(p1.x, p1.y);
-      ctx.lineTo(p3.x, p3.y);
-      ctx.stroke();
-    }
+  if (!it.noTower) {
+    // torre di servizio a traliccio, dietro al razzo (a metà durante i lavori)
+    const tx = x - 30,
+      ty = y - 30,
+      tw = 9,
+      tz = stage === 1 ? 130 : 250;
+    const corners = [
+      [-tw, -tw],
+      [tw, -tw],
+      [tw, tw],
+      [-tw, tw],
+    ];
+    for (const [cx, cy] of corners) box(tx + cx, ty + cy, 2.5, 2.5, tz, '#c0392b', { z0: 10 });
+    ctx.strokeStyle = '#a93226';
+    ctx.lineWidth = Math.max(1, 1.2 * s);
+    for (let z = 10; z < tz; z += 24)
+      for (let i = 0; i < 4; i++) {
+        const [ax, ay] = corners[i],
+          [bx, by] = corners[(i + 1) % 4];
+        const p1 = isoProject(tx + ax, ty + ay, z),
+          p2 = isoProject(tx + bx, ty + by, z + 24),
+          p3 = isoProject(tx + bx, ty + by, z);
+        ctx.beginPath();
+        ctx.moveTo(p1.x, p1.y);
+        ctx.lineTo(p2.x, p2.y);
+        ctx.moveTo(p1.x, p1.y);
+        ctx.lineTo(p3.x, p3.y);
+        ctx.stroke();
+      }
+  }
   // braccio che tiene il razzo (si stacca al lancio)
-  if (stage >= 2 && !lift && it.flame === undefined && !it.gone)
+  if (stage >= 2 && !lift && it.flame === undefined && !it.gone && !it.noTower)
     box(x - 15, y - 15, 26, 4, 4, '#7f8c8d', { z0: 190 });
   if (it.gone) {
     // il razzo è partito: sulla rampa restano le bruciature e la scritta della missione
@@ -2550,10 +2628,6 @@ export function drawRocketProp(it?: GameValue, t?: GameValue): GameValue {
     ctx2.beginPath();
     ctx2.ellipse(c.x, c.y, 26 * s, 13 * s, 0, 0, 6.3);
     ctx2.fill();
-    ctx2.fillStyle = '#feca57';
-    ctx2.font = `bold ${Math.round(9 * s)}px sans-serif`;
-    ctx2.textAlign = 'center';
-    ctx2.fillText('CDC-1 · MISSIONE COMPIUTA', c.x, c.y + 24 * s);
     return;
   }
   // razzo: corpo cilindrico, ogiva, finestrino e alette (disegnati a schermo sull'asse verticale)
@@ -2904,6 +2978,138 @@ function drawWindowDisplay(shop: string, x: number, y: number, w: number, h: num
       ctx.fill();
     }
   }
+}
+
+/** Colonna bianca con base e capitello dorati, con una lampada che illumina la vetrina. */
+export function drawMallColumnProp(it?: GameValue, t?: GameValue): GameValue {
+  const ctx = game.view.ctx;
+  box(it.x, it.y, it.w + 6, it.h + 6, 8, '#c9a227');
+  const shaft: GameValue = box(it.x, it.y, it.w, it.h, it.z - 18, '#f5f0e6', { z0: 8 });
+  onFace(shaft, 'left', (W: number, H: number): void => {
+    ctx.strokeStyle = 'rgba(0,0,0,0.08)';
+    for (let i = 3; i < W; i += 4) {
+      ctx.beginPath();
+      ctx.moveTo(i, 0);
+      ctx.lineTo(i, H);
+      ctx.stroke();
+    }
+  });
+  box(it.x, it.y, it.w + 8, it.h + 8, 10, '#d4ac0d', { z0: it.z - 10 });
+  // lampada da parete accesa
+  const p = isoProject(it.x, it.y + it.h / 2 + 2, it.z - 30);
+  const glow = 0.55 + 0.1 * Math.sin((t || 0) * 2 + it.x);
+  const g = ctx.createRadialGradient(p.x, p.y, 1, p.x, p.y, 22 * isoScale());
+  g.addColorStop(0, `rgba(255,236,170,${glow})`);
+  g.addColorStop(1, 'rgba(255,236,170,0)');
+  ctx.fillStyle = g;
+  ctx.beginPath();
+  ctx.arc(p.x, p.y, 22 * isoScale(), 0, 6.3);
+  ctx.fill();
+  ctx.fillStyle = '#fff4c2';
+  ctx.beginPath();
+  ctx.arc(p.x, p.y, 3 * isoScale(), 0, 6.3);
+  ctx.fill();
+}
+
+/** Palma in un grande vaso di marmo. */
+export function drawMallPalmProp(it?: GameValue, t?: GameValue): GameValue {
+  box(it.x, it.y, 30, 30, 18, '#efe6d6', { top: '#6d4c41' });
+  box(it.x, it.y, 32, 32, 3, '#c9a227', { z0: 15 });
+  const ctx = game.view.ctx;
+  ctx.save();
+  ctx.translate(0, -18 * isoScale());
+  drawPalmProp({ ...it, x: it.x, y: it.y }, t);
+  ctx.restore();
+}
+
+/** Carretto dei gelati con l'ombrellone a strisce e i coni in fila. */
+export function drawIceCreamCartProp(it?: GameValue, t?: GameValue): GameValue {
+  const ctx = game.view.ctx;
+  const s: number = isoScale();
+  for (const dx of [-1, 1]) {
+    const w = isoProject(it.x + dx * (it.w / 2 - 4), it.y + it.h / 2, 7);
+    ctx.fillStyle = '#2d3436';
+    ctx.beginPath();
+    ctx.arc(w.x, w.y, 6 * s, 0, 6.3);
+    ctx.fill();
+    ctx.fillStyle = '#b2bec3';
+    ctx.beginPath();
+    ctx.arc(w.x, w.y, 2.5 * s, 0, 6.3);
+    ctx.fill();
+  }
+  const cart: GameValue = box(it.x, it.y, it.w, it.h, 26, '#fdfdfd', { z0: 6 });
+  onFace(cart, 'left', (W: number, H: number): void => {
+    ctx.fillStyle = '#74b9ff';
+    ctx.fillRect(0, H * 0.3, W, H * 0.25);
+    ctx.fillStyle = '#e84393';
+    ctx.font = 'bold 8px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('GELATI', W / 2, H * 0.5);
+  });
+  // coni sul banco
+  const flavours = ['#ff9ff3', '#feca57', '#55efc4', '#a0522d'];
+  flavours.forEach((c, i) => {
+    const p = isoProject(it.x - it.w / 2 + 8 + i * ((it.w - 16) / 3), it.y, 34);
+    ctx.fillStyle = '#e1b12c';
+    ctx.beginPath();
+    ctx.moveTo(p.x - 2.5 * s, p.y);
+    ctx.lineTo(p.x + 2.5 * s, p.y);
+    ctx.lineTo(p.x, p.y + 6 * s);
+    ctx.fill();
+    ctx.fillStyle = c;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y - 1 * s, 3.2 * s, 0, 6.3);
+    ctx.fill();
+  });
+  // ombrellone
+  box(it.x, it.y, 2, 2, 40, '#dfe6e9', { z0: 32 });
+  const top = isoProject(it.x, it.y, 78);
+  const sway = Math.sin((t || 0) * 0.8) * 0.04;
+  for (let i = 0; i < 8; i++) {
+    const a0 = (i / 8) * Math.PI * 2 + sway,
+      a1 = ((i + 1) / 8) * Math.PI * 2 + sway;
+    const p0 = isoProject(it.x + Math.cos(a0) * 34, it.y + Math.sin(a0) * 34, 66),
+      p1 = isoProject(it.x + Math.cos(a1) * 34, it.y + Math.sin(a1) * 34, 66);
+    ctx.fillStyle = i % 2 ? '#ffffff' : '#ff6b81';
+    ctx.beginPath();
+    ctx.moveTo(top.x, top.y);
+    ctx.lineTo(p0.x, p0.y);
+    ctx.lineTo(p1.x, p1.y);
+    ctx.closePath();
+    ctx.fill();
+  }
+}
+
+/** Banchetto dei palloncini che ondeggiano. */
+export function drawBalloonStandProp(it?: GameValue, t?: GameValue): GameValue {
+  const ctx = game.view.ctx;
+  const s: number = isoScale();
+  box(it.x, it.y, it.w, it.h, 22, '#6c5ce7');
+  box(it.x, it.y, it.w + 4, it.h + 4, 3, '#a29bfe', { z0: 22 });
+  const colors = ['#ff4757', '#feca57', '#2ed573', '#1e90ff', '#ff6b81', '#a55eea'];
+  const base = isoProject(it.x, it.y, 25);
+  colors.forEach((c, i) => {
+    const ang = (i / colors.length) * Math.PI * 2;
+    const bob = Math.sin((t || 0) * 1.5 + i) * 3;
+    const p = isoProject(
+      it.x + Math.cos(ang) * 14 + Math.sin((t || 0) + i) * 2,
+      it.y + Math.sin(ang) * 8,
+      80 + (i % 3) * 10 + bob,
+    );
+    ctx.strokeStyle = 'rgba(80,80,80,0.6)';
+    ctx.lineWidth = 0.7;
+    ctx.beginPath();
+    ctx.moveTo(base.x, base.y);
+    ctx.quadraticCurveTo((base.x + p.x) / 2 + 3 * s, (base.y + p.y) / 2, p.x, p.y + 8 * s);
+    ctx.stroke();
+    const g = ctx.createRadialGradient(p.x - 2.5 * s, p.y - 3 * s, 1, p.x, p.y, 9 * s);
+    g.addColorStop(0, game.lighten(c, 0.5));
+    g.addColorStop(1, c);
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.ellipse(p.x, p.y, 7 * s, 8.5 * s, 0, 0, 6.3);
+    ctx.fill();
+  });
 }
 
 // ---------------------------------------------------------------- SALA SCOMMESSE

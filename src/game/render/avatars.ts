@@ -2223,6 +2223,23 @@ export function drawPlayerAvatar(
   }
   drawGlasses(head, s, look.glasses);
   drawHat(head, s, look.hat);
+  // sulla luna tutti portano il casco da astronauta (non nelle icone)
+  if (game.view.activeEnvironment === 'luna' && !mannequin && !(opts && opts.noShadow)) {
+    ctx.fillStyle = 'rgba(200,230,255,0.18)';
+    ctx.strokeStyle = 'rgba(255,255,255,0.75)';
+    ctx.lineWidth = 1.4 * s;
+    ctx.beginPath();
+    ctx.arc(head.x, head.y - 1 * s, 14 * s, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,255,255,0.8)';
+    ctx.lineWidth = 1.6 * s;
+    ctx.beginPath();
+    ctx.arc(head.x, head.y - 1 * s, 10.5 * s, Math.PI * 1.1, Math.PI * 1.45);
+    ctx.stroke();
+    ctx.fillStyle = '#dfe6e9';
+    ctx.fillRect(head.x - 7 * s, head.y + 11.5 * s, 14 * s, 2.5 * s);
+  }
   ctx.lineCap = 'butt';
   if (name) {
     ctx.font = 'bold 10px sans-serif';

@@ -1,3 +1,5 @@
+import { earthFlight, moonFlight, moonOpen, returnToEarth, travelToMoon } from './moon.js';
+import { MOON_TRIP_PRICE } from './project-rules.js';
 import { openRpsTable, openSlot } from './betting.js';
 import { SLOT_BET } from './betting-rules.js';
 import { CRIMINAL_THEFT_TRIES, hasPersonality } from './personality-rules.js';
@@ -306,6 +308,7 @@ export function getCurrentFurnitureMap(..._args: GameValue[]): SceneMap {
   if (game.view.activeEnvironment === 'ingegneria') return game.engineeringFurniture;
   if (game.view.activeEnvironment === 'scommesse') return game.bettingFurniture;
   if (game.view.activeEnvironment === 'centro_commerciale') return game.mallFurniture;
+  if (game.view.activeEnvironment === 'luna') return game.moonFurniture;
   if (game.view.activeEnvironment === 'ingegneria_esterno') return game.engineeringYardFurniture;
   if (game.view.activeEnvironment === 'CIMITERO') return game.graveMap;
   if (game.MG.active && game.view.activeEnvironment === 'lavoro_' + game.MG.job) return game.MG.map;
@@ -316,7 +319,8 @@ export function getCurrentFurnitureMap(..._args: GameValue[]): SceneMap {
 
 export function checkProximity(..._args: GameValue[]): GameValue {
   if (game.isMovingFurnitureMode) return;
-  if (game.fainted) {
+  if (game.fainted || game.rocketTrip) {
+    // svenuto o a bordo del razzo: niente pulsanti
     dom('pop-interaction').classList.add('hidden');
     return;
   }
@@ -325,7 +329,9 @@ export function checkProximity(..._args: GameValue[]): GameValue {
   let bestDist: GameValue = 65;
   Object.keys(map).forEach((key?: GameValue): GameValue => {
     let obj: GameValue = map[key];
-    let d: GameValue = Math.hypot(game.playerPos.x - obj.x, game.playerPos.y - obj.y);
+    // gli oggetti molto grandi (il razzo) si raggiungono anche dal bordo: `reach` allunga la portata
+    let d: GameValue =
+      Math.hypot(game.playerPos.x - obj.x, game.playerPos.y - obj.y) - (obj.reach || 0);
     if (d < bestDist) {
       bestDist = d;
       found = key;
@@ -382,6 +388,12 @@ export function checkProximity(..._args: GameValue[]): GameValue {
         doorYard: '🚀 Vai nella zona esterna',
       };
       btnMain.innerText = labels[found] || '🚪 Torna Fuori';
+    } else if (game.view.activeEnvironment === 'luna') {
+      btnSub.classList.add('hidden');
+      const flight = moonFlight();
+      btnMain.innerText =
+        flight.phase === 'idle' ? '🌍 Torna sulla Terra' : '🚀 Il razzo è in viaggio…';
+      btnMain.classList.toggle('btn-pop-locked', flight.phase !== 'idle');
     } else if (game.view.activeEnvironment === 'centro_commerciale') {
       btnMain.classList.remove('btn-pop-locked');
       btnSub.classList.add('hidden');
@@ -408,6 +420,13 @@ export function checkProximity(..._args: GameValue[]): GameValue {
                 ? '✅ Razzo già lanciato'
                 : '⏳ Lancio in corso…';
         btnMain.classList.toggle('btn-pop-locked', phase !== 'waiting');
+      } else if (found === 'rocketPad' && moonOpen()) {
+        const flight = earthFlight();
+        btnMain.innerText =
+          flight.phase === 'idle'
+            ? `🌙 Vola sulla luna (${MOON_TRIP_PRICE} €)`
+            : '🚀 Il razzo è in viaggio…';
+        btnMain.classList.toggle('btn-pop-locked', flight.phase !== 'idle');
       } else
         btnMain.innerText =
           found === 'rocketPad' ? '🚀 Guarda il progetto del razzo' : '🔧 Torna nel laboratorio';
@@ -734,7 +753,7 @@ function freeBedSlot(): number | null {
 
 export async function handleObjectInteract(..._args: GameValue[]): Promise<void> {
   if (!game.activeTargetProp) return;
-  if (game.showerAnim || game.bathAnim) return;
+  if (game.showerAnim || game.bathAnim || game.rocketTrip) return;
   let map = getCurrentFurnitureMap();
   let item: GameValue = map[game.activeTargetProp];
   if (game.view.activeEnvironment === 'CIMITERO') {
@@ -792,6 +811,8 @@ export async function handleObjectInteract(..._args: GameValue[]): Promise<void>
     else if (game.activeTargetProp === 'workbench') workbenchMessage();
     else if (game.activeTargetProp === 'doorYard') goToEngineering(true);
     else if (game.activeTargetProp === 'doorExit') backToSaloon();
+  } else if (game.view.activeEnvironment === 'luna') {
+    if (game.activeTargetProp === 'moonRocket') await returnToEarth();
   } else if (game.view.activeEnvironment === 'centro_commerciale') {
     if (item?.enter) await doActivity(item.enter);
     else if (game.activeTargetProp === 'doorExit') backToSaloon();
@@ -800,8 +821,10 @@ export async function handleObjectInteract(..._args: GameValue[]): Promise<void>
     else if (game.activeTargetProp === 'rpsTable') openRpsTable();
     else if (game.activeTargetProp === 'doorExit') backToSaloon();
   } else if (game.view.activeEnvironment === 'ingegneria_esterno') {
-    if (game.activeTargetProp === 'rocketPad') openProjects(false);
-    else if (game.activeTargetProp === 'launchButton') await pressLaunchButton();
+    if (game.activeTargetProp === 'rocketPad') {
+      if (moonOpen()) await travelToMoon();
+      else openProjects(false);
+    } else if (game.activeTargetProp === 'launchButton') await pressLaunchButton();
     else if (game.activeTargetProp === 'doorLab') goToEngineering(false);
   } else if (game.view.activeEnvironment === 'banca') {
     if (game.activeTargetProp === 'bankCounter') await openBankCounter();

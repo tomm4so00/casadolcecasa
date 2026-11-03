@@ -21,6 +21,7 @@ import {
   ENGINEERING_FURNITURE,
   BETTING_FURNITURE,
   MALL_FURNITURE,
+  MOON_FURNITURE,
   ENGINEERING_YARD_FURNITURE,
   STORE_FLOOR_FURNITURE,
   SALOON_DOORS,
@@ -66,6 +67,14 @@ import {
   drawSlotMachine,
   drawRpsTable,
   drawShopFacade,
+  drawMoonRocket,
+  drawCraterProp,
+  drawMoonRockProp,
+  drawMoonFlagProp,
+  drawMallColumnProp,
+  drawMallPalmProp,
+  drawIceCreamCartProp,
+  drawBalloonStandProp,
   drawLaunchButton,
   drawProjectBoard,
   drawWorkbench,
@@ -129,6 +138,7 @@ import {
   wallSafe,
   wallWindow,
   wallRocketPlaque,
+  wallAdScreen,
 } from './render/scenes.js';
 import { firebaseOptions, isLocalMode, createDatabase } from './runtime.js';
 export function initializeGame() {
@@ -365,6 +375,11 @@ export function initializeGame() {
   game.engineeringFurniture = structuredClone(ENGINEERING_FURNITURE);
   game.bettingFurniture = structuredClone(BETTING_FURNITURE);
   game.mallFurniture = structuredClone(MALL_FURNITURE);
+  game.moonFurniture = structuredClone(MOON_FURNITURE);
+  game.moonCurve = 0;
+  game.rocketTripAt = 0;
+  game.moonTripAt = 0;
+  game.rocketTrip = null;
   game.engineeringYardFurniture = structuredClone(ENGINEERING_YARD_FURNITURE);
   game.rocketStage = 0;
   game.rocketLaunchAt = 0;
@@ -626,6 +641,7 @@ export function initializeGame() {
     shopFurniture: drawShopFacade,
     shopClothes: drawShopFacade,
     shopBetting: drawShopFacade,
+    moonRocket: drawMoonRocket,
     launchButton: drawLaunchButton,
     coffee: drawCoffeeMachine,
     toilet: drawToilet,
@@ -652,6 +668,13 @@ export function initializeGame() {
     streetlamp: drawStreetLampProp,
     flowers: drawFlowersProp,
     rocket: drawRocketProp,
+    crater: drawCraterProp,
+    moonRock: drawMoonRockProp,
+    moonFlag: drawMoonFlagProp,
+    mallColumn: drawMallColumnProp,
+    mallPalm: drawMallPalmProp,
+    iceCreamCart: drawIceCreamCartProp,
+    balloonStand: drawBalloonStandProp,
     moonSign: drawMoonSignProp,
     palm: drawPalmProp,
     umbrella: drawUmbrellaProp,
@@ -728,6 +751,7 @@ export function initializeGame() {
     roomPainting: wallRoomPainting,
     wallSafe,
     rocketPlaque: wallRocketPlaque,
+    adScreen: wallAdScreen,
   };
   game.bgCache = { key: '', canvas: null };
   game.lightCanvas = null;

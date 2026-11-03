@@ -137,6 +137,14 @@ export interface GameContext {
   artStudioFurniture: SceneMap;
   engineeringFurniture: SceneMap;
   bettingFurniture: SceneMap;
+  moonFurniture: SceneMap;
+  /** Curvatura del terreno (solo sulla luna). */
+  moonCurve: number;
+  /** Ultimi decolli verso la luna e dalla luna (ora del server). */
+  rocketTripAt: number;
+  moonTripAt: number;
+  /** Viaggio in corso con il razzo: direzione e ora del decollo. */
+  rocketTrip: { dir: 'up' | 'down'; at: number } | null;
   mallFurniture: SceneMap;
   engineeringYardFurniture: SceneMap;
   /** Fase del razzo del laboratorio ingegneristico: 0 niente, 1 pezzi, 2 completo. */

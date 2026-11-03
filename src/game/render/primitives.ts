@@ -1,7 +1,7 @@
 import type { GameValue } from '../context.js';
 import { game } from '../context.js';
 import { dom } from '../runtime.js';
-import { cameraScale } from '../camera.js';
+import { cameraScale, surfaceDrop } from '../camera.js';
 export function closeModal(id?: GameValue): GameValue {
   dom(id).classList.add('hidden');
 }
@@ -21,7 +21,7 @@ export function isoProject(x?: GameValue, y?: GameValue, z?: GameValue): GameVal
     y = p.y;
   }
   let isoX: GameValue = ((x - y) * 0.866 - (cam ? cam.u : 0)) * scale;
-  let isoY: GameValue = ((x + y) * 0.5 - z - (cam ? cam.v : 0)) * scale;
+  let isoY: GameValue = ((x + y) * 0.5 - z + surfaceDrop(x, y) - (cam ? cam.v : 0)) * scale;
   return { x: cx + isoX, y: cy + isoY };
 }
 

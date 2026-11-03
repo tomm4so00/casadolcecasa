@@ -1250,6 +1250,10 @@ export const INTRO_PAGES = [
 
 export const SIMULATION_BOTS = [
   { name: 'Bot_Anna', env: 'passeggiata', x: -80, y: 50, vx: 30, vy: 15 },
+  // clienti che passeggiano nel centro commerciale
+  { name: 'Cliente Rita 🛍️', env: 'centro_commerciale', x: -60, y: -125, vx: 26, vy: 0 },
+  { name: 'Cliente Gianni 🛍️', env: 'centro_commerciale', x: 80, y: 115, vx: -22, vy: 0 },
+  { name: 'Cliente Sofia 🛍️', env: 'centro_commerciale', x: -225, y: -40, vx: 0, vy: 20 },
   { name: 'Bot_Luca', env: 'passeggiata', x: 60, y: -40, vx: -25, vy: 20 },
   { name: 'Bot_Sara', env: 'bar', x: -50, y: -20, vx: 20, vy: -10 },
   { name: 'Spacciatore 🕴️', env: 'bar', x: 140, y: -35, vx: 0, vy: 0, dealer: true },
@@ -1539,7 +1543,16 @@ export const ENGINEERING_FURNITURE = {
 
 // Zona esterna del laboratorio: la rampa del razzo e la porta per rientrare.
 export const ENGINEERING_YARD_FURNITURE = {
-  rocketPad: { x: -100, y: -50, w: 96, h: 96, z: 60, name: 'Razzo spaziale 🚀', moveable: false },
+  rocketPad: {
+    x: -100,
+    y: -50,
+    w: 96,
+    h: 96,
+    z: 60,
+    name: 'Razzo spaziale 🚀',
+    reach: 45,
+    moveable: false,
+  },
   launchButton: {
     x: 60,
     y: 50,
@@ -1597,6 +1610,20 @@ export const MALL_FURNITURE = {
     moveable: false,
   },
   doorExit: { x: 0, y: 180, w: 60, h: 15, z: 110, name: 'Uscita 🚪', moveable: false },
+};
+
+// Luna: il razzo atterrato (per tornare sulla Terra). Il terreno è convesso (vedi surfaceDrop).
+export const MOON_FURNITURE = {
+  moonRocket: {
+    x: -40,
+    y: -60,
+    w: 96,
+    h: 96,
+    z: 60,
+    name: 'Razzo CDC-1 🚀',
+    reach: 45,
+    moveable: false,
+  },
 };
 
 // Sala scommesse: tre slot lungo la parete di fondo, il tavolo della morra cinese e l'uscita.
@@ -2283,16 +2310,38 @@ export const ENV_DECOR = {
     { kind: 'plant', x: -168, y: -160, w: 26, h: 26, z: 60 },
     { kind: 'plant', x: 168, y: 150, w: 26, h: 26, z: 60 },
   ],
+  luna: [
+    { kind: 'crater', x: -170, y: -150, w: 80, h: 80, r: 40, solid: false, flat: true },
+    { kind: 'crater', x: 160, y: 90, w: 110, h: 110, r: 55, solid: false, flat: true },
+    { kind: 'crater', x: -60, y: 170, w: 60, h: 60, r: 30, solid: false, flat: true },
+    { kind: 'crater', x: 210, y: -180, w: 70, h: 70, r: 35, solid: false, flat: true },
+    { kind: 'crater', x: -220, y: 110, w: 90, h: 90, r: 45, solid: false, flat: true },
+    { kind: 'crater', x: 60, y: 250, w: 50, h: 50, r: 25, solid: false, flat: true },
+    { kind: 'moonRock', x: 100, y: -40, w: 22, h: 18, z: 14 },
+    { kind: 'moonRock', x: -210, y: -20, w: 28, h: 22, z: 18 },
+    { kind: 'moonRock', x: 30, y: 200, w: 18, h: 16, z: 12 },
+    { kind: 'moonRock', x: 250, y: 20, w: 24, h: 20, z: 16 },
+    { kind: 'moonFlag', x: 110, y: -140, w: 8, h: 8, z: 80, label: 'Bandiera CDC-1 🚩' },
+  ],
   centro_commerciale: [
     { kind: 'fountain', x: 0, y: 40, w: 70, h: 70, label: 'Fontana ⛲', z: 60 },
     { kind: 'bench', x: -170, y: 50, w: 50, h: 16 },
     { kind: 'bench', x: 170, y: 50, w: 50, h: 16 },
-    { kind: 'plant', x: -270, y: -120, w: 26, h: 26, z: 60 },
-    { kind: 'plant', x: 270, y: -120, w: 26, h: 26, z: 60 },
-    { kind: 'plant', x: -270, y: 170, w: 26, h: 26, z: 60 },
-    { kind: 'plant', x: 270, y: 170, w: 26, h: 26, z: 60 },
+    // colonne tra le vetrine, con le lampade
+    { kind: 'mallColumn', x: -285, y: -186, w: 16, h: 16, z: 128 },
+    { kind: 'mallColumn', x: -95, y: -186, w: 16, h: 16, z: 128 },
+    { kind: 'mallColumn', x: 95, y: -186, w: 16, h: 16, z: 128 },
+    { kind: 'mallColumn', x: 285, y: -186, w: 16, h: 16, z: 128 },
     { kind: 'plant', x: -95, y: -150, w: 22, h: 22, z: 55 },
     { kind: 'plant', x: 95, y: -150, w: 22, h: 22, z: 55 },
+    // palme nei vasi agli angoli
+    { kind: 'mallPalm', x: -262, y: -95, w: 30, h: 30, z: 110 },
+    { kind: 'mallPalm', x: 262, y: -95, w: 30, h: 30, z: 110 },
+    { kind: 'mallPalm', x: -262, y: 165, w: 30, h: 30, z: 110 },
+    { kind: 'mallPalm', x: 262, y: 165, w: 30, h: 30, z: 110 },
+    // gelateria e palloncini vicino all'ingresso
+    { kind: 'iceCreamCart', x: -140, y: 145, w: 46, h: 24, z: 80, label: 'Gelateria 🍦' },
+    { kind: 'balloonStand', x: 140, y: 145, w: 26, h: 26, z: 100, label: 'Palloncini 🎈' },
   ],
   scommesse: [
     { kind: 'plant', x: 168, y: -160, w: 26, h: 26, z: 60 },
@@ -2425,23 +2474,28 @@ export const ENV_STYLE = {
       { x: 90, y: 0, z: 0, r: 220, color: '255,245,225' },
     ],
   },
+  luna: { floor: 'moon', floorColor: '#bdbdb6', outdoor: true },
   centro_commerciale: {
-    floor: 'tiles',
-    floorColor: '#ece6dc',
+    floor: 'marble',
+    floorColor: '#efe8dc',
     wall: '#f4efe7',
     wallStyle: 'plain',
     trim: '#b8860b',
     decor: {
       back: [],
       left: [
-        { t: 'logo', u: 120, text: 'CENTRO COMMERCIALE', sub: 'Dolce Casa', color: '#b8860b' },
-        { t: 'window', u: 280, w: 90, h: 56 },
+        { t: 'logo', u: 85, text: 'CENTRO COMMERCIALE', sub: 'Dolce Casa', color: '#b8860b' },
+        { t: 'adScreen', u: 235, w: 130, h: 64 },
+        { t: 'clock', u: 355 },
       ],
     },
     lights: [
-      { x: -190, y: -80, z: 0, r: 230, color: '255,240,215' },
-      { x: 190, y: -80, z: 0, r: 230, color: '255,240,215' },
-      { x: 0, y: 80, z: 0, r: 260, color: '255,245,225' },
+      { x: -190, y: -130, z: 0, r: 190, color: '255,190,120' },
+      { x: 0, y: -130, z: 0, r: 190, color: '255,170,215' },
+      { x: 190, y: -130, z: 0, r: 190, color: '220,180,255' },
+      { x: 0, y: 60, z: 0, r: 260, color: '255,245,225' },
+      { x: -150, y: 150, z: 0, r: 150, color: '255,235,200' },
+      { x: 150, y: 150, z: 0, r: 150, color: '255,235,200' },
     ],
   },
   scommesse: {

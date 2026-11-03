@@ -17,6 +17,15 @@ const phoneQuery =
     ? matchMedia('(max-width: 760px), (pointer: coarse) and (max-height: 520px)')
     : null;
 
+/**
+ * Superficie convessa (la luna): più ci si allontana dal centro, più il terreno scende, come su
+ * una sfera. È 0 negli altri ambienti.
+ */
+export function surfaceDrop(x: number, y: number): number {
+  const k = game.moonCurve || 0;
+  return k ? k * (x * x + y * y) : 0;
+}
+
 /** Scala della scena intera: come prima sul computer, ingrandita sul telefono. */
 export function cameraScale(): number {
   const w = game.view.canvas.width,
@@ -33,7 +42,7 @@ function sceneExtent(): { u0: number; u1: number; v0: number; v1: number } {
     u0: (game.X0 - game.Y1) * 0.866 - MARGIN,
     u1: (game.X1 - game.Y0) * 0.866 + MARGIN,
     v0: (game.X0 + game.Y0) * 0.5 - wallH - MARGIN,
-    v1: (game.X1 + game.Y1) * 0.5 + MARGIN,
+    v1: (game.X1 + game.Y1) * 0.5 + MARGIN + surfaceDrop(game.X1, game.Y1),
   };
 }
 
@@ -68,7 +77,8 @@ export function updateCamera(
     p = { x: p.x + (bed.x - p.x) * e, y: p.y + (bed.y - p.y) * e };
   }
   const pu = (p.x - p.y) * 0.866;
-  const pv = (p.x + p.y) * 0.5 - BODY_Z + OFFSET_Y / s; // riferito al centro dello schermo
+  // riferito al centro dello schermo (sulla luna il terreno scende verso i bordi)
+  const pv = (p.x + p.y) * 0.5 - BODY_Z + surfaceDrop(p.x, p.y) + OFFSET_Y / s;
   const snap = cam.env !== game.view.activeEnvironment;
   cam.env = game.view.activeEnvironment;
   let tu = cam.u,

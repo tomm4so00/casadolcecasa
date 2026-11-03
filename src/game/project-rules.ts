@@ -35,6 +35,9 @@ export interface ProjectState {
   launchAt?: number;
   /** Nome di chi ha premuto il pulsante. */
   launchBy?: string;
+  /** Ultimo decollo verso la luna e dalla luna (ora del server). */
+  tripAt?: number;
+  moonTripAt?: number;
 }
 
 /** Obiettivo finale (l'ultima soglia). */
@@ -77,6 +80,14 @@ export function decodeProject(value: unknown): ProjectState {
   if (typeof v.launchAt === 'number' && Number.isFinite(v.launchAt) && v.launchAt > 0)
     out.launchAt = v.launchAt;
   if (typeof v.launchBy === 'string') out.launchBy = v.launchBy.slice(0, 20);
+  const tripAt = (t: unknown) =>
+    t && typeof t === 'object' && typeof (t as { at?: unknown }).at === 'number'
+      ? (t as { at: number }).at
+      : undefined;
+  out.tripAt = tripAt(v.trip);
+  out.moonTripAt = tripAt(v.moonTrip);
+  if (out.tripAt === undefined) delete out.tripAt;
+  if (out.moonTripAt === undefined) delete out.moonTripAt;
   const donors = (v.donors || {}) as Record<string, unknown>;
   for (const [pid, d] of Object.entries(donors)) {
     if (!d || typeof d !== 'object') continue;
@@ -138,4 +149,39 @@ export function launchLift(since: number): number {
 export function countdownText(ms: number): string {
   const s = Math.max(0, Math.ceil(ms / 1000));
   return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
+}
+
+// ---------------------------------------------------------------- viaggi sulla luna
+
+/** Prezzo del viaggio sulla luna (andata e ritorno). */
+export const MOON_TRIP_PRICE = 500;
+/** Il razzo resta via per un po', poi torna e atterra sulla rampa. */
+export const FLIGHT_AWAY_MS = 60 * 1000;
+export const FLIGHT_LANDING_MS = 12 * 1000;
+/** Tempo totale di un volo: dopo questo il razzo è di nuovo pronto. */
+export const FLIGHT_TOTAL_MS = FLIGHT_AWAY_MS + FLIGHT_LANDING_MS;
+/** Chi è a bordo arriva a destinazione quando il razzo è ormai alto nel cielo. */
+export const FLIGHT_ARRIVE_MS = 9 * 1000;
+
+export type FlightPhase = 'idle' | 'launching' | 'away' | 'landing';
+
+/**
+ * Dove si trova il razzo, dato l'ultimo decollo (ora del server): sale, resta via, torna giù
+ * frenando con i motori e poi è di nuovo sulla rampa, pronto per un altro viaggio.
+ */
+export function rocketFlight(
+  departedAt: number | undefined,
+  now: number,
+): { phase: FlightPhase; since: number; lift: number; readyIn: number } {
+  if (!departedAt || now < departedAt) return { phase: 'idle', since: 0, lift: 0, readyIn: 0 };
+  const since = now - departedAt;
+  const readyIn = Math.max(0, FLIGHT_TOTAL_MS - since);
+  if (since < LAUNCH_ANIM_MS)
+    return { phase: 'launching', since, lift: launchLift(since), readyIn };
+  if (since < FLIGHT_AWAY_MS) return { phase: 'away', since, lift: 0, readyIn };
+  if (since < FLIGHT_TOTAL_MS) {
+    const s = (FLIGHT_TOTAL_MS - since) / 1000;
+    return { phase: 'landing', since, lift: 9 * s * s + 6 * s, readyIn };
+  }
+  return { phase: 'idle', since, lift: 0, readyIn: 0 };
 }

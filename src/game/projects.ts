@@ -37,6 +37,8 @@ const setState = (s: ProjectState) => {
   state = s;
   game.rocketStage = rocketStage();
   game.rocketLaunchAt = s.launchAt || 0;
+  game.rocketTripAt = s.tripAt || 0;
+  game.moonTripAt = s.moonTripAt || 0;
   game.rocketDonors = Object.fromEntries(Object.entries(s.donors).map(([id, d]) => [id, d.amount]));
 };
 const serverNow = (): number => Date.now() + (game.session.serverOffset || 0);
