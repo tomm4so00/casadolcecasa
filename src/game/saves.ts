@@ -1,3 +1,5 @@
+import { decodeWeed } from './weed-rules.js';
+import { weedRoomItems } from './weed.js';
 import { publishVitals } from './players-hud-rules.js';
 import { advanceNeeds } from './simulation.js';
 import { needsRules } from './needs-rules.js';
@@ -137,6 +139,11 @@ export function buildSaveData(..._args: GameValue[]): SaveV8 {
   if (game.bodyChosen) data.body = game.bodyString(currentBody());
   data.missionSet = 3;
   data.sleeping = !!game.player.isSleeping;
+  // si ricorda in quale letto si dorme (anche quello di un altro giocatore)
+  if (game.player.isSleeping && game.view.activeEnvironment === 'PLAYER_ROOM') {
+    data.sleepRoom = game.currentRoomIdx;
+    if (typeof game.bedSlot === 'number') data.bedSlot = game.bedSlot;
+  }
   data.sleepGainedSinceLastHealthBoost = game.player.sleepGainedSinceLastHealthBoost;
   data.inventory = {
     hasFood: !!game.player.hasFoodInInventory,
@@ -147,6 +154,8 @@ export function buildSaveData(..._args: GameValue[]): SaveV8 {
     data.romance = game.player.romance;
   if (game.player.personality) data.personality = game.player.personality;
   if (game.player.workDay) data.workDay = game.player.workDay;
+  if (game.player.weed && (game.player.weed.plantedAt || game.player.weed.grams))
+    data.weed = game.player.weed;
   if (game.player.coffeeAt) data.coffeeAt = game.player.coffeeAt;
   if (Object.keys(game.player.invest).length) {
     data.invest = {};
@@ -178,6 +187,9 @@ export function applySave(value: unknown): void {
   const s = decodeSaveV8(value);
   if (!s) return;
   game.player.isSleeping = s.sleeping === true;
+  game.sleepRoom =
+    game.player.isSleeping && Number.isInteger(s.sleepRoom) ? (s.sleepRoom as number) : null;
+  if (game.player.isSleeping && (s.bedSlot === 0 || s.bedSlot === 1)) game.bedSlot = s.bedSlot;
   game.player.sleepGainedSinceLastHealthBoost = Math.min(
     19.999999,
     s.sleepGainedSinceLastHealthBoost ?? 0,
@@ -201,6 +213,7 @@ export function applySave(value: unknown): void {
   game.player.romance = decodeRomance(s.romance);
   game.player.personality = decodePersonality(s.personality);
   game.player.workDay = decodeWorkDay(s.workDay);
+  game.player.weed = decodeWeed(s.weed);
   game.player.coffeeAt = num(s.coffeeAt, 0);
   game.player.invest = {};
   game.BIZ.forEach((b?: GameValue): GameValue => {
@@ -406,6 +419,8 @@ export function getMyRoomMap(..._args: GameValue[]): GameValue {
   const room: GameValue = game.roomsState[game.myAssignedRoomIdx ?? -1];
   const hung = roomPaintings(room);
   for (const slot of PAINTING_SLOTS) if (!hung[slot]) delete combined[paintingKey(slot)];
+  // pianta in vaso e barattolo d'erba
+  Object.assign(combined, weedRoomItems());
   return combined;
 }
 
@@ -426,6 +441,8 @@ export function publishRoomLayout(..._args: GameValue[]): GameValue {
       topColor: o.topColor,
       ...(o.wallItem ? { wallItem: true } : {}),
       ...(o.rot ? { rot: o.rot } : {}),
+      ...(o.grow ? { grow: o.grow } : {}),
+      ...(o.jar ? { jar: o.jar } : {}),
     };
   });
   const key: GameValue = JSON.stringify(layout);
@@ -571,21 +588,26 @@ export function startPresence(..._args: GameValue[]): GameValue {
           hygiene: game.player.hygieneLevel,
           happiness: game.player.happinessLevel,
         },
-        game.view.currentRoomTitle,
+        game.view.activeEnvironment === 'PLAYER_ROOM' &&
+          game.currentRoomIdx === game.myAssignedRoomIdx
+          ? 'Nella sua stanza 🏠'
+          : game.view.currentRoomTitle,
       ),
       act: game.rocketTrip
         ? 'rocket'
-        : game.fainted
-          ? 'faint'
-          : kissActive()
-            ? 'kiss'
-            : game.showerAnim
-              ? 'shower'
-              : game.bathAnim
-                ? game.bathAnim.pose || ''
-                : game.player.isSleeping
-                  ? 'sleep'
-                  : '',
+        : performance.now() < game.smokeUntil
+          ? 'smoke'
+          : game.fainted
+            ? 'faint'
+            : kissActive()
+              ? 'kiss'
+              : game.showerAnim
+                ? 'shower'
+                : game.bathAnim
+                  ? game.bathAnim.pose || ''
+                  : game.player.isSleeping
+                    ? 'sleep'
+                    : '',
       ...(game.showerAnim?.und ? { und: game.showerAnim.und } : {}),
       say: game.mySay,
       sayT: game.mySayT,

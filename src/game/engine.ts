@@ -6,7 +6,7 @@ import {
   updateBathroom,
   updateShower,
 } from './bathroom.js';
-import { drawClothesPile, undressedLook } from './render/avatars.js';
+import { drawClothesPile, drawSmokePuffs, undressedLook } from './render/avatars.js';
 import { realHour } from './game-clock.js';
 import type { GameValue } from './context.js';
 import { canPlaySession } from './accounts.js';
@@ -237,8 +237,7 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
       }
       if (game.view.activeEnvironment === 'CORTILE' && item.aptIdx !== undefined)
         label = aptLabel(item.aptIdx);
-      const flat: GameValue =
-        k === 'doorExit' || k === 'exitHouse' || k === 'doorYard' || k === 'doorLab';
+      const flat: GameValue = k === 'doorExit' || k === 'exitHouse' || k === 'doorLab';
       addThing(
         item.x,
         item.y,
@@ -314,6 +313,11 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
               myBathPose(),
             ),
     });
+    if (performance.now() < game.smokeUntil) {
+      const px = game.playerPos.x,
+        py = game.playerPos.y;
+      labels.push((): GameValue => drawSmokePuffs(px, py, animTime));
+    }
     if (kissActive()) {
       const since: number = game.kissAnim.start;
       labels.push((): GameValue => drawKissHearts(game.playerPos.x, game.playerPos.y, since));
@@ -410,6 +414,11 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
       ),
     );
     if (act === 'rocket') return; // a bordo del razzo
+    if (act === 'smoke') {
+      const sx = s.x,
+        sy = s.y;
+      labels.push((): GameValue => drawSmokePuffs(sx, sy, animTime));
+    }
     const und: number = act === 'shower' ? Number(op.und) || 0 : 0;
     const shownLook: GameValue = und ? undressedLook(s.look, und) : s.look;
     addPile(s.look, und);

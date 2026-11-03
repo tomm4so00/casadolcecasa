@@ -1772,3 +1772,12 @@ input[type='number'] {
 #travel-fade.on {
   opacity: 1;
 }
+.rps-place {
+  display: block;
+  font-size: 0.68rem;
+  color: #b2bec3;
+  text-align: left;
+}
+.rps-player span {
+  text-align: left;
+}

@@ -216,15 +216,18 @@ async function askToAccept(g: RpsGame): Promise<void> {
 
 // ---- sfidare qualcuno
 
-/** Giocatori online nella sala scommesse (escluso me). */
-function playersHere(): { id: string; name: string }[] {
+/** Tutti i giocatori online in questo momento (escluso me), ovunque si trovino; prima chi è nella sala. */
+function playersOnline(): { id: string; name: string; place: string; here: boolean }[] {
   const now = Date.now();
   return Object.entries<GameValue>(game.onlinePlayers || {})
-    .filter(
-      ([id, op]) =>
-        id !== me() && op && op.env === 'scommesse' && !op.offline && presenceAlive(id, op, now),
-    )
-    .map(([id, op]) => ({ id, name: String(op.name || 'Giocatore') }));
+    .filter(([id, op]) => id !== me() && op && !op.offline && presenceAlive(id, op, now))
+    .map(([id, op]) => ({
+      id,
+      name: String(op.name || 'Giocatore'),
+      place: typeof op.place === 'string' ? op.place : '',
+      here: op.env === 'scommesse',
+    }))
+    .sort((a, b) => Number(b.here) - Number(a.here) || a.name.localeCompare(b.name));
 }
 
 export function openRpsTable(): void {
@@ -242,19 +245,19 @@ function openRpsModal(): void {
 }
 
 function renderChallengeList(): void {
-  const players = playersHere();
+  const players = playersOnline();
   const body: HTMLElement = dom('rps-body');
   body.innerHTML =
-    `<p class="rps-help">Sfida un giocatore che è qui nella sala: ognuno mette la stessa puntata nel piatto e chi vince prende tutto. In caso di pareggio si rigioca.</p>` +
+    `<p class="rps-help">Sfida un qualsiasi giocatore online: gli arriva l'invito ovunque si trovi. Ognuno mette la stessa puntata nel piatto e chi vince prende tutto. In caso di pareggio si rigioca.</p>` +
     `<label class="rps-bet">Puntata: <input id="rps-bet" type="number" inputmode="numeric" min="${RPS_MIN_BET}" max="${RPS_MAX_BET}" value="20"> €</label>` +
     (players.length
       ? players
           .map(
             (p) =>
-              `<div class="rps-player"><span>👤 ${escapeHtmlSafe(p.name)}</span><button type="button" data-rps-target="${escapeHtmlSafe(p.id)}">⚔️ Sfida</button></div>`,
+              `<div class="rps-player"><span>👤 ${escapeHtmlSafe(p.name)}${p.place ? `<small class="rps-place">📍 ${escapeHtmlSafe(p.here ? 'Qui nella sala' : p.place)}</small>` : ''}</span><button type="button" data-rps-target="${escapeHtmlSafe(p.id)}">⚔️ Sfida</button></div>`,
           )
           .join('')
-      : '<p class="rps-empty">Non c\'è nessun altro giocatore nella sala in questo momento. Torna quando c\'è qualcuno!</p>');
+      : '<p class="rps-empty">Non c\'è nessun altro giocatore online in questo momento. Torna quando c\'è qualcuno!</p>');
   body.querySelectorAll<HTMLButtonElement>('[data-rps-target]').forEach((b) => {
     b.onclick = () => {
       const target = b.dataset.rpsTarget || '';

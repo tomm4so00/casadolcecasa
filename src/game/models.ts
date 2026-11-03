@@ -1,3 +1,4 @@
+import type { WeedState } from './weed-rules.js';
 import type { PersonalityState } from './personality-rules.js';
 import type { WorkDay } from './job-pay.js';
 import type { RomanceBook } from './romance-rules.js';
@@ -126,6 +127,8 @@ export interface CharacterState {
   personality?: PersonalityState;
   /** Turni di lavoro iniziati oggi (massimo SHIFTS_PER_DAY). */
   workDay?: WorkDay;
+  /** Pianta in vaso e barattolo d'erba nella propria stanza. */
+  weed?: WeedState;
 }
 export interface SessionState {
   authUid: string | null;

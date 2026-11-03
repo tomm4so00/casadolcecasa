@@ -138,6 +138,13 @@ export interface GameContext {
   engineeringFurniture: SceneMap;
   bettingFurniture: SceneMap;
   moonFurniture: SceneMap;
+  growshopFurniture: SceneMap;
+  /** Stanza in cui si stava dormendo quando si è chiuso il gioco (null = la propria). */
+  sleepRoom: number | null;
+  /** La porta del laboratorio resta aperta fino a questo istante (performance.now) mentre la si attraversa. */
+  labDoorForceUntil: number;
+  /** Fino a quando (performance.now) si vede il fumo della canna. */
+  smokeUntil: number;
   /** Curvatura del terreno (solo sulla luna). */
   moonCurve: number;
   /** Ultimi decolli verso la luna e dalla luna (ora del server). */

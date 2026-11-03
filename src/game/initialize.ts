@@ -1,3 +1,4 @@
+import { canSellJoint } from './weed.js';
 import { canKiss } from './romance.js';
 import { applyRoomBounds, growSceneData } from './room-size.js';
 import { startMarket } from './market-client.js';
@@ -22,6 +23,7 @@ import {
   BETTING_FURNITURE,
   MALL_FURNITURE,
   MOON_FURNITURE,
+  GROWSHOP_FURNITURE,
   ENGINEERING_YARD_FURNITURE,
   STORE_FLOOR_FURNITURE,
   SALOON_DOORS,
@@ -68,6 +70,9 @@ import {
   drawRpsTable,
   drawShopFacade,
   drawMoonRocket,
+  drawWeedPot,
+  drawWeedJar,
+  drawStrainDisplay,
   drawCraterProp,
   drawMoonRockProp,
   drawMoonFlagProp,
@@ -376,10 +381,14 @@ export function initializeGame() {
   game.bettingFurniture = structuredClone(BETTING_FURNITURE);
   game.mallFurniture = structuredClone(MALL_FURNITURE);
   game.moonFurniture = structuredClone(MOON_FURNITURE);
+  game.growshopFurniture = structuredClone(GROWSHOP_FURNITURE);
   game.moonCurve = 0;
   game.rocketTripAt = 0;
   game.moonTripAt = 0;
   game.rocketTrip = null;
+  game.sleepRoom = null;
+  game.labDoorForceUntil = 0;
+  game.smokeUntil = 0;
   game.engineeringYardFurniture = structuredClone(ENGINEERING_YARD_FURNITURE);
   game.rocketStage = 0;
   game.rocketLaunchAt = 0;
@@ -470,6 +479,12 @@ export function initializeGame() {
       label: '💋 Prova a baciare',
       color: '#ff6b81',
       show: (): GameValue => canKiss(game.socTarget?.id),
+    },
+    {
+      id: 'weed',
+      label: (): GameValue => `🌿 Vendi una canna (5 €) · ${game.player.weed?.grams || 0} g`,
+      color: '#2e7d32',
+      show: (): GameValue => canSellJoint(),
     },
     {
       id: 'drug',
@@ -642,6 +657,12 @@ export function initializeGame() {
     shopClothes: drawShopFacade,
     shopBetting: drawShopFacade,
     moonRocket: drawMoonRocket,
+    weedPot: drawWeedPot,
+    weedJar: drawWeedJar,
+    strainLemon: drawStrainDisplay,
+    strainAmnesia: drawStrainDisplay,
+    strainPurple: drawStrainDisplay,
+    shopGrow: drawShopFacade,
     launchButton: drawLaunchButton,
     coffee: drawCoffeeMachine,
     toilet: drawToilet,

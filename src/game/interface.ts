@@ -21,6 +21,7 @@ import {
   syncMyPinFromRoom,
   syncVaultFromServer,
   watchGameVersion,
+  withTimeout,
 } from './saves.js';
 import { openCharacterCreator } from './render/avatars.js';
 import { openEpitaph, rebuildGraveyard } from './render/objects.js';
@@ -234,10 +235,28 @@ export async function startGame(..._args: GameValue[]): Promise<GameValue> {
   // si riparte dall'ultima posizione (chi dorme o è svenuto ha già il suo posto, qui sotto)
   if (!game.player.isSleeping && !game.fainted) await resumeLastSpot();
   if (game.player.isSleeping && hasRoom()) {
+    // si riprende nel letto in cui ci si era addormentati, anche se è di un altro giocatore
+    // (l'elenco delle stanze non è ancora arrivato: si legge solo quella stanza)
+    let other: GameValue = null;
+    if (game.sleepRoom !== null && game.sleepRoom !== game.myAssignedRoomIdx)
+      try {
+        other = (
+          await withTimeout(game.session.db.ref('sims_rooms_state/' + game.sleepRoom).get(), 5000)
+        ).val();
+      } catch {
+        other = null;
+      }
     game.view.activeEnvironment = 'PLAYER_ROOM';
-    game.currentRoomIdx = game.myAssignedRoomIdx;
-    game.view.currentRoomTitle = 'La tua stanza 🏠';
-    game.playerPos = { x: game.playerRoomFurniture.bed.x, y: game.playerRoomFurniture.bed.y };
+    if (other && other.owner) {
+      game.currentRoomIdx = game.sleepRoom;
+      game.view.currentRoomTitle = `Stanza di ${other.owner}`;
+      const bed: GameValue = other.layout?.bed || game.playerRoomFurniture.bed;
+      game.playerPos = { x: bed.x, y: bed.y };
+    } else {
+      game.currentRoomIdx = game.myAssignedRoomIdx;
+      game.view.currentRoomTitle = 'La tua stanza 🏠';
+      game.playerPos = { x: game.playerRoomFurniture.bed.x, y: game.playerRoomFurniture.bed.y };
+    }
   }
   if (game.fainted) await resumeFaintSpot();
   game.session.db.ref('sims_rooms_state').on('value', (snapshot?: GameValue): GameValue => {

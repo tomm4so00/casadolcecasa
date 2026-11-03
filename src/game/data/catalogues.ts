@@ -1537,7 +1537,8 @@ export const ENGINEERING_FURNITURE = {
     name: 'Bancone da lavoro 🔧',
     moveable: false,
   },
-  doorYard: { x: -130, y: 160, w: 60, h: 15, z: 110, name: 'Zona esterna 🚀', moveable: false },
+  // porta sulla parete di fondo (dove c'era la finestra): si apre quando ci si avvicina
+  doorYard: { x: 70, y: -172, w: 56, h: 10, z: 100, name: 'Zona esterna 🚀', moveable: false },
   doorExit: { x: 60, y: 160, w: 60, h: 15, z: 110, name: 'Torna Fuori 🚪', moveable: false },
 };
 
@@ -1577,9 +1578,9 @@ export const ENGINEERING_YARD_FURNITURE = {
 // si entra. `enter` è l'attività che porta dentro il negozio.
 export const MALL_FURNITURE = {
   shopFurniture: {
-    x: -190,
+    x: -218,
     y: -189,
-    w: 150,
+    w: 128,
     h: 22,
     z: 128,
     name: 'Negozio di Mobili 🛋️',
@@ -1588,9 +1589,9 @@ export const MALL_FURNITURE = {
     moveable: false,
   },
   shopClothes: {
-    x: 0,
+    x: -74,
     y: -189,
-    w: 150,
+    w: 128,
     h: 22,
     z: 128,
     name: 'Boutique Dolce Casa 👗',
@@ -1598,10 +1599,21 @@ export const MALL_FURNITURE = {
     enter: 'clothesshop',
     moveable: false,
   },
-  shopBetting: {
-    x: 190,
+  shopGrow: {
+    x: 74,
     y: -189,
-    w: 150,
+    w: 128,
+    h: 22,
+    z: 128,
+    name: 'Grow Shop 🌿',
+    shop: 'grow',
+    enter: 'growshop',
+    moveable: false,
+  },
+  shopBetting: {
+    x: 218,
+    y: -189,
+    w: 128,
     h: 22,
     z: 128,
     name: 'Sala Scommesse 🎰',
@@ -1624,6 +1636,41 @@ export const MOON_FURNITURE = {
     reach: 45,
     moveable: false,
   },
+};
+
+// Grow shop: le tre varietà in esposizione (ognuna con la sua lampada) e l'uscita.
+export const GROWSHOP_FURNITURE = {
+  strainLemon: {
+    x: -110,
+    y: -115,
+    w: 44,
+    h: 44,
+    z: 90,
+    strain: 'lemon',
+    name: 'Lemon Haze 🍋',
+    moveable: false,
+  },
+  strainAmnesia: {
+    x: 0,
+    y: -135,
+    w: 44,
+    h: 44,
+    z: 90,
+    strain: 'amnesia',
+    name: 'Amnesia 🌿',
+    moveable: false,
+  },
+  strainPurple: {
+    x: 110,
+    y: -115,
+    w: 44,
+    h: 44,
+    z: 90,
+    strain: 'purple',
+    name: 'Purple Haze 🍇',
+    moveable: false,
+  },
+  doorExit: { x: 0, y: 160, w: 60, h: 15, z: 110, name: 'Torna Fuori 🚪', moveable: false },
 };
 
 // Sala scommesse: tre slot lungo la parete di fondo, il tavolo della morra cinese e l'uscita.
@@ -2310,6 +2357,12 @@ export const ENV_DECOR = {
     { kind: 'plant', x: -168, y: -160, w: 26, h: 26, z: 60 },
     { kind: 'plant', x: 168, y: 150, w: 26, h: 26, z: 60 },
   ],
+  growshop: [
+    { kind: 'plant', x: -168, y: -160, w: 26, h: 26, z: 60 },
+    { kind: 'plant', x: 168, y: -160, w: 26, h: 26, z: 60 },
+    { kind: 'plant', x: -168, y: 140, w: 26, h: 26, z: 60 },
+    { kind: 'plant', x: 168, y: 140, w: 26, h: 26, z: 60 },
+  ],
   luna: [
     { kind: 'crater', x: -170, y: -150, w: 80, h: 80, r: 40, solid: false, flat: true },
     { kind: 'crater', x: 160, y: 90, w: 110, h: 110, r: 55, solid: false, flat: true },
@@ -2328,12 +2381,13 @@ export const ENV_DECOR = {
     { kind: 'bench', x: -170, y: 50, w: 50, h: 16 },
     { kind: 'bench', x: 170, y: 50, w: 50, h: 16 },
     // colonne tra le vetrine, con le lampade
-    { kind: 'mallColumn', x: -285, y: -186, w: 16, h: 16, z: 128 },
-    { kind: 'mallColumn', x: -95, y: -186, w: 16, h: 16, z: 128 },
-    { kind: 'mallColumn', x: 95, y: -186, w: 16, h: 16, z: 128 },
-    { kind: 'mallColumn', x: 285, y: -186, w: 16, h: 16, z: 128 },
-    { kind: 'plant', x: -95, y: -150, w: 22, h: 22, z: 55 },
-    { kind: 'plant', x: 95, y: -150, w: 22, h: 22, z: 55 },
+    { kind: 'mallColumn', x: -291, y: -186, w: 16, h: 16, z: 128 },
+    { kind: 'mallColumn', x: -146, y: -186, w: 16, h: 16, z: 128 },
+    { kind: 'mallColumn', x: 0, y: -186, w: 16, h: 16, z: 128 },
+    { kind: 'mallColumn', x: 146, y: -186, w: 16, h: 16, z: 128 },
+    { kind: 'mallColumn', x: 291, y: -186, w: 16, h: 16, z: 128 },
+    { kind: 'plant', x: -146, y: -152, w: 22, h: 22, z: 55 },
+    { kind: 'plant', x: 146, y: -152, w: 22, h: 22, z: 55 },
     // palme nei vasi agli angoli
     { kind: 'mallPalm', x: -262, y: -95, w: 30, h: 30, z: 110 },
     { kind: 'mallPalm', x: 262, y: -95, w: 30, h: 30, z: 110 },
@@ -2475,6 +2529,26 @@ export const ENV_STYLE = {
     ],
   },
   luna: { floor: 'moon', floorColor: '#bdbdb6', outdoor: true },
+  growshop: {
+    floor: 'concrete',
+    floorColor: '#4a4a4a',
+    wall: '#1e3d23',
+    wallStyle: 'plain',
+    trim: '#9cff57',
+    decor: {
+      back: [{ t: 'neon', u: 200, text: 'GROW SHOP', color: '120,255,90' }],
+      left: [
+        { t: 'neon', u: 110, text: '🌿', color: '120,255,90' },
+        { t: 'poster', u: 250, text: '100% NATURALE', color: '#2e7d32' },
+      ],
+    },
+    lights: [
+      { x: -110, y: -100, z: 0, r: 150, color: '210,140,255' },
+      { x: 0, y: -120, z: 0, r: 150, color: '210,140,255' },
+      { x: 110, y: -100, z: 0, r: 150, color: '210,140,255' },
+      { x: 0, y: 70, z: 0, r: 220, color: '200,255,190' },
+    ],
+  },
   centro_commerciale: {
     floor: 'marble',
     floorColor: '#efe8dc',
@@ -2490,9 +2564,10 @@ export const ENV_STYLE = {
       ],
     },
     lights: [
-      { x: -190, y: -130, z: 0, r: 190, color: '255,190,120' },
-      { x: 0, y: -130, z: 0, r: 190, color: '255,170,215' },
-      { x: 190, y: -130, z: 0, r: 190, color: '220,180,255' },
+      { x: -218, y: -130, z: 0, r: 170, color: '255,190,120' },
+      { x: -74, y: -130, z: 0, r: 170, color: '255,170,215' },
+      { x: 74, y: -130, z: 0, r: 170, color: '170,255,150' },
+      { x: 218, y: -130, z: 0, r: 170, color: '220,180,255' },
       { x: 0, y: 60, z: 0, r: 260, color: '255,245,225' },
       { x: -150, y: 150, z: 0, r: 150, color: '255,235,200' },
       { x: 150, y: 150, z: 0, r: 150, color: '255,235,200' },
@@ -2523,10 +2598,7 @@ export const ENV_STYLE = {
     wallStyle: 'plain',
     trim: '#0984e3',
     decor: {
-      back: [
-        { t: 'window', u: 270, w: 100, h: 60 },
-        { t: 'poster', u: 380, text: 'SICUREZZA', color: '#f39c12', w: 40 },
-      ],
+      back: [{ t: 'poster', u: 380, text: 'SICUREZZA', color: '#f39c12', w: 40 }],
       left: [
         { t: 'logo', u: 130, text: 'LABORATORIO', sub: 'ingegneristico', color: '#0984e3' },
         { t: 'clock', u: 260 },

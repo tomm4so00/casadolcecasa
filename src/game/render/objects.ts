@@ -1,3 +1,4 @@
+import { STRAINS, type StrainId, growProgress } from '../weed-rules.js';
 import { countdownText, launchPhase, rocketFlight } from '../project-rules.js';
 import { clockText, realHour } from '../game-clock.js';
 import { spendMoney } from '../economy.js';
@@ -2811,6 +2812,184 @@ function drawRocketWorks(
   box(it.x - 34, it.y + 34, 18, 18, 14, '#b9884f', { z0: 10 });
 }
 
+// ---------------------------------------------------------------- ERBA
+/** Foglia di canapa: sette foglioline a ventaglio. */
+function weedLeaf(cx: number, cy: number, size: number, angle: number, color: string): void {
+  const ctx = game.view.ctx;
+  ctx.fillStyle = color;
+  const fan = [-1.25, -0.8, -0.4, 0, 0.4, 0.8, 1.25];
+  const len = [0.45, 0.7, 0.9, 1, 0.9, 0.7, 0.45];
+  fan.forEach((a, i) => {
+    const ang = angle + a;
+    const l = size * len[i];
+    ctx.beginPath();
+    ctx.ellipse(
+      cx + Math.cos(ang) * l * 0.5,
+      cy + Math.sin(ang) * l * 0.5,
+      l * 0.5,
+      l * 0.11,
+      ang,
+      0,
+      Math.PI * 2,
+    );
+    ctx.fill();
+  });
+}
+
+/**
+ * Pianta d'erba alta in proporzione alla crescita (0-1): germoglio, poi foglie,
+ * infine le cime colorate della varietà quando è quasi pronta.
+ */
+function drawWeedPlant(
+  x: number,
+  y: number,
+  z0: number,
+  strain: StrainId,
+  progress: number,
+  t: number,
+): void {
+  const ctx = game.view.ctx;
+  const s: number = isoScale();
+  const st = STRAINS[strain] || STRAINS.amnesia;
+  const h = 8 + 62 * progress;
+  const sway = Math.sin(t * 1.2 + x) * 1.5 * s;
+  const base = isoProject(x, y, z0),
+    top = isoProject(x, y, z0 + h);
+  ctx.strokeStyle = game.darken(st.leaf, 0.3);
+  ctx.lineWidth = Math.max(1, (1 + 2 * progress) * s);
+  ctx.beginPath();
+  ctx.moveTo(base.x, base.y);
+  ctx.quadraticCurveTo(base.x + sway, (base.y + top.y) / 2, top.x + sway, top.y);
+  ctx.stroke();
+  // coppie di foglie lungo il fusto, più grandi in basso
+  const pairs = 1 + Math.floor(progress * 5);
+  for (let i = 0; i < pairs; i++) {
+    const k = (i + 1) / (pairs + 0.5);
+    const p = isoProject(x, y, z0 + h * k);
+    const size = (6 + 16 * progress) * (1.15 - k * 0.6) * s;
+    const leaf = i % 2 ? st.leaf : game.darken(st.leaf, 0.12);
+    weedLeaf(p.x + sway * k, p.y, size, Math.PI * 0.95, leaf);
+    weedLeaf(p.x + sway * k, p.y, size, Math.PI * 0.05, leaf);
+  }
+  weedLeaf(top.x + sway, top.y, (4 + 8 * progress) * s, -Math.PI / 2, st.leaf);
+  // cime (dal 60% in poi), con i pistilli
+  if (progress > 0.6) {
+    const k = (progress - 0.6) / 0.4;
+    for (let i = 0; i < 5; i++) {
+      const p = isoProject(x, y, z0 + h * (0.45 + i * 0.13));
+      const r = (2 + 3 * k) * s * (i === 4 ? 1.4 : 1);
+      ctx.fillStyle = st.bud;
+      ctx.beginPath();
+      ctx.ellipse(p.x + sway * 0.7 + (i % 2 ? 3 : -3) * s, p.y, r, r * 1.3, 0, 0, 6.3);
+      ctx.fill();
+      ctx.fillStyle = st.hair;
+      for (let j = 0; j < 3; j++)
+        ctx.fillRect(p.x + sway * 0.7 + (j - 1) * 2 * s, p.y - r * 0.6 + j * s, 1, 1);
+    }
+  }
+  // pronta: brilla un po'
+  if (progress >= 1) {
+    for (let i = 0; i < 4; i++) {
+      const a = t * 2 + i * 1.6;
+      const p = isoProject(
+        x + Math.cos(a) * 14,
+        y + Math.sin(a) * 14,
+        z0 + h * 0.6 + Math.sin(a * 1.3) * 10,
+      );
+      ctx.fillStyle = `rgba(255,255,200,${0.5 + 0.5 * Math.sin(t * 5 + i)})`;
+      ctx.fillRect(p.x - 1, p.y - 1, 2.5, 2.5);
+    }
+  }
+}
+
+/** Vaso con la pianta che cresce nella camera (anche quella vista dai visitatori). */
+export function drawWeedPot(it?: GameValue, t?: GameValue): GameValue {
+  const g = it.grow || {};
+  box(it.x, it.y, 20, 20, 16, '#b5651d', { top: '#4e342e' });
+  box(it.x, it.y, 23, 23, 3, '#8d4a17', { z0: 14 });
+  drawWeedPlant(it.x, it.y, 17, g.s, growProgress(g.p, Date.now()), t || 0);
+}
+
+/** Barattolo di vetro con l'erba dentro: più è pieno, più sale il verde. */
+export function drawWeedJar(it?: GameValue): GameValue {
+  const ctx = game.view.ctx;
+  const s: number = isoScale();
+  const j = it.jar || { g: 0, s: 'amnesia' };
+  const st = STRAINS[j.s as StrainId] || STRAINS.amnesia;
+  const b = isoProject(it.x, it.y, 0),
+    tp = isoProject(it.x, it.y, 22);
+  const w = 9 * s;
+  const fill = Math.min(1, j.g / 100);
+  const hgt = b.y - tp.y;
+  // erba dentro
+  ctx.fillStyle = st.bud;
+  ctx.fillRect(b.x - w, b.y - hgt * 0.85 * fill, w * 2, hgt * 0.85 * fill);
+  for (let i = 0; i < 6 * fill; i++) {
+    ctx.fillStyle = game.darken(st.leaf, 0.1);
+    ctx.beginPath();
+    ctx.arc(
+      b.x - w * 0.6 + (i % 3) * w * 0.6,
+      b.y - 3 * s - Math.floor(i / 3) * 5 * s,
+      2.2 * s,
+      0,
+      6.3,
+    );
+    ctx.fill();
+  }
+  // vetro
+  ctx.fillStyle = 'rgba(210,240,255,0.28)';
+  ctx.strokeStyle = 'rgba(255,255,255,0.8)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.rect(b.x - w, tp.y, w * 2, hgt);
+  ctx.fill();
+  ctx.stroke();
+  // tappo ed etichetta con i grammi
+  ctx.fillStyle = '#2e7d32';
+  ctx.fillRect(b.x - w - 1, tp.y - 4 * s, w * 2 + 2, 4 * s);
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(b.x - w * 0.75, tp.y + hgt * 0.3, w * 1.5, 7 * s);
+  ctx.fillStyle = '#2d3436';
+  ctx.font = `bold ${Math.round(5 * s)}px sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.fillText(`${j.g} g`, b.x, tp.y + hgt * 0.3 + 5.5 * s);
+}
+
+/** Espositore del grow shop: cassetta di legno, pianta adulta e lampada viola che la illumina. */
+export function drawStrainDisplay(it?: GameValue, t?: GameValue): GameValue {
+  const ctx = game.view.ctx;
+  const s: number = isoScale();
+  const crate: GameValue = box(it.x, it.y, it.w, it.h, 22, '#a1887f');
+  onFace(crate, 'left', (W: number, H: number): void => {
+    woodGrain(W, H, 'rgba(60,40,20,0.3)', false, 3);
+    const st = STRAINS[it.strain as StrainId];
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(W / 2 - 18, H / 2 - 6, 36, 12);
+    ctx.fillStyle = '#2e7d32';
+    ctx.font = 'bold 6px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(`${st.price} €`, W / 2, H / 2 + 2);
+  });
+  box(it.x, it.y, 22, 22, 14, '#b5651d', { z0: 22, top: '#4e342e' });
+  drawWeedPlant(it.x, it.y, 36, it.strain, 1, t || 0);
+  // lampada da coltivazione appesa
+  box(it.x, it.y, 2, 2, 30, '#2d3436', { z0: 120 });
+  box(it.x, it.y, 34, 18, 4, '#2d3436', { z0: 116 });
+  const c = isoProject(it.x, it.y, 114);
+  const pulse = 0.35 + 0.08 * Math.sin((t || 0) * 2 + it.x);
+  const g = ctx.createRadialGradient(c.x, c.y, 2, c.x, c.y + 40 * s, 70 * s);
+  g.addColorStop(0, `rgba(210,140,255,${pulse + 0.25})`);
+  g.addColorStop(1, 'rgba(210,140,255,0)');
+  ctx.fillStyle = g;
+  ctx.beginPath();
+  ctx.moveTo(c.x - 16 * s, c.y);
+  ctx.lineTo(c.x + 16 * s, c.y);
+  ctx.lineTo(c.x + 34 * s, c.y + 70 * s);
+  ctx.lineTo(c.x - 34 * s, c.y + 70 * s);
+  ctx.closePath();
+  ctx.fill();
+}
+
 // ---------------------------------------------------------------- CENTRO COMMERCIALE
 const FACADE_STYLE: Record<
   string,
@@ -2829,6 +3008,13 @@ const FACADE_STYLE: Record<
     text: '#ffffff',
     awning: ['#e84393', '#ffffff'],
     title: '👗 BOUTIQUE',
+  },
+  grow: {
+    wall: '#1b3a1f',
+    sign: '#0b1a0d',
+    text: '#9cff57',
+    awning: ['#2e7d32', '#111111'],
+    title: '🌿 GROW SHOP',
   },
   scommesse: {
     wall: '#2c2c54',
@@ -2858,6 +3044,12 @@ export function drawShopFacade(it?: GameValue, t?: GameValue): GameValue {
       ctx.shadowColor = '#feca57';
       ctx.shadowBlur = on ? 8 : 2;
       ctx.fillStyle = on ? '#feca57' : '#c79a2b';
+    }
+    // il titolo si rimpicciolisce se non ci sta nell'insegna
+    let size = 11;
+    while (size > 7 && ctx.measureText(st.title).width > W - 14) {
+      size -= 0.5;
+      ctx.font = `bold ${size}px sans-serif`;
     }
     ctx.fillText(st.title, W / 2, 17);
     ctx.shadowBlur = 0;
@@ -2958,6 +3150,28 @@ function drawWindowDisplay(shop: string, x: number, y: number, w: number, h: num
       ctx.fillStyle = '#636e72';
       ctx.fillRect(cx - 0.5, base - 14, 1, 12);
       ctx.fillRect(cx - 5, base - 3, 10, 2);
+    }
+  } else if (shop === 'grow') {
+    // piantine in vaso sotto la luce viola
+    const glow = ctx.createLinearGradient(0, y, 0, base);
+    glow.addColorStop(0, 'rgba(200,120,255,0.55)');
+    glow.addColorStop(1, 'rgba(200,120,255,0.1)');
+    ctx.fillStyle = glow;
+    ctx.fillRect(x, y, w, h);
+    for (let i = 0; i < 3; i++) {
+      const px = x + (w * (i + 0.5)) / 3;
+      ctx.fillStyle = '#b5651d';
+      ctx.fillRect(px - 5, base - 9, 10, 8);
+      ctx.fillStyle = ['#7cb342', '#388e3c', '#2e7d32'][i];
+      for (let l = 0; l < 4; l++) {
+        ctx.beginPath();
+        ctx.ellipse(px, base - 14 - l * 5, 7 - l, 2.2, l % 2 ? 0.4 : -0.4, 0, 6.3);
+        ctx.fill();
+      }
+      ctx.fillStyle = ['#d4e157', '#a5d6a7', '#8e24aa'][i];
+      ctx.beginPath();
+      ctx.arc(px, base - 34, 2.5, 0, 6.3);
+      ctx.fill();
     }
   } else {
     // slot machine con le luci
@@ -3202,6 +3416,79 @@ export function drawRpsTable(it?: GameValue): GameValue {
 }
 
 // ---------------------------------------------------------------- LABORATORIO INGEGNERISTICO
+// apertura della porta verso la zona esterna (0 = chiusa, 1 = aperta) e ultimo istante disegnato
+let labDoorOpen = 0;
+let labDoorT = 0;
+
+/**
+ * Porta del laboratorio verso la zona esterna: telaio sulla parete di fondo, vista sul fuori
+ * e anta che ruota sui cardini quando qualcuno si avvicina (o la sta attraversando).
+ */
+export function drawLabDoor(it?: GameValue, t?: GameValue): GameValue {
+  const ctx = game.view.ctx;
+  const now: number = t || 0;
+  const dt = Math.min(0.1, Math.max(0, now - labDoorT));
+  labDoorT = now;
+  const near =
+    Math.hypot(game.playerPos.x - it.x, game.playerPos.y - it.y) < 80 ||
+    performance.now() < game.labDoorForceUntil;
+  labDoorOpen += ((near ? 1 : 0) - labDoorOpen) * Math.min(1, dt * 6);
+  const open = labDoorOpen * labDoorOpen * (3 - 2 * labDoorOpen);
+  const x0 = it.x - it.w / 2,
+    x1 = it.x + it.w / 2,
+    wy = it.y - it.h / 2 - 2, // filo della parete
+    H = it.z;
+  const P = (x: number, y: number, z: number) => isoProject(x, y, z);
+  const quad = (pts: { x: number; y: number }[], fill: GameValue) => {
+    ctx.fillStyle = fill;
+    ctx.beginPath();
+    pts.forEach((p, i) => (i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y)));
+    ctx.closePath();
+    ctx.fill();
+  };
+  // vista sul fuori: cielo e piazzale di cemento
+  const top = P(x0, wy, H),
+    bottom = P(x0, wy, 0);
+  const sky = ctx.createLinearGradient(0, top.y, 0, bottom.y);
+  sky.addColorStop(0, '#74b9ff');
+  sky.addColorStop(0.6, '#dfe6e9');
+  sky.addColorStop(0.61, '#9aa0a6');
+  sky.addColorStop(1, '#7f8c8d');
+  quad([P(x0, wy, 0), P(x1, wy, 0), P(x1, wy, H), P(x0, wy, H)], sky);
+  // telaio
+  box(x0 - 3, wy + 2, 6, 6, H + 6, '#2d3436');
+  box(x1 + 3, wy + 2, 6, 6, H + 6, '#2d3436');
+  box(it.x, wy + 2, it.w + 12, 6, 8, '#2d3436', { z0: H });
+  // anta: ruota sul cardine di sinistra verso l'interno della stanza
+  const ang = open * 1.5; // fino a circa 86 gradi
+  const ex = x0 + Math.cos(ang) * it.w,
+    ey = wy + 4 + Math.sin(ang) * it.w;
+  const leafColor = open > 0.02 ? game.darken('#0984e3', 0.15 + 0.2 * open) : '#0984e3';
+  quad([P(x0, wy + 4, 0), P(ex, ey, 0), P(ex, ey, H), P(x0, wy + 4, H)], leafColor);
+  // oblò e maniglione antipanico sull'anta
+  const lerp = (k: number, z: number) => P(x0 + (ex - x0) * k, wy + 4 + (ey - wy - 4) * k, z);
+  quad(
+    [lerp(0.25, H * 0.6), lerp(0.75, H * 0.6), lerp(0.75, H * 0.85), lerp(0.25, H * 0.85)],
+    'rgba(200,235,255,0.85)',
+  );
+  ctx.strokeStyle = '#dfe6e9';
+  ctx.lineWidth = 2.5 * isoScale();
+  const h0 = lerp(0.15, H * 0.45),
+    h1 = lerp(0.85, H * 0.45);
+  ctx.beginPath();
+  ctx.moveTo(h0.x, h0.y);
+  ctx.lineTo(h1.x, h1.y);
+  ctx.stroke();
+  // cartello sopra la porta
+  const sign = P(it.x, wy + 6, H + 16);
+  ctx.fillStyle = '#2ed573';
+  ctx.fillRect(sign.x - 22 * isoScale(), sign.y - 6 * isoScale(), 44 * isoScale(), 12 * isoScale());
+  ctx.fillStyle = '#ffffff';
+  ctx.font = `bold ${Math.round(7 * isoScale())}px sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.fillText('🚀 ESTERNO', sign.x, sign.y + 2.5 * isoScale());
+}
+
 /** Bacheca dei progetti: pannello di sughero con i fogli appesi; il primo è il razzo. */
 export function drawProjectBoard(it?: GameValue): GameValue {
   const ctx = game.view.ctx;
@@ -3527,7 +3814,7 @@ export function drawMapItem(
   }
   if (k === 'doorExit' || k === 'exitHouse')
     return drawExitMat(item, k === 'exitHouse' ? 'ESCI DI CASA' : 'USCITA');
-  if (k === 'doorYard') return drawExitMat(item, 'ZONA ESTERNA');
+  if (k === 'doorYard') return drawLabDoor(item, t);
   if (k === 'doorLab') return drawExitMat(item, 'LABORATORIO');
   // Gli oggetti da parete (il quadro) si disegnano sulla parete, non sul pavimento.
   if (item.wallItem) return;

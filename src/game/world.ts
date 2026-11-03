@@ -1,3 +1,5 @@
+import { buyPlant, plantLabel, smokeJoint, tendPlant } from './weed.js';
+import { STRAINS, type StrainId } from './weed-rules.js';
 import { earthFlight, moonFlight, moonOpen, returnToEarth, travelToMoon } from './moon.js';
 import { MOON_TRIP_PRICE } from './project-rules.js';
 import { openRpsTable, openSlot } from './betting.js';
@@ -309,6 +311,7 @@ export function getCurrentFurnitureMap(..._args: GameValue[]): SceneMap {
   if (game.view.activeEnvironment === 'scommesse') return game.bettingFurniture;
   if (game.view.activeEnvironment === 'centro_commerciale') return game.mallFurniture;
   if (game.view.activeEnvironment === 'luna') return game.moonFurniture;
+  if (game.view.activeEnvironment === 'growshop') return game.growshopFurniture;
   if (game.view.activeEnvironment === 'ingegneria_esterno') return game.engineeringYardFurniture;
   if (game.view.activeEnvironment === 'CIMITERO') return game.graveMap;
   if (game.MG.active && game.view.activeEnvironment === 'lavoro_' + game.MG.job) return game.MG.map;
@@ -388,6 +391,12 @@ export function checkProximity(..._args: GameValue[]): GameValue {
         doorYard: '🚀 Vai nella zona esterna',
       };
       btnMain.innerText = labels[found] || '🚪 Torna Fuori';
+    } else if (game.view.activeEnvironment === 'growshop') {
+      btnMain.classList.remove('btn-pop-locked');
+      btnSub.classList.add('hidden');
+      btnMain.innerText = item.strain
+        ? `🌱 Compra ${STRAINS[item.strain as StrainId].name} (${STRAINS[item.strain as StrainId].price} €)`
+        : '🚪 Torna Fuori';
     } else if (game.view.activeEnvironment === 'luna') {
       btnSub.classList.add('hidden');
       const flight = moonFlight();
@@ -564,6 +573,22 @@ export function checkProximity(..._args: GameValue[]): GameValue {
       btnMain.innerText = `✋ ${item.name}`;
       btnSub.classList.add('hidden');
     }
+    if (
+      game.view.activeEnvironment === 'PLAYER_ROOM' &&
+      (found === 'weedPot' || found === 'weedJar')
+    ) {
+      const mine = isMyRoomNow();
+      btnSub.classList.add('hidden');
+      btnMain.innerText =
+        found === 'weedPot'
+          ? mine
+            ? plantLabel()
+            : `🌱 ${item.name}`
+          : mine
+            ? `🚬 Fuma una canna (${game.player.weed?.grams || 0} g)`
+            : '🌿 Barattolo di erba';
+      btnMain.classList.toggle('btn-pop-locked', !mine);
+    }
     if (game.view.activeEnvironment === 'BATHROOM') {
       const busy = !!(game.showerAnim || game.bathAnim);
       const labels: Record<string, [string, string]> = {
@@ -716,6 +741,7 @@ const MALL_SHOPS: Record<string, { facade: string; activity: string }> = {
   negozio_mobili: { facade: 'shopFurniture', activity: 'furnitureshop' },
   negozio_vestiti: { facade: 'shopClothes', activity: 'clothesshop' },
   scommesse: { facade: 'shopBetting', activity: 'betting' },
+  growshop: { facade: 'shopGrow', activity: 'growshop' },
 };
 
 /** Esce da un negozio e torna nel centro commerciale, davanti alla sua vetrina. */
@@ -809,7 +835,13 @@ export async function handleObjectInteract(..._args: GameValue[]): Promise<void>
   } else if (game.view.activeEnvironment === 'ingegneria') {
     if (game.activeTargetProp === 'projectBoard') openProjects(false);
     else if (game.activeTargetProp === 'workbench') workbenchMessage();
-    else if (game.activeTargetProp === 'doorYard') goToEngineering(true);
+    else if (game.activeTargetProp === 'doorYard') {
+      game.labDoorForceUntil = performance.now() + 900;
+      sfx('door');
+      lifetime.setTimeout(() => goToEngineering(true), 350);
+    } else if (game.activeTargetProp === 'doorExit') backToSaloon();
+  } else if (game.view.activeEnvironment === 'growshop') {
+    if (item?.strain) await buyPlant(item.strain);
     else if (game.activeTargetProp === 'doorExit') backToSaloon();
   } else if (game.view.activeEnvironment === 'luna') {
     if (game.activeTargetProp === 'moonRocket') await returnToEarth();
@@ -897,6 +929,12 @@ export async function handleObjectInteract(..._args: GameValue[]): Promise<void>
   } else {
     if (game.activeTargetProp === 'doorExit') {
       backToSaloon();
+    } else if (game.activeTargetProp === 'weedPot') {
+      if (isMyRoomNow()) tendPlant();
+      else toast('🌱 Questa pianta non è tua!');
+    } else if (game.activeTargetProp === 'weedJar') {
+      if (isMyRoomNow()) smokeJoint();
+      else toast('🚫 Questo barattolo non è tuo!');
     } else if (game.activeTargetProp === 'bed') {
       if (!game.player.isSleeping) {
         const slot = freeBedSlot();
@@ -1118,6 +1156,12 @@ export async function doActivity(type?: GameValue): Promise<void> {
     backToMall();
     dom('btn-return-home').classList.add('hidden');
     return;
+  } else if (type === 'growshop') {
+    game.view.activeEnvironment = 'growshop';
+    game.view.currentRoomTitle = 'Grow Shop 🌿';
+    dom('btn-return-home').classList.add('hidden');
+    game.playerPos = { x: 0, y: 110 };
+    return;
   } else if (type === 'betting') {
     game.view.activeEnvironment = 'scommesse';
     game.view.currentRoomTitle = 'Sala Scommesse 🎰';
@@ -1177,6 +1221,8 @@ function goToEngineering(yard: boolean): void {
     game.view.activeEnvironment = 'ingegneria';
     game.view.currentRoomTitle = 'Laboratorio Ingegneristico 🔧';
     spawnAtDoor(game.engineeringFurniture.doorYard);
+    // si rientra dalla porta: è aperta e si richiude alle spalle
+    game.labDoorForceUntil = performance.now() + 600;
   }
 }
 

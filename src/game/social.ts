@@ -1,3 +1,4 @@
+import { offerJoint, onJointOffer, onJointPaid, onJointRefused } from './weed.js';
 import { myLine, notePersonality } from './personality.js';
 import { onArtSold } from './art-market.js';
 import { transferMoney, creditMoney } from './economy.js';
@@ -105,6 +106,8 @@ export async function socDo(act?: GameValue): Promise<GameValue> {
     toast(`💶 Hai regalato ${amt} € a ${t.name}`);
   } else if (act === 'kiss') {
     await tryKiss(t);
+  } else if (act === 'weed') {
+    await offerJoint(t);
   } else if (act === 'drug') {
     if (game.player.drugStock < 1) return;
     game.player.drugStock--;
@@ -212,6 +215,12 @@ export async function handleSocial(m?: GameValue): Promise<GameValue> {
     await onKissAsk(m, who);
   } else if (m.type === 'kissYes' || m.type === 'kissNo') {
     onKissAnswer(m, who, m.type === 'kissYes');
+  } else if (m.type === 'weedOffer' && !old) {
+    await onJointOffer(m, who);
+  } else if (m.type === 'weedPaid') {
+    onJointPaid(who);
+  } else if (m.type === 'weedNo') {
+    onJointRefused(who);
   } else if (m.type === 'drugReturn') {
     game.player.drugStock++;
     toast(`${who} ha rifiutato la dose: ti è tornata.`, 3500);

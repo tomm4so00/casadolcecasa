@@ -40,6 +40,10 @@ export interface SaveV8 {
   romance?: unknown;
   personality?: unknown;
   workDay?: unknown;
+  weed?: unknown;
+  /** Stanza (indice globale) e cuscino del letto in cui si sta dormendo. */
+  sleepRoom?: unknown;
+  bedSlot?: unknown;
 }
 
 export const isRecord = (value: unknown): value is Record<string, unknown> =>

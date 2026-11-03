@@ -2544,3 +2544,24 @@ export function drawSleepThoughts(): void {
     ctx.fillText(t.text, left + w / 2, top + 16, 200);
   }
 }
+
+/** Nuvolette di fumo che salgono accanto alla bocca di chi si fa una canna. */
+export function drawSmokePuffs(x: number, y: number, t: number): void {
+  const ctx = game.view.ctx;
+  const s: number = isoScale();
+  const mouth = isoProject(x, y, 56);
+  for (let i = 0; i < 6; i++) {
+    const k = (t * 0.45 + i / 6) % 1;
+    const px = mouth.x + 8 * s + Math.sin(t * 2 + i * 1.7) * 5 * s + k * 10 * s;
+    const py = mouth.y - k * 40 * s;
+    ctx.fillStyle = `rgba(225,228,225,${0.6 * (1 - k)})`;
+    ctx.beginPath();
+    ctx.arc(px, py, (3 + k * 7) * s, 0, 6.3);
+    ctx.fill();
+  }
+  // brace della canna
+  ctx.fillStyle = `rgba(255,120,40,${0.7 + 0.3 * Math.sin(t * 8)})`;
+  ctx.beginPath();
+  ctx.arc(mouth.x + 7 * s, mouth.y + 2 * s, 1.4 * s, 0, 6.3);
+  ctx.fill();
+}
