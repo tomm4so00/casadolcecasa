@@ -1178,7 +1178,6 @@ export async function chooseOrGoToJob(
   }
   if (workLimitReached()) return;
   game.player.workDay = recordShift(game.player.workDay, new Date());
-  const leftToday = shiftsLeftToday(game.player.workDay, new Date());
   game.player.activeJobKey = jobKey;
   const tier = jobPayTier((game.player.jobExperience[jobKey] || 0) + 1);
   const pay: number = tier.base;
@@ -1198,12 +1197,6 @@ export async function chooseOrGoToJob(
   game.view.activeEnvironment = 'lavoro_' + jobKey;
   game.view.currentRoomTitle = jobTitleName;
   game.playerPos = { x: 0, y: 60 };
+  // tempo, paga e compito li mostra il riquadro del lavoro; i turni rimasti li dice la fine del turno
   mgStart(jobKey);
-  toast(
-    `💼 Turno iniziato: hai ${game.SHIFT_SECONDS} secondi! Base ${pay} € + ${tier.perItem} € per ogni oggetto consegnato. ` +
-      (leftToday > 0
-        ? `Oggi puoi lavorare ancora ${leftToday} ${leftToday === 1 ? 'volta' : 'volte'}.`
-        : 'È il tuo ultimo turno di oggi.'),
-    5000,
-  );
 }

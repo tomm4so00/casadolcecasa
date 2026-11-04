@@ -10,7 +10,7 @@ import { isoProject, isoScale } from './render/primitives.js';
 import { ellipseShadow } from './render/objects.js';
 import { drawBeamTarget, drawPanelTarget } from './render/construction.js';
 import { openDialog } from './interface.js';
-import { nextPayMessage } from './job-pay.js';
+import { nextPayMessage, shiftsLeftToday } from './job-pay.js';
 export function mgFlash(ok?: GameValue): GameValue {
   if (!game.MG.el) return;
   game.MG.el.classList.remove('mg-flash-ok', 'mg-flash-ko');
@@ -21,8 +21,17 @@ export function mgFlash(ok?: GameValue): GameValue {
 export function mgScore(delta?: GameValue): GameValue {
   game.MG.score = Math.max(0, game.MG.score + delta);
   mgFlash(delta > 0);
-  const s: GameValue = dom('mg-score');
-  if (s) s.textContent = `⭐ ${Math.round(Math.min(1, game.MG.score / game.MG.target) * 100)}%`;
+}
+
+/** Scritta breve che sale dal riquadro del lavoro e sparisce: al posto dei messaggi in alto. */
+export function mgPop(text: string, ok = true): void {
+  const el: GameValue = game.MG.el;
+  if (!el) return;
+  const p = document.createElement('div');
+  p.className = 'mg-pop ' + (ok ? 'ok' : 'ko');
+  p.textContent = text;
+  p.addEventListener('animationend', () => p.remove());
+  el.appendChild(p);
 }
 
 export function mgRating(..._args: GameValue[]): GameValue {
@@ -37,11 +46,40 @@ export function mgMultiplier(r?: GameValue): GameValue {
 export function mgHud(..._args: GameValue[]): GameValue {
   const el: GameValue = game.MG.el;
   if (!el || !game.MG.active) return;
-  const st: GameValue = game.MG.task.steps[game.MG.stepIdx];
+  const { cfg, task, stepIdx, carry } = game.MG;
+  const st: GameValue = task.steps[stepIdx];
+  const [e, label] = cfg.pool[st.item];
+  const target: GameValue = cfg.targets.find((t: GameValue) => t.id === st.target);
+  const held = carry?.id === st.item;
+  // un pallino per passo: pieno se fatto, acceso se è quello di adesso
+  const dots = task.steps
+    .map(
+      (_: GameValue, i: number) =>
+        `<i class="${i < stepIdx ? 'done' : i === stepIdx ? 'now' : ''}"></i>`,
+    )
+    .join('');
+  // la spiegazione serve solo ai primi turni; dopo resta solo se in mano c'è l'oggetto sbagliato
+  const sub =
+    carry && !held
+      ? `🤲 ${carry.e} non serve qui: scambialo`
+      : (game.player.stats.shifts || 0) < 3 && !carry
+        ? "Prendi l'oggetto e portalo al cerchio giallo"
+        : '';
   el.innerHTML =
-    `<div class="mg-head"><span>${game.MG.cfg.title} · ${game.MG.task.title}</span><span id="mg-score">⭐ ${Math.round(mgRating() * 100)}%</span></div>` +
-    `<div class="mg-step">👉 ${st.text}</div>` +
-    `<div class="mg-sub">Passo ${game.MG.stepIdx + 1}/${game.MG.task.steps.length} · ${game.MG.carry ? '🤲 Porti: ' + game.MG.carry.e + ' ' + game.MG.carry.label : 'Raccogli un oggetto e portalo al cerchio giallo'}</div>`;
+    `<div class="mg-top"><span id="mg-time"></span><div class="mg-bar"><div id="mg-fill"></div></div><span id="mg-pay"></span></div>` +
+    `<div class="mg-step"><span class="${held ? 'held' : ''}">${held ? '🤲 ' : ''}${e} ${label}</span> → 🎯 ${target?.label ?? ''}<span class="mg-dots">${dots}</span></div>` +
+    (sub ? `<div class="mg-sub">${sub}</div>` : '');
+  mgShiftHud();
+}
+
+/** Tempo e paga del turno nel riquadro del lavoro (a ogni fotogramma). */
+function mgShiftHud(): void {
+  const s: GameValue = game.activeShift;
+  const time = dom('mg-time');
+  if (!s || !time) return;
+  time.textContent = `⏱ ${Math.ceil(Math.max(0, s.remaining))}s`;
+  dom('mg-fill').style.width = Math.max(0, (s.remaining / game.SHIFT_SECONDS) * 100) + '%';
+  dom('mg-pay').textContent = `💰 ${s.pay + (s.delivered || 0) * (s.perItem || 0)} €`;
 }
 
 export function mgSpawnTask(..._args: GameValue[]): GameValue {
@@ -116,14 +154,16 @@ export function mgStart(jobKey?: GameValue): GameValue {
   game.MG.score = 0;
   game.MG.lastTask = -1;
   game.MG.el.classList.remove('hidden');
+  // durante il turno il ritorno a casa è un'icona in un angolo, lontana dal riquadro
+  dom('btn-return-home').classList.add('compact');
   mgSpawnTask();
-  toast("📦 Raccogli gli oggetti sparsi e portali al cerchio giallo, nell'ordine richiesto", 5000);
 }
 
 export function mgStop(..._args: GameValue[]): GameValue {
   game.MG.active = false;
   game.MG.map = {};
   game.MG.carry = null;
+  dom('btn-return-home')?.classList.remove('compact');
   const el: GameValue = dom('minigame');
   if (el) {
     el.classList.add('hidden');
@@ -152,18 +192,16 @@ export function mgInteract(item?: GameValue, key?: GameValue): GameValue {
       game.MG.carry = item.item;
       item.item = dropped;
       item.name = dropped.label;
-      toast(`🔁 Hai preso ${game.MG.carry.e} ${game.MG.carry.label}`, 1800);
     } else {
       game.MG.carry = item.item;
       delete game.MG.map[key];
-      toast(`✋ Hai preso ${game.MG.carry.e} ${game.MG.carry.label}`, 1800);
     }
     sfx('door');
     mgHud();
     return;
   }
   if (!game.MG.carry) {
-    toast('🤚 Prima raccogli un oggetto da portare qui', 2200);
+    mgPop('🤚 Prima prendi un oggetto', false);
     return;
   }
   const st: GameValue = game.MG.task.steps[game.MG.stepIdx];
@@ -172,24 +210,16 @@ export function mgInteract(item?: GameValue, key?: GameValue): GameValue {
     sfx('coin');
     const perItem: number = game.activeShift?.perItem ?? 0;
     if (game.activeShift) game.activeShift.delivered = (game.activeShift.delivered || 0) + 1;
-    toast(
-      `✅ ${game.MG.carry.e} ${game.MG.carry.label} consegnato!${perItem ? ` +${perItem} €` : ''}`,
-      1800,
-    );
     game.MG.carry = null;
     game.MG.stepIdx++;
-    if (game.MG.stepIdx >= game.MG.task.steps.length) {
-      toast(`🎉 Compito completato: ${game.MG.task.title}`, 2500);
-      mgSpawnTask();
-    } else mgHud();
+    const done = game.MG.stepIdx >= game.MG.task.steps.length;
+    if (done) mgSpawnTask();
+    else mgHud();
+    mgPop((done ? '🎉 ' : '✅ ') + (perItem ? `+${perItem} €` : ''));
   } else {
     mgScore(-0.5);
-    toast(
-      game.MG.carry.id !== st.item
-        ? "❌ Non è l'oggetto giusto per questo passo"
-        : '❌ Oggetto giusto, ma nel posto sbagliato',
-      2200,
-    );
+    sfx('error');
+    mgPop(game.MG.carry.id !== st.item ? '❌ Non questo' : '❌ Posto sbagliato', false);
   }
 }
 
@@ -278,8 +308,11 @@ export function mgAddDrawables(
   });
   Object.keys(game.MG.map).forEach((k?: GameValue): GameValue => {
     const o: GameValue = game.MG.map[k];
-    if (o.kind === 'pickup')
-      addThing(o.x, o.y, 16, 16, 34, o.item.label, (): GameValue => drawWorkItem(o, t));
+    if (o.kind !== 'pickup') return;
+    // il nome solo sull'oggetto che serve adesso o su quello vicino: gli altri restano icone
+    const named =
+      o.item.id === st?.item || Math.hypot(o.x - game.playerPos.x, o.y - game.playerPos.y) < 70;
+    addThing(o.x, o.y, 16, 16, 34, named ? o.item.label : '', (): GameValue => drawWorkItem(o, t));
   });
   if (game.MG.carry) {
     const px: GameValue = game.playerPos.x,
@@ -306,32 +339,22 @@ export function mgAddDrawables(
 }
 
 export async function updateShift(delta: number): Promise<void> {
-  const hud: GameValue = dom('shift-hud');
   if (!game.activeShift) {
-    hud.classList.add('hidden');
     if (game.MG.active) mgStop();
     return;
   }
   if (game.view.activeEnvironment !== 'lavoro_' + game.activeShift.jobKey) {
     toast('🚪 Hai lasciato il lavoro prima della fine: turno non pagato.');
     game.activeShift = null;
-    hud.classList.add('hidden');
     mgStop();
     return;
   }
   game.activeShift.remaining -= delta;
   mgTick(delta);
-  hud.classList.remove('hidden');
-  const pct: GameValue = Math.min(100, (1 - game.activeShift.remaining / game.SHIFT_SECONDS) * 100);
-  dom('shift-fill').style.width = pct + '%';
-  const itemsPay: number = (game.activeShift.delivered || 0) * (game.activeShift.perItem || 0);
-  dom('shift-text').textContent =
-    `💼 Turno in corso: ${Math.ceil(Math.max(0, game.activeShift.remaining))} s · +${game.activeShift.pay} €` +
-    (itemsPay ? ` · 📦 +${itemsPay} €` : '');
+  mgShiftHud();
   if (game.activeShift.remaining <= 0) {
     const s: GameValue = game.activeShift;
     game.activeShift = null;
-    hud.classList.add('hidden');
     const rating: GameValue = mgRating(),
       mult: GameValue = mgMultiplier(rating);
     mgStop();
@@ -353,15 +376,14 @@ export async function updateShift(delta: number): Promise<void> {
     game.player.sleepLevel = Math.max(0, game.player.sleepLevel - 3);
     game.view.currentRoomTitle = `${s.title} ✅`;
     const done: number = game.player.jobExperience[s.jobKey];
-    const multText = s.mult !== 1 ? ' (×' + String(s.mult).replace('.', ',') + ')' : '';
+    const multText = s.mult !== 1 ? ' ×' + String(s.mult).replace('.', ',') : '';
+    const left = shiftsLeftToday(game.player.workDay, new Date());
     void openDialog({
-      title: '✅ Turno completato!',
+      title: `✅ +${s.pay} €`,
       text:
-        `💼 Paga base: ${basePay} €${multText}\n` +
-        `📦 Oggetti consegnati: ${delivered} × ${s.perItem || 0} € = ${itemsPay} €\n` +
-        `💰 Totale: +${s.pay} €\n` +
-        `Turni completati in questo lavoro: ${done}\n\n` +
-        nextPayMessage(done),
+        `${basePay} €${multText} di paga + ${delivered} 📦 × ${s.perItem || 0} €\n\n` +
+        nextPayMessage(done) +
+        `\n\n${left > 0 ? `Oggi puoi lavorare ancora ${left} ${left === 1 ? 'volta' : 'volte'}.` : 'Per oggi hai finito.'}`,
       buttons: [{ label: 'Ok', value: 'ok' }],
     });
   }
