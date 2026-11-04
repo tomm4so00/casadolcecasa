@@ -29,7 +29,7 @@ import {
   withTimeout,
 } from './saves.js';
 import { openCharacterCreator } from './render/avatars.js';
-import { openEpitaph, rebuildGraveyard } from './render/objects.js';
+import { openEpitaph, rebuildGraveyard } from './render/graveyard.js';
 import { checkMissions, toast } from './missions.js';
 import { openFurnitureShopModal, resumeLastSpot, setupControls } from './world.js';
 import { renderClothesShop } from './character.js';

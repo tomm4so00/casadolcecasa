@@ -113,4 +113,3 @@ export function rpsBetError(bet: number, money: number): string | null {
  * Per non poter barare, lo sfidante sceglie per primo ma salva solo l'impronta (hash) della mossa;
  * poi lo sfidato sceglie in chiaro; infine lo sfidante rivela la mossa, che deve corrispondere.
  */
-export type RpsState = 'invited' | 'playing' | 'done' | 'declined' | 'cancelled';

@@ -956,7 +956,7 @@
     },
     {
       "name": "drawFridge",
-      "module": "render/objects",
+      "module": "render/fridge",
       "line": 4084
     },
     {
@@ -996,37 +996,37 @@
     },
     {
       "name": "drawCourtyardDoor",
-      "module": "render/objects",
+      "module": "render/facades",
       "line": 4222
     },
     {
       "name": "drawClothesRack",
-      "module": "render/objects",
+      "module": "render/mall",
       "line": 4241
     },
     {
       "name": "drawDisplayShelf",
-      "module": "render/objects",
+      "module": "render/mall",
       "line": 4259
     },
     {
       "name": "drawGlassesStand",
-      "module": "render/objects",
+      "module": "render/mall",
       "line": 4284
     },
     {
       "name": "drawBoutiqueCounter",
-      "module": "render/objects",
+      "module": "render/mall",
       "line": 4298
     },
     {
       "name": "drawBoutiqueItem",
-      "module": "render/objects",
+      "module": "render/mall",
       "line": 4313
     },
     {
       "name": "drawMannequinProp",
-      "module": "render/objects",
+      "module": "render/mall",
       "line": 4320
     },
     {
@@ -1226,27 +1226,27 @@
     },
     {
       "name": "drawGraveProp",
-      "module": "render/objects",
+      "module": "render/graveyard",
       "line": 4786
     },
     {
       "name": "drawMemorialProp",
-      "module": "render/objects",
+      "module": "render/graveyard",
       "line": 4810
     },
     {
       "name": "rebuildGraveyard",
-      "module": "render/objects",
+      "module": "render/graveyard",
       "line": 4835
     },
     {
       "name": "showGraveInfo",
-      "module": "render/objects",
+      "module": "render/graveyard",
       "line": 4856
     },
     {
       "name": "openEpitaph",
-      "module": "render/objects",
+      "module": "render/graveyard",
       "line": 4875
     },
     {

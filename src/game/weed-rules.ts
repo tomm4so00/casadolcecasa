@@ -11,7 +11,6 @@ export const STRAINS: Record<
   amnesia: { name: 'Amnesia', price: 150, leaf: '#388e3c', bud: '#a5d6a7', hair: '#ffffff' },
   purple: { name: 'Purple Haze', price: 180, leaf: '#2e7d32', bud: '#8e24aa', hair: '#ff8a65' },
 };
-export const STRAIN_IDS = Object.keys(STRAINS) as StrainId[];
 export const isStrain = (v: unknown): v is StrainId => typeof v === 'string' && v in STRAINS;
 
 /** Giorni (reali) prima del raccolto per la varietà di riferimento (quella da 150 €). */

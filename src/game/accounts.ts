@@ -76,20 +76,6 @@ export function canPlaySession() {
   return sessionValid;
 }
 
-export async function releasePlayerSession() {
-  const id = sessionId;
-  sessionId = null;
-  try {
-    if (id && !game.session.OFFLINE)
-      await game.session.db
-        .ref('sims_sessions/' + game.session.myPlayerId)
-        .transaction((value) => (value?.id === id ? null : undefined));
-  } finally {
-    releaseTab?.();
-    releaseTab = null;
-  }
-}
-
 function googleAuth() {
   const auth = firebaseClient.auth();
   if (

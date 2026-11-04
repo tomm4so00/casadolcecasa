@@ -62,7 +62,6 @@ export const ownsLimited = (item: string): boolean => copyOf(ledger, item, me())
 export const myCopy = (item: string): number | null => copyOf(ledger, item, me());
 export const limitedLeft = (item: string): number => copiesLeft(ledger, item);
 /** Oggetti in edizione limitata di un giocatore. */
-export const limitedOf = (playerId: string) => itemsOf(ledger, playerId);
 
 /** Si aggiorna quando cambia il registro (per ridisegnare negozi e armadio). */
 export function onLedgerChange(fn: () => void): void {

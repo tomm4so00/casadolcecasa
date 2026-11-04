@@ -85,7 +85,7 @@ import {
 import { footprintOf, isoProject, isoScale } from './render/primitives.js';
 import { mgButtonText, mgInteract, mgStart, openComputerShopModal } from './jobs.js';
 import { coffeeLeftMs, openDealer, promptSetSafePin, useCoffee } from './needs.js';
-import { showGraveInfo } from './render/objects.js';
+import { showGraveInfo } from './render/graveyard.js';
 import { startShower, startToilet, startWash } from './bathroom.js';
 import { sfx } from './audio.js';
 import { openBankCounter } from './bank.js';

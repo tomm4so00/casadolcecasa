@@ -131,6 +131,12 @@ src/game/
   audio.ts                    suoni e musica
   interface.ts, view.html      schermate e dialoghi
   render/                     geometria, mobili, ambienti e avatar
+    primitives.ts, objects.ts  proiezione, box 3D, mobili di casa e oggetti di scena
+    scenes.ts, avatars.ts      pavimenti, pareti, cielo e personaggi
+    facades.ts, fridge.ts      palazzine del cortile e frigorifero
+    mall.ts, bank.ts, studio.ts centro commerciale, banca e studio di pittura
+    rocket.ts, moonbase.ts     razzo del laboratorio, lancio e base lunare
+    arcade-props.ts, ...       sala giochi, erba, cimitero, animali, oggetti limitati
   source-manifest.json         provenienza di tutte le funzioni v8
 src/storage/tab-lock.ts        blocco fra schede del browser
 css/style.css                  stile del gioco completo

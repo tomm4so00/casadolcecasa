@@ -641,25 +641,6 @@ input[type='number'] {
   background: #e67e22;
 }
 
-.wardrobe-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin: 15px 0;
-  max-height: 250px;
-  overflow-y: auto;
-  text-align: left;
-}
-.wardrobe-item-row {
-  background: rgba(255, 255, 255, 0.05);
-  padding: 10px;
-  border-radius: 6px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 0.9rem;
-}
-
 /* Numero di versione, piccolo in alto a destra */
 #app-version {
   position: fixed;
@@ -823,63 +804,11 @@ input[type='number'] {
   font-weight: bold;
   margin-bottom: 8px;
 }
-#minigame .mg-big {
-  font-size: 2.2rem;
-  line-height: 1.1;
-  min-height: 2.6rem;
-}
 #minigame .mg-sub {
   font-size: 0.85rem;
   opacity: 0.85;
   min-height: 1.2rem;
   margin-bottom: 6px;
-}
-#minigame .mg-btns {
-  display: grid;
-  gap: 6px;
-}
-#minigame .mg-btn {
-  background: #2d3a55;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  color: #fff;
-  border-radius: 10px;
-  padding: 8px 4px;
-  font-size: 1.5rem;
-  cursor: pointer;
-  touch-action: manipulation;
-}
-#minigame .mg-btn small {
-  display: block;
-  font-size: 0.6rem;
-  opacity: 0.8;
-}
-#minigame .mg-btn:active {
-  background: #3f5280;
-}
-#minigame .mg-track {
-  position: relative;
-  height: 26px;
-  background: #2d3436;
-  border-radius: 13px;
-  margin: 6px 0 10px;
-  overflow: hidden;
-}
-#minigame .mg-zone {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  background: rgba(46, 213, 115, 0.55);
-  border-left: 2px solid #2ed573;
-  border-right: 2px solid #2ed573;
-}
-#minigame .mg-mark {
-  position: absolute;
-  top: 2px;
-  bottom: 2px;
-  width: 6px;
-  margin-left: -3px;
-  background: #feca57;
-  border-radius: 3px;
 }
 #minigame .mg-flash-ok {
   animation: mgok 0.25s;
@@ -905,13 +834,6 @@ input[type='number'] {
   #minigame .mg-sub {
     font-size: 0.7rem;
     margin-bottom: 4px;
-  }
-  #minigame .mg-big {
-    font-size: 1.6rem;
-    min-height: 1.9rem;
-  }
-  #minigame .mg-btn {
-    font-size: 1.15rem;
   }
   #shift-hud {
     bottom: 84px;

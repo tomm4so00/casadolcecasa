@@ -10,7 +10,7 @@ import { saveGame } from './saves.js';
 import { sfx } from './audio.js';
 import { creditMoney, spendMoney } from './economy.js';
 import { escapeHtmlSafe } from './needs.js';
-import { drawRocketProp } from './render/objects.js';
+import { drawRocketProp } from './render/rocket.js';
 import { renderMoonbaseView } from './render/moonbase.js';
 import {
   MIN_DONATION,

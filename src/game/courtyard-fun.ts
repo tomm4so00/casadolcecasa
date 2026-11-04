@@ -69,8 +69,6 @@ export function funSpots(): Record<string, Spot> {
   return out;
 }
 
-export const isSittingOnBench = (): boolean => !!game.benchSit;
-
 /** Posa da mostrare (e da mandare agli altri) mentre si è seduti. */
 export const myBenchPose = (): string => (game.benchSit?.pose === 'bench' ? 'bench' : '');
 

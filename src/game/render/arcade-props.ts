@@ -1,7 +1,8 @@
-// Postazioni della sala giochi: tavolo di Forza 4, tavolo di Battaglia navale, cabinato dei Riflessi.
+// Postazioni della sala giochi (Forza 4, Battaglia navale, Riflessi) e della sala scommesse (slot, morra).
 import type { GameValue } from '../context.js';
 import { game } from '../context.js';
 import { box, onFace } from './objects.js';
+import { isoProject, isoScale } from './primitives.js';
 
 /** Tavolo con quattro gambe e il piano; restituisce il piano (per disegnarci sopra). */
 function table(it: GameValue, top: string, edge: string): GameValue {
@@ -185,5 +186,94 @@ export function drawReflexCabinet(it?: GameValue, t?: GameValue): GameValue {
     // fessura per i gettoni
     ctx.fillStyle = '#feca57';
     ctx.fillRect(W / 2 - 4, 76, 8, 2);
+  });
+}
+
+// ---------------------------------------------------------------- SALA SCOMMESSE
+const SLOT_FACES = ['🍒', '🔔', '7️⃣', '💎', '⭐', '🍋'];
+
+/** Slot machine: mobile con schermo, luci che lampeggiano in cima e leva sul fianco. */
+export function drawSlotMachine(it?: GameValue, t?: GameValue): GameValue {
+  const ctx = game.view.ctx;
+  const { x, y, w, h, z } = it;
+  const seed: number = it.seed || 0;
+  const color = ['#c0392b', '#8e44ad', '#2980b9'][seed % 3];
+  box(x, y, w + 4, h + 4, 8, '#2d3436');
+  const body: GameValue = box(x, y, w, h, z - 20, color, { z0: 8 });
+  onFace(body, 'left', (W: number, H: number): void => {
+    // schermo con i tre rulli
+    ctx.fillStyle = '#0d0710';
+    ctx.fillRect(4, 8, W - 8, 26);
+    ctx.fillStyle = '#ffffff';
+    for (let i = 0; i < 3; i++) ctx.fillRect(6 + i * ((W - 12) / 3), 10, (W - 12) / 3 - 2, 22);
+    ctx.font = '11px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    for (let i = 0; i < 3; i++) {
+      const k = Math.floor((t || 0) * 0.5 + seed * 2 + i * 3) % SLOT_FACES.length;
+      ctx.fillText(SLOT_FACES[k], 6 + (i + 0.5) * ((W - 12) / 3) - 1, 21);
+    }
+    ctx.textBaseline = 'alphabetic';
+    // pulsanti e fessura delle monete
+    ctx.fillStyle = '#feca57';
+    ctx.fillRect(6, 40, 8, 4);
+    ctx.fillStyle = '#2ed573';
+    ctx.fillRect(18, 40, 8, 4);
+    ctx.fillStyle = '#111';
+    ctx.fillRect(W - 10, 39, 3, 7);
+    // vassoio delle vincite
+    ctx.fillStyle = '#b2bec3';
+    ctx.fillRect(5, H - 14, W - 10, 6);
+    ctx.fillStyle = '#d4ac0d';
+    ctx.font = 'bold 6px sans-serif';
+    ctx.fillText('SLOT', W / 2, 6);
+  });
+  // insegna con le luci che si accendono a turno
+  const top: GameValue = box(x, y, w, h * 0.6, 12, '#2d3436', { z0: z - 12 });
+  onFace(top, 'left', (W: number, H: number): void => {
+    for (let i = 0; i < 6; i++) {
+      const on = Math.floor((t || 0) * 6 + i + seed) % 3 === 0;
+      ctx.fillStyle = on ? '#feca57' : '#7f6000';
+      ctx.beginPath();
+      ctx.arc(4 + i * ((W - 8) / 5), H / 2, 2, 0, 6.3);
+      ctx.fill();
+    }
+  });
+  // leva sul fianco destro con il pomello rosso
+  box(x + w / 2 + 3, y, 3, 3, 26, '#b2bec3', { z0: z - 46 });
+  const knob = isoProject(x + w / 2 + 3, y, z - 18);
+  ctx.fillStyle = '#e74c3c';
+  ctx.beginPath();
+  ctx.arc(knob.x, knob.y, 3.5 * isoScale(), 0, 6.3);
+  ctx.fill();
+}
+
+/** Tavolo della morra cinese: panno verde con il bordo dorato e le tre mani disegnate. */
+export function drawRpsTable(it?: GameValue): GameValue {
+  const ctx = game.view.ctx;
+  const { x, y, w, h, z } = it;
+  for (const [dx, dy] of [
+    [-1, -1],
+    [1, -1],
+    [-1, 1],
+    [1, 1],
+  ])
+    box(x + dx * (w / 2 - 6), y + dy * (h / 2 - 6), 5, 5, z - 6, '#3e2723');
+  box(x, y, w + 6, h + 6, 4, '#6d4c41', { z0: z - 6 });
+  const felt: GameValue = box(x, y, w, h, 2, '#1e8449', { z0: z - 2 });
+  onFace(felt, 'top', (W: number, H: number): void => {
+    ctx.strokeStyle = '#d4ac0d';
+    ctx.lineWidth = 1.2;
+    ctx.strokeRect(4, 4, W - 8, H - 8);
+    ctx.font = '13px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('✊', W * 0.25, H / 2);
+    ctx.fillText('✋', W * 0.5, H / 2);
+    ctx.fillText('✌️', W * 0.75, H / 2);
+    ctx.textBaseline = 'alphabetic';
+    ctx.fillStyle = 'rgba(255,255,255,0.7)';
+    ctx.font = 'bold 5px sans-serif';
+    ctx.fillText('MORRA CINESE', W / 2, H - 7);
   });
 }

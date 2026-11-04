@@ -14,8 +14,6 @@ export interface GossipEntry {
 export const GOSSIP_MAX_TEXT = 140;
 /** Quanti fatti si leggono sulla bacheca. */
 export const GOSSIP_SHOW = 15;
-/** Quanti fatti tiene il server (i più vecchi si cancellano). */
-export const GOSSIP_KEEP = 200;
 
 const ID_RE = /^player_[A-Za-z0-9_-]{1,128}$/;
 
