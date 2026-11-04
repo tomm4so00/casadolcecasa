@@ -2985,9 +2985,8 @@ export const ENV_STYLE = {
     trim: '#8d6e63',
     decor: {
       back: [
-        { t: 'cabinets', u: 40, w: 120 },
         { t: 'window', u: 200, w: 60, h: 46 },
-        { t: 'cabinets', u: 255, w: 120 },
+        { t: 'windowDepth', side: 'back', u: 200, w: 60, h: 46 },
       ],
       left: [
         { t: 'shelf', u: 120, w: 80 },
@@ -3435,9 +3434,11 @@ export const ENV_STYLE = {
     decor: {
       back: [
         { t: 'window', u: 100, w: 90, h: 56 },
+        { t: 'windowDepth', side: 'back', u: 100, w: 90, h: 56 },
         // orologio al centro, tra le due finestre
         { t: 'clock', u: 200 },
         { t: 'window', u: 300, w: 90, h: 56 },
+        { t: 'windowDepth', side: 'back', u: 300, w: 90, h: 56 },
       ],
       // grafico tra il distributore dell'acqua e le librerie
       left: [{ t: 'whiteboard', u: 185 }],
