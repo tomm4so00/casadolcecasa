@@ -6,6 +6,7 @@ import type firebase from 'firebase/compat/app';
 import { usernameFromEmail } from './account-model.js';
 import {
   accessFor,
+  accountLogins,
   claimLegacySim,
   createGoogleSim,
   type GoogleAccess,
@@ -76,6 +77,11 @@ export function mountCloudSetup(root: HTMLElement): void {
     const name = (nick || user.displayName || usernameFromEmail(user.email) || '').slice(0, 20);
     if (access.playerId) await play(access.playerId, savedNick() || name);
     else await play(await createGoogleSim(access.uid), name);
+    if (!accountLogins().google)
+      toast(
+        '🔗 Puoi collegare il tuo account Google: tocca il pulsante 🧑 per aprire il profilo e scegli «Collega Google».',
+        8000,
+      );
   };
 
   const signIn = async (restored?: firebase.User) => {

@@ -146,7 +146,7 @@ export async function openProfile(..._args: GameValue[]): Promise<GameValue> {
   const logins = game.session.OFFLINE ? null : accountLogins();
   const canLink = !!logins?.username && !logins.google;
   const res: GameValue = await openDialog({
-    title: `👤 ${game.player.myData.nick}`,
+    title: `🧑 ${game.player.myData.nick}`,
     text:
       (game.session.OFFLINE
         ? `Il tuo codice personaggio è:\n${game.session.myPlayerId}`
@@ -213,7 +213,7 @@ export async function restoreFromCode(..._args: GameValue[]): Promise<GameValue>
   }
   const res: GameValue = await openDialog({
     title: '🔑 Recupera personaggio',
-    text: "Inserisci il codice personaggio che trovi nel profilo (👤) sull'altro dispositivo.",
+    text: "Inserisci il codice personaggio che trovi nel profilo (🧑) sull'altro dispositivo.",
     input: { placeholder: 'player_…', maxLength: 140 },
     buttons: [
       { label: 'Annulla', value: null, color: '#57606f' },
