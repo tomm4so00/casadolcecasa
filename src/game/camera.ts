@@ -29,12 +29,20 @@ export function surfaceDrop(x: number, y: number): number {
   return k ? k * (x * x + y * y) : 0;
 }
 
-/** Scala della scena intera: come prima sul computer, ingrandita sul telefono. */
+/**
+ * Scala della scena intera: come prima sul computer, ingrandita sul telefono. Mentre si arreda
+ * il telefono torna alla vista intera, così si vede tutta la stanza.
+ */
 export function cameraScale(): number {
   const w = game.view.canvas.width,
     h = game.view.canvas.height;
   const fit = Math.min(w / 450, h / 600, 1.2);
-  return isPhone ? Math.min(fit * PHONE_ZOOM, MAX_SCALE) : fit;
+  if (!isPhone) return fit;
+  if (!game.arrangeMode) return Math.min(fit * PHONE_ZOOM, MAX_SCALE);
+  // arredando: tutta la stanza nello schermo, anche col telefono in verticale, con un po' di
+  // spazio ai lati per i pulsanti
+  const e = sceneExtent();
+  return Math.min(fit, (w * 0.8) / (e.u1 - e.u0), (h - OFFSET_Y * 2) / (e.v1 - e.v0));
 }
 
 /**

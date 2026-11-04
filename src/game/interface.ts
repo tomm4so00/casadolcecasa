@@ -231,6 +231,15 @@ export function resizeCanvas(..._args: GameValue[]): GameValue {
   }
 }
 
+/** Mostra la scena con una breve dissolvenza, con la telecamera già sul personaggio. */
+function revealScene(): void {
+  const canvas: HTMLCanvasElement = game.view.canvas;
+  if (canvas.style.opacity !== '0') return;
+  game.cam = null;
+  canvas.style.transition = 'opacity 0.35s ease-out';
+  canvas.style.opacity = '1';
+}
+
 export async function startGame(..._args: GameValue[]): Promise<GameValue> {
   if (game.session.gameStarted) return;
   game.session.gameStarted = true;
@@ -249,6 +258,10 @@ export async function startGame(..._args: GameValue[]): Promise<GameValue> {
   dom('hud-actions').classList.remove('hidden');
   if (game.session.OFFLINE) toast('🧪 Modalità prova: nessun dato viene inviato al server', 5000);
   setupControls();
+  // la scena resta nascosta finché il personaggio non è al suo posto (non si vede il salone)
+  game.view.canvas.style.opacity = '0';
+  // se la rete è lenta non si resta comunque al buio
+  setTimeout(revealScene, 8000);
   startLoop();
   watchGameVersion();
   await loadGame();
@@ -256,6 +269,7 @@ export async function startGame(..._args: GameValue[]): Promise<GameValue> {
     // morto in una sessione precedente, oppure durante l'assenza
     if (!game.player.isDead) await die();
     else writeGrave();
+    revealScene();
     showDeathScreen();
     return;
   }
@@ -291,6 +305,7 @@ export async function startGame(..._args: GameValue[]): Promise<GameValue> {
     }
   }
   if (game.fainted) await resumeFaintSpot();
+  revealScene();
   game.session.db.ref('sims_rooms_state').on('value', (snapshot?: GameValue): GameValue => {
     game.roomsState = normalizeRooms(snapshot.val());
     syncVaultFromServer();

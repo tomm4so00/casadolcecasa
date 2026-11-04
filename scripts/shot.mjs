@@ -8,6 +8,7 @@
 //                  "clip": [x, y, larghezza, altezza],          ritaglio in pixel della pagina
 //                  "wait": 1200 }]                              attesa prima dello scatto (ms)
 // opzioni (JSON): { "hour": 21, "phone": true, "scale": 2 }      ora del giorno, telefono, zoom
+//                 "portrait": true                               telefono in verticale
 import { chromium } from '@playwright/test';
 import { createServer } from 'vite';
 
@@ -23,7 +24,11 @@ const server = await createServer({ server: { host: '127.0.0.1', port: 0 }, logL
 await server.listen();
 const browser = await chromium.launch(process.platform === 'win32' ? { channel: 'msedge' } : {});
 const page = await browser.newPage({
-  viewport: opts.phone ? { width: 844, height: 390 } : { width: 1280, height: 800 },
+  viewport: opts.phone
+    ? opts.portrait
+      ? { width: 390, height: 844 }
+      : { width: 844, height: 390 }
+    : { width: 1280, height: 800 },
   deviceScaleFactor: opts.scale || 1,
   hasTouch: !!opts.phone,
   isMobile: !!opts.phone,

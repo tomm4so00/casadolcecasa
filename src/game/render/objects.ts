@@ -923,16 +923,47 @@ export function roundRect(ctx: GameValue, x: number, y: number, w: number, h: nu
 
 export function drawToilet(it?: GameValue, t?: GameValue): GameValue {
   const ctx = game.view.ctx;
-  const tank: GameValue = box(it.x, it.y - it.h / 2 + 8, it.w * 0.8, 14, 42, '#ffffff');
-  onFace(tank, 'top', (W?: GameValue, H?: GameValue): GameValue => {
-    ctx.fillStyle = '#b2bec3';
-    ctx.fillRect(W / 2 - 4, H / 2 - 1.5, 8, 3);
+  const ty = it.y - it.h / 2 + 8;
+  // cassetta, con il coperchio e il pulsante cromato dello scarico
+  const tank: GameValue = box(it.x, ty, it.w * 0.8, 14, 40, '#ffffff');
+  onFace(tank, 'left', (W?: GameValue, H?: GameValue): GameValue => {
+    ctx.fillStyle = 'rgba(0,0,0,0.05)';
+    ctx.fillRect(0, H - 6, W, 6);
   });
-  const base: GameValue = box(it.x, it.y + 6, it.w * 0.55, it.h * 0.58, 18, '#f5f6fa');
+  const lid: GameValue = box(it.x, ty, it.w * 0.8 + 3, 16, 3, '#f1f2f6', { z0: 40 });
+  onFace(lid, 'top', (W?: GameValue, H?: GameValue): GameValue => {
+    ctx.fillStyle = '#95a5a6';
+    ctx.beginPath();
+    ctx.ellipse(W / 2, H / 2, 4.5, 3.2, 0, 0, 6.3);
+    ctx.fill();
+    ctx.fillStyle = '#dfe6e9';
+    ctx.beginPath();
+    ctx.ellipse(W / 2, H / 2, 3, 2, 0, 0, 6.3);
+    ctx.fill();
+  });
+  // coperchio della tazza alzato, appoggiato alla cassetta
+  const up: GameValue = box(it.x, ty + 9, it.w * 0.5, 2, 22, '#fafbfc', { z0: 17 });
+  onFace(up, 'left', (W?: GameValue, H?: GameValue): GameValue => {
+    ctx.strokeStyle = 'rgba(0,0,0,0.12)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.roundRect ? ctx.roundRect(2, 2, W - 4, H - 4, 5) : ctx.rect(2, 2, W - 4, H - 4);
+    ctx.stroke();
+  });
+  // piede stretto e tazza sopra, con l'asse
+  box(it.x, it.y + 4, it.w * 0.32, it.h * 0.4, 12, '#e9ecf1');
+  const base: GameValue = box(it.x, it.y + 6, it.w * 0.55, it.h * 0.58, 7, '#f5f6fa', { z0: 11 });
   onFace(base, 'top', (W?: GameValue, H?: GameValue): GameValue => {
-    ctx.fillStyle = '#dcdde1';
+    ctx.fillStyle = '#ffffff';
     ctx.beginPath();
     ctx.ellipse(W / 2, H / 2, W / 2, H / 2, 0, 0, 6.3);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(0,0,0,0.12)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    ctx.fillStyle = '#dcdde1';
+    ctx.beginPath();
+    ctx.ellipse(W / 2, H / 2, W / 2.6, H / 2.6, 0, 0, 6.3);
     ctx.fill();
     ctx.fillStyle = '#9ad0f5';
     ctx.beginPath();
@@ -960,6 +991,25 @@ export function drawToilet(it?: GameValue, t?: GameValue): GameValue {
       }
     }
   });
+  // sul coperchio della cassetta: una piantina grassa e il deodorante per ambienti
+  const ax = it.w * 0.28;
+  box(it.x - ax, ty, 6, 6, 5, '#e17055', { z0: 43 });
+  // foglie carnose a raggiera che escono dal vaso
+  const sc: number = isoScale();
+  const c = isoProject(it.x - ax, ty, 48);
+  for (let k = 0; k < 7; k++) {
+    const a = -Math.PI / 2 + (k - 3) * 0.42;
+    const len = (k % 2 ? 5 : 7) * sc;
+    ctx.fillStyle = k % 2 ? '#7bc67e' : '#4e9f52';
+    ctx.beginPath();
+    ctx.moveTo(c.x - 1.3 * sc, c.y);
+    ctx.lineTo(c.x + Math.cos(a) * len, c.y + Math.sin(a) * len);
+    ctx.lineTo(c.x + 1.3 * sc, c.y);
+    ctx.closePath();
+    ctx.fill();
+  }
+  box(it.x + ax, ty, 4, 4, 9, '#a29bfe', { z0: 43 });
+  box(it.x + ax, ty, 2, 2, 2, '#dfe6e9', { z0: 52 });
 }
 
 export function drawSink(it?: GameValue, t?: GameValue): GameValue {
@@ -1196,13 +1246,6 @@ function drawFrontDoor(it: GameValue): void {
     sky.addColorStop(1, '#4c9a34');
     ctx.fillStyle = sky;
     ctx.fillRect(side, top, FW - side * 2, FH - top);
-    // un albero lontano
-    ctx.fillStyle = '#3f8a2e';
-    ctx.beginPath();
-    ctx.arc(cx + rw * 0.45, FH * 0.5, 9, 0, 6.3);
-    ctx.fill();
-    ctx.fillStyle = '#5d3a1a';
-    ctx.fillRect(cx + rw * 0.45 - 1.5, FH * 0.5 + 6, 3, 10);
     ctx.restore();
     // lunetta a vetri sopra le ante, con le razze
     ctx.fillStyle = 'rgba(205,238,253,0.85)';

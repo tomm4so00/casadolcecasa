@@ -1733,23 +1733,38 @@ export function drawPlayerAvatar(
       : SHORT_SLEEVES.has(top.style)
         ? 'short'
         : 'long';
-  // mani: al lavandino si strofinano davanti al petto, seduti stanno sulle ginocchia
+  // mani: al lavandino si strofinano davanti al petto, seduti stanno sulle ginocchia; sul WC
+  // reggono il giornale per i bordi, coi gomiti piegati
   const rub = pose === 'wash' ? Math.sin(animTime * 16) * 1.6 * s : 0;
+  const reading = !!(sitting && opts && opts.newspaper);
   const handBack: Pt | null =
     pose === 'wash'
       ? { x: neck.x + 3 * s + rub, y: hip.y - 6 * s }
-      : sitting
-        ? { x: P(3.5, 11, 20).x + 1 * s, y: P(3.5, 11, 20).y - 1 * s }
-        : null;
+      : reading
+        ? { x: neck.x + 9 * s, y: neck.y + 11 * s }
+        : sitting
+          ? { x: P(3.5, 11, 20).x + 1 * s, y: P(3.5, 11, 20).y - 1 * s }
+          : null;
   const handFront: Pt | null =
     pose === 'wash'
       ? { x: neck.x - 3 * s - rub, y: hip.y - 5 * s }
-      : sitting
-        ? { x: P(-3.5, 11, 20).x - 1 * s, y: P(-3.5, 11, 20).y - 1 * s }
-        : null;
+      : reading
+        ? { x: neck.x - 9 * s, y: neck.y + 11 * s }
+        : sitting
+          ? { x: P(-3.5, 11, 20).x - 1 * s, y: P(-3.5, 11, 20).y - 1 * s }
+          : null;
   const drawArm = (from: Pt, to: Pt, back: boolean): void => {
-    const sc = back ? game.darken(top.color, 0.3) : game.darken(top.color, 0.08);
-    const sk = back ? game.darken(skin, 0.12) : skin;
+    if (reading) {
+      // gomito sotto la spalla, un po' in fuori: il braccio sale di nuovo verso il giornale
+      const elbow = { x: from.x + (back ? 2.5 : -2.5) * s, y: neck.y + 16 * s };
+      armPiece(from, elbow, back, true);
+      armPiece(elbow, to, back, false);
+      dot(elbow.x, elbow.y, 1.8 * s, sleeveKind === 'long' ? armSleeve(back) : armSkin(back));
+      dot(to.x, to.y, 2.6 * s, armSkin(back));
+      return;
+    }
+    const sc = armSleeve(back);
+    const sk = armSkin(back);
     const w = (top.style === 'puffer' ? 4.8 : 3.6) * s;
     if (sleeveKind === 'none') seg(from, to, sk, 3 * s);
     else if (sleeveKind === 'short') {
@@ -1781,6 +1796,22 @@ export function drawPlayerAvatar(
     }
     dot(to.x, to.y, 2.6 * s, sk);
   };
+  function armSleeve(back: boolean): string {
+    return back ? game.darken(top.color, 0.3) : game.darken(top.color, 0.08);
+  }
+  function armSkin(back: boolean): string {
+    return back ? game.darken(skin, 0.12) : skin;
+  }
+  // un pezzo di braccio piegato: la manica corta copre solo il braccio, quella lunga tutto
+  function armPiece(a: Pt, b: Pt, back: boolean, upper: boolean): void {
+    const w = (top.style === 'puffer' ? 4.8 : 3.6) * s;
+    if (sleeveKind === 'long') seg(a, b, armSleeve(back), w);
+    else if (sleeveKind === 'short' && upper) {
+      const m = lerpPt(a, b, 0.7);
+      seg(m, b, armSkin(back), 3 * s);
+      seg(a, m, armSleeve(back), w);
+    } else seg(a, b, armSkin(back), 3 * s);
+  }
   const backTo: Pt = handBack || { x: hip.x + 11 * s + armX, y: hip.y + 1 * s + armY },
     frontTo: Pt = handFront || { x: hip.x - 11 * s - armX, y: hip.y + 1 * s - armY };
   if (handsAt.size > 200) handsAt.clear();

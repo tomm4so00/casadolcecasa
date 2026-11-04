@@ -81,6 +81,10 @@ import { facadeFootprint } from './render/facades.js';
 import { checkWalkThrough, doorGapsHere, openGapsHere, roomBounds } from './interactions.js';
 import { clampToRoom, doorwayAt } from './door-walk-rules.js';
 
+// Chi siede in panchina sta davanti allo schienale: anche sul posto di sinistra, che ha x + y
+// più piccolo della panchina, va disegnato sopra di lei.
+const BENCH_SEAT_DEPTH = 30;
+
 /**
  * Una palazzina è larga: la si ordina dal suo angolo in fondo, così chi le cammina davanti
  * (anche sul lato) è disegnato sopra di lei e non dentro il muro.
@@ -90,8 +94,9 @@ function buildingDepth(item: GameValue): number {
   if (game.view.activeEnvironment === 'SALOON' && item.targetEnv)
     return (item.w < item.h ? item.x : item.y) < 0 ? -1e4 : 0;
   if (game.view.activeEnvironment !== 'CORTILE' || item.aptIdx === undefined) return 0;
+  // dall'angolo in fondo della palazzina, che sta dietro la porta
   const fp = facadeFootprint(item);
-  return -(fp.w / 2 + fp.h / 2);
+  return fp.x - fp.w / 2 + fp.y - fp.h / 2 - item.x - item.y;
 }
 /** I pezzi della base lunare si vedono solo dalla loro fase in poi (gli altri oggetti sempre). */
 const shownPart = (p: GameValue): boolean =>
@@ -324,7 +329,12 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
     Object.keys(map).forEach((k?: GameValue): GameValue => {
       const item: GameValue = map[k];
       // i quadri hanno il titolo sulla targhetta sotto la cornice
-      let label: GameValue = String(k).startsWith('painting') ? '' : item.name;
+      // nel bagno water, lavandino e doccia si riconoscono da soli: senza nome
+      let label: GameValue =
+        String(k).startsWith('painting') ||
+        (game.view.activeEnvironment === 'BATHROOM' && k !== 'doorExit')
+          ? ''
+          : item.name;
       if (game.view.activeEnvironment === 'SALOON' && item.roomIdx !== undefined) {
         const gi: GameValue = game.gRoomIdx(item);
         const room: GameValue = game.roomsState[gi];
@@ -388,7 +398,8 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
       // nel vano di una porta del lato vicino si passa davanti al suo stipite
       (doorwayAt(game.playerPos.x, game.playerPos.y, roomBounds(), doorGapsHere())?.dir === 1
         ? 1e4
-        : 0);
+        : 0) +
+      (game.benchSit?.kind === 'bench' ? BENCH_SEAT_DEPTH : 0);
     const faintK = faintAmount();
     drawables.push({
       depth,
@@ -626,7 +637,8 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
       s.x +
       s.y +
       ((map.bed ? map.bed.x + map.bed.y + 0.5 : s.x + s.y) - (s.x + s.y)) *
-        (sk * sk * (3 - 2 * sk));
+        (sk * sk * (3 - 2 * sk)) +
+      (act === 'bench' ? BENCH_SEAT_DEPTH : 0);
     // fuori dall'inquadratura non si disegna (chi dorme è sul letto, sempre in vista)
     if (sk <= 0 && !onScreen(s.x, s.y)) return;
     drawables.push({

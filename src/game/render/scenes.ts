@@ -1546,46 +1546,136 @@ export function wallSafe(d?: GameValue, t?: GameValue): GameValue {
   wallPlane('left', H);
 }
 
+/**
+ * Pezzi in rilievo su una parete: `a` lungo il muro (come la `u` delle decorazioni), `out` quanto
+ * si staccano dal muro. Restituisce anche la faccia che guarda la stanza.
+ */
+function wallAxes(side: string) {
+  const back = side === 'back';
+  return {
+    front: back ? 'left' : 'right',
+    box: (
+      a: number,
+      out: number,
+      wA: number,
+      dOut: number,
+      h: number,
+      color: string,
+      z0: number,
+    ) =>
+      back
+        ? box(game.X0 + a, game.Y0 + out, wA, dOut, h, color, { z0 })
+        : box(game.X0 + out, game.Y1 - a, dOut, wA, h, color, { z0 }),
+  };
+}
+
+const wallHere = (): number => game.ENV_STYLE[game.view.activeEnvironment]?.wallH || 130;
+
 // Cornice, davanzale ed eventuali tende in rilievo davanti a una finestra (il vetro resta sul muro).
 export function wallWindowDepth(d?: GameValue): GameValue {
-  if (d.side !== 'back') return;
-  const H: number = game.ENV_STYLE[game.view.activeEnvironment]?.wallH || 130;
+  const H = wallHere();
   const w: number = d.w,
     h: number = d.h,
     top: number = d.top || Math.max(18, H * 0.2);
   resetPlane();
-  const x0 = game.X0 + d.u - w / 2,
-    x1 = x0 + w,
+  const W = wallAxes(d.side);
+  const a0 = d.u - w / 2,
+    a1 = a0 + w,
+    am = d.u,
     zt = H - top,
-    zb = zt - h,
-    y = game.Y0;
+    zb = zt - h;
   const white = '#f5f5f5';
   // cornice: montanti, architrave e traverse in croce
-  box(x0 - 2, y + 2, 4, 4, h + 4, white, { z0: zb - 2 });
-  box(x1 + 2, y + 2, 4, 4, h + 4, white, { z0: zb - 2 });
-  box((x0 + x1) / 2, y + 2, w + 8, 4, 4, white, { z0: zt });
-  box((x0 + x1) / 2, y + 1.5, 3, 3, h, '#ececec', { z0: zb });
-  box((x0 + x1) / 2, y + 1.5, w, 3, 3, '#ececec', { z0: zb + h / 2 - 1.5 });
+  W.box(a0 - 2, 2, 4, 4, h + 4, white, zb - 2);
+  W.box(a1 + 2, 2, 4, 4, h + 4, white, zb - 2);
+  W.box(am, 2, w + 8, 4, 4, white, zt);
+  W.box(am, 1.5, 3, 3, h, '#ececec', zb);
+  W.box(am, 1.5, w, 3, 3, '#ececec', zb + h / 2 - 1.5);
   // davanzale che sporge
-  box((x0 + x1) / 2, y + 5, w + 16, 10, 3, '#e0e0e0', { z0: zb - 6 });
-  if (!d.curtains) return wallPlane('back', H);
-  // bastone e tende staccate dal muro, con le pieghe
-  box((x0 + x1) / 2, y + 8, w + 40, 2.5, 2.5, '#7f8c8d', { z0: zt + 7 });
-  for (const cx of [x0 - 8, x1 + 8]) {
-    const c: GameValue = box(cx, y + 8, 14, 3, h + 18, '#c0392b', { z0: zb - 10 });
-    onFace(c, 'left', (W: number, CH: number): void => {
-      const ctx = game.view.ctx;
-      for (let k = 0; k < 4; k++) {
-        const g = ctx.createLinearGradient(k * (W / 4), 0, (k + 1) * (W / 4), 0);
-        g.addColorStop(0, 'rgba(0,0,0,0.22)');
-        g.addColorStop(0.5, 'rgba(255,255,255,0.08)');
-        g.addColorStop(1, 'rgba(0,0,0,0.22)');
-        ctx.fillStyle = g;
-        ctx.fillRect(k * (W / 4), 0, W / 4, CH);
-      }
+  W.box(am, 5, w + 16, 10, 3, '#e0e0e0', zb - 6);
+  if (d.curtains) {
+    // bastone e tende staccate dal muro, con le pieghe
+    W.box(am, 8, w + 40, 2.5, 2.5, '#7f8c8d', zt + 7);
+    for (const ca of [a0 - 8, a1 + 8]) {
+      const c: GameValue = W.box(ca, 8, 14, 3, h + 18, '#c0392b', zb - 10);
+      onFace(c, W.front, (CW: number, CH: number): void => {
+        const ctx = game.view.ctx;
+        for (let k = 0; k < 4; k++) {
+          const g = ctx.createLinearGradient(k * (CW / 4), 0, (k + 1) * (CW / 4), 0);
+          g.addColorStop(0, 'rgba(0,0,0,0.22)');
+          g.addColorStop(0.5, 'rgba(255,255,255,0.08)');
+          g.addColorStop(1, 'rgba(0,0,0,0.22)');
+          ctx.fillStyle = g;
+          ctx.fillRect(k * (CW / 4), 0, CW / 4, CH);
+        }
+      });
+    }
+  }
+  wallPlane(d.side, H);
+}
+
+// Specchio del bagno in rilievo, con la mensolina di vetro sotto (bicchiere e spazzolini).
+export function wallMirror3d(d?: GameValue): GameValue {
+  const H = wallHere();
+  const w: number = d.w || 50,
+    h: number = d.h || 44,
+    zt = H - (d.top || 16),
+    zb = zt - h;
+  resetPlane();
+  const W = wallAxes(d.side);
+  const ctx = game.view.ctx;
+  const frame: GameValue = W.box(d.u, 2, w + 6, 4, h + 6, '#b2bec3', zb - 3);
+  onFace(frame, W.front, (FW: number, FH: number): void => {
+    const g = ctx.createLinearGradient(0, 0, FW, FH);
+    g.addColorStop(0, '#eaf7fc');
+    g.addColorStop(1, '#93bfd2');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.roundRect ? ctx.roundRect(3, 3, FW - 6, FH - 6, 6) : ctx.rect(3, 3, FW - 6, FH - 6);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.75)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(10, FH - 12);
+    ctx.lineTo(FW * 0.45, 9);
+    ctx.moveTo(18, FH - 10);
+    ctx.lineTo(FW * 0.55, 13);
+    ctx.stroke();
+  });
+  // mensolina di vetro con il bicchiere degli spazzolini
+  W.box(d.u, 6, w * 0.8, 10, 2, 'rgba(200,230,240,0.85)', zb - 10);
+  W.box(d.u - w * 0.22, 6, 5, 5, 8, '#74b9ff', zb - 8);
+  W.box(d.u - w * 0.22 - 1, 6, 1.2, 1.2, 6, '#ff7675', zb);
+  W.box(d.u - w * 0.22 + 1.5, 6, 1.2, 1.2, 5, '#55efc4', zb);
+  W.box(d.u + w * 0.2, 6, 5, 4, 10, '#ffeaa7', zb - 8);
+  wallPlane(d.side, H);
+}
+
+// Portasciugamani con due asciugamani appesi, staccati dal muro.
+export function wallTowels3d(d?: GameValue): GameValue {
+  const H = wallHere();
+  const bar = H - (d.top || 50);
+  resetPlane();
+  const W = wallAxes(d.side);
+  const ctx = game.view.ctx;
+  for (const da of [-22, 22]) W.box(d.u + da, 3, 2, 6, 2, '#95a5a6', bar);
+  const towels: [number, number, string][] = [
+    [-10, 30, '#ff7675'],
+    [10, 26, '#74b9ff'],
+  ];
+  for (const [da, len, color] of towels) {
+    const t: GameValue = W.box(d.u + da, 6, 17, 4, len, color, bar - len + 2);
+    onFace(t, W.front, (TW: number, TH: number): void => {
+      // orlo chiaro in fondo e pieghe morbide
+      ctx.fillStyle = 'rgba(255,255,255,0.45)';
+      ctx.fillRect(0, TH - 7, TW, 3);
+      ctx.fillStyle = 'rgba(0,0,0,0.1)';
+      ctx.fillRect(TW * 0.3, 0, 1, TH);
+      ctx.fillRect(TW * 0.7, 0, 1, TH);
     });
   }
-  wallPlane('back', H);
+  W.box(d.u, 6, 46, 2.5, 2.5, '#b2bec3', bar);
+  wallPlane(d.side, H);
 }
 
 /** Livello 2: piccolo display e tastiera con i tasti da 1 a 5. */

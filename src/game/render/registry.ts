@@ -131,6 +131,8 @@ import {
   wallSafe,
   wallWindow,
   wallWindowDepth,
+  wallMirror3d,
+  wallTowels3d,
   wallRocketPlaque,
   wallAdScreen,
 } from './scenes.js';
@@ -314,8 +316,11 @@ export function registerDrawers(): void {
     neon: wallNeon,
     roomPainting: wallRoomPainting,
     wallSafe,
-    // finestra della stanza: cornice e tende in rilievo
+    // finestre: cornice e tende in rilievo
     windowDepth: wallWindowDepth,
+    // bagno: specchio e asciugamani in rilievo
+    mirror3d: wallMirror3d,
+    towels3d: wallTowels3d,
     rocketPlaque: wallRocketPlaque,
     adScreen: wallAdScreen,
     collectShelf: wallCollectShelf,

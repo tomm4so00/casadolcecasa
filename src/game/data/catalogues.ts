@@ -1748,7 +1748,7 @@ export const KITCHEN_FURNITURE = {
 export const BATHROOM_FURNITURE = {
   toilet: {
     x: -120,
-    y: -80,
+    y: -20,
     w: 55,
     h: 55,
     z: 45,
@@ -1759,10 +1759,10 @@ export const BATHROOM_FURNITURE = {
   },
   sink: {
     x: 0,
-    y: -120,
+    y: -60,
     w: 60,
     h: 50,
-    z: 55,
+    z: 40,
     name: 'Lavandino di Design 🚰',
     color: '#0984e3',
     topColor: '#74b9ff',
@@ -1770,7 +1770,7 @@ export const BATHROOM_FURNITURE = {
   },
   shower: {
     x: 120,
-    y: -80,
+    y: -20,
     w: 80,
     h: 80,
     z: 125,
@@ -1781,7 +1781,7 @@ export const BATHROOM_FURNITURE = {
   },
   doorExit: {
     x: 0,
-    y: 160,
+    y: 100,
     w: 60,
     h: 15,
     z: 110,
@@ -2602,7 +2602,7 @@ export const COURTYARD_DOORS = {
   },
   // unica uscita verso la città, per tutti gli appartamenti: in fondo al vialetto che va al
   // bordo del cortile, tra i due lampioni dell'ingresso
-  exitHouse: { x: 0, y: 190, w: 64, h: 15, z: 110, name: 'Uscita del Condominio 🚪' },
+  exitHouse: { x: 0, y: 216, w: 64, h: 15, z: 110, name: 'Uscita del Condominio 🚪' },
 };
 
 export { BUSINESSES as BIZ } from '../../../shared/market.js';
@@ -2920,8 +2920,8 @@ export const ENV_DECOR = {
     { kind: 'streetlamp', x: -36, y: -122, w: 8, h: 8 },
     { kind: 'streetlamp', x: 36, y: -122, w: 8, h: 8 },
     // - ai lati dell'uscita del condominio
-    { kind: 'streetlamp', x: -46, y: 180, w: 8, h: 8 },
-    { kind: 'streetlamp', x: 46, y: 180, w: 8, h: 8 },
+    { kind: 'streetlamp', x: -46, y: 206, w: 8, h: 8 },
+    { kind: 'streetlamp', x: 46, y: 206, w: 8, h: 8 },
   ],
   SALOON: [
     { kind: 'plant', x: -168, y: -160, w: 26, h: 26, z: 60 },
@@ -2932,8 +2932,8 @@ export const ENV_DECOR = {
     { kind: 'plant', x: -168, y: 150, w: 24, h: 24, z: 55 },
   ],
   BATHROOM: [
-    { kind: 'bathmat', x: 0, y: 40, w: 50, h: 30, solid: false, flat: true },
-    { kind: 'plant', x: 168, y: 150, w: 24, h: 24, z: 55 },
+    { kind: 'bathmat', x: 0, y: 10, w: 50, h: 30, solid: false, flat: true },
+    { kind: 'plant', x: 168, y: 90, w: 24, h: 24, z: 55 },
   ],
   negozio_vestiti: [
     {
@@ -3144,17 +3144,19 @@ export const ENV_STYLE = {
     wall: '#a8d8e8',
     wallStyle: 'tilesFull',
     trim: '#ffffff',
+    // specchio, asciugamani e cornice della finestra in rilievo
     decor: {
       back: [
-        { t: 'mirror', u: 200, w: 50, h: 44 },
-        { t: 'towels', u: 330 },
+        { t: 'mirror3d', side: 'back', u: 200, w: 50, h: 40, top: 26 },
+        { t: 'towels3d', side: 'back', u: 100 },
       ],
       left: [
-        { t: 'window', u: 190, w: 40, h: 44 },
-        { t: 'towels', u: 80 },
+        { t: 'window', u: 150, w: 40, h: 44 },
+        { t: 'windowDepth', side: 'left', u: 150, w: 40, h: 44 },
+        { t: 'towels3d', side: 'left', u: 60 },
       ],
     },
-    lights: [{ x: 0, y: -40, z: 0, r: 240, color: '220,240,255' }],
+    lights: [{ x: 0, y: -20, z: 0, r: 240, color: '220,240,255' }],
   },
   PLAYER_ROOM: {
     floor: 'parquet',
@@ -3535,16 +3537,16 @@ export const ENV_STYLE = {
     floor: 'grass',
     floorColor: '#5fa84a',
     outdoor: true,
-    // vialetti (unità del pavimento dall'angolo di fondo: u = x + 580, v = y + 220)
+    // vialetti (unità del pavimento dall'angolo di fondo: u = x + 606, v = y + 246)
     paths: [
-      { u: 35, v: 28, w: 1061, h: 40 }, // marciapiede davanti alle 6 palazzine
-      { u: 39, v: 28, w: 40, h: 342 }, // marciapiede davanti alle 2 palazzine di sinistra
-      { u: 580, v: 220, r: 95 }, // piazzetta della fontana
-      { u: 560, v: 64, w: 40, h: 72 }, // dal marciapiede alla piazzetta
-      { u: 79, v: 200, w: 404, h: 40 }, // dall'ala sinistra alla piazzetta
-      { u: 560, v: 306, w: 40, h: 134 }, // verso il bordo del cortile
-      { u: 677, v: 200, w: 280, h: 40 }, // verso l'ala destra
-      { u: 1011, v: 220, r: 75 }, // piazzola libera nell'ala destra
+      { u: 61, v: 54, w: 1061, h: 40 }, // marciapiede davanti alle 6 palazzine
+      { u: 65, v: 54, w: 40, h: 342 }, // marciapiede davanti alle 2 palazzine di sinistra
+      { u: 606, v: 246, r: 95 }, // piazzetta della fontana
+      { u: 586, v: 90, w: 40, h: 72 }, // dal marciapiede alla piazzetta
+      { u: 105, v: 226, w: 404, h: 40 }, // dall'ala sinistra alla piazzetta
+      { u: 586, v: 332, w: 40, h: 160 }, // verso il bordo del cortile
+      { u: 703, v: 226, w: 280, h: 40 }, // verso l'ala destra
+      { u: 1037, v: 246, r: 75 }, // piazzola libera nell'ala destra
     ],
   },
   passeggiata: { floor: 'grass', floorColor: '#5fa84a', outdoor: true },

@@ -24,7 +24,12 @@ const FACADE_FLOORS = [2, 3, 2, 3, 3, 2, 3, 2];
 const AWNING_COLORS = ['#c0392b', '#2471a3', '#1e8449', '#b9770e'];
 const FLOWER_COLORS = ['#ff6b81', '#feca57', '#ff9ff3', '#ffffff', '#e84393'];
 const FACADE_W = 120;
-const FACADE_D = 30;
+const FACADE_D = 56;
+/**
+ * Le porte del cortile stanno dove stava la facciata quando le palazzine erano profonde 30: la
+ * facciata resta lì e la palazzina cresce all'indietro, verso il bordo del cortile.
+ */
+const FACADE_BACK = (FACADE_D - 30) / 2;
 // Altezze della facciata: il piano terra è alto quanto serve a un portone più alto del personaggio
 // (le porte del salone sono alte 89), i piani sopra hanno finestre slanciate.
 /** piano terra, dallo zoccolo al marcapiano */
@@ -135,6 +140,35 @@ function facadeTexture(
 ): void {
   const top = 10,
     bottom = H - 10;
+  // mattoni e conci restano dentro la parete: l'ultima fila non sporge dallo spigolo
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(0, 0, W, H);
+  ctx.clip();
+  facadePattern(ctx, tex, W, H, wall, seed, top, bottom);
+  ctx.restore();
+  // spigoli in pietra chiara, a blocchi alternati, su tutte le palazzine
+  ctx.fillStyle = game.lighten(wall, 0.4);
+  for (let v = top + 2, i = 0; v < bottom - 4; v += 9, i++) {
+    const qw = i % 2 ? 4 : 7;
+    ctx.fillRect(0, v, qw, 7);
+    ctx.fillRect(W - qw, v, qw, 7);
+  }
+  ctx.fillStyle = 'rgba(0,0,0,0.18)';
+  ctx.fillRect(0, top, 0.8, bottom - top);
+  ctx.fillRect(W - 0.8, top, 0.8, bottom - top);
+}
+
+function facadePattern(
+  ctx: CanvasRenderingContext2D,
+  tex: string,
+  W: number,
+  H: number,
+  wall: string,
+  seed: number,
+  top: number,
+  bottom: number,
+): void {
   if (tex === 'brick') {
     // mattoni a vista con le fughe, un po' di colore diverso l'uno dall'altro
     const bw = 9,
@@ -443,15 +477,6 @@ function drawFacade(
     ctx.fillRect(0, 0, W, 7);
     ctx.fillStyle = game.lighten(wall, 0.35);
     for (let u = 2; u < W - 2; u += 6) ctx.fillRect(u, 7, 3, 3);
-    // cantonali in pietra sugli spigoli (mattoni e pietra hanno già il loro disegno)
-    if (look.tex === 'plaster' || look.tex === 'bands') {
-      ctx.fillStyle = game.lighten(wall, 0.45);
-      for (let v = 12, i = 0; v < H - 14; v += 9, i++) {
-        const qw = i % 2 ? 5 : 8;
-        ctx.fillRect(0, v, qw, 7);
-        ctx.fillRect(W - qw, v, qw, 7);
-      }
-    }
     // piani: finestre con persiane e fioriere
     const ww = W * 0.17,
       wh = WIN_H;
@@ -609,24 +634,36 @@ function drawFacade(
       ctx.restore();
     });
   }
-  // fianco della palazzina: finestrelle per piano
+  // fianco della palazzina: stessa finitura della facciata, in ombra, con due file di finestre
   onFace(b, side ? 'left' : 'right', (W: number, H: number): void => {
-    ctx.fillStyle = 'rgba(0,0,0,0.08)';
-    ctx.fillRect(0, 0, W, H);
-    ctx.fillStyle = game.darken(wall, 0.35);
+    facadeTexture(ctx, look.tex, W, H, wall, o.no + 50);
+    // cornicione, marcapiano del piano terra e zoccolo come sulla facciata
+    ctx.fillStyle = game.darken(wall, 0.3);
     ctx.fillRect(0, 0, W, 7);
-    ctx.fillRect(0, H - 10, W, 10);
+    const gy = H - PLINTH - GROUND_H;
+    ctx.fillStyle = game.darken(wall, 0.08);
+    ctx.fillRect(0, gy, W, GROUND_H);
+    ctx.fillStyle = game.darken(wall, 0.25);
+    ctx.fillRect(0, gy - 3, W, 3);
+    ctx.fillStyle = '#9e9688';
+    ctx.fillRect(0, H - PLINTH, W, PLINTH);
+    // finestre grandi come quelle della facciata; il piano terra resta pulito
+    const ww = Math.min(18, W * 0.3);
     for (let f = 0; f < floors; f++)
-      facadeWindow(
-        ctx,
-        W / 2 - 4,
-        18 + f * FLOOR_H,
-        8,
-        WIN_H - 6,
-        night && rnd(o.no + f * 11) > 0.5,
-        night,
-        wall,
-      );
+      for (const [c, cx] of [W * 0.3, W * 0.7].entries())
+        facadeWindow(
+          ctx,
+          cx - ww / 2,
+          18 + f * FLOOR_H,
+          ww,
+          WIN_H,
+          night && rnd(o.no + f * 11 + c * 5) > 0.5,
+          night,
+          wall,
+        );
+    // ombra: il fianco prende meno luce della facciata
+    ctx.fillStyle = 'rgba(0,0,0,0.14)';
+    ctx.fillRect(0, 0, W, H);
   });
   // gradino, zerbino e vasi ai lati del portone
   const out = FACADE_D / 2;
@@ -702,14 +739,21 @@ export function drawCourtyardDoor(key?: GameValue, it?: GameValue): GameValue {
   const hour = realHour(new Date());
   const night = hour >= 19 || hour < 7;
   const sig = [it.x, it.y, it.side, o.no, o.doorColor, o.building, o.open.toFixed(2), night].join();
-  drawCached('facade:' + key, sig, it.x, it.y, FACADE_BOUNDS, () => drawFacade(it, o));
+  const body = facadeBody(it);
+  drawCached('facade:' + key, sig, body.x, body.y, FACADE_BOUNDS, () => drawFacade(body, o));
+}
+
+/** La palazzina di una porta del cortile: centrata un po' dietro la porta. */
+function facadeBody(it: GameValue): GameValue {
+  return it.side === 'left' ? { ...it, x: it.x - FACADE_BACK } : { ...it, y: it.y - FACADE_BACK };
 }
 
 /** Ingombro a terra di una palazzina: non la si attraversa e chi le passa davanti resta davanti. */
 export function facadeFootprint(it: GameValue): { x: number; y: number; w: number; h: number } {
   const side = it.side === 'left';
-  return { x: it.x, y: it.y, w: side ? FACADE_D : FACADE_W, h: side ? FACADE_W : FACADE_D };
+  const b = facadeBody(it);
+  return { x: b.x, y: b.y, w: side ? FACADE_D : FACADE_W, h: side ? FACADE_W : FACADE_D };
 }
 
 /** Spazio occupato sullo schermo da una palazzina (tetto e camino compresi). */
-const FACADE_BOUNDS = { left: 150, right: 150, up: 470, down: 110 };
+const FACADE_BOUNDS = { left: 170, right: 170, up: 480, down: 120 };

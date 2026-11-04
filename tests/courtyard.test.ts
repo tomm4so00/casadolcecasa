@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { ENV_DECOR, ENV_STYLE } from '../src/game/data/catalogues';
 
-// Cortile: x -480..480, y -220..220; i vialetti sono in unità del pavimento (u = x + 480, v = y + 220)
+// Cortile: x -606..606, y -246..246; i vialetti sono in unità del pavimento (u = x + 606, v = y + 246)
 const paths = ENV_STYLE.CORTILE.paths as {
   u: number;
   v: number;
@@ -13,8 +13,8 @@ const BORDER = 2; // il bordo scuro dei vialetti
 
 /** true se un oggetto largo `size` attorno a (x, y) tocca un vialetto. */
 function onPath(x: number, y: number, size: number): boolean {
-  const u = x + 480,
-    v = y + 220,
+  const u = x + 606,
+    v = y + 246,
     half = size / 2 + BORDER;
   return paths.some((p) =>
     p.r

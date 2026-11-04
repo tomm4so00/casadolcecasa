@@ -711,10 +711,25 @@ export function walkThroughKeys(): Set<string> {
   return keys;
 }
 
-/** Zone davanti alle porte del cortile: basta entrarci camminando, senza pulsante. */
+/**
+ * Zone davanti alle porte del cortile e zerbini dell'uscita (stanze, cucina, bagno, negozi…):
+ * basta entrarci camminando, senza pulsante.
+ */
 function walkZones(): WalkZone[] {
   const env = game.view.activeEnvironment;
-  if (env !== 'CORTILE') return [];
+  if (env !== 'CORTILE') {
+    const ex: GameValue = env === 'SALOON' ? null : getCurrentFurnitureMap().doorExit;
+    // arredando lo zerbino resta un pulsante: non si esce per sbaglio spostando un mobile
+    if (!ex || game.arrangeMode || game.isMovingFurnitureMode) return [];
+    // lo zerbino sta sul bordo della stanza: vale anche un passo prima
+    return [
+      {
+        key: 'doorExit',
+        inside: (x, y, m) =>
+          Math.abs(x - ex.x) < ex.w / 2 + m && Math.abs(y - ex.y) < ex.h / 2 + 14 + m,
+      },
+    ];
+  }
   const out: WalkZone[] = [];
   for (const [key, it] of Object.entries(game.courtyardDoors) as [string, GameValue][]) {
     // nelle palazzine ancora vuote (col nastro) si entra solo col pulsante
