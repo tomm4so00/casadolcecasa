@@ -11,7 +11,7 @@ const ENV_GROW: Record<string, number> = { SALOON: 1.25, KITCHEN: 1.25 };
 /** Ambienti con una misura propria e gli oggetti già sistemati a mano (metà larghezza e profondità). */
 const ENV_HALF: Record<string, { x: number; y: number }> = {
   CORTILE: { x: 480, y: 220 },
-  centro_commerciale: { x: 300, y: 200 },
+  centro_commerciale: { x: 420, y: 200 },
   luna: { x: 300, y: 300 },
   // laboratorio ingegneristico (davanti) e la sua zona esterna (dietro)
   ingegneria: { x: 200, y: 380 },

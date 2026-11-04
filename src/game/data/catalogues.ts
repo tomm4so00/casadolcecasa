@@ -1836,11 +1836,11 @@ function labWall(): {
   return out;
 }
 
-// Centro commerciale (600×400): le vetrine dei cinque negozi lungo la parete di fondo; avvicinandosi
+// Centro commerciale (840×400): le vetrine dei cinque negozi lungo la parete di fondo; avvicinandosi
 // si entra. `enter` è l'attività che porta dentro il negozio.
 export const MALL_FURNITURE = {
   shopFurniture: {
-    x: -245,
+    x: -325,
     y: -189,
     w: 92,
     h: 22,
@@ -1851,7 +1851,7 @@ export const MALL_FURNITURE = {
     moveable: false,
   },
   shopClothes: {
-    x: -147,
+    x: -195,
     y: -189,
     w: 92,
     h: 22,
@@ -1862,7 +1862,7 @@ export const MALL_FURNITURE = {
     moveable: false,
   },
   shopPets: {
-    x: -49,
+    x: -65,
     y: -189,
     w: 92,
     h: 22,
@@ -1873,7 +1873,7 @@ export const MALL_FURNITURE = {
     moveable: false,
   },
   shopGrow: {
-    x: 49,
+    x: 65,
     y: -189,
     w: 92,
     h: 22,
@@ -1884,7 +1884,7 @@ export const MALL_FURNITURE = {
     moveable: false,
   },
   shopBetting: {
-    x: 147,
+    x: 195,
     y: -189,
     w: 92,
     h: 22,
@@ -1896,7 +1896,7 @@ export const MALL_FURNITURE = {
   },
   // sala giochi: tre postazioni, una per gioco (Forza 4, Battaglia navale, Riflessi)
   shopArcade: {
-    x: 245,
+    x: 325,
     y: -189,
     w: 92,
     h: 22,
@@ -2804,24 +2804,24 @@ export const ENV_DECOR = {
     { kind: 'moonFlag', x: 110, y: -140, w: 8, h: 8, z: 80, label: 'Bandiera CDC-1 🚩' },
   ],
   centro_commerciale: [
-    { kind: 'fountain', x: 0, y: 40, w: 70, h: 70, label: 'Fontana ⛲', z: 60 },
-    { kind: 'bench', x: -170, y: 50, w: 50, h: 16 },
-    { kind: 'bench', x: 170, y: 50, w: 50, h: 16 },
-    // colonne tra le vetrine, con le lampade
-    { kind: 'mallColumn', x: -294, y: -186, w: 12, h: 16, z: 128 },
-    { kind: 'mallColumn', x: -196, y: -186, w: 10, h: 16, z: 128 },
-    { kind: 'mallColumn', x: -98, y: -186, w: 10, h: 16, z: 128 },
+    { kind: 'bench', x: -210, y: 50, w: 50, h: 16 },
+    { kind: 'bench', x: 210, y: 50, w: 50, h: 16 },
+    // colonne tra le vetrine (con un pezzo di muro in mezzo), con le lampade
+    { kind: 'mallColumn', x: -414, y: -186, w: 12, h: 16, z: 128 },
+    { kind: 'mallColumn', x: -260, y: -186, w: 10, h: 16, z: 128 },
+    { kind: 'mallColumn', x: -130, y: -186, w: 10, h: 16, z: 128 },
     { kind: 'mallColumn', x: 0, y: -186, w: 10, h: 16, z: 128 },
-    { kind: 'mallColumn', x: 98, y: -186, w: 10, h: 16, z: 128 },
-    { kind: 'mallColumn', x: 196, y: -186, w: 10, h: 16, z: 128 },
-    { kind: 'mallColumn', x: 294, y: -186, w: 12, h: 16, z: 128 },
-    { kind: 'plant', x: -196, y: -152, w: 22, h: 22, z: 55 },
-    { kind: 'plant', x: 196, y: -152, w: 22, h: 22, z: 55 },
+    { kind: 'mallColumn', x: 130, y: -186, w: 10, h: 16, z: 128 },
+    { kind: 'mallColumn', x: 260, y: -186, w: 10, h: 16, z: 128 },
+    { kind: 'mallColumn', x: 414, y: -186, w: 12, h: 16, z: 128 },
+    { kind: 'plant', x: -260, y: -152, w: 22, h: 22, z: 55 },
+    { kind: 'plant', x: 260, y: -152, w: 22, h: 22, z: 55 },
+    { kind: 'plant', x: 0, y: -152, w: 22, h: 22, z: 55 },
     // palme nei vasi agli angoli
-    { kind: 'mallPalm', x: -262, y: -95, w: 30, h: 30, z: 110 },
-    { kind: 'mallPalm', x: 262, y: -95, w: 30, h: 30, z: 110 },
-    { kind: 'mallPalm', x: -262, y: 165, w: 30, h: 30, z: 110 },
-    { kind: 'mallPalm', x: 262, y: 165, w: 30, h: 30, z: 110 },
+    { kind: 'mallPalm', x: -382, y: -95, w: 30, h: 30, z: 110 },
+    { kind: 'mallPalm', x: 382, y: -95, w: 30, h: 30, z: 110 },
+    { kind: 'mallPalm', x: -382, y: 165, w: 30, h: 30, z: 110 },
+    { kind: 'mallPalm', x: 382, y: 165, w: 30, h: 30, z: 110 },
     // gelateria e palloncini vicino all'ingresso
     { kind: 'iceCreamCart', x: -140, y: 145, w: 46, h: 24, z: 80, label: 'Gelateria 🍦' },
     { kind: 'balloonStand', x: 140, y: 145, w: 26, h: 26, z: 100, label: 'Palloncini 🎈' },
@@ -3033,12 +3033,12 @@ export const ENV_STYLE = {
       ],
     },
     lights: [
-      { x: -245, y: -130, z: 0, r: 130, color: '255,190,120' },
-      { x: -147, y: -130, z: 0, r: 130, color: '255,170,215' },
-      { x: -49, y: -130, z: 0, r: 130, color: '255,215,150' },
-      { x: 49, y: -130, z: 0, r: 130, color: '170,255,150' },
-      { x: 147, y: -130, z: 0, r: 130, color: '220,180,255' },
-      { x: 245, y: -130, z: 0, r: 130, color: '90,230,255' },
+      { x: -325, y: -130, z: 0, r: 130, color: '255,190,120' },
+      { x: -195, y: -130, z: 0, r: 130, color: '255,170,215' },
+      { x: -65, y: -130, z: 0, r: 130, color: '255,215,150' },
+      { x: 65, y: -130, z: 0, r: 130, color: '170,255,150' },
+      { x: 195, y: -130, z: 0, r: 130, color: '220,180,255' },
+      { x: 325, y: -130, z: 0, r: 130, color: '90,230,255' },
       { x: 0, y: 60, z: 0, r: 260, color: '255,245,225' },
       { x: -150, y: 150, z: 0, r: 150, color: '255,235,200' },
       { x: 150, y: 150, z: 0, r: 150, color: '255,235,200' },
