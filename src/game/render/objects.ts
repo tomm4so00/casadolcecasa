@@ -848,44 +848,7 @@ export function drawSafe(it?: GameValue): GameValue {
 export function drawStove(it?: GameValue): GameValue {
   const ctx = game.view.ctx;
   const cooking: GameValue = game.player.hasFoodInInventory || game.player.foodIsCooked;
-  const b: GameValue = box(it.x, it.y, it.w, it.h, it.z - 4, '#ecf0f1');
-  onFace(b, 'left', (W?: GameValue, H?: GameValue): GameValue => {
-    ctx.fillStyle = '#2d3436';
-    ctx.fillRect(6, 12, W - 12, H - 20);
-    ctx.fillStyle = `rgba(255,140,0,${game.player.foodIsCooked ? 0.35 : 0.08})`;
-    ctx.fillRect(9, 15, W - 18, H - 26);
-    ctx.fillStyle = '#b2bec3';
-    ctx.fillRect(8, 6, W - 16, 3);
-    for (let i: GameValue = 0; i < 4; i++) {
-      ctx.fillStyle = '#636e72';
-      ctx.beginPath();
-      ctx.arc(10 + (i * (W - 20)) / 3, 3, 1.6, 0, 6.3);
-      ctx.fill();
-    }
-  });
-  onFace(b, 'right', (W?: GameValue, H?: GameValue): GameValue => {
-    ctx.strokeStyle = 'rgba(0,0,0,0.2)';
-    ctx.strokeRect(4, 6, W - 8, H - 12);
-  });
-  const top: GameValue = box(it.x, it.y, it.w, it.h, 4, '#2d3436', { z0: it.z - 4 });
-  onFace(top, 'top', (W?: GameValue, H?: GameValue): GameValue => {
-    [
-      [0.28, 0.3],
-      [0.72, 0.3],
-      [0.28, 0.72],
-      [0.72, 0.72],
-    ].forEach(([u, v]: GameValue = {}, i?: GameValue): GameValue => {
-      ctx.strokeStyle =
-        cooking && i === 2 ? `rgba(255,${90 + Math.random() * 60},0,0.95)` : '#636e72';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.arc(W * u, H * v, W * 0.12, 0, 6.3);
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.arc(W * u, H * v, W * 0.05, 0, 6.3);
-      ctx.stroke();
-    });
-  });
+  drawSteelStove(it, game.player.foodIsCooked ? 0.6 : 0.1, !!cooking);
   if (cooking) {
     const pot: GameValue = box(it.x - it.w * 0.22, it.y + it.h * 0.22, 20, 20, 12, '#b2bec3', {
       z0: it.z,
@@ -2045,7 +2008,8 @@ export function drawWaitingChairsProp(it?: GameValue): GameValue {
     drawChair(it.x - it.w / 2 + 14 + (i * (it.w - 28)) / 2, it.y, '#2e86de');
 }
 
-export function drawRestCounterProp(it?: GameValue): GameValue {
+/** Bancone del caffè: legno, piano chiaro, la macchina dell'espresso col vapore e le tazzine. */
+export function drawRestCounterProp(it?: GameValue, t?: GameValue): GameValue {
   const ctx = game.view.ctx;
   const b: GameValue = box(it.x, it.y, it.w, it.h, it.z - 5, '#8d5a3b');
   onFace(b, 'left', (W?: GameValue, H?: GameValue): GameValue => {
@@ -2054,18 +2018,152 @@ export function drawRestCounterProp(it?: GameValue): GameValue {
     ctx.fillRect(0, H - 6, W, 6);
   });
   box(it.x, it.y, it.w + 6, it.h + 6, 5, '#ecf0f1', { z0: it.z - 5 });
-  [-0.3, 0, 0.3].forEach((k?: GameValue, i?: GameValue): GameValue => {
-    const d: GameValue = box(it.x + it.w * k, it.y, 18, 18, 3, '#ffffff', { z0: it.z });
-    onFace(d, 'top', (W?: GameValue, H?: GameValue): GameValue => {
-      ctx.fillStyle = ['#e17055', '#fdcb6e', '#00b894'][i];
-      ctx.beginPath();
-      ctx.ellipse(W / 2, H / 2, W * 0.3, H * 0.3, 0, 0, 6.3);
-      ctx.fill();
-    });
+  // macchina dell'espresso all'italiana, d'epoca e grande: cromo e ottone, la fascia con la scritta,
+  // la cupola alta con l'aquila dorata e le due leve dei gruppi
+  const mx = it.x - it.w * 0.12,
+    my = it.y - 3,
+    z = it.z;
+  const MW = 46,
+    MD = 22,
+    MH = 26;
+  const s1: number = isoScale();
+  // zoccolo d'ottone e corpo cromato
+  box(mx, my, MW + 3, MD + 3, 3, '#b8860b', { z0: z, top: '#d4ac0d' });
+  const body: GameValue = box(mx, my, MW, MD, MH, '#c0c8cc', { z0: z + 3, top: '#dfe6e9' });
+  const chrome = (W: number, H: number): void => {
+    const g = ctx.createLinearGradient(0, 0, W, 0);
+    g.addColorStop(0, '#f5f6fa');
+    g.addColorStop(0.45, '#a4b0be');
+    g.addColorStop(1, '#dfe4ea');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, W, H);
+  };
+  onFace(body, 'left', (W: number, H: number): void => {
+    chrome(W, H);
+    // fascia d'ottone con la scritta
+    const band = ctx.createLinearGradient(0, 3, 0, 11);
+    band.addColorStop(0, '#f1c40f');
+    band.addColorStop(1, '#b8860b');
+    ctx.fillStyle = band;
+    ctx.fillRect(0, 3, W, 8);
+    ctx.fillStyle = '#3e2723';
+    ctx.font = 'bold 6px serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('CAFFÈ', W / 2, 7.5);
+    // manometro d'ottone al centro
+    ctx.fillStyle = '#b8860b';
+    ctx.beginPath();
+    ctx.arc(W / 2, 17, 3.6, 0, 6.3);
+    ctx.fill();
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.arc(W / 2, 17, 2.6, 0, 6.3);
+    ctx.fill();
+    ctx.strokeStyle = '#c0392b';
+    ctx.lineWidth = 0.6;
+    ctx.beginPath();
+    ctx.moveTo(W / 2, 17);
+    ctx.lineTo(W / 2 + 1.6, 15.6);
+    ctx.stroke();
+    // filetto d'ottone in basso
+    ctx.fillStyle = '#d4ac0d';
+    ctx.fillRect(0, H - 3, W, 2);
   });
+  // il fianco continua il davanti: cromo, fascia e filetto d'ottone
+  onFace(body, 'right', (W: number, H: number): void => {
+    chrome(W, H);
+    const band = ctx.createLinearGradient(0, 3, 0, 11);
+    band.addColorStop(0, '#f1c40f');
+    band.addColorStop(1, '#b8860b');
+    ctx.fillStyle = band;
+    ctx.fillRect(0, 3, W, 8);
+    ctx.fillStyle = '#d4ac0d';
+    ctx.fillRect(0, H - 3, W, 2);
+  });
+  // cupola cromata: anelli sempre più stretti, col bordo d'ottone
+  const ring = (cx: number, cy: number, r: number, zz: number): void => {
+    ctx.beginPath();
+    for (let k = 0; k <= 24; k++) {
+      const a = (k / 24) * Math.PI * 2;
+      const p = isoProject(cx + Math.cos(a) * r, cy + Math.sin(a) * r, zz);
+      if (k) ctx.lineTo(p.x, p.y);
+      else ctx.moveTo(p.x, p.y);
+    }
+    ctx.fill();
+  };
+  const top = z + 3 + MH;
+  ctx.fillStyle = '#d4ac0d';
+  ring(mx, my, 10.5, top);
+  for (let k = 0; k <= 10; k++) {
+    const a = (k / 10) * (Math.PI / 2);
+    ctx.fillStyle = k % 2 ? '#dfe6e9' : '#b2bec3';
+    ring(mx, my, 10 * Math.cos(a) + 0.5, top + 1 + 13 * Math.sin(a));
+  }
+  // l'aquila dorata ad ali aperte, sul pomolo in cima
+  const ea = isoProject(mx, my, top + 17);
+  ctx.fillStyle = '#d4ac0d';
+  ctx.strokeStyle = '#8a6d0b';
+  ctx.lineWidth = 0.6;
+  ctx.beginPath();
+  ctx.moveTo(ea.x - 8 * s1, ea.y - 3 * s1);
+  ctx.lineTo(ea.x - 2 * s1, ea.y - 1 * s1);
+  ctx.lineTo(ea.x, ea.y - 6 * s1);
+  ctx.lineTo(ea.x + 2 * s1, ea.y - 1 * s1);
+  ctx.lineTo(ea.x + 8 * s1, ea.y - 3 * s1);
+  ctx.lineTo(ea.x + 2.5 * s1, ea.y + 2 * s1);
+  ctx.lineTo(ea.x - 2.5 * s1, ea.y + 2 * s1);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(ea.x, ea.y - 6.5 * s1, 1.6 * s1, 0, 6.3);
+  ctx.fill();
+  // i due gruppi con le leve alzate e i pomelli neri, i portafiltri e le tazzine sotto
+  for (const k of [-0.36, 0.36]) {
+    const gx = mx + MW * k;
+    box(gx, my + MD / 2, 6, 5, 5, '#95a5a6', { z0: z + 12 });
+    box(gx, my + MD / 2 + 4, 2.5, 8, 2.5, '#2d3436', { z0: z + 12 });
+    box(gx, my + MD / 2 + 3, 6, 6, 5, '#ffffff', { z0: z + 3 });
+    box(gx, my + MD / 2, 2, 2, 20, '#b2bec3', { z0: z + 17 });
+    const knob = isoProject(gx, my + MD / 2, z + 38);
+    ctx.fillStyle = '#1e272e';
+    ctx.beginPath();
+    ctx.arc(knob.x, knob.y, 3.2 * s1, 0, 6.3);
+    ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.35)';
+    ctx.beginPath();
+    ctx.arc(knob.x - 1 * s1, knob.y - 1 * s1, 1 * s1, 0, 6.3);
+    ctx.fill();
+  }
+  // la lancia del vapore col suo sbuffo
+  box(mx + MW / 2 + 2, my + 6, 2, 2, 14, '#b2bec3', { z0: z + 6 });
+  for (let k = 0; k < 2; k++) {
+    const ph = ((t || 0) * 0.8 + k / 2) % 1;
+    const p = isoProject(mx + MW / 2 + 2, my + 6, z + 6 + ph * 16);
+    ctx.fillStyle = `rgba(255,255,255,${0.5 * (1 - ph)})`;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, (2.5 + ph * 3.5) * s1, 0, 6.3);
+    ctx.fill();
+  }
+  // a destra: tazzine sul piattino in fila, pronte
+  for (let i = 0; i < 3; i++) {
+    const cx = it.x + it.w * 0.24 + i * 8;
+    box(cx, it.y + 4, 7, 7, 1, '#ffffff', { z0: z });
+    const cup: GameValue = box(cx, it.y + 4, 4.5, 4.5, 4, '#ffffff', { z0: z + 1 });
+    onFace(cup, 'top', (W: number, H: number): void => {
+      ctx.fillStyle = '#6f4e37';
+      ctx.fillRect(0.8, 0.8, W - 1.6, H - 1.6);
+    });
+  }
 }
 
-export function drawChefStoveProp(it?: GameValue, t?: GameValue): GameValue {
+/**
+ * Fornelli in acciaio: manopole, sportello del forno col vetro e la luce, piano scuro con quattro
+ * fuochi. `glow` è la luce del forno (0-1), `flame` accende un fuoco. Lo usano la cucina di casa e
+ * il ristorante; pentole e padelle le aggiunge chi lo usa.
+ */
+function drawSteelStove(it: GameValue, glow: number, flame: boolean): void {
   const ctx = game.view.ctx;
   // `facing: 'x'`: contro il muro di sinistra, con il davanti verso la sala
   const front = it.facing === 'x' ? 'right' : 'left';
@@ -2095,7 +2193,7 @@ export function drawChefStoveProp(it?: GameValue, t?: GameValue): GameValue {
     ctx.fillRect(4, 13, W - 8, H - 17);
     const g = ctx.createLinearGradient(0, 17, 0, H - 6);
     g.addColorStop(0, '#2d3436');
-    g.addColorStop(1, '#6b3a16');
+    g.addColorStop(1, `rgba(214,110,30,${0.25 + glow * 0.75})`);
     ctx.fillStyle = g;
     ctx.fillRect(8, 19, W - 16, H - 27);
     ctx.fillStyle = 'rgba(255,255,255,0.15)';
@@ -2110,16 +2208,17 @@ export function drawChefStoveProp(it?: GameValue, t?: GameValue): GameValue {
     ctx.strokeStyle = '#636e72';
     ctx.lineWidth = 1;
     ctx.strokeRect(1.5, 1.5, W - 3, H - 3);
-    for (const [u, v] of [
+    for (const [n, [u, v]] of [
       [0.28, 0.27],
       [0.72, 0.27],
       [0.28, 0.73],
       [0.72, 0.73],
-    ]) {
+    ].entries()) {
       const cx = W * u,
         cy = H * v,
         r = Math.min(W, H) * 0.17;
-      ctx.fillStyle = '#1e272e';
+      // il fuoco acceso (quello davanti a sinistra) ha la fiamma blu e arancio
+      ctx.fillStyle = flame && n === 2 ? '#e67e22' : '#1e272e';
       ctx.beginPath();
       ctx.arc(cx, cy, r, 0, 6.3);
       ctx.fill();
@@ -2133,6 +2232,11 @@ export function drawChefStoveProp(it?: GameValue, t?: GameValue): GameValue {
       ctx.stroke();
     }
   });
+}
+
+export function drawChefStoveProp(it?: GameValue, t?: GameValue): GameValue {
+  const ctx = game.view.ctx;
+  drawSteelStove(it, 0.6, true);
   // la pentola della pasta (col vapore) e una padella sul fuoco
   const s: GameValue = isoScale();
   const burner = (u: number, v: number): [number, number] => [
