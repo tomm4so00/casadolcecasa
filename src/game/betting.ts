@@ -319,6 +319,7 @@ async function challenge(target: string, name: string, bet: number): Promise<voi
 
 async function onGame(target: string, g: RpsGame | null): Promise<void> {
   lastGame = g;
+  if (g) noteTie(g);
   // nuovo giro dopo un pareggio: si sceglie di nuovo
   if (g && (g.round || 0) !== lastRound) {
     lastRound = g.round || 0;
@@ -439,6 +440,105 @@ function checkTimeouts(): void {
   renderRps();
 }
 
+// ---- grafica: due mani che si sfidano
+
+const RPS_EMOJI: Record<RpsChoice, string> = { rock: '✊', paper: '✋', scissors: '✌️' };
+/** Durata dello "Sasso… carta… forbici!" prima che le mani si aprano. */
+const REVEAL_MS = 1500;
+
+/** Pareggio appena visto: si mostra la rivelazione per qualche secondo, poi si rigioca. */
+let tieShow: { key: string; me: RpsChoice; them: RpsChoice; until: number } | null = null;
+/** Mosse già annunciate col suono (una volta per giro). */
+let soundedReveal = '';
+
+/** Ricorda le due mosse di un pareggio: il giro dopo le azzera, ma l'animazione deve vederle. */
+function noteTie(g: RpsGame): void {
+  if (g.state !== 'playing' || !isRpsChoice(g.aChoice) || !isRpsChoice(g.bChoice)) return;
+  if (rpsWinner(g.aChoice, g.bChoice) !== null) return;
+  const key = `${g.t}-${g.round || 0}`;
+  if (tieShow?.key === key) return;
+  const mineA = g.a === me();
+  tieShow = {
+    key,
+    me: mineA ? g.aChoice : g.bChoice,
+    them: mineA ? g.bChoice : g.aChoice,
+    until: Date.now() + REVEAL_MS + 1800,
+  };
+  lifetime.setTimeout(renderRps, REVEAL_MS + 1900);
+}
+
+/** Una mano: il pugno che si agita e, se `pick` c'è, la mossa che compare alla fine. */
+function handHtml(side: 'me' | 'them', pick: RpsChoice | null, mood: string): string {
+  return (
+    `<div class="rps-hand ${side} ${mood}">` +
+    `<span class="rps-fist">✊</span>` +
+    (pick ? `<span class="rps-shown">${RPS_EMOJI[pick]}</span>` : '') +
+    '</div>'
+  );
+}
+
+/** Il ring con le due mani. `reveal` fa partire il conto e mostra le mosse. */
+function arenaHtml(opts: {
+  other: string;
+  myTag: string;
+  theirTag: string;
+  reveal?: { me: RpsChoice; them: RpsChoice; result: 'win' | 'lose' | 'tie' };
+  ready?: { me: boolean; them: boolean };
+}): string {
+  const r = opts.reveal;
+  const mood = (who: 'me' | 'them') =>
+    r
+      ? r.result === 'tie'
+        ? 'tie'
+        : (r.result === 'win') === (who === 'me')
+          ? 'winner'
+          : 'loser'
+      : opts.ready?.[who]
+        ? 'ready'
+        : 'idle';
+  const side = (who: 'me' | 'them', name: string, tag: string) =>
+    `<div class="rps-side ${who}"><div class="rps-name">${escapeHtmlSafe(name)}</div>` +
+    handHtml(who, r ? r[who] : null, mood(who)) +
+    `<div class="rps-tag">${tag}</div></div>`;
+  return (
+    `<div class="rps-arena${r ? ' revealing' : ''}">` +
+    side('me', 'Tu', opts.myTag) +
+    '<div class="rps-vs">VS</div>' +
+    side('them', opts.other, opts.theirTag) +
+    (r
+      ? '<div class="rps-chant"><span>Sasso…</span><span>carta…</span><span>forbici!</span></div>'
+      : '') +
+    '</div>'
+  );
+}
+
+/** Aggiorna un pezzo della finestra solo se cambia: così le animazioni non ripartono da capo. */
+function setPart(body: HTMLElement, cls: string, html: string): HTMLElement {
+  let el = body.querySelector<HTMLElement>(':scope > .' + cls);
+  if (!el) {
+    body.innerHTML = '';
+    for (const c of ['rps-top', 'rps-stage', 'rps-controls']) {
+      const div = document.createElement('div');
+      div.className = c;
+      body.appendChild(div);
+    }
+    el = body.querySelector<HTMLElement>(':scope > .' + cls) as HTMLElement;
+  }
+  if (el.dataset.html !== html) {
+    el.dataset.html = html;
+    el.innerHTML = html;
+  }
+  return el;
+}
+
+/** Tre colpi a tempo col "Sasso… carta… forbici!", una volta per giro. */
+function revealSound(key: string, win: boolean | null): void {
+  if (soundedReveal === key) return;
+  soundedReveal = key;
+  for (let i = 0; i < 3; i++) lifetime.setTimeout(() => sfx('click'), i * 500);
+  if (win !== null) lifetime.setTimeout(() => sfx(win ? 'coin' : 'click'), REVEAL_MS + 100);
+}
+
 function renderRps(): void {
   const modal = dom('rps-modal');
   if (!modal || modal.classList.contains('hidden')) return;
@@ -450,21 +550,50 @@ function renderRps(): void {
   }
   const role = g.a === me() ? 'a' : 'b';
   const other = role === 'a' ? g.bName : g.aName;
-  const pot = `<div class="rps-pot">💰 Nel piatto: <b>${euro(g.bet * 2)}</b> · contro ${escapeHtmlSafe(other)}</div>`;
+  setPart(
+    body,
+    'rps-top',
+    `<div class="rps-pot">💰 Nel piatto: <b>${euro(g.bet * 2)}</b> · contro ${escapeHtmlSafe(other)}</div>`,
+  );
   if (g.state === 'invited') {
-    body.innerHTML =
-      pot + `<p class="rps-wait">⏳ Aspetto che ${escapeHtmlSafe(other)} accetti la sfida…</p>`;
+    setPart(
+      body,
+      'rps-stage',
+      arenaHtml({
+        other,
+        myTag: '✅ Pronto',
+        theirTag: '⏳ Deve accettare…',
+        ready: { me: true, them: false },
+      }),
+    );
+    setPart(body, 'rps-controls', '');
     return;
   }
   if (g.state === 'done') {
     const win = g.winner === me();
-    const a = isRpsChoice(g.aChoice) ? RPS_LABEL[g.aChoice] : '?',
-      b = isRpsChoice(g.bChoice) ? RPS_LABEL[g.bChoice] : '?';
-    body.innerHTML =
-      `<div class="rps-hands"><div>${escapeHtmlSafe(g.aName)}<br><span>${a}</span></div><b>VS</b><div>${escapeHtmlSafe(g.bName)}<br><span>${b}</span></div></div>` +
-      `<p class="rps-final ${win ? 'win' : ''}">${win ? `🏆 Hai vinto ${euro(g.bet * 2)}!` : `😞 Hai perso ${euro(g.bet)}.`}</p>` +
-      '<button type="button" class="art-btn rps-again" style="background:#e17055">⚔️ Nuova sfida</button>';
-    const again = body.querySelector('.rps-again') as HTMLButtonElement;
+    const mine = role === 'a' ? g.aChoice : g.bChoice;
+    const theirs = role === 'a' ? g.bChoice : g.aChoice;
+    const both = isRpsChoice(mine) && isRpsChoice(theirs);
+    setPart(
+      body,
+      'rps-stage',
+      both
+        ? arenaHtml({
+            other,
+            myTag: RPS_LABEL[mine],
+            theirTag: RPS_LABEL[theirs],
+            reveal: { me: mine, them: theirs, result: win ? 'win' : 'lose' },
+          })
+        : arenaHtml({ other, myTag: '', theirTag: '' }),
+    );
+    if (both) revealSound(`${g.t}-${g.round || 0}`, win);
+    const controls = setPart(
+      body,
+      'rps-controls',
+      `<p class="rps-final ${win ? 'win' : ''}${both ? ' delayed' : ''}">${win ? `🏆 Hai vinto ${euro(g.bet * 2)}!` : `😞 Hai perso ${euro(g.bet)}.`}</p>` +
+        '<button type="button" class="art-btn rps-again" style="background:#e17055">⚔️ Nuova sfida</button>',
+    );
+    const again = controls.querySelector('.rps-again') as HTMLButtonElement;
     again.onclick = () => {
       lastGame = null;
       renderChallengeList();
@@ -473,22 +602,48 @@ function renderRps(): void {
   }
   // playing
   const mineDone = role === 'a' ? !!g.aHash : !!g.bChoice || (!!myPick && !g.aHash);
+  const theirsDone = role === 'a' ? !!g.bChoice : !!g.aHash;
+  const tie = tieShow && Date.now() < tieShow.until ? tieShow : null;
+  if (tie) revealSound(`${g.t}-tie-${g.round || 0}`, null);
+  setPart(
+    body,
+    'rps-stage',
+    tie
+      ? arenaHtml({
+          other,
+          myTag: RPS_LABEL[tie.me],
+          theirTag: RPS_LABEL[tie.them],
+          reveal: { ...tie, result: 'tie' },
+        })
+      : arenaHtml({
+          other,
+          myTag: mineDone ? `✅ ${myPick ? RPS_LABEL[myPick] : 'Pronto'}` : '🤔 Scegli…',
+          theirTag: theirsDone ? '✅ Ha scelto' : '🤔 Sta scegliendo…',
+          ready: { me: mineDone, them: theirsDone },
+        }),
+  );
   const status =
     (g.round || 0) > 0
       ? `<p class="rps-tie">🤝 Pareggio! Si rigioca (giro ${(g.round || 0) + 1}).</p>`
       : '';
-  const left = Math.max(0, Math.ceil((RPS_MOVE_MS - (serverNow() - (g.moveT || g.t))) / 1000));
-  body.innerHTML =
-    pot +
+  const controls = setPart(
+    body,
+    'rps-controls',
     status +
-    (mineDone
-      ? `<p class="rps-wait">✅ Hai scelto ${myPick ? RPS_LABEL[myPick] : ''}. Aspetto la mossa di ${escapeHtmlSafe(other)}…</p>`
-      : `<p class="rps-help">Scegli la tua mossa (${left} s):</p><div class="rps-choices">` +
-        RPS_CHOICES.map(
-          (c) => `<button type="button" data-rps-pick="${c}">${RPS_LABEL[c]}</button>`,
-        ).join('') +
-        '</div>');
-  body.querySelectorAll<HTMLButtonElement>('[data-rps-pick]').forEach((b) => {
+      (mineDone
+        ? `<p class="rps-wait">Aspetto la mossa di ${escapeHtmlSafe(other)}…</p>`
+        : '<p class="rps-help">Scegli la tua mossa (<b class="rps-left"></b> s):</p><div class="rps-choices">' +
+          RPS_CHOICES.map(
+            (c) =>
+              `<button type="button" data-rps-pick="${c}"><span>${RPS_EMOJI[c]}</span>${RPS_LABEL[c].split(' ')[1]}</button>`,
+          ).join('') +
+          '</div>'),
+  );
+  // il conto alla rovescia cambia da solo, senza ridisegnare le carte
+  const left = Math.max(0, Math.ceil((RPS_MOVE_MS - (serverNow() - (g.moveT || g.t))) / 1000));
+  const leftEl = controls.querySelector('.rps-left');
+  if (leftEl) leftEl.textContent = String(left);
+  controls.querySelectorAll<HTMLButtonElement>('[data-rps-pick]').forEach((b) => {
     b.onclick = () => void pick(b.dataset.rpsPick as RpsChoice);
   });
 }

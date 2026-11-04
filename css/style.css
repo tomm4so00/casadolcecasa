@@ -1823,9 +1823,32 @@ input[type='number'] {
   margin: 8px 0 12px;
 }
 .rps-choices button {
-  font-size: 1rem;
-  padding: 12px 10px;
-  background: #6c5ce7;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.85rem;
+  padding: 10px 6px;
+  background: linear-gradient(180deg, #6c5ce7, #4834d4);
+  border: 2px solid #a29bfe;
+  border-radius: 12px;
+  box-shadow: 0 4px 0 #30227a;
+  transition:
+    transform 0.12s ease,
+    box-shadow 0.12s ease;
+}
+.rps-choices button span {
+  font-size: 2.2rem;
+  line-height: 1;
+}
+.rps-choices button:hover {
+  transform: translateY(-3px) rotate(-3deg);
+  box-shadow: 0 7px 0 #30227a;
+}
+.rps-choices button:active {
+  transform: translateY(3px);
+  box-shadow: 0 1px 0 #30227a;
 }
 .rps-pot {
   margin-bottom: 6px;
@@ -1834,14 +1857,214 @@ input[type='number'] {
 .rps-tie {
   color: #74b9ff;
 }
-.rps-hands {
+/* Il ring della morra: la mia mano a sinistra, quella dell'avversario (specchiata) a destra */
+.rps-arena {
+  position: relative;
   display: flex;
-  justify-content: space-around;
+  justify-content: space-between;
   align-items: center;
-  margin: 10px 0;
+  margin: 6px 0 10px;
+  padding: 14px 8px 10px;
+  border-radius: 12px;
+  background:
+    radial-gradient(ellipse at 50% 110%, rgba(254, 202, 87, 0.25), transparent 60%),
+    linear-gradient(180deg, #2a0f30, #120614);
+  border: 2px solid #8e44ad;
+  overflow: hidden;
 }
-.rps-hands span {
+.rps-side {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 0;
+}
+.rps-name {
+  font-size: 0.8rem;
+  font-weight: bold;
+  color: #dfe6e9;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.rps-tag {
+  font-size: 0.72rem;
+  color: #b2bec3;
+  min-height: 1em;
+}
+.rps-vs {
+  font-weight: 900;
   font-size: 1.3rem;
+  color: #feca57;
+  text-shadow: 0 0 10px rgba(254, 202, 87, 0.7);
+  animation: rps-vs-pulse 1.2s ease-in-out infinite;
+}
+.rps-hand {
+  position: relative;
+  width: 76px;
+  height: 76px;
+  margin: 6px 0;
+  font-size: 3.4rem;
+  line-height: 76px;
+}
+.rps-hand > span {
+  position: absolute;
+  inset: 0;
+  display: block;
+}
+/* la mano dell'avversario guarda verso di me */
+.rps-hand.them > span {
+  transform: scaleX(-1);
+}
+.rps-hand.idle {
+  animation: rps-bob 1.6s ease-in-out infinite;
+}
+.rps-hand.them.idle {
+  animation-delay: -0.8s;
+}
+.rps-hand.ready {
+  animation: rps-bob 3s ease-in-out infinite;
+  filter: drop-shadow(0 0 8px rgba(46, 213, 115, 0.8));
+}
+/* rivelazione: tre scosse, poi il pugno sparisce e compare la mossa */
+.revealing .rps-hand {
+  animation: rps-shake 0.5s ease-in-out 3;
+}
+.revealing .rps-fist {
+  animation: rps-hide 0.01s linear 1.5s forwards;
+}
+.revealing .rps-shown {
+  opacity: 0;
+  animation: rps-pop 0.45s cubic-bezier(0.2, 1.6, 0.4, 1) 1.5s forwards;
+}
+.rps-hand.them .rps-shown {
+  animation-name: rps-pop-mirror;
+}
+.revealing .rps-hand.winner {
+  animation:
+    rps-shake 0.5s ease-in-out 3,
+    rps-glow 1s ease-in-out 1.9s infinite alternate;
+}
+.revealing .rps-hand.loser {
+  animation:
+    rps-shake 0.5s ease-in-out 3,
+    rps-sad 0.6s ease 1.9s forwards;
+}
+.rps-chant {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 4px;
+  height: 1.2em;
+  font-weight: 900;
+  color: #feca57;
+  pointer-events: none;
+}
+.rps-chant span {
+  position: absolute;
+  left: 0;
+  right: 0;
+  opacity: 0;
+  animation: rps-word 0.5s ease forwards;
+}
+.rps-chant span:nth-child(2) {
+  animation-delay: 0.5s;
+}
+.rps-chant span:nth-child(3) {
+  animation-delay: 1s;
+}
+/* le scritte sotto le mani svelerebbero le mosse: compaiono dopo il conto, al posto del coro */
+.revealing .rps-tag {
+  opacity: 0;
+  animation: rps-fade-in 0.3s ease 1.5s forwards;
+}
+.rps-final.delayed {
+  opacity: 0;
+  animation: rps-fade-in 0.4s ease 1.9s forwards;
+}
+@keyframes rps-bob {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0);
+  }
+  50% {
+    transform: translateY(-6px) rotate(-6deg);
+  }
+}
+@keyframes rps-shake {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  45% {
+    transform: translateY(-22px);
+  }
+}
+@keyframes rps-hide {
+  to {
+    opacity: 0;
+  }
+}
+@keyframes rps-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.3);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+@keyframes rps-pop-mirror {
+  from {
+    opacity: 0;
+    transform: scaleX(-1) scale(0.3);
+  }
+  to {
+    opacity: 1;
+    transform: scaleX(-1) scale(1);
+  }
+}
+@keyframes rps-glow {
+  from {
+    transform: scale(1);
+    filter: drop-shadow(0 0 6px rgba(254, 202, 87, 0.7));
+  }
+  to {
+    transform: scale(1.15);
+    filter: drop-shadow(0 0 16px rgba(254, 202, 87, 1));
+  }
+}
+@keyframes rps-sad {
+  to {
+    transform: translateY(8px) rotate(12deg) scale(0.85);
+    filter: grayscale(1) brightness(0.7);
+  }
+}
+@keyframes rps-word {
+  0% {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  40% {
+    opacity: 1;
+    transform: scale(1.15);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1);
+  }
+}
+@keyframes rps-fade-in {
+  to {
+    opacity: 1;
+  }
+}
+@keyframes rps-vs-pulse {
+  50% {
+    transform: scale(1.15);
+  }
 }
 .rps-final {
   font-size: 1.1rem;
