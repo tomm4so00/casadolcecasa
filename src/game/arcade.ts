@@ -29,6 +29,7 @@ import {
   rxDelay,
   settleRX,
 } from './arcade-rules.js';
+import { recordActivity } from './activity.js';
 
 const serverNow = (): number => Date.now() + (game.session.serverOffset || 0);
 const ref = (gid: string): GameValue => game.session.db.ref('sims_games/' + gid);
@@ -111,6 +112,7 @@ async function challenge(kind: ArcadeGame, opp: { id: string; name: string }): P
     toast('Non sono riuscito a mandare la sfida. Riprova quando sei connesso.', 4000);
     return;
   }
+  recordActivity('games');
   toast(`🕹️ Hai sfidato ${opp.name} a ${ARCADE_GAMES[kind].name}: aspetta che accetti…`, 4000);
   openMatch(gid, 'a');
   // senza risposta l'invito si annulla
@@ -160,6 +162,7 @@ export async function onGameInvite(m: GameValue, who: string): Promise<void> {
     toast('La sfida non è più valida (forse è scaduta).', 4000);
     return;
   }
+  recordActivity('games');
   if (current) closeMatch();
   openMatch(m.gid, 'b');
 }

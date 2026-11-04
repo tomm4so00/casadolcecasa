@@ -30,6 +30,7 @@ import {
   launchPhase,
   LAUNCH_DELAY_MS,
 } from './project-rules.js';
+import { recordActivity } from './activity.js';
 
 const rocket = PROJECTS.rocket;
 const moonbase = PROJECTS.moonbase;
@@ -357,6 +358,7 @@ async function donate(amount: number, id: ProjectId = 'rocket'): Promise<boolean
     toast('❌ Il progetto è cambiato nel frattempo: riprova con un importo più piccolo.', 5000);
     return false;
   }
+  recordActivity('green');
   try {
     await game.session.db
       .ref(`sims_projects/${id}/donors/` + game.session.myPlayerId)

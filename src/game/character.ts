@@ -18,6 +18,7 @@ import {
   setFurniturePosition,
 } from './world.js';
 import { buyLimited, limitedLeft, myCopy, ownsLimited } from './limited.js';
+import { recordActivity } from './activity.js';
 export function itemById(id?: GameValue): GameValue {
   return game.shopCatalog.find((i?: GameValue): GameValue => i.id === id) || null;
 }
@@ -490,6 +491,7 @@ export async function handleSubAction(..._args: GameValue[]): Promise<void> {
       return;
     }
     if (!(await spendMoney(5))) return;
+    recordActivity('pizza');
     game.player.hasFoodInInventory = true;
     game.player.foodIsCooked = false;
     toast('Hai preso del cibo! (-5 €) 🍎');

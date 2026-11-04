@@ -15,6 +15,7 @@ import {
   launchPhase,
   rocketFlight,
 } from './project-rules.js';
+import { recordActivity } from './activity.js';
 
 const serverNow = (): number => Date.now() + (game.session.serverOffset || 0);
 
@@ -89,6 +90,7 @@ export async function travelToMoon(): Promise<void> {
   });
   if (res.action !== 'ok' || !(await spendMoney(MOON_TRIP_PRICE))) return;
   const at = await book('trip');
+  if (at) recordActivity('space');
   if (!at) {
     await creditMoney(MOON_TRIP_PRICE);
     toast(

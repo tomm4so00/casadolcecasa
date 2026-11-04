@@ -6,6 +6,7 @@ import { game } from './context.js';
 import { lifetime, dom } from './runtime.js';
 import { closeModal } from './render/primitives.js';
 import { toast } from './missions.js';
+import { recordActivity } from './activity.js';
 export function chatColor(name?: GameValue): GameValue {
   let h: GameValue = 0;
   for (const c of String(name)) h = (h * 31 + c.charCodeAt(0)) % 360;
@@ -125,6 +126,7 @@ export async function sendChat(..._args: GameValue[]): Promise<GameValue> {
     await game.session.db
       .ref('sims_chat/' + key)
       .set({ id: game.session.myPlayerId, name: game.player.myData.nick, text, t });
+    recordActivity('app');
   } catch (e: GameValue) {
     toast('❌ Messaggio non inviato.');
     return;

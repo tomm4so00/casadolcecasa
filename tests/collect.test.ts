@@ -18,6 +18,7 @@ import {
   onSale,
   pickForStand,
   shelfOf,
+  soldOut,
   standNeedsRefill,
 } from '../src/game/collect-rules.js';
 
@@ -25,9 +26,9 @@ const A = 'player_anna';
 const B = 'player_luca';
 
 describe('oggetti da collezione', () => {
-  it('il catalogo ha 20 pezzi diversi, ognuno con nome, emoji e prezzo', () => {
-    expect(COLLECTIBLES).toHaveLength(20);
-    expect(new Set(COLLECTIBLES.map((c) => c.id)).size).toBe(20);
+  it('il catalogo ha 30 pezzi diversi, ognuno con nome, emoji e prezzo', () => {
+    expect(COLLECTIBLES).toHaveLength(30);
+    expect(new Set(COLLECTIBLES.map((c) => c.id)).size).toBe(30);
     for (const c of COLLECTIBLES) {
       expect(c.id).toMatch(/^col_[a-z]+$/);
       expect(c.name.length).toBeGreaterThan(3);
@@ -76,6 +77,16 @@ describe('oggetti da collezione', () => {
     // tutti venduti o esposti: non c'è niente da mettere
     for (const id of free) owners[id] = { o: B, on: 'Luca', t: 1 };
     expect(pickForStand(decodeCollect({ slots: [...shown, null], owners }), 4)).toBeNull();
+  });
+
+  it('il negozio ha venduto tutto solo quando ogni pezzo ha un proprietario', () => {
+    const owners: Record<string, { o: string; on: string; t: number }> = {};
+    for (const c of COLLECTIBLES.slice(1)) owners[c.id] = { o: A, on: 'Anna', t: 1 };
+    expect(soldOut(decodeCollect({ owners }))).toBe(false);
+    owners[COLLECTIBLES[0].id] = { o: B, on: 'Luca', t: 1 };
+    expect(soldOut(decodeCollect({ owners }))).toBe(true);
+    // e allora non c'è più niente da mettere negli espositori
+    expect(pickForStand(decodeCollect({ owners }), 0)).toBeNull();
   });
 
   it('riempiendo un espositore alla volta non escono mai doppioni', () => {

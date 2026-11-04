@@ -9,6 +9,7 @@ import { hasRoom, normalizeRooms, saveGame, withTimeout } from './saves.js';
 import { hashPin } from './safe-pin.js';
 import { settleEconomy } from './economy.js';
 import { isFreeRoom, moveRoom, roomLabel } from './realty-rules.js';
+import { recordActivity } from './activity.js';
 
 const label = (idx: number): string => roomLabel(idx, game.ROOMS_PER_APT);
 
@@ -125,6 +126,7 @@ async function moveMyRoom(target: number): Promise<void> {
   game.lastLayoutKey = ''; // la disposizione dei mobili si ripubblica sulla stanza nuova
   saveGame(false);
   sfx('success');
+  recordActivity('house');
   toast(`📦 Trasloco fatto! Ora abiti in: ${label(target)} 🏠`, 5000);
   postGossip(
     `${game.player.myData.nick} ha traslocato: ora abita nell'Appartamento ${game.aptOfRoom(target) + 1} 📦`,

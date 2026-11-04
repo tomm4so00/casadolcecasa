@@ -1683,6 +1683,721 @@ function scacchi(ctx: Ctx) {
   piece(0.38, 0.22, true, 'king');
 }
 
+// ---------------------------------------------------------------- seconda serie (10 pezzi)
+
+/** Carillon di legno col coperchio aperto: la ballerina gira e salgono le note. */
+function carillon(ctx: Ctx, t: number) {
+  // coperchio aperto, con lo specchio
+  poly(ctx, [
+    [-8, -6.6],
+    [-7.2, -16],
+    [7.2, -16],
+    [8, -6.6],
+  ]);
+  fillStroke(ctx, lin(ctx, -8, 0, 8, 0, DARK_WOOD));
+  poly(ctx, [
+    [-6.4, -7.6],
+    [-5.9, -15],
+    [5.9, -15],
+    [6.4, -7.6],
+  ]);
+  fillStroke(
+    ctx,
+    lin(ctx, -6, -15, 6, -8, [
+      [0, '#e8f4ff'],
+      [0.5, '#b8cfe0'],
+      [1, '#e8f4ff'],
+    ]),
+    null,
+  );
+  shine(ctx, -4.5, -14, -3, -9, 0.6, 0.4);
+  // scatola con il bordo dorato
+  rr(ctx, -8.6, -6.8, 17.2, 6.8, 0.8);
+  fillStroke(
+    ctx,
+    lin(ctx, -8.6, 0, 8.6, 0, [
+      [0, '#5a2e15'],
+      [0.45, '#a0612f'],
+      [1, '#4a2510'],
+    ]),
+  );
+  seg(ctx, -8.6, -5.6, 8.6, -5.6, '#d4af37', 0.4);
+  seg(ctx, -8.6, -1.2, 8.6, -1.2, '#d4af37', 0.4);
+  ell(ctx, 0, -3.4, 1.1, 1.1);
+  fillStroke(ctx, lin(ctx, -1, 0, 1, 0, BRASS), null);
+  // manovella sul lato
+  seg(ctx, 8.6, -3.4, 10, -3.4, '#c9a227', 0.5);
+  ell(ctx, 10.2, -4.6 + Math.sin(t * 3) * 0.6, 0.5, 0.5);
+  fillStroke(ctx, '#e3c565', null);
+  // ballerina che gira: si stringe e si allarga come se ruotasse
+  const turn = Math.cos(t * 2.2);
+  ctx.save();
+  ctx.translate(0, -6.8);
+  ctx.scale(0.35 + 0.65 * Math.abs(turn), 1);
+  ell(ctx, 0, -0.2, 1.4, 0.4);
+  fillStroke(ctx, '#d4af37', null);
+  seg(ctx, 0, -0.4, 0, -3.4, '#f1c9a5', 0.45); // gamba
+  ell(ctx, 0, -4.2, 2.6, 0.9); // tutù
+  fillStroke(
+    ctx,
+    rad(ctx, 0, -4.4, 0.2, 0, -4.2, 2.6, [
+      [0, '#ffffff'],
+      [1, '#ff9fc6'],
+    ]),
+    'rgba(160,60,100,0.4)',
+    0.15,
+  );
+  rr(ctx, -0.55, -6.6, 1.1, 2.4, 0.4); // busto
+  fillStroke(ctx, '#ff6fae', null);
+  ctx.lineCap = 'round';
+  seg(ctx, -0.4, -6.2, -1.6, -8.2, '#f1c9a5', 0.35); // braccia in alto
+  seg(ctx, 0.4, -6.2, 1.6, -8.2, '#f1c9a5', 0.35);
+  ctx.lineCap = 'butt';
+  ell(ctx, 0, -7.3, 0.75, 0.75);
+  fillStroke(ctx, '#f1c9a5', null);
+  ell(ctx, 0, -7.9, 0.6, 0.35);
+  fillStroke(ctx, '#5a3a1a', null);
+  ctx.restore();
+  // note che salgono
+  ctx.fillStyle = '#6c3483';
+  ctx.font = 'bold 2.4px sans-serif';
+  ctx.textAlign = 'center';
+  for (let i = 0; i < 2; i++) {
+    const p = (t * 0.35 + i * 0.5) % 1;
+    ctx.globalAlpha = 1 - p;
+    ctx.fillText(i ? '♫' : '♪', 4 + i * 2 + Math.sin(t * 2 + i) * 0.6, -9 - p * 9);
+  }
+  ctx.globalAlpha = 1;
+}
+
+/** Bussola nautica d'ottone: l'ago oscilla piano verso nord. */
+function bussola(ctx: Ctx, t: number) {
+  const cy = -9.6,
+    r = 7.6;
+  rr(ctx, -6, -1.6, 12, 1.6, 0.4);
+  fillStroke(ctx, lin(ctx, -6, 0, 6, 0, DARK_WOOD));
+  rr(ctx, -1.2, -2.6, 2.4, 1.4, 0.3);
+  fillStroke(ctx, lin(ctx, -1.2, 0, 1.2, 0, BRASS), null);
+  // anello per appenderla
+  ell(ctx, 0, cy - r - 1.2, 1.3, 1.3);
+  ctx.strokeStyle = '#b8860b';
+  ctx.lineWidth = 0.6;
+  ctx.stroke();
+  ell(ctx, 0, cy, r, r);
+  fillStroke(ctx, lin(ctx, -r, cy - r, r, cy + r, BRASS));
+  ell(ctx, 0, cy, r - 1.2, r - 1.2);
+  fillStroke(
+    ctx,
+    rad(ctx, -1.5, cy - 1.5, 0.5, 0, cy, r, [
+      [0, '#fffaf0'],
+      [1, '#e9dcbf'],
+    ]),
+    null,
+  );
+  // rosa dei venti
+  ctx.fillStyle = 'rgba(120,90,40,0.35)';
+  for (let i = 0; i < 4; i++) {
+    const a = (i * Math.PI) / 2 + Math.PI / 4;
+    poly(ctx, [
+      [Math.cos(a) * 4.6, cy + Math.sin(a) * 4.6],
+      [Math.cos(a + 0.4) * 1, cy + Math.sin(a + 0.4) * 1],
+      [Math.cos(a - 0.4) * 1, cy + Math.sin(a - 0.4) * 1],
+    ]);
+    ctx.fill();
+  }
+  ctx.fillStyle = '#3b2a12';
+  ctx.font = 'bold 1.6px serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  for (const [txt, a] of [
+    ['N', -Math.PI / 2],
+    ['E', 0],
+    ['S', Math.PI / 2],
+    ['O', Math.PI],
+  ] as [string, number][])
+    ctx.fillText(txt, Math.cos(a) * 5.2, cy + Math.sin(a) * 5.2);
+  // ago
+  ctx.save();
+  ctx.translate(0, cy);
+  ctx.rotate(Math.sin(t * 1.3) * 0.18 + Math.sin(t * 3.1) * 0.05);
+  poly(ctx, [
+    [0, -4.6],
+    [0.8, 0],
+    [-0.8, 0],
+  ]);
+  fillStroke(ctx, '#c0392b', null);
+  poly(ctx, [
+    [0, 4.6],
+    [0.8, 0],
+    [-0.8, 0],
+  ]);
+  fillStroke(ctx, '#ecf0f1', 'rgba(0,0,0,0.3)', 0.12);
+  ell(ctx, 0, 0, 0.6, 0.6);
+  fillStroke(ctx, '#b8860b', null);
+  ctx.restore();
+  ell(ctx, -2.4, cy - 2.8, 2.2, 1.2, -0.6);
+  ctx.fillStyle = 'rgba(255,255,255,0.45)';
+  ctx.fill();
+}
+
+/** Lente d'ingrandimento da esploratore, appoggiata di sbieco sul suo supporto. */
+function lente(ctx: Ctx) {
+  rr(ctx, -6.5, -1.4, 13, 1.4, 0.4);
+  fillStroke(ctx, lin(ctx, -6.5, 0, 6.5, 0, DARK_WOOD));
+  // manico di legno tornito
+  ctx.save();
+  ctx.translate(3.2, -1.6);
+  ctx.rotate(-0.55);
+  rr(ctx, -1, -9, 2, 9, 0.9);
+  fillStroke(
+    ctx,
+    lin(ctx, -1, 0, 1, 0, [
+      [0, '#5a2e15'],
+      [0.45, '#b07240'],
+      [1, '#4a2510'],
+    ]),
+  );
+  for (const y of [-7.6, -2]) seg(ctx, -1, y, 1, y, '#d4af37', 0.45);
+  ctx.restore();
+  // ghiera d'ottone e vetro
+  const cx = -2.2,
+    cy = -12.6,
+    r = 5.6;
+  ell(ctx, cx, cy, r, r);
+  fillStroke(ctx, lin(ctx, cx - r, cy - r, cx + r, cy + r, BRASS));
+  ell(ctx, cx, cy, r - 1, r - 1);
+  fillStroke(
+    ctx,
+    rad(ctx, cx - 1.5, cy - 1.8, 0.3, cx, cy, r, [
+      [0, '#ffffff'],
+      [0.5, '#d6ecf7'],
+      [1, '#8fb9cf'],
+    ]),
+    null,
+  );
+  // ciò che si vede ingrandito: le venature di una foglia
+  ctx.save();
+  ell(ctx, cx, cy, r - 1, r - 1);
+  ctx.clip();
+  ctx.strokeStyle = 'rgba(60,120,60,0.35)';
+  ctx.lineWidth = 0.35;
+  ctx.beginPath();
+  ctx.moveTo(cx - 4, cy + 3);
+  ctx.lineTo(cx + 4, cy - 3);
+  for (let k = -2; k <= 2; k++) {
+    ctx.moveTo(cx + k * 1.5, cy - k * 1.1);
+    ctx.lineTo(cx + k * 1.5 - 1.6, cy - k * 1.1 - 2);
+    ctx.moveTo(cx + k * 1.5, cy - k * 1.1);
+    ctx.lineTo(cx + k * 1.5 + 1.6, cy - k * 1.1 + 2);
+  }
+  ctx.stroke();
+  ctx.restore();
+  shine(ctx, cx - 2.8, cy - 1, cx - 1, cy - 3.4, 0.8, 0.5);
+}
+
+/** Farfalla esotica (una morfo blu) spillata in una teca con la cornice. */
+function farfalla(ctx: Ctx, t: number) {
+  // piedini della cornice
+  for (const x of [-5, 5]) seg(ctx, x, -2, x * 1.3, 0, '#3b1f0e', 0.8);
+  rr(ctx, -8.4, -20, 16.8, 18.4, 0.6);
+  fillStroke(ctx, lin(ctx, -8.4, 0, 8.4, 0, DARK_WOOD));
+  rr(ctx, -7, -18.6, 14, 15.6, 0.3);
+  fillStroke(
+    ctx,
+    lin(ctx, 0, -18.6, 0, -3, [
+      [0, '#f6efe0'],
+      [1, '#e2d6bb'],
+    ]),
+    null,
+  );
+  const cy = -11.6;
+  const flap = 1 - Math.abs(Math.sin(t * 0.6)) * 0.06; // un leggerissimo tremolio
+  const wing = (s: number, upper: boolean) => {
+    ctx.save();
+    ctx.translate(0, cy);
+    ctx.scale(s * flap, 1);
+    ctx.beginPath();
+    if (upper) {
+      ctx.moveTo(0.3, -0.4);
+      ctx.bezierCurveTo(2, -6, 6.4, -6.2, 5.8, -2.4);
+      ctx.bezierCurveTo(5.4, -0.6, 2.4, 0.2, 0.3, 0.2);
+    } else {
+      ctx.moveTo(0.3, 0.3);
+      ctx.bezierCurveTo(3.6, 0.6, 5, 2.6, 3.4, 4.6);
+      ctx.bezierCurveTo(2, 5.6, 0.8, 3, 0.3, 1);
+    }
+    ctx.closePath();
+    fillStroke(
+      ctx,
+      rad(ctx, 2, upper ? -2 : 2, 0.3, 2, upper ? -2 : 2, 5, [
+        [0, '#7fdbff'],
+        [0.55, '#1e6fd9'],
+        [1, '#0b1f4a'],
+      ]),
+      '#0b1f4a',
+      0.25,
+    );
+    // puntini bianchi sul bordo
+    ctx.fillStyle = 'rgba(255,255,255,0.8)';
+    for (const [x, y] of upper
+      ? [
+          [5, -3.6],
+          [4, -4.8],
+        ]
+      : [[3, 3.6]])
+      ctx.fillRect(x, y, 0.35, 0.35);
+    ctx.restore();
+  };
+  for (const s of [-1, 1]) {
+    wing(s, true);
+    wing(s, false);
+  }
+  rr(ctx, -0.35, cy - 2.4, 0.7, 5.2, 0.35);
+  fillStroke(ctx, '#2d2010', null);
+  ctx.lineCap = 'round';
+  ctx.strokeStyle = '#2d2010';
+  ctx.lineWidth = 0.15;
+  ctx.beginPath();
+  ctx.moveTo(0, cy - 2.3);
+  ctx.quadraticCurveTo(-0.6, cy - 4, -1.6, cy - 4.6);
+  ctx.moveTo(0, cy - 2.3);
+  ctx.quadraticCurveTo(0.6, cy - 4, 1.6, cy - 4.6);
+  ctx.stroke();
+  ctx.lineCap = 'butt';
+  // spillo e cartellino
+  ell(ctx, 0, cy - 1.6, 0.35, 0.35);
+  fillStroke(ctx, '#c0392b', null);
+  rr(ctx, -2.6, -5.2, 5.2, 1.4, 0.2);
+  fillStroke(ctx, '#fffdf5', 'rgba(90,60,30,0.4)', 0.12);
+  seg(ctx, -1.8, -4.5, 1.8, -4.5, 'rgba(90,60,30,0.5)', 0.18);
+  // vetro
+  shine(ctx, -6, -17.4, -3.6, -15, 0.5, 0.5);
+}
+
+/** Macchina da scrivere d'epoca, con il foglio inserito e i tasti tondi. */
+function macchina(ctx: Ctx) {
+  // foglio
+  rr(ctx, -5, -18.6, 10, 9, 0.2);
+  fillStroke(
+    ctx,
+    lin(ctx, 0, -18.6, 0, -9.6, [
+      [0, '#ffffff'],
+      [1, '#ece6d6'],
+    ]),
+    'rgba(90,70,40,0.3)',
+    0.15,
+  );
+  for (let i = 0; i < 4; i++)
+    seg(
+      ctx,
+      -3.8,
+      -16.8 + i * 1.3,
+      3.8 - (i % 2) * 1.6,
+      -16.8 + i * 1.3,
+      'rgba(40,40,40,0.55)',
+      0.22,
+    );
+  // rullo e manopole
+  rr(ctx, -8, -11.2, 16, 1.9, 0.9);
+  fillStroke(
+    ctx,
+    lin(ctx, 0, -11.2, 0, -9.3, [
+      [0, '#4a4a4a'],
+      [0.5, '#111'],
+      [1, '#2b2b2b'],
+    ]),
+  );
+  for (const x of [-8.8, 8.8]) {
+    ell(ctx, x, -10.25, 1, 1.1);
+    fillStroke(ctx, lin(ctx, x - 1, 0, x + 1, 0, CHROME), null);
+  }
+  seg(ctx, -8.4, -11.4, -10.4, -13.4, '#b0b6bc', 0.45); // leva del carrello
+  // corpo
+  poly(ctx, [
+    [-9.4, 0],
+    [9.4, 0],
+    [8, -9.4],
+    [-8, -9.4],
+  ]);
+  fillStroke(
+    ctx,
+    lin(ctx, -9.4, 0, 9.4, 0, [
+      [0, '#1b2b22'],
+      [0.45, '#2f5240'],
+      [1, '#14221a'],
+    ]),
+  );
+  seg(ctx, -8.2, -8.6, 8.2, -8.6, '#d4af37', 0.3);
+  ctx.fillStyle = '#d4af37';
+  ctx.font = 'italic bold 1.5px serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('Gazzella', 0, -7.4);
+  // tasti in tre file
+  for (let row = 0; row < 3; row++) {
+    const n = 9 - row,
+      y = -5.6 + row * 1.8,
+      w = 15 - row * 1.2;
+    for (let i = 0; i < n; i++) {
+      const x = -w / 2 + (i + 0.5) * (w / n);
+      ell(ctx, x, y, 0.62, 0.55);
+      fillStroke(
+        ctx,
+        rad(ctx, x - 0.2, y - 0.2, 0.05, x, y, 0.7, [
+          [0, '#ffffff'],
+          [1, '#c8c8c8'],
+        ]),
+        '#222',
+        0.18,
+      );
+    }
+  }
+  rr(ctx, -3.6, -0.9, 7.2, 0.7, 0.3); // barra spaziatrice
+  fillStroke(ctx, '#d0d0d0', '#222', 0.15);
+}
+
+/** Ammonite fossile: la conchiglia a spirale nella sua pietra. */
+function fossile(ctx: Ctx) {
+  // pietra
+  poly(ctx, [
+    [-8.6, 0],
+    [8.8, 0],
+    [9.2, -6],
+    [7, -14.4],
+    [1, -17.6],
+    [-5.6, -16],
+    [-9, -9],
+  ]);
+  fillStroke(
+    ctx,
+    lin(ctx, -9, -17, 9, 0, [
+      [0, '#d8cbb3'],
+      [0.6, '#b5a588'],
+      [1, '#8a7b62'],
+    ]),
+  );
+  // spirale con le costole
+  const cx = 0,
+    cy = -8.4;
+  const pts: [number, number][] = [];
+  for (let a = 0; a <= Math.PI * 6.2; a += 0.12) {
+    const r = 0.35 * Math.exp(0.19 * a);
+    pts.push([cx + Math.cos(a) * r, cy + Math.sin(a) * r * 0.95]);
+  }
+  ell(ctx, cx, cy, 7.4, 7);
+  fillStroke(
+    ctx,
+    rad(ctx, cx - 2, cy - 2, 0.5, cx, cy, 7.4, [
+      [0, '#f3d9a4'],
+      [0.6, '#c99a52'],
+      [1, '#7a5222'],
+    ]),
+    'rgba(80,50,20,0.6)',
+    0.25,
+  );
+  // spirale e costole restano dentro il guscio
+  ctx.save();
+  ell(ctx, cx, cy, 7.2, 6.8);
+  ctx.clip();
+  ctx.strokeStyle = 'rgba(90,55,20,0.75)';
+  ctx.lineWidth = 0.35;
+  ctx.beginPath();
+  pts.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
+  ctx.stroke();
+  // costole: segmenti dalla spirale verso l'esterno
+  ctx.strokeStyle = 'rgba(110,70,30,0.45)';
+  ctx.lineWidth = 0.2;
+  for (let a = 1.5; a <= Math.PI * 6; a += 0.32) {
+    const r0 = 0.35 * Math.exp(0.19 * a),
+      r1 = 0.35 * Math.exp(0.19 * (a + Math.PI * 2));
+    ctx.beginPath();
+    ctx.moveTo(cx + Math.cos(a) * r0, cy + Math.sin(a) * r0 * 0.95);
+    ctx.lineTo(cx + Math.cos(a) * Math.min(r1, 7.2), cy + Math.sin(a) * Math.min(r1, 7.2) * 0.95);
+    ctx.stroke();
+  }
+  ctx.restore();
+  ell(ctx, cx - 2.4, cy - 3, 2.2, 1.2, -0.5);
+  ctx.fillStyle = 'rgba(255,255,255,0.3)';
+  ctx.fill();
+}
+
+/** Lanterna a olio da marinaio, con la fiamma che tremola. */
+function lanterna(ctx: Ctx, t: number) {
+  const flick = 0.85 + 0.15 * Math.sin(t * 9) * Math.sin(t * 5.3);
+  // alone
+  ell(ctx, 0, -9.6, 8 * flick, 8 * flick);
+  ctx.fillStyle = rad(ctx, 0, -9.6, 0.5, 0, -9.6, 8 * flick, [
+    [0, 'rgba(255,190,90,0.45)'],
+    [1, 'rgba(255,190,90,0)'],
+  ]);
+  ctx.fill();
+  // base
+  rr(ctx, -5, -2.6, 10, 2.6, 0.6);
+  fillStroke(
+    ctx,
+    lin(ctx, -5, 0, 5, 0, [
+      [0, '#5b1d1d'],
+      [0.45, '#c0392b'],
+      [1, '#4a1414'],
+    ]),
+  );
+  // vetro con la fiamma
+  ctx.beginPath();
+  ctx.moveTo(-3.4, -2.6);
+  ctx.bezierCurveTo(-5.2, -6, -5.2, -11, -3, -14.4);
+  ctx.lineTo(3, -14.4);
+  ctx.bezierCurveTo(5.2, -11, 5.2, -6, 3.4, -2.6);
+  ctx.closePath();
+  fillStroke(ctx, 'rgba(255,240,210,0.35)', 'rgba(255,255,255,0.6)', 0.25);
+  ell(ctx, 0, -7.2, 1.1 * flick, 2.4 * flick);
+  ctx.fillStyle = rad(ctx, 0, -6.6, 0.1, 0, -7.2, 2.4, [
+    [0, '#fffbe0'],
+    [0.4, '#ffd23f'],
+    [1, '#ff7f1a'],
+  ]);
+  ctx.fill();
+  rr(ctx, -0.4, -5, 0.8, 1.4, 0.2);
+  fillStroke(ctx, '#3b2a1e', null);
+  // gabbia di fili
+  for (const x of [-3.4, 0, 3.4]) seg(ctx, x, -2.6, x * 0.85, -14.4, 'rgba(60,20,20,0.85)', 0.35);
+  // cappello e maniglia
+  poly(ctx, [
+    [-3.6, -14.2],
+    [3.6, -14.2],
+    [1.6, -17],
+    [-1.6, -17],
+  ]);
+  fillStroke(
+    ctx,
+    lin(ctx, -3.6, 0, 3.6, 0, [
+      [0, '#5b1d1d'],
+      [0.45, '#c0392b'],
+      [1, '#4a1414'],
+    ]),
+  );
+  ctx.beginPath();
+  ctx.ellipse(0, -17.4, 2.6, 2.4, 0, Math.PI, 0);
+  ctx.strokeStyle = '#2b2b2b';
+  ctx.lineWidth = 0.55;
+  ctx.stroke();
+  shine(ctx, -3, -12.6, -3.6, -6, 0.5, 0.4);
+}
+
+/** Vaso cinese di porcellana bianca dipinta di blu. */
+function vaso(ctx: Ctx) {
+  const shape = new Path2D();
+  shape.moveTo(-2.2, -19.6);
+  shape.lineTo(2.2, -19.6);
+  shape.bezierCurveTo(2, -17.6, 1.8, -16.8, 2.6, -15.6);
+  shape.bezierCurveTo(7.8, -12.6, 8, -5, 3.6, -1.4);
+  shape.lineTo(3.4, 0);
+  shape.lineTo(-3.4, 0);
+  shape.lineTo(-3.6, -1.4);
+  shape.bezierCurveTo(-8, -5, -7.8, -12.6, -2.6, -15.6);
+  shape.bezierCurveTo(-1.8, -16.8, -2, -17.6, -2.2, -19.6);
+  shape.closePath();
+  ctx.fillStyle = lin(ctx, -7, 0, 7, 0, [
+    [0, '#cfd8e6'],
+    [0.4, '#ffffff'],
+    [1, '#b8c4d6'],
+  ]);
+  ctx.fill(shape);
+  ctx.save();
+  ctx.clip(shape);
+  const blue = '#1f3f8f';
+  // fasce
+  for (const [y, h] of [
+    [-19.6, 1],
+    [-15.6, 0.6],
+    [-2.4, 0.6],
+    [-1.2, 1.2],
+  ]) {
+    ctx.fillStyle = blue;
+    ctx.fillRect(-8, y, 16, h);
+  }
+  // motivo a onde sul collo
+  ctx.strokeStyle = blue;
+  ctx.lineWidth = 0.3;
+  ctx.beginPath();
+  for (let x = -2.5; x <= 2.5; x += 1) ctx.arc(x, -17.4, 0.5, Math.PI, 0);
+  ctx.stroke();
+  // ramo fiorito sulla pancia
+  ctx.lineWidth = 0.4;
+  ctx.beginPath();
+  ctx.moveTo(-5, -4);
+  ctx.bezierCurveTo(-2, -6, 0, -8, 3.6, -12);
+  ctx.moveTo(-1, -6.6);
+  ctx.quadraticCurveTo(-1.6, -9.6, -3.6, -11);
+  ctx.stroke();
+  for (const [x, y] of [
+    [3.6, -12],
+    [-3.6, -11],
+    [1.2, -8.8],
+    [-4.2, -5.2],
+  ]) {
+    for (let k = 0; k < 5; k++) {
+      const a = (k / 5) * Math.PI * 2;
+      ell(ctx, x + Math.cos(a) * 0.7, y + Math.sin(a) * 0.7, 0.5, 0.5);
+      ctx.fillStyle = blue;
+      ctx.fill();
+    }
+    ell(ctx, x, y, 0.35, 0.35);
+    ctx.fillStyle = '#ffffff';
+    ctx.fill();
+  }
+  ctx.restore();
+  ctx.strokeStyle = 'rgba(30,50,90,0.5)';
+  ctx.lineWidth = 0.3;
+  ctx.stroke(shape);
+  shine(ctx, -4.8, -12, -4.6, -6.4, 0.75, 0.6);
+}
+
+/** Maschera veneziana dorata con le piume, sul suo bastoncino. */
+function maschera(ctx: Ctx, t: number) {
+  // bastoncino e base
+  rr(ctx, -4, -1.2, 8, 1.2, 0.4);
+  fillStroke(ctx, lin(ctx, -4, 0, 4, 0, DARK_WOOD));
+  seg(ctx, 0.5, -1.2, 4.6, -9.6, '#3b1f0e', 0.7);
+  // piume che ondeggiano
+  const sway = Math.sin(t * 1.4) * 0.08;
+  for (const [a, c, len] of [
+    [-0.5, '#8e44ad', 9],
+    [-0.15, '#2c3e50', 10],
+    [0.25, '#c0392b', 8.5],
+  ] as [number, string, number][]) {
+    ctx.save();
+    ctx.translate(4.4, -13.4);
+    ctx.rotate(a + sway);
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.quadraticCurveTo(1.8, -len * 0.5, 0, -len);
+    ctx.quadraticCurveTo(-1.8, -len * 0.5, 0, 0);
+    fillStroke(
+      ctx,
+      lin(ctx, 0, 0, 0, -len, [
+        [0, c],
+        [1, '#ffffff'],
+      ]),
+      null,
+    );
+    seg(ctx, 0, 0, 0, -len, 'rgba(255,255,255,0.6)', 0.12);
+    ctx.restore();
+  }
+  // maschera
+  const mask = new Path2D();
+  mask.moveTo(-8, -13.2);
+  mask.bezierCurveTo(-7, -16.4, -2.6, -16, 0, -14.4);
+  mask.bezierCurveTo(2.6, -16, 7, -16.4, 8, -13.2);
+  mask.bezierCurveTo(7.6, -9.6, 4, -8.2, 1.4, -9.6);
+  mask.quadraticCurveTo(0, -10.6, -1.4, -9.6);
+  mask.bezierCurveTo(-4, -8.2, -7.6, -9.6, -8, -13.2);
+  mask.closePath();
+  ctx.fillStyle = lin(ctx, -8, -16, 8, -8, [
+    [0, '#7a5a1c'],
+    [0.35, '#f6dc84'],
+    [0.6, '#d4af37'],
+    [1, '#6e4f14'],
+  ]);
+  ctx.fill(mask);
+  ctx.save();
+  ctx.clip(mask);
+  ctx.fillStyle = '#1b1b2f';
+  ctx.beginPath();
+  ctx.moveTo(0, -16);
+  ctx.lineTo(8, -16);
+  ctx.lineTo(8, -8);
+  ctx.lineTo(0, -10);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+  ctx.strokeStyle = 'rgba(60,40,10,0.7)';
+  ctx.lineWidth = 0.3;
+  ctx.stroke(mask);
+  // fori degli occhi
+  for (const s of [-1, 1]) {
+    ell(ctx, s * 3.6, -12.6, 1.9, 1, s * 0.15);
+    fillStroke(ctx, '#2b1a2f', '#d4af37', 0.25);
+  }
+  // decori: perline
+  ctx.fillStyle = '#ffffff';
+  for (const [x, y] of [
+    [-6.4, -14.6],
+    [-1.4, -14.4],
+    [6.4, -14.6],
+    [0, -11.2],
+  ])
+    ctx.fillRect(x - 0.2, y - 0.2, 0.4, 0.4);
+}
+
+/** Robottino di latta a carica: la chiave sulla schiena gira e la lucina lampeggia. */
+function robot(ctx: Ctx, t: number) {
+  const tin = lin(ctx, -6, 0, 6, 0, [
+    [0, '#7f8c8d'],
+    [0.4, '#ecf0f1'],
+    [0.7, '#bdc3c7'],
+    [1, '#5d6d7e'],
+  ]);
+  const bob = Math.abs(Math.sin(t * 4)) * 0.3;
+  ctx.save();
+  ctx.translate(0, -bob);
+  // gambe e piedi
+  for (const x of [-2.4, 2.4]) {
+    rr(ctx, x - 1, -4.4, 2, 4, 0.3);
+    fillStroke(ctx, tin, 'rgba(40,40,40,0.5)', 0.2);
+    rr(ctx, x - 1.6, -0.9, 3.2, 1, 0.3);
+    fillStroke(ctx, '#c0392b', null);
+  }
+  // corpo
+  rr(ctx, -5, -11.6, 10, 7.4, 0.8);
+  fillStroke(ctx, tin, 'rgba(40,40,40,0.55)', 0.25);
+  rr(ctx, -3.4, -10.4, 6.8, 4, 0.4);
+  fillStroke(ctx, '#2c3e50', null);
+  // quadranti e pulsanti
+  for (const [x, c] of [
+    [-1.8, '#f1c40f'],
+    [0, '#e74c3c'],
+    [1.8, '#2ecc71'],
+  ] as [number, string][]) {
+    ell(ctx, x, -8.4, 0.6, 0.6);
+    fillStroke(ctx, c, null);
+  }
+  ell(ctx, 0, -6.8, 1, 0.5);
+  fillStroke(ctx, '#ecf0f1', null);
+  // braccia
+  for (const s of [-1, 1]) {
+    ctx.save();
+    ctx.translate(s * 5.2, -10.6);
+    ctx.rotate(s * (0.2 + Math.sin(t * 4 + (s > 0 ? Math.PI : 0)) * 0.25));
+    rr(ctx, -0.8, 0, 1.6, 5, 0.6);
+    fillStroke(ctx, tin, 'rgba(40,40,40,0.5)', 0.2);
+    ell(ctx, 0, 5.4, 0.9, 0.7);
+    fillStroke(ctx, '#7f8c8d', null);
+    ctx.restore();
+  }
+  // testa
+  rr(ctx, -3.8, -17.6, 7.6, 5.8, 0.8);
+  fillStroke(ctx, tin, 'rgba(40,40,40,0.55)', 0.25);
+  for (const x of [-1.6, 1.6]) {
+    ell(ctx, x, -15.4, 1, 1);
+    fillStroke(ctx, '#fff8c4', '#7f6000', 0.2);
+    ell(ctx, x, -15.4, 0.4, 0.4);
+    fillStroke(ctx, '#111', null);
+  }
+  rr(ctx, -1.8, -13.6, 3.6, 1, 0.2);
+  fillStroke(ctx, '#2c3e50', null);
+  for (let x = -1.2; x <= 1.2; x += 0.8) seg(ctx, x, -13.6, x, -12.6, '#95a5a6', 0.15);
+  // antenna con la lucina
+  seg(ctx, 0, -17.6, 0, -19.4, '#7f8c8d', 0.35);
+  const on = Math.floor(t * 2) % 2 === 0;
+  ell(ctx, 0, -19.8, 0.6, 0.6);
+  fillStroke(ctx, on ? '#ff4757' : '#7f1d1d', null);
+  // chiave della carica sul fianco, che gira
+  const k = Math.cos(t * 3);
+  seg(ctx, 5, -8, 6.2, -8, '#b8860b', 0.4);
+  ell(ctx, 6.8, -8, 0.5 + 0.9 * Math.abs(k), 1.3);
+  fillStroke(ctx, lin(ctx, 6, 0, 7.6, 0, BRASS), 'rgba(80,55,10,0.6)', 0.15);
+  ctx.restore();
+}
+
 const ART: Record<string, (ctx: Ctx, t: number) => void> = {
   col_tomo: tomo,
   col_globo: globo,
@@ -1704,6 +2419,16 @@ const ART: Record<string, (ctx: Ctx, t: number) => void> = {
   col_barca: barca,
   col_telescopio: telescopio,
   col_scacchi: scacchi,
+  col_carillon: carillon,
+  col_bussola: bussola,
+  col_lente: lente,
+  col_farfalla: farfalla,
+  col_macchina: macchina,
+  col_fossile: fossile,
+  col_lanterna: lanterna,
+  col_vaso: vaso,
+  col_maschera: maschera,
+  col_robot: robot,
 };
 
 /** Disegna il pezzo `id` appoggiato in (cx, by), alto circa `size`. Restituisce false se non c'è. */

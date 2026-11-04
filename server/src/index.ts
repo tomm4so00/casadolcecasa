@@ -2,9 +2,12 @@ import { randomBytes } from 'node:crypto';
 import { cert, deleteApp, initializeApp } from 'firebase-admin/app';
 import { getDatabase } from 'firebase-admin/database';
 import { advanceMarket, BUSINESSES, holdingsFromRooms } from '../../shared/market.js';
+import { activityTarget, type ActivityLog } from '../../shared/activity.js';
 import { getMessaging } from 'firebase-admin/messaging';
 import {
   type PushSender,
+  cleanOldActivity,
+  retireBusinesses,
   maintainGame,
   notifyRocketAlmostReady,
   sendDeathWarnings,
@@ -66,16 +69,31 @@ async function main() {
     const holdings = holdingsFromRooms(
       (await getDatabase(app).ref('sims_rooms_state').get()).val(),
     );
+    // Attività dei giocatori nel gioco: quanto spinge ogni quotazione (shared/activity.ts).
+    const log = ((await getDatabase(app).ref('sims_activity').get()).val() || {}) as ActivityLog;
+    const activity = Object.fromEntries(
+      BUSINESSES.map(({ id }) => [id, activityTarget(log, id, scheduledAt)] as const),
+    );
     const reference = getDatabase(app).ref('sims_market');
     const listener = reference.on('value', () => {});
     await reference.once('value');
     const result = await reference.transaction(
       (current: unknown) =>
-        advanceMarket(current, scheduledAt, (id) => samples.get(id)!, eventRolls, holdings) ??
-        undefined,
+        advanceMarket(
+          current,
+          scheduledAt,
+          (id) => samples.get(id)!,
+          eventRolls,
+          holdings,
+          activity,
+        ) ?? undefined,
     );
     reference.off('value', listener);
     await maintainGame(getDatabase(app), scheduledAt);
+    await cleanOldActivity(getDatabase(app), scheduledAt);
+    // attività tolte dalla borsa: le quote ancora in giro diventano soldi in cassaforte
+    const refunds = await retireBusinesses(getDatabase(app), scheduledAt);
+    if (refunds) console.log(`Retired business holdings refunded: ${refunds}`);
     // Avvisi sul telefono a chi sta per morire per assenza; un errore qui non blocca il resto.
     try {
       const messaging = getMessaging(app);

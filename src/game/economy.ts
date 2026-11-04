@@ -5,6 +5,7 @@ import { toast } from './missions.js';
 import { RoomEconomy, decodeEconomy } from './room-economy.js';
 import type { EconomyState, RoomState } from './models.js';
 import { bankBalanceOf, depositChange, withdrawChange } from './bank-rules.js';
+import { recordActivity } from './activity.js';
 
 let wallet: RoomEconomy | null = null;
 export function resetEconomy() {
@@ -86,6 +87,9 @@ export function purchaseItem(
     if (economy[kind][id] || balance < price) return null;
     economy[kind][id] = true;
     return -price;
+  }).then((ok) => {
+    if (ok) recordActivity('shop'); // vestiti e mobili: muovono il Mini-shop in borsa
+    return ok;
   });
 }
 /**

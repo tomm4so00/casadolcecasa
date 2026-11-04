@@ -75,6 +75,7 @@ import {
 import { interactWith, paintingTitleOf, promptFor, walkThroughKeys } from './interactions.js';
 import { COLLECT_ENV, refillStands } from './collect.js';
 import { USED_ENV } from './used-shop.js';
+import { recordActivity } from './activity.js';
 // Il proprietario può cambiare la combinazione della propria cassaforte quando vuole
 export async function changeSafePin(..._args: GameValue[]): Promise<GameValue> {
   if (!hasRoom() || !isMyRoomNow()) return;
@@ -854,6 +855,7 @@ export async function doActivity(type?: GameValue): Promise<void> {
       return;
     }
     game.player.daily = recordUse(game.player.daily, 'bar', new Date());
+    recordActivity('pizza');
     saveGame();
     game.player.happinessLevel = Math.min(100, game.player.happinessLevel + 15);
     game.player.hungerLevel = Math.min(100, game.player.hungerLevel + 15);
@@ -1218,6 +1220,7 @@ export async function chooseOrGoToJob(
   }
   if (workLimitReached()) return;
   game.player.workDay = recordShift(game.player.workDay, new Date());
+  if (jobKey === 'ristorante') recordActivity('pizza');
   game.player.activeJobKey = jobKey;
   const tier = jobPayTier((game.player.jobExperience[jobKey] || 0) + 1);
   const pay: number = tier.base;

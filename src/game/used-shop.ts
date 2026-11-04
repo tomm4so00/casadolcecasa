@@ -14,6 +14,7 @@ import { saveGame } from './saves.js';
 import { postGossip } from './gossip.js';
 import { sendSocial } from './social.js';
 import { collectState, onCollectChange } from './collect.js';
+import { recordActivity } from './activity.js';
 import {
   type CollectOwner,
   STANDS,
@@ -141,6 +142,7 @@ async function listItem(i: number): Promise<void> {
     toast('🏷️ Non è stato possibile metterlo in vendita: riprova.', 4000);
     return;
   }
+  recordActivity('antiques');
   sfx('coin');
   toast(`🏷️ ${c.name} è in vendita a ${euro(price)}!`, 4500);
 }
@@ -250,6 +252,7 @@ async function buy(i: number): Promise<void> {
   await ref('used/' + i)
     .set(null)
     .catch(() => {});
+  recordActivity('antiques');
   sfx('personality');
   toast(
     `🏷️ Affare fatto! ${c.emoji} ${c.name} ora è tuo. Sistemalo sulla mensola della tua stanza.`,

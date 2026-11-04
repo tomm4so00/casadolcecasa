@@ -1,3 +1,5 @@
+import { RETIRED_BUSINESSES } from '../../shared/market.js';
+import { ACTIVITY_DAYS, dayOf } from '../../shared/activity.js';
 import {
   PETS,
   PET_DYING_WARN_MS,
@@ -348,4 +350,84 @@ export async function notifyLimitedOffers(
     }
   }
   return sent;
+}
+
+/** Cancella i giorni di attività che non servono più alla borsa (più vecchi di ACTIVITY_DAYS). */
+export async function cleanOldActivity(
+  database: MaintenanceDatabase,
+  now: number,
+): Promise<number> {
+  const oldest = dayOf(now) - ACTIVITY_DAYS + 1;
+  const days = (await database.ref('sims_activity').get()).val();
+  if (!record(days)) return 0;
+  const stale = Object.keys(days).filter((day) => !/^\d+$/.test(day) || Number(day) < oldest);
+  for (const day of stale) await database.ref('sims_activity/' + day).remove();
+  return stale.length;
+}
+
+/**
+ * Attività tolte dalla borsa: chi ci aveva investito riceve in cassaforte il valore delle sue quote
+ * all'ultima quotazione (senza commissione; se la quotazione manca, quanto aveva versato) e un
+ * avviso. Le quote spariscono dalla stanza, quindi ogni giocatore viene pagato una volta sola.
+ */
+export async function retireBusinesses(
+  database: MaintenanceDatabase,
+  now: number,
+): Promise<number> {
+  const retired = Object.keys(RETIRED_BUSINESSES);
+  if (!retired.length) return 0;
+  const market = (await database.ref('sims_market').get()).val();
+  const quotes = record(market) && record(market.quotes) ? market.quotes : {};
+  const lastPrice = (id: string): number => {
+    const q = quotes[id];
+    const p = record(q) ? Number(q.price) : 0;
+    return Number.isFinite(p) && p > 0 ? p : 0;
+  };
+  const rooms = database.ref('sims_rooms_state');
+  await rooms.get();
+  let paid: { player: string; biz: string; amount: number }[] = [];
+  const result = await rooms.transaction((value) => {
+    paid = [];
+    if (!record(value)) return undefined;
+    const next = structuredClone(value);
+    let changed = false;
+    for (const room of Object.values(next)) {
+      if (!record(room) || !record(room.economy) || !record(room.economy.invest)) continue;
+      const invest = room.economy.invest;
+      for (const biz of retired) {
+        const holding = invest[biz];
+        if (holding === undefined) continue;
+        const units = record(holding) ? Number(holding.units) || 0 : 0;
+        const cost = record(holding) ? Number(holding.cost) || 0 : 0;
+        const price = lastPrice(biz);
+        const amount = Math.max(0, Math.floor(price > 0 ? units * price : cost));
+        delete invest[biz];
+        changed = true;
+        if (amount < 1) continue;
+        const vault = Number(room.vaultMoney);
+        room.vaultMoney = (Number.isSafeInteger(vault) ? vault : 0) + amount;
+        if (typeof room.ownerId === 'string') paid.push({ player: room.ownerId, biz, amount });
+      }
+    }
+    return changed ? next : undefined;
+  });
+  if (!result.committed) return 0;
+  for (const p of paid) {
+    const key = now.toString(36) + Math.random().toString(36).slice(2, 6);
+    try {
+      await database.ref(`sims_interactions/${p.player}`).update({
+        [key]: {
+          type: 'bizRetired',
+          from: 'borsa',
+          fromName: 'Borsa',
+          t: now,
+          biz: p.biz,
+          amt: Math.min(p.amount, 1_000_000),
+        },
+      });
+    } catch {
+      // i soldi sono già in cassaforte: l'avviso è solo una cortesia
+    }
+  }
+  return paid.length;
 }

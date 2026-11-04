@@ -75,6 +75,17 @@ export const COLLECTIBLES: Collectible[] = [
   { id: 'col_barca', name: 'Barchetta in Miniatura', emoji: '⛵', price: 450 },
   { id: 'col_telescopio', name: "Telescopio d'Ottone", emoji: '🔭', price: 1100 },
   { id: 'col_scacchi', name: 'Scacchiera in Legno Intarsiato', emoji: '♟️', price: 800 },
+  // seconda serie
+  { id: 'col_carillon', name: 'Carillon con Ballerina', emoji: '🎶', price: 950 },
+  { id: 'col_bussola', name: "Bussola Nautica d'Ottone", emoji: '🧭', price: 700 },
+  { id: 'col_lente', name: "Lente d'Ingrandimento da Esploratore", emoji: '🔍', price: 450 },
+  { id: 'col_farfalla', name: 'Farfalla Esotica in Teca', emoji: '🦋', price: 850 },
+  { id: 'col_macchina', name: 'Macchina da Scrivere Vintage', emoji: '⌨️', price: 1200 },
+  { id: 'col_fossile', name: 'Ammonite Fossile', emoji: '🐚', price: 1000 },
+  { id: 'col_lanterna', name: 'Lanterna a Olio da Marinaio', emoji: '🏮', price: 550 },
+  { id: 'col_vaso', name: 'Vaso Cinese in Porcellana Bianca e Blu', emoji: '🏺', price: 1400 },
+  { id: 'col_maschera', name: 'Maschera Veneziana con Piume', emoji: '🎭', price: 750 },
+  { id: 'col_robot', name: 'Robottino di Latta a Carica', emoji: '🤖', price: 600 },
 ];
 
 /** Espositori nel negozio. */
@@ -283,4 +294,9 @@ export function completeSale(
 ): CollectOwner | null {
   if (!owner?.sale || owner.sale.to !== buyer) return null;
   return { o: buyer, on: buyerName.slice(0, 20), t: now };
+}
+
+/** Tutti i pezzi del catalogo hanno già un proprietario: il negozio non ha più niente da vendere. */
+export function soldOut(state: CollectState): boolean {
+  return COLLECTIBLES.every((c) => state.owners[c.id]);
 }

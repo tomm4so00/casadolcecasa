@@ -48,6 +48,7 @@ export function bizBuild(..._args: GameValue[]): GameValue {
       ';border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:6px;';
     c.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;"><b>${b.emoji} ${b.name}</b><span style="font-size:0.7rem;color:#aaa;">${b.risk}</span></div>
           <div style="font-size:0.75rem;color:#aaa;">${b.desc}</div>
+          <div style="font-size:0.75rem;color:#ccc;">🎯 Si muove con: ${b.driver}</div>
           <div style="display:flex;justify-content:space-between;align-items:baseline;"><span>Quotazione: <b id="biz-p-${b.id}"></b></span><span id="biz-d-${b.id}" style="font-weight:bold;"></span></div>
           <canvas id="biz-c-${b.id}" width="320" height="56" style="width:100%;height:56px;background:rgba(0,0,0,0.25);border-radius:6px;"></canvas>
           <div id="biz-x-${b.id}" style="font-size:0.75rem;color:#aaa;"></div>
@@ -85,7 +86,10 @@ export function bizUpdate(..._args: GameValue[]): GameValue {
       `#biz-list [data-arg="${b.id}"]`,
     ))
       btn.disabled = !ready || !listed;
-    dom('biz-x-' + b.id).innerHTML = crowdText(snapshot.quotes[b.id as BusinessId], p);
+    dom('biz-x-' + b.id).innerHTML =
+      crowdText(snapshot.quotes[b.id as BusinessId], p) +
+      '<br>' +
+      activityText(snapshot.quotes[b.id as BusinessId]?.act);
     if (!listed) {
       dom('biz-p-' + b.id).textContent = 'in arrivo…';
       dom('biz-d-' + b.id).textContent = '';
@@ -109,6 +113,16 @@ export function bizUpdate(..._args: GameValue[]): GameValue {
   const pl: GameValue = tot - cost;
   dom('biz-sum').innerHTML =
     `Cassaforte: <b>${game.moneyLevel} €</b> · Investito ora: <b>${game.fmtEur(tot)}</b> <span style="color:${pl >= 0 ? '#2ed573' : '#ff4757'}">(${pl >= 0 ? '+' : ''}${game.fmtEur(pl)})</span>`;
+}
+
+/** Quanto spinge la quotazione l'attività dei giocatori nel gioco (shared/activity.ts). */
+function activityText(act: number | undefined): string {
+  if (act === undefined) return '🎮 Spinta dal gioco: in arrivo…';
+  const pct = Math.round((Math.exp(act) - 1) * 1000) / 10;
+  if (Math.abs(pct) < 0.5) return '🎮 Spinta dal gioco: <span>= nella norma</span>';
+  return pct > 0
+    ? `🎮 Spinta dal gioco: <span style="color:#2ed573">▲ più attività del solito (+${pct.toLocaleString('it-IT')}%)</span>`
+    : `🎮 Spinta dal gioco: <span style="color:#ff4757">▼ meno attività del solito (${pct.toLocaleString('it-IT')}%)</span>`;
 }
 
 /** Cosa fanno tutti i giocatori: quanto hanno investito e se nell'ultimo quarto d'ora comprano o vendono. */

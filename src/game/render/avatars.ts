@@ -2274,21 +2274,24 @@ export function drawPlayerAvatar(
     );
   if (say) {
     ctx.font = '12px sans-serif';
-    const bw: GameValue = Math.min(180, ctx.measureText(say).width) + 16;
+    // le frasi lunghe vanno a capo: righe di al massimo 180 px, la nuvoletta cresce verso l'alto
+    const lines = wrapText(ctx, String(say), 180);
+    const bw: GameValue = Math.max(...lines.map((l) => ctx.measureText(l).width)) + 16;
+    const bh = 8 + lines.length * 14;
     const bx: GameValue = head.x - bw / 2,
-      by: GameValue = head.y - 34 * s - 40;
+      by: GameValue = head.y - 34 * s - 18 - bh;
     ctx.fillStyle = '#fff';
     ctx.beginPath();
-    ctx.roundRect ? ctx.roundRect(bx, by, bw, 22, 10) : ctx.rect(bx, by, bw, 22);
+    ctx.roundRect ? ctx.roundRect(bx, by, bw, bh, 10) : ctx.rect(bx, by, bw, bh);
     ctx.fill();
     ctx.beginPath();
-    ctx.moveTo(head.x - 5, by + 22);
-    ctx.lineTo(head.x + 5, by + 22);
-    ctx.lineTo(head.x, by + 29);
+    ctx.moveTo(head.x - 5, by + bh);
+    ctx.lineTo(head.x + 5, by + bh);
+    ctx.lineTo(head.x, by + bh + 7);
     ctx.fill();
     ctx.fillStyle = '#111';
     ctx.textAlign = 'center';
-    ctx.fillText(say, head.x, by + 15, 180);
+    lines.forEach((l, i) => ctx.fillText(l, head.x, by + 15 + i * 14, 180));
   }
 }
 
@@ -2622,4 +2625,20 @@ export function drawFluGerms(x: number, y: number, t: number): void {
     ctx.arc(px + rr * 0.35, py - rr * 0.2, rr * 0.25, 0, 6.3);
     ctx.fill();
   }
+}
+
+/** Divide una frase in righe larghe al massimo `max` pixel (con il font già impostato). */
+function wrapText(ctx: CanvasRenderingContext2D, text: string, max: number): string[] {
+  if (ctx.measureText(text).width <= max) return [text];
+  const lines: string[] = [];
+  let line = '';
+  for (const word of text.split(' ')) {
+    const next = line ? line + ' ' + word : word;
+    if (line && ctx.measureText(next).width > max) {
+      lines.push(line);
+      line = word;
+    } else line = next;
+  }
+  if (line) lines.push(line);
+  return lines;
 }

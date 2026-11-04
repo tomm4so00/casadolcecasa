@@ -75,7 +75,8 @@ import { updateCamera } from './camera.js';
 import { applyRoomBounds } from './room-size.js';
 import { presenceState, shownWhileOffline } from './presence-rules.js';
 import type { OnlinePlayer } from './network-model.js';
-import { LAB_WALL_Y, SHOP_CLERK_LINES } from './data/catalogues.js';
+import { LAB_WALL_Y } from './data/catalogues.js';
+import { clerkLines } from './clerks.js';
 import { facadeFootprint } from './render/facades.js';
 import { checkWalkThrough, doorGapsHere, roomBounds } from './interactions.js';
 import { clampToRoom, doorwayAt } from './door-walk-rules.js';
@@ -455,7 +456,7 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
       }
       if (!bot.nextSayAt || animTime > bot.nextSayAt) {
         const L: GameValue = bot.clerk
-          ? SHOP_CLERK_LINES[bot.env] || game.BOT_LINES
+          ? clerkLines(bot.env)
           : bot.dealer
             ? game.DEALER_LINES
             : bot.env === 'discoteca'

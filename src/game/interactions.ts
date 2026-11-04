@@ -36,7 +36,7 @@ import {
   wardrobeOffers,
 } from './limited.js';
 import { openArcadeStation } from './arcade.js';
-import { SHOP_CLERK_LINES } from './data/catalogues.js';
+import { clerkLines } from './clerks.js';
 import { buyFromStand, openShelf, shelfPrompt, standPrompt } from './collect.js';
 import { usedAct, usedPrompt } from './used-shop.js';
 import { ARCADE_GAMES, type ArcadeGame, isArcadeGame } from './arcade-rules.js';
@@ -122,7 +122,7 @@ function clerkPrompt(key: string): Prompt | null {
 /** Il commesso risponde con una delle sue frasi. */
 function talkToClerk(): void {
   const clerk = clerkHere();
-  const lines = SHOP_CLERK_LINES[game.view.activeEnvironment];
+  const lines = clerkLines(game.view.activeEnvironment);
   if (!clerk || !lines?.length) return;
   clerk.talk = lines[Math.floor(Math.random() * lines.length)];
   sfx('click');

@@ -24,6 +24,7 @@ import {
   shelfOf,
   standNeedsRefill,
 } from './collect-rules.js';
+import { recordActivity } from './activity.js';
 
 /** Ambiente del negozio. */
 export const COLLECT_ENV = 'collezionismo';
@@ -156,6 +157,7 @@ export async function buyFromStand(i: number): Promise<void> {
         : ' Sistemalo dalla mensola.'),
     5000,
   );
+  recordActivity('antiques');
   postGossip(`${game.player.myData.nick} ha comprato il pezzo unico ${c.emoji} ${c.name}`);
   saveGame(true);
   await refillStands();

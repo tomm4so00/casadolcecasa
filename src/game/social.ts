@@ -3,6 +3,7 @@ import { type RelationAct, noteRelation } from './relations-rules.js';
 import { saveGame } from './saves.js';
 import { onGameInvite } from './arcade.js';
 import { onUsedSold } from './used-shop.js';
+import { RETIRED_BUSINESSES } from '../../shared/market.js';
 import { onLimitedAnswer, onLimitedOffer, onLimitedWithdrawn } from './limited.js';
 import { postGossip } from './gossip.js';
 import { myLine, notePersonality } from './personality.js';
@@ -22,6 +23,7 @@ import {
   onRomanceUnlocked,
   tryKiss,
 } from './romance.js';
+import { recordActivity } from './activity.js';
 export function sendSocial(tid?: GameValue, msg?: GameValue): GameValue {
   const key: GameValue = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
   msg.from = game.session.myPlayerId;
@@ -47,6 +49,7 @@ export async function socDo(act?: GameValue): Promise<GameValue> {
     }
     game.socCd[k] = Date.now();
   }
+  recordActivity('app');
   if (act === 'talk') {
     game.player.happinessLevel = Math.min(100, game.player.happinessLevel + 4);
     game.player.healthLevel = Math.min(100, game.player.healthLevel + 2);
@@ -257,6 +260,13 @@ export async function handleSocial(m?: GameValue): Promise<GameValue> {
     await onLimitedAnswer(m, who, m.type === 'ltdAccept');
   } else if (m.type === 'ltdGone') {
     await onLimitedWithdrawn(m, who);
+  } else if (m.type === 'bizRetired') {
+    const b = RETIRED_BUSINESSES[m.biz as string];
+    const amt = Math.max(0, Math.floor(Number(m.amt) || 0));
+    toast(
+      `${b ? b.emoji + ' ' + b.name : 'Un’attività'} ha lasciato la borsa: le tue quote valevano ${amt.toLocaleString('it-IT')} € e sono in cassaforte.`,
+      8000,
+    );
   } else if (m.type === 'usedSold') {
     onUsedSold(m, who);
   } else if (m.type === 'gameInvite') {

@@ -25,6 +25,7 @@ import {
   slotWin,
   symbolEmoji,
 } from './betting-rules.js';
+import { recordActivity } from './activity.js';
 
 const euro = (n: number) => `${n.toLocaleString('it-IT')} €`;
 const serverNow = (): number => Date.now() + (game.session.serverOffset || 0);
@@ -52,6 +53,7 @@ export async function spinSlot(): Promise<void> {
   button.disabled = true;
   try {
     if (!(await spendMoney(SLOT_BET))) return;
+    recordActivity('crypto');
     sfx('click');
     const result: SlotSymbol[] = [0, 1, 2].map(() => reelSymbol(Math.random()));
     const reels = [0, 1, 2].map((i) => dom('slot-reel-' + i) as HTMLElement);
@@ -208,6 +210,7 @@ async function askToAccept(g: RpsGame): Promise<void> {
     toast('⌛ La sfida non è più valida: i tuoi soldi sono tornati in cassaforte.', 4500);
     return;
   }
+  recordActivity('crypto');
   myPick = null;
   lastRound = -1;
   watch(me());
@@ -287,6 +290,7 @@ async function challenge(target: string, name: string, bet: number): Promise<voi
       return;
     }
     if (!(await spendMoney(bet))) return;
+    recordActivity('crypto');
     const g: RpsGame = {
       a: me(),
       aName: myName(),

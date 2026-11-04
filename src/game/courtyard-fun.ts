@@ -10,6 +10,7 @@ import { saySocial } from './social.js';
 import { isoProject, isoScale, rotateAround } from './render/primitives.js';
 import { presenceAlive } from './saves.js';
 import { presenceState, shownWhileOffline } from './presence-rules.js';
+import { recordActivity } from './activity.js';
 
 export const COIN_PRICE = 5;
 export const ICE_CREAM_PRICE = 5;
@@ -455,6 +456,7 @@ export async function buyIceCream(): Promise<void> {
     toast('Non è stato possibile pagare il gelato, riprova.');
     return;
   }
+  recordActivity('pizza');
   const flavour = FLAVOURS[Math.floor(Math.random() * FLAVOURS.length)];
   game.player.hungerLevel = Math.min(100, game.player.hungerLevel + ICE_CREAM_HUNGER);
   game.iceCream = { t0: game.animClock, color: flavour.color };

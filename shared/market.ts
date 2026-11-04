@@ -1,3 +1,4 @@
+import { nextActivity } from './activity.js';
 export const MARKET_INTERVAL_MS = 60000;
 export const MARKET_PUBLISH_INTERVAL_MS = 15 * MARKET_INTERVAL_MS;
 export const MARKET_MAX_AGE_MS = 3 * MARKET_PUBLISH_INTERVAL_MS;
@@ -5,6 +6,7 @@ export const MARKET_EPOCH = Date.UTC(2026, 9, 1);
 export const BUSINESSES = [
   {
     id: 'shop',
+    driver: 'vestiti e mobili comprati',
     name: 'Mini-shop online',
     emoji: '🛒',
     color: '#27ae60',
@@ -18,6 +20,7 @@ export const BUSINESSES = [
   },
   {
     id: 'app',
+    driver: 'chat e chiacchiere tra giocatori',
     name: 'Startup di app',
     emoji: '📱',
     color: '#2e86de',
@@ -31,6 +34,7 @@ export const BUSINESSES = [
   },
   {
     id: 'crypto',
+    driver: 'slot e morra cinese nella sala scommesse',
     name: 'Cripto-meme coin',
     emoji: '🪙',
     color: '#e67e22',
@@ -44,6 +48,7 @@ export const BUSINESSES = [
   },
   {
     id: 'pizza',
+    driver: 'turni al ristorante, cibo dal frigo, gelati e bar',
     name: 'Pizzeria del quartiere',
     emoji: '🍕',
     color: '#e17055',
@@ -57,6 +62,7 @@ export const BUSINESSES = [
   },
   {
     id: 'house',
+    driver: 'traslochi dalla bacheca immobiliare',
     name: 'Immobiliare',
     emoji: '🏠',
     color: '#8e5a3c',
@@ -70,6 +76,7 @@ export const BUSINESSES = [
   },
   {
     id: 'green',
+    driver: 'versamenti ai progetti di gruppo',
     name: 'Energia verde',
     emoji: '⚡',
     color: '#00b894',
@@ -83,6 +90,7 @@ export const BUSINESSES = [
   },
   {
     id: 'games',
+    driver: 'partite nella sala giochi',
     name: 'Studio di videogiochi',
     emoji: '🎮',
     color: '#6c5ce7',
@@ -95,20 +103,22 @@ export const BUSINESSES = [
     liquidity: 18000,
   },
   {
-    id: 'ev',
-    name: 'Auto elettriche',
-    emoji: '🚗',
-    color: '#0984e3',
-    risk: 'Rischio alto',
-    desc: 'Corrono veloci in borsa, in su e in giù.',
-    seed: 808,
-    theta: 0.0004,
-    sigma: 0.0042,
-    daily: 0.011,
-    liquidity: 12000,
+    id: 'antiques',
+    driver: 'pezzi comprati al negozio di oggetti da collezione e compravendite all’usato',
+    name: 'Antiquariato',
+    emoji: '🏺',
+    color: '#a0522d',
+    risk: 'Rischio medio',
+    desc: 'Pezzi rari e d’epoca: valgono quanto la voglia dei collezionisti.',
+    seed: 1010,
+    theta: 0.0006,
+    sigma: 0.002,
+    daily: 0.006,
+    liquidity: 15000,
   },
   {
     id: 'space',
+    driver: 'viaggi sulla luna',
     name: 'Turismo spaziale',
     emoji: '🚀',
     color: '#2d3436',
@@ -121,6 +131,13 @@ export const BUSINESSES = [
     liquidity: 6000,
   },
 ] as const;
+/**
+ * Attività tolte dalla borsa: la loro ultima quotazione resta ferma nel database e chi ci aveva
+ * investito riceve in cassaforte il valore delle sue quote (retireBusinesses, server/src/maintenance.ts).
+ */
+export const RETIRED_BUSINESSES: Record<string, { name: string; emoji: string }> = {
+  ev: { name: 'Auto elettriche', emoji: '🚗' },
+};
 /** Le tre attività di sempre: nel database ci sono da subito (le altre nascono al primo aggiornamento). */
 export const ORIGINAL_BUSINESSES: readonly string[] = ['shop', 'app', 'crypto'];
 
@@ -179,6 +196,8 @@ export interface MarketQuote {
   holders?: number;
   /** Euro comprati (positivi) o venduti (negativi) da tutti nell'ultimo quarto d'ora. */
   flow?: number;
+  /** Spinta dell'attività dei giocatori nel gioco (logaritmo del fattore: 0.1 ≈ +10%). */
+  act?: number;
 }
 /** Crollo o boom della borsa: per un'ora tutte le quotazioni scendono o salgono del 20%. */
 export interface MarketEvent {
@@ -336,6 +355,7 @@ export function advanceMarket(
   noise: (id: BusinessId) => number,
   eventRolls?: { roll: number; kind: number },
   holdings?: Record<string, Holding>,
+  activity?: Record<string, number>,
 ): MarketSnapshot | null {
   if (!Number.isFinite(now) || now < MARKET_EPOCH) throw new Error('Invalid market time');
   const minute =
@@ -370,7 +390,10 @@ export function advanceMarket(
       quote.held = Math.round(h.units * 1e6) / 1e6;
       quote.holders = h.holders;
     }
-    quote.price = price(business, minute, quote.log);
+    // attività dei giocatori nel gioco (shared/activity.ts): la spinta si avvicina piano all'obiettivo
+    const target = activity?.[business.id];
+    if (target !== undefined) quote.act = nextActivity(quote.act, target);
+    quote.price = price(business, minute, quote.log + (quote.act || 0));
     // One sample per 15-minute bucket; history remains bounded to the last 24 hours.
     quote.history[Math.floor(minute / 15) * 15] = quote.price;
     for (const key of Object.keys(quote.history))
