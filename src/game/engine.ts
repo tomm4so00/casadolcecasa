@@ -77,13 +77,17 @@ import { presenceState, shownWhileOffline } from './presence-rules.js';
 import type { OnlinePlayer } from './network-model.js';
 import { LAB_WALL_Y } from './data/catalogues.js';
 import { facadeFootprint } from './render/facades.js';
-import { checkWalkThrough } from './interactions.js';
+import { checkWalkThrough, doorGapsHere, roomBounds } from './interactions.js';
+import { clampToRoom, doorwayAt } from './door-walk-rules.js';
 
 /**
  * Una palazzina è larga: la si ordina dal suo angolo in fondo, così chi le cammina davanti
  * (anche sul lato) è disegnato sopra di lei e non dentro il muro.
  */
 function buildingDepth(item: GameValue): number {
+  // porte del salone sui muri di fondo e di sinistra: stanno nel muro, dietro chi passa nel vano
+  if (game.view.activeEnvironment === 'SALOON' && item.targetEnv)
+    return (item.w < item.h ? item.x : item.y) < 0 ? -1e4 : 0;
   if (game.view.activeEnvironment !== 'CORTILE' || item.aptIdx === undefined) return 0;
   const fp = facadeFootprint(item);
   return -(fp.w / 2 + fp.h / 2);
@@ -209,13 +213,12 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
   ) {
     const obstacles: GameValue = getSolidObstacles();
     const stuck: GameValue = collidesAt(game.playerPos.x, game.playerPos.y, obstacles);
-    let nx: GameValue = Math.max(
-      game.X0 + 30,
-      Math.min(game.X1 - 30, game.playerPos.x + game.moveRight * speed * delta),
-    );
-    let ny: GameValue = Math.max(
-      game.Y0 + 30,
-      Math.min(game.Y1 - 30, game.playerPos.y - game.moveForward * speed * delta),
+    // dentro la stanza; davanti alle porte che si attraversano il bordo si apre fino al loro filo
+    const { x: nx, y: ny } = clampToRoom(
+      game.playerPos.x + game.moveRight * speed * delta,
+      game.playerPos.y - game.moveForward * speed * delta,
+      roomBounds(),
+      doorGapsHere(),
     );
     if (stuck || !collidesAt(nx, game.playerPos.y, obstacles)) game.playerPos.x = nx;
     if (stuck || !collidesAt(game.playerPos.x, ny, obstacles)) game.playerPos.y = ny;
@@ -378,7 +381,11 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
       game.playerPos.y +
       ((map.bed ? map.bed.x + map.bed.y + 0.5 : game.playerPos.x + game.playerPos.y) -
         (game.playerPos.x + game.playerPos.y)) *
-        ease;
+        ease +
+      // nel vano di una porta del lato vicino si passa davanti al suo stipite
+      (doorwayAt(game.playerPos.x, game.playerPos.y, roomBounds(), doorGapsHere())?.dir === 1
+        ? 1e4
+        : 0);
     const faintK = faintAmount();
     drawables.push({
       depth,

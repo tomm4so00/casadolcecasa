@@ -1275,9 +1275,9 @@ export function drawSaloonDoor(key?: GameValue, it?: GameValue): GameValue {
   const dx: number = thinX ? (it.x < 0 ? game.X0 + T / 2 : game.X1 - T / 2) : it.x;
   const dy: number = thinX ? it.y : it.y < 0 ? game.Y0 + T / 2 : game.Y1 - T / 2;
   const b: GameValue = box(dx, dy, thinX ? T : it.w, thinX ? it.h : T, 96, '#ecf0f1');
-  // la porta si apre solo quando si preme per entrare (le stanze vuote restano chiuse a chiave)
+  // si apre avvicinandosi, per passarci camminando (le stanze vuote restano chiuse a chiave)
   const locked = it.roomIdx !== undefined && doorC === '#7f8c8d';
-  const open = doorOpenAmount('saloon:' + key, it.x, it.y, !locked, false);
+  const open = doorOpenAmount('saloon:' + key, it.x, it.y, !locked, true);
   // vano della porta: buio con un po' di luce calda dall'altra parte
   onFace(b, thinX ? 'right' : 'left', (FW: number, FH: number): void => {
     const g = ctx.createLinearGradient(0, 7, 0, FH);
@@ -1296,6 +1296,8 @@ export function drawSaloonDoor(key?: GameValue, it?: GameValue): GameValue {
       normal: thinX ? [1, 0] : [0, 1],
       w: (thinX ? it.h : it.w) - 10,
       h: 96 - 7,
+      // sui muri di lato i cardini stanno in fondo: aperta, l'anta resta dietro chi passa
+      hingeEnd: thinX,
     },
     { color: doorC, sign },
     open,

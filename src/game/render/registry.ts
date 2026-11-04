@@ -109,7 +109,7 @@ import {
 } from './mall.js';
 import { drawWeedPot, drawWeedJar, drawStrainDisplay } from './weed-props.js';
 import { drawFridge } from './fridge.js';
-import { drawBankCounter } from './bank.js';
+import { drawBankCounter, drawBankRail, drawBankVault } from './bank.js';
 import { drawEasel, drawPaintTableProp } from './studio.js';
 import { drawGraveProp, drawMemorialProp } from './graveyard.js';
 import {
@@ -126,7 +126,6 @@ import {
   wallShelf,
   wallTowels,
   wallWhiteboard,
-  wallVaultDoor,
   wallRoomPainting,
   wallSafe,
   wallWindow,
@@ -205,6 +204,9 @@ export function registerDrawers(): void {
     // muro di fondo e porta del laboratorio ingegneristico (dietro c'è la zona esterna)
     labWall: drawLabWall,
     labDoor: drawLabDoor,
+    // banca: caveau in 3D e divisori della zona del personale
+    bankVault: drawBankVault,
+    bankRail: drawBankRail,
     grave: drawGraveProp,
     memorial: drawMemorialProp,
     tree: drawTreeProp,
@@ -287,7 +289,6 @@ export function registerDrawers(): void {
     cross: wallCross,
     menu: wallMenu,
     whiteboard: wallWhiteboard,
-    vaultDoor: wallVaultDoor,
   };
   game.WALL_DECOR_DYNAMIC = {
     clock: wallClock,

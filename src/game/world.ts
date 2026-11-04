@@ -72,7 +72,7 @@ import {
   recordShift,
   shiftsLeftToday,
 } from './job-pay.js';
-import { interactWith, paintingTitleOf, promptFor } from './interactions.js';
+import { interactWith, paintingTitleOf, promptFor, walkThroughKeys } from './interactions.js';
 // Il proprietario può cambiare la combinazione della propria cassaforte quando vuole
 export async function changeSafePin(..._args: GameValue[]): Promise<GameValue> {
   if (!hasRoom() || !isMyRoomNow()) return;
@@ -365,8 +365,11 @@ export function checkProximity(..._args: GameValue[]): GameValue {
   let map = getCurrentFurnitureMap();
   let found: GameValue = null;
   let bestDist: GameValue = 65;
+  // le porte che si passano camminando non hanno pulsante
+  const walkable = walkThroughKeys();
   Object.keys(map).forEach((key?: GameValue): GameValue => {
     let obj: GameValue = map[key];
+    if (walkable.has(key)) return;
     if (arrange && (!obj.moveable || (key === 'bed' && game.player.isSleeping))) return;
     // gli oggetti molto grandi (il razzo) si raggiungono anche dal bordo: `reach` allunga la portata
     let d: GameValue =

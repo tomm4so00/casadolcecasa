@@ -38,6 +38,7 @@ import {
 import { openArcadeStation } from './arcade.js';
 import { ARCADE_GAMES, type ArcadeGame, isArcadeGame } from './arcade-rules.js';
 import { quotedTitle } from './painting-titles.js';
+import { type DoorGap, type RoomBounds, crossedDoor, gapFor } from './door-walk-rules.js';
 import { roomPaintings, slotOfKey } from './painting-rules.js';
 import { relaxWith, toast } from './missions.js';
 import { freeRoomsInApt, openClothesShop, openWardrobe } from './character.js';
@@ -106,7 +107,15 @@ const SALOON: Place = {
       ? { text: `🚪 Entra nella Stanza di ${room.owner}` }
       : { text: '🔒 Stanza Vuota (Chiusa)', locked: true };
   },
-  async act(key, item) {
+  act: (key, item) => goThroughSaloonDoor(key, item, true),
+};
+
+/**
+ * Passa da una porta del salone. Col pulsante (`wait`) la porta si spalanca e dopo un attimo si
+ * passa; camminando la porta è già aperta e si passa subito.
+ */
+async function goThroughSaloonDoor(key: string, item: GameValue, wait: boolean): Promise<void> {
+  {
     if (item.targetEnv === 'PLAYER_ROOM') {
       const gi: GameValue = game.gRoomIdx(item);
       const room: GameValue = game.roomsState[gi];
@@ -114,7 +123,7 @@ const SALOON: Place = {
         toast('🔒 Questa stanza è vuota.');
         return;
       }
-      await throughDoor('saloon:' + key);
+      if (wait) await throughDoor('saloon:' + key);
       game.view.currentRoomTitle =
         gi === game.myAssignedRoomIdx ? `La tua stanza 🏠` : `Stanza di ${room.owner}`;
       game.currentRoomIdx = gi;
@@ -122,15 +131,15 @@ const SALOON: Place = {
       if (gi !== game.myAssignedRoomIdx) notePersonality('enterOtherRoom');
       spawnAtDoor(getCurrentFurnitureMap().doorExit);
     } else {
-      await throughDoor('saloon:' + key);
+      if (wait) await throughDoor('saloon:' + key);
       game.view.currentRoomTitle = item.title;
       game.view.activeEnvironment = item.targetEnv;
       if (item.targetEnv === 'CORTILE')
         spawnAtDoor(game.courtyardDoors['doorApt' + game.currentApt]);
       else spawnAtDoor(getCurrentFurnitureMap().doorExit);
     }
-  },
-};
+  }
+}
 
 const KITCHEN: Place = {
   prompt(key, item) {
@@ -615,18 +624,36 @@ interface WalkZone {
   inside: (x: number, y: number, m: number) => boolean;
 }
 
-/** Zone davanti alle porte che portano altrove: basta entrarci camminando, senza pulsante. */
+/** Le porte del salone che si possono attraversare: tutte tranne quelle delle stanze vuote. */
+export function doorGapsHere(): DoorGap[] {
+  if (game.view.activeEnvironment !== 'SALOON') return [];
+  const out: DoorGap[] = [];
+  for (const [key, it] of Object.entries(game.saloonDoors) as [string, GameValue][]) {
+    if (it.roomIdx !== undefined && !game.roomsState[game.gRoomIdx(it)]?.owner) continue;
+    const thinX = it.w < it.h;
+    out.push(
+      gapFor(
+        key,
+        thinX ? 'x' : 'y',
+        (thinX ? Math.sign(it.x) : Math.sign(it.y)) < 0 ? -1 : 1,
+        thinX ? it.y : it.x,
+        thinX ? it.h : it.w,
+      ),
+    );
+  }
+  return out;
+}
+
+/** Porte che si passano camminando: vicino a queste non serve il pulsante. */
+export function walkThroughKeys(): Set<string> {
+  const keys = new Set(doorGapsHere().map((g) => g.key));
+  for (const z of walkZones()) if (z.key !== 'exitHouse') keys.add(z.key);
+  return keys;
+}
+
+/** Zone davanti alle porte del cortile: basta entrarci camminando, senza pulsante. */
 function walkZones(): WalkZone[] {
   const env = game.view.activeEnvironment;
-  if (env === 'SALOON') {
-    const d: GameValue = game.saloonDoors.courtyard;
-    return [
-      {
-        key: 'courtyard',
-        inside: (x, y, m) => Math.abs(x - d.x) < d.w / 2 - 6 + m && y < game.Y0 + 38 + m,
-      },
-    ];
-  }
   if (env !== 'CORTILE') return [];
   const out: WalkZone[] = [];
   for (const [key, it] of Object.entries(game.courtyardDoors) as [string, GameValue][]) {
@@ -664,10 +691,6 @@ export function checkWalkThrough(): void {
     walkArmed = false;
   }
   const { x, y } = game.playerPos;
-  const zones = walkZones();
-  if (!zones.some((z) => z.inside(x, y, WALK_REARM))) walkArmed = true;
-  const zone = zones.find((z) => z.inside(x, y, 0));
-  if (!zone) return;
   const busy =
     game.player.isSleeping ||
     game.showerAnim ||
@@ -676,6 +699,16 @@ export function checkWalkThrough(): void {
     game.benchSit ||
     game.fainted ||
     game.activeShift;
+  // salone: si passa la porta arrivando sul suo filo
+  const gap = crossedDoor(x, y, roomBounds(), doorGapsHere());
+  if (gap) {
+    if (!busy) void goThroughSaloonDoor(gap.key, game.saloonDoors[gap.key], false);
+    return;
+  }
+  const zones = walkZones();
+  if (!zones.some((z) => z.inside(x, y, WALK_REARM))) walkArmed = true;
+  const zone = zones.find((z) => z.inside(x, y, 0));
+  if (!zone) return;
   if (!walkArmed || busy || !game.isWalking) return;
   walkArmed = false;
   // sul tappeto dell'uscita il menu dei posti si apre (non si richiude se è già aperto)
@@ -708,4 +741,9 @@ export function paintingTitleOf(key: string): string {
   return quotedTitle(
     roomPaintings(game.roomsState[game.currentRoomIdx ?? -1])[slotOfKey(key) || 'p1'],
   );
+}
+
+/** I muri dell'ambiente in cui si è. */
+export function roomBounds(): RoomBounds {
+  return { x0: game.X0, x1: game.X1, y0: game.Y0, y1: game.Y1 };
 }
