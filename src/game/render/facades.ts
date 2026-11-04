@@ -691,5 +691,11 @@ export function drawCourtyardDoor(key?: GameValue, it?: GameValue): GameValue {
   drawCached('facade:' + key, sig, it.x, it.y, FACADE_BOUNDS, () => drawFacade(it, o));
 }
 
+/** Ingombro a terra di una palazzina: non la si attraversa e chi le passa davanti resta davanti. */
+export function facadeFootprint(it: GameValue): { x: number; y: number; w: number; h: number } {
+  const side = it.side === 'left';
+  return { x: it.x, y: it.y, w: side ? FACADE_D : FACADE_W, h: side ? FACADE_W : FACADE_D };
+}
+
 /** Spazio occupato sullo schermo da una palazzina (tetto e camino compresi). */
 const FACADE_BOUNDS = { left: 120, right: 120, up: 380, down: 90 };

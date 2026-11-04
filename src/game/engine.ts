@@ -76,6 +76,18 @@ import { applyRoomBounds } from './room-size.js';
 import { presenceState, shownWhileOffline } from './presence-rules.js';
 import type { OnlinePlayer } from './network-model.js';
 import { LAB_WALL_Y } from './data/catalogues.js';
+import { facadeFootprint } from './render/facades.js';
+import { checkWalkThrough } from './interactions.js';
+
+/**
+ * Una palazzina è larga: la si ordina dal suo angolo in fondo, così chi le cammina davanti
+ * (anche sul lato) è disegnato sopra di lei e non dentro il muro.
+ */
+function buildingDepth(item: GameValue): number {
+  if (game.view.activeEnvironment !== 'CORTILE' || item.aptIdx === undefined) return 0;
+  const fp = facadeFootprint(item);
+  return -(fp.w / 2 + fp.h / 2);
+}
 /** I pezzi della base lunare si vedono solo dalla loro fase in poi (gli altri oggetti sempre). */
 const shownPart = (p: GameValue): boolean =>
   p.stage === undefined || partVisible(p, game.moonBaseStage || 0);
@@ -97,7 +109,15 @@ export function getSolidObstacles(..._args: GameValue[]): GameValue {
       (o?: GameValue): GameValue =>
         game.view.activeEnvironment !== 'PLAYER_ROOM' || !overlapsCorridor(o),
     )
-    .concat(extra);
+    .concat(extra, courtyardBuildings(map));
+}
+
+/** Le palazzine del cortile sono solide (le loro porte invece non sono ostacoli). */
+function courtyardBuildings(map: GameValue): GameValue[] {
+  if (game.view.activeEnvironment !== 'CORTILE') return [];
+  return Object.values(map)
+    .filter((it: GameValue) => it.aptIdx !== undefined)
+    .map(facadeFootprint);
 }
 
 export function collidesAt(x?: GameValue, y?: GameValue, obstacles?: GameValue): GameValue {
@@ -201,6 +221,8 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
     if (stuck || !collidesAt(game.playerPos.x, ny, obstacles)) game.playerPos.y = ny;
     game.isWalking = true;
   }
+  // porte che si attraversano camminando (portone del salone, palazzine, uscita del condominio)
+  checkWalkThrough();
   // laboratorio ingegneristico: il titolo dice se si è dentro o nella zona esterna
   if (game.view.activeEnvironment === 'ingegneria')
     game.view.currentRoomTitle =
@@ -317,7 +339,7 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
         flat ? 12 : item.z || 60,
         label,
         (): GameValue => drawMapItem(k, item, animTime, lights),
-        flat ? -1e5 : 0,
+        flat ? -1e5 : buildingDepth(item),
       );
     });
   }

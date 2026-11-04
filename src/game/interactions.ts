@@ -1,5 +1,6 @@
 // Pulsanti degli oggetti di ogni ambiente: cosa c'è scritto quando ci si avvicina e cosa
 // succede premendolo. Per un posto nuovo basta aggiungere la sua voce in PLACES.
+import { facadeFootprint } from './render/facades.js';
 import { buyPlant, plantLabel, smokeJoint, tendPlant } from './weed.js';
 import { PETS, PET_FOOD_PRICE, type PetKind } from './pet-rules.js';
 import { PET_OF_KEY, buyPet, feed, giveUpForAdoption } from './pets.js';
@@ -612,6 +613,82 @@ const PLACES: Record<string, Place> = {
   bar: DEALER,
   discoteca: DEALER,
 };
+
+// ---------------------------------------------------------------- porte da attraversare camminando
+interface WalkZone {
+  key: string;
+  /** `m` allarga la zona di tanto da ogni lato */
+  inside: (x: number, y: number, m: number) => boolean;
+}
+
+/** Zone davanti alle porte che portano altrove: basta entrarci camminando, senza pulsante. */
+function walkZones(): WalkZone[] {
+  const env = game.view.activeEnvironment;
+  if (env === 'SALOON') {
+    const d: GameValue = game.saloonDoors.courtyard;
+    return [
+      {
+        key: 'courtyard',
+        inside: (x, y, m) => Math.abs(x - d.x) < d.w / 2 - 6 + m && y < game.Y0 + 38 + m,
+      },
+    ];
+  }
+  if (env !== 'CORTILE') return [];
+  const out: WalkZone[] = [];
+  for (const [key, it] of Object.entries(game.courtyardDoors) as [string, GameValue][]) {
+    // nelle palazzine ancora vuote (col nastro) si entra solo col pulsante
+    if (it.aptIdx === undefined || freeRoomsInApt(it.aptIdx) === game.ROOMS_PER_APT) continue;
+    const fp = facadeFootprint(it);
+    out.push({
+      key,
+      inside:
+        it.side === 'left'
+          ? (x, y, m) => Math.abs(y - it.y) < 16 + m && x < fp.x + fp.w / 2 + 16 + m
+          : (x, y, m) => Math.abs(x - it.x) < 16 + m && y < fp.y + fp.h / 2 + 16 + m,
+    });
+  }
+  const ex: GameValue = game.courtyardDoors.exitHouse;
+  if (ex)
+    out.push({
+      key: 'exitHouse',
+      inside: (x, y, m) => Math.abs(x - ex.x) < ex.w / 2 + m && Math.abs(y - ex.y) < 16 + m,
+    });
+  return out;
+}
+
+let walkEnv = '';
+// Appena arrivati si è davanti alla porta da cui si entra: le zone valgono solo dopo essersene
+// allontanati di un passo (WALK_REARM), così non si torna subito indietro.
+let walkArmed = false;
+const WALK_REARM = 30;
+
+/** A ogni fotogramma: chi entra camminando nella zona di una porta la attraversa. */
+export function checkWalkThrough(): void {
+  const env = game.view.activeEnvironment;
+  if (env !== walkEnv) {
+    walkEnv = env;
+    walkArmed = false;
+  }
+  const { x, y } = game.playerPos;
+  const zones = walkZones();
+  if (!zones.some((z) => z.inside(x, y, WALK_REARM))) walkArmed = true;
+  const zone = zones.find((z) => z.inside(x, y, 0));
+  if (!zone) return;
+  const busy =
+    game.player.isSleeping ||
+    game.showerAnim ||
+    game.bathAnim ||
+    game.rocketTrip ||
+    game.benchSit ||
+    game.fainted ||
+    game.activeShift;
+  if (!walkArmed || busy || !game.isWalking) return;
+  walkArmed = false;
+  // sul tappeto dell'uscita il menu dei posti si apre (non si richiude se è già aperto)
+  if (zone.key === 'exitHouse' && game.view.isOutsideMenuOpen) return;
+  game.activeTargetProp = zone.key;
+  void interactWith(zone.key, getCurrentFurnitureMap()[zone.key]);
+}
 
 /** Le regole dell'ambiente in cui si trova il giocatore (il turno di lavoro ha le sue). */
 function placeHere(): Place | undefined {
