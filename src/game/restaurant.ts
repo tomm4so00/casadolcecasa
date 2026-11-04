@@ -1,5 +1,5 @@
 // Turno al ristorante: i clienti entrano dal portone, si siedono e ordinano con un fumetto. La pizza
-// si cuoce nel forno a legna e la pasta sui fornelli; vino, dolce e insalata si prendono da
+// si cuoce nel forno a legna e la pasta sui fornelli; vino, dolce e caffè si prendono da
 // cantina, carrello e bancone; poi si portano ai tavoli. Chi aspetta troppo se ne va.
 // Le regole stanno in restaurant-rules.ts.
 import type { GameValue } from './context.js';
@@ -43,7 +43,7 @@ type InstantStation = Exclude<Station, CookStation>;
 const INSTANT: Record<InstantStation, DishId> = {
   cellar: 'vino',
   dessert: 'dolce',
-  counter: 'insalata',
+  counter: 'caffe',
 };
 const isCook = (st: Station): st is CookStation => st === 'oven' || st === 'stove';
 const NAMES = ['Giulia', 'Marco', 'Sara', 'Luca', 'Elena', 'Paolo', 'Chiara', 'Davide', 'Marta'];

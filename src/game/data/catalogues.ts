@@ -2889,7 +2889,7 @@ export const ENV_PROPS = {
   ],
   lavoro_ristorante: [
     // in fondo: bancone, carrello dei dolci e il portone da cui entrano i clienti
-    { kind: 'restCounter', x: -40, y: -160, w: 110, h: 34, z: 55, label: 'Banco Ristorante 🍽️' },
+    { kind: 'restCounter', x: -45, y: -160, w: 80, h: 34, z: 55, label: 'Banco del Caffè ☕' },
     { kind: 'dessertCart', x: 60, y: -166, w: 30, h: 20, z: 40, label: 'Dolci 🍰' },
     {
       kind: 'wallEntrance',
@@ -3653,14 +3653,15 @@ export const ENV_STYLE = {
     wallStyle: 'wainscot',
     trim: '#7b4a2e',
     decor: {
-      back: [{ t: 'menu', u: 200 }],
-      left: [
-        // negli spazi liberi del muro: tra vini e fornelli, e tra fornelli e forno
-        { t: 'window', u: 135, w: 40, h: 46 },
-        { t: 'windowDepth', side: 'left', u: 135, w: 40, h: 46 },
-        { t: 'window', u: 230, w: 40, h: 46 },
-        { t: 'windowDepth', side: 'left', u: 230, w: 40, h: 46 },
+      // finestre sul muro di fondo: una sopra il bancone del caffè, un po' a sinistra perché la
+      // macchinetta non la copra, una sopra i dolci; quello di sinistra resta libero per la cucina
+      back: [
+        { t: 'window', u: 88, w: 44, h: 46 },
+        { t: 'windowDepth', side: 'back', u: 88, w: 44, h: 46 },
+        { t: 'window', u: 262, w: 44, h: 46 },
+        { t: 'windowDepth', side: 'back', u: 262, w: 44, h: 46 },
       ],
+      left: [],
     },
     lights: [
       { x: 60, y: 10, z: 0, r: 160, color: '255,200,130' },

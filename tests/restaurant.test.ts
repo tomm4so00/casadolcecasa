@@ -19,7 +19,7 @@ describe('turno al ristorante', () => {
 
   it('nella prima metà si ordina un piatto, dopo a volte due diversi', () => {
     expect(orderFor(0.2, 0, 0, 0)).toEqual(['pizza']);
-    expect(orderFor(0.8, 0.99, 0.9, 0)).toEqual(['insalata']);
+    expect(orderFor(0.8, 0.99, 0.9, 0)).toEqual(['caffe']);
     const two = orderFor(0.8, 0, 0.1, 0);
     expect(two).toHaveLength(2);
     expect(two[0]).not.toBe(two[1]);

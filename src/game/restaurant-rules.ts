@@ -4,7 +4,7 @@
 export type Station = 'oven' | 'stove' | 'cellar' | 'dessert' | 'counter';
 /** Le postazioni dove si cucina (le altre danno il piatto subito). */
 export type CookStation = 'oven' | 'stove';
-export type DishId = 'pizza' | 'pasta' | 'vino' | 'dolce' | 'insalata';
+export type DishId = 'pizza' | 'pasta' | 'vino' | 'dolce' | 'caffe';
 
 export interface Dish {
   e: string;
@@ -19,7 +19,7 @@ export const DISHES: Record<DishId, Dish> = {
   pasta: { e: '🍝', label: 'Pasta', station: 'stove', cook: 2 },
   vino: { e: '🍷', label: 'Vino', station: 'cellar', cook: 0 },
   dolce: { e: '🍰', label: 'Tiramisù', station: 'dessert', cook: 0 },
-  insalata: { e: '🥗', label: 'Insalata', station: 'counter', cook: 0 },
+  caffe: { e: '☕', label: 'Caffè', station: 'counter', cook: 0 },
 };
 export const DISH_IDS = Object.keys(DISHES) as DishId[];
 
