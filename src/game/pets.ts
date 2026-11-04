@@ -11,7 +11,30 @@ import { sfx } from './audio.js';
 import { spendMoney } from './economy.js';
 import { collidesAt, getSolidObstacles } from './engine.js';
 import { pushOutOfCorridor } from './room-layout.js';
-import { collarPoint, drawLeash, drawPetBubble, drawQuadruped } from './render/pets.js';
+import {
+  collarPoint,
+  drawLeash,
+  drawPetBubble,
+  drawQuadruped,
+  drawTreat,
+  muzzlePoint,
+} from './render/pets.js';
+import {
+  trainingHoldsOwner,
+  trainingPose,
+  treatProgress,
+  updateTraining,
+  updateTrainingHud,
+} from './dog-training.js';
+import {
+  GATE_INSIDE,
+  GATE_OUTSIDE,
+  type DogMode,
+  clampToPark,
+  inDogPark,
+  nextDogMode,
+  parkSpot,
+} from './dog-park-rules.js';
 import {
   PETS,
   PET_FOOD_PRICE,
@@ -32,8 +55,15 @@ import {
   PET_DYING_WARN_MS,
 } from './pet-rules.js';
 
-/** Ambienti in cui si può portare il cane al guinzaglio (l'appartamento e il cortile). */
-const WALK_ENVS = new Set(['PLAYER_ROOM', 'SALOON', 'KITCHEN', 'BATHROOM', 'CORTILE']);
+/** Ambienti in cui si può portare il cane al guinzaglio (l'appartamento, il cortile e il parco). */
+const WALK_ENVS = new Set([
+  'PLAYER_ROOM',
+  'SALOON',
+  'KITCHEN',
+  'BATHROOM',
+  'CORTILE',
+  'passeggiata',
+]);
 
 /** Dove compaiono le casette appena comprate (poi si spostano come i mobili). */
 const HOME_SPOTS: Partial<Record<PetKind, { x: number; y: number }>> = {
@@ -211,6 +241,7 @@ export function updatePets(t: number): void {
   const dt = Math.min(0.1, Math.max(0, t - lastT));
   lastT = t;
   updateDogWalk(dt);
+  updateTrainingHud();
   applyCompany(dt);
   const here = freePetsHere();
   const roomKey = `${game.view.activeEnvironment}:${game.currentRoomIdx}`;
@@ -303,13 +334,26 @@ export function petDrawables(t: number, drawables: GameValue[], labels: GameValu
   }
   const w = game.dogWalk;
   if (w && WALK_ENVS.has(game.view.activeEnvironment)) {
+    // durante l'addestramento si siede, dà la zampa o abbaia
+    const pose = trainingPose();
     drawables.push({
       depth: w.x + w.y,
-      draw: () => drawQuadruped('dog', w.x, w.y, t, { moving: w.moving, dx: w.dx, dy: w.dy }),
+      draw: () =>
+        drawQuadruped('dog', w.x, w.y, t, {
+          moving: w.moving,
+          dx: w.dx,
+          dy: w.dy,
+          ...(pose ? { sit: pose.sit, paw: pose.paw, bark: pose.bark } : {}),
+        }),
     });
     const px = game.playerPos.x,
       py = game.playerPos.y;
-    labels.push(() => drawLeash(px, py, collarPoint(w.x, w.y, w.dx, w.dy)));
+    // nell'area cani corre libero: niente guinzaglio finché non torna dal padrone
+    if ((w.mode || 'leash') === 'leash')
+      labels.push(() => drawLeash(px, py, collarPoint(w.x, w.y, w.dx, w.dy)));
+    // il premietto passa dalla mano del padrone al muso del cane
+    const treat = treatProgress();
+    if (treat >= 0) labels.push(() => drawTreat(px, py, muzzlePoint(w.x, w.y, w.dx, w.dy), treat));
     if (t < (w.sayUntil || 0)) labels.push(() => drawPetBubble(w.x, w.y, 26, w.say));
   }
 }
@@ -383,10 +427,14 @@ export function startDogWalk(): void {
     sayUntil: game.animClock + 2,
     nextSayAt: 0,
     env: game.view.activeEnvironment,
+    mode: 'leash' as DogMode,
   };
   roamers.delete('dog');
   sfx('click');
-  toast('🦮 Hai messo il guinzaglio al cane: ti seguirà nell’appartamento e nel cortile.', 4000);
+  toast(
+    '🦮 Hai messo il guinzaglio al cane: ti seguirà nell’appartamento, nel cortile e al parco.',
+    4000,
+  );
   publishRoomLayout();
 }
 
@@ -413,7 +461,7 @@ function updateDogWalk(dt: number): void {
   }
   const env = game.view.activeEnvironment;
   if (!WALK_ENVS.has(env)) {
-    // fuori dall'appartamento e dal cortile il cane non viene: torna da solo nella stanza
+    // nei negozi e negli altri posti il cane non viene: torna da solo nella stanza
     game.dogWalk = null;
     toast('🐶 Il cane è tornato da solo nella tua stanza.', 3500);
     publishRoomLayout();
@@ -424,15 +472,46 @@ function updateDogWalk(dt: number): void {
   const px = game.playerPos.x,
     py = game.playerPos.y;
   if (w.env !== env) {
-    // si cambia stanza insieme: il cane compare accanto al giocatore
+    // si cambia stanza insieme: il cane compare accanto al giocatore, al guinzaglio
     w.env = env;
     w.x = px - 22;
     w.y = py + 10;
+    w.mode = 'leash';
   }
-  const ddx = px - w.x,
-    ddy = py - w.y;
+  // area cani: entrando si slega, col fischio torna e si rimette il guinzaglio
+  const before: DogMode = w.mode || 'leash';
+  const inPark = env === 'passeggiata' && inDogPark(px, py);
+  const atOwner = Math.hypot(px - w.x, py - w.y) < DOG_AT_OWNER;
+  w.mode = nextDogMode(before, inPark, atOwner);
+  if (before === 'leash' && w.mode === 'free') unleashInPark(w);
+  else if (before === 'called' && w.mode === 'leash') leashAndLeave(w);
+  else if (before !== 'leash' && w.mode === 'leash') {
+    // il padrone è uscito dal recinto senza fischiare: il cane lo raggiunge
+    w.x = px - 22;
+    w.y = py + 10;
+  }
+  // libero: corre per il recinto, a meno che non lo si stia addestrando
+  if (w.mode === 'free') {
+    if (!updateTraining(w, dt)) roamInPark(w, dt);
+  } else if (w.mode === 'called') runToOwner(w, dt);
+  else followOnLeash(w, dt);
+  // anche al guinzaglio si lamenta se ha fame
+  if (hungerOf('dog') < PET_HUNGRY && game.animClock >= (w.nextSayAt || 0)) {
+    w.say = 'Bau! Bau! 🍖';
+    w.sayUntil = game.animClock + 2.5;
+    w.nextSayAt = game.animClock + 10;
+  }
+}
+
+/** Il cane al guinzaglio sta a questa distanza dal padrone; se è più lontano viene tirato. */
+const LEASH = 28;
+/** Il cane richiamato è arrivato quando è così vicino al padrone. */
+const DOG_AT_OWNER = 26;
+
+function followOnLeash(w: GameValue, dt: number): void {
+  const ddx = game.playerPos.x - w.x,
+    ddy = game.playerPos.y - w.y;
   const d = Math.hypot(ddx, ddy);
-  const LEASH = 28;
   if (d > LEASH) {
     const k = Math.min(1, dt * 8);
     w.x += (ddx / d) * (d - LEASH) * k;
@@ -441,12 +520,142 @@ function updateDogWalk(dt: number): void {
     w.dy = ddy;
     w.moving = true;
   } else w.moving = false;
-  // anche al guinzaglio si lamenta se ha fame
-  if (hungerOf('dog') < PET_HUNGRY && game.animClock >= (w.nextSayAt || 0)) {
-    w.say = 'Bau! Bau! 🍖';
-    w.sayUntil = game.animClock + 2.5;
-    w.nextSayAt = game.animClock + 10;
+}
+
+/** Fa un passo verso (tx, ty) a `speed` al secondo; dice se è arrivato. */
+function stepDog(w: GameValue, tx: number, ty: number, speed: number, dt: number): boolean {
+  const ddx = tx - w.x,
+    ddy = ty - w.y;
+  const d = Math.hypot(ddx, ddy);
+  if (d < 3) return true;
+  const step = Math.min(d, speed * dt);
+  w.x += (ddx / d) * step;
+  w.y += (ddy / d) * step;
+  w.dx = ddx;
+  w.dy = ddy;
+  return false;
+}
+
+// ---------------------------------------------------------------- area cani del parco
+
+const PARK_BARKS = ['Bau! 🎾', 'Woof! 🐾', 'Bau bau! 💨', 'Arf! 🐶'];
+
+function unleashInPark(w: GameValue): void {
+  w.moving = false;
+  w.nextAt = game.animClock + 0.6;
+  w.say = 'Bau! Bau! 🎉';
+  w.sayUntil = game.animClock + 2;
+  w.nextSayAt = game.animClock + 6;
+  sfx('click');
+  toast('🐕 Hai sciolto il guinzaglio: il cane è libero di correre nell’area cani!', 3500);
+}
+
+/** Libero nel recinto: corre di qua e di là, ogni tanto torna dal padrone e abbaia. */
+function roamInPark(w: GameValue, dt: number): void {
+  const t = game.animClock;
+  if (!w.moving && t >= (w.nextAt || 0)) {
+    const toOwner = Math.random() < 0.35;
+    const a = Math.random() * Math.PI * 2;
+    const p = toOwner
+      ? clampToPark(game.playerPos.x + Math.cos(a) * 24, game.playerPos.y + Math.sin(a) * 24)
+      : parkSpot(Math.random(), Math.random());
+    w.tx = p.x;
+    w.ty = p.y;
+    w.run = !toOwner && Math.random() < 0.6;
+    w.moving = true;
   }
+  if (w.moving && stepDog(w, w.tx, w.ty, w.run ? 115 : 65, dt)) {
+    w.moving = false;
+    w.nextAt = t + 0.8 + Math.random() * 2.5;
+  }
+  const c = clampToPark(w.x, w.y);
+  w.x = c.x;
+  w.y = c.y;
+  if (t >= (w.nextSayAt || 0)) {
+    w.say = PARK_BARKS[Math.floor(Math.random() * PARK_BARKS.length)];
+    w.sayUntil = t + 2;
+    w.nextSayAt = t + 7 + Math.random() * 6;
+  }
+}
+
+/** Dopo il fischio corre dal padrone (se resta incastrato, dopo un po' arriva comunque). */
+function runToOwner(w: GameValue, dt: number): void {
+  const px = game.playerPos.x,
+    py = game.playerPos.y;
+  w.moving = true;
+  if (game.animClock - (w.calledAt || 0) > 4) {
+    w.x = px - 20;
+    w.y = py + 8;
+    return;
+  }
+  const d = Math.hypot(px - w.x, py - w.y);
+  if (d > DOG_AT_OWNER - 6) stepDog(w, px, py, 170, dt);
+}
+
+/** Arrivato dal fischio: guinzaglio, e si esce insieme dal cancello. */
+function leashAndLeave(w: GameValue): void {
+  w.say = 'Bau! ❤️';
+  w.sayUntil = game.animClock + 2;
+  w.moving = false;
+  toast('🦮 Il cane è tornato di corsa: gli hai rimesso il guinzaglio.', 3500);
+  passGate(false);
+}
+
+/** Si passa il cancello: il giocatore (e il cane al guinzaglio) dall'altra parte. */
+function passGate(toInside: boolean): void {
+  const to = toInside ? GATE_INSIDE : GATE_OUTSIDE;
+  game.playerPos = { x: to.x, y: to.y };
+  game.dogGateOpenUntil = game.animClock + 0.9;
+  const w = game.dogWalk;
+  if (w) {
+    w.x = to.x - 20;
+    w.y = to.y + (toInside ? -6 : 8);
+  }
+  sfx('door');
+}
+
+/** Il cane richiamato sta arrivando (o si va al centro per l'addestramento): il padrone resta fermo. */
+export function dogIsComing(): boolean {
+  return game.dogWalk?.mode === 'called' || trainingHoldsOwner();
+}
+
+/** Testo del pulsante del cancello dell'area cani, da fuori e da dentro. */
+export function dogGatePrompt(): { text: string; locked?: boolean } {
+  const w = game.dogWalk;
+  if (!inDogPark(game.playerPos.x, game.playerPos.y))
+    return { text: w ? '🐕 Entra nell’area cani e sciogli il cane' : '🐕 Entra nell’area cani' };
+  if (w?.mode === 'called') return { text: '😗 Il cane sta arrivando…', locked: true };
+  if (w?.mode === 'free') return { text: '😗 Fischia al cane ed esci' };
+  return { text: '🚪 Esci dall’area cani' };
+}
+
+/** Il pulsante del cancello: si entra, oppure si fischia al cane (o si esce, se non c'è). */
+export function useDogGate(): void {
+  const w = game.dogWalk;
+  if (!inDogPark(game.playerPos.x, game.playerPos.y)) {
+    passGate(true);
+    if (!w && book().dog)
+      toast(
+        '🐶 Il tuo cane è a casa: mettigli il guinzaglio nella tua stanza e portalo qui!',
+        4000,
+      );
+    return;
+  }
+  if (w?.mode === 'called') return;
+  if (w?.mode !== 'free') {
+    passGate(false);
+    return;
+  }
+  w.mode = 'called';
+  w.calledAt = game.animClock;
+  w.moving = true;
+  w.say = '❗';
+  w.sayUntil = game.animClock + 1.2;
+  // il fischio si vede sopra il giocatore (anche dagli altri) per un paio di secondi: il fumetto
+  // dura 6 s da mySayT, che quindi parte un po' nel passato
+  game.mySay = 'Fiiiù! 🎵';
+  game.mySayT = Date.now() - 3500;
+  sfx('whistle');
 }
 
 // ---------------------------------------------------------------- barre della fame

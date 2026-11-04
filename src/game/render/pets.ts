@@ -410,8 +410,12 @@ interface QuadOpts {
   /** Direzione di marcia nel mondo (per girare la testa a destra o a sinistra sullo schermo). */
   dx: number;
   dy: number;
-  /** Seduto (nel negozio, o quando aspetta). */
-  sit?: boolean;
+  /** Seduto (nel negozio, o quando aspetta); un numero da 0 a 1 è a metà del sedersi. */
+  sit?: boolean | number;
+  /** Zampa davanti alzata verso il padrone (0-1), da seduto. */
+  paw?: number;
+  /** Abbaia: bocca aperta e testa in su. */
+  bark?: boolean;
 }
 
 /** Cane o gatto a quattro zampe, visto di lato, che cammina, scodinzola e muove le orecchie. */
@@ -433,7 +437,11 @@ export function drawQuadruped(
   ellipseShadow(x, y, 14, 7, 0.22);
   const phase = t * (dog ? 13 : 11);
   const legLen = (dog ? 8 : 7) * s;
-  const by = g.y - legLen - (o.sit ? 0 : 3 * s);
+  // quanto è seduto (0 in piedi, 1 seduto): il corpo scende e si inclina un po' alla volta
+  const sitK = typeof o.sit === 'number' ? Math.max(0, Math.min(1, o.sit)) : o.sit ? 1 : 0;
+  const sat = sitK > 0.5;
+  const paw = Math.max(0, Math.min(1, o.paw || 0));
+  const by = g.y - legLen - 3 * s * (1 - sitK);
   // zampe (le due dietro più scure)
   ctx.lineCap = 'round';
   ctx.lineWidth = 2.4 * s;
@@ -448,10 +456,13 @@ export function drawQuadruped(
     const lx = g.x + f * ox * s;
     ctx.strokeStyle = col;
     ctx.beginPath();
-    if (o.sit && ox < 0) {
+    if (sat && ox < 0) {
       // seduto: zampe dietro piegate
       ctx.moveTo(lx, by + 2 * s);
       ctx.lineTo(lx + f * 3 * s, g.y - 1 * s);
+    } else if (paw > 0 && ox === 8) {
+      // la zampa alzata si disegna dopo la testa, così si vede
+      continue;
     } else {
       ctx.moveTo(lx, by + 2 * s);
       ctx.lineTo(lx + swing, g.y - 1 * s);
@@ -459,7 +470,7 @@ export function drawQuadruped(
     ctx.stroke();
   }
   // coda: il cane scodinzola, il gatto la tiene alta a punto interrogativo
-  const tailBase = { x: g.x - f * 10 * s, y: by - (o.sit ? -2 : 1) * s };
+  const tailBase = { x: g.x - f * 10 * s, y: by - (sat ? -2 : 1) * s };
   ctx.strokeStyle = dog ? body : dark;
   ctx.lineWidth = (dog ? 2.6 : 2.2) * s;
   ctx.beginPath();
@@ -486,15 +497,22 @@ export function drawQuadruped(
   ctx.fillStyle = body;
   ctx.beginPath();
   ctx.ellipse(
-    g.x - (o.sit ? f * 2 * s : 0),
-    by - (o.sit ? 1 : 0) * s,
+    g.x - f * 2 * s * sitK,
+    by - sitK * s,
     (dog ? 11 : 10) * s,
     (dog ? 5.5 : 4.6) * s,
-    o.sit ? -f * 0.35 : 0,
+    -f * 0.5 * sitK,
     0,
     6.3,
   );
   ctx.fill();
+  if (sitK > 0.3) {
+    // seduto: la coscia dietro appoggiata a terra
+    ctx.fillStyle = game.darken(body, 0.1);
+    ctx.beginPath();
+    ctx.ellipse(g.x - f * 7 * s, g.y - 4 * s, 4.6 * s * sitK, 3.4 * s * sitK, 0, 0, 6.3);
+    ctx.fill();
+  }
   if (!dog) {
     // strisce del gatto rosso
     ctx.strokeStyle = dark;
@@ -508,7 +526,11 @@ export function drawQuadruped(
   }
   // collare e testa
   const hx = g.x + f * (dog ? 11 : 10) * s,
-    hy = by - (o.sit ? 8 : 6) * s + (o.moving ? Math.abs(Math.sin(phase)) * -0.6 * s : 0);
+    hy =
+      by -
+      (6 + 2 * sitK) * s +
+      (o.moving ? Math.abs(Math.sin(phase)) * -0.6 * s : 0) -
+      (o.bark ? (1 + Math.abs(Math.sin(t * 18))) * s : 0);
   ctx.fillStyle = dog ? '#e53935' : '#3949ab';
   ctx.beginPath();
   ctx.ellipse(hx - f * 2.5 * s, hy + 3.2 * s, 2.2 * s, 3 * s, 0, 0, 6.3);
@@ -527,6 +549,14 @@ export function drawQuadruped(
     ctx.beginPath();
     ctx.arc(hx + f * 6.8 * s, hy + 0.6 * s, 1.1 * s, 0, 6.3);
     ctx.fill();
+    if (o.bark) {
+      // bocca aperta che si apre e chiude a ogni "bau"
+      const open = (0.6 + Math.abs(Math.sin(t * 18))) * s;
+      ctx.fillStyle = '#7b241c';
+      ctx.beginPath();
+      ctx.ellipse(hx + f * 4.6 * s, hy + 3.2 * s, 2.4 * s, open, 0, 0, 6.3);
+      ctx.fill();
+    }
     ctx.fillStyle = dark;
     ctx.beginPath();
     ctx.ellipse(
@@ -567,6 +597,24 @@ export function drawQuadruped(
       ctx.stroke();
     }
   }
+  if (paw > 0) {
+    // dà la zampa: quella davanti si alza in avanti, sotto il muso, verso il padrone
+    const sx = g.x + f * 8 * s,
+      sy = by + 2 * s;
+    const ex = g.x + f * (8 + 9 * paw) * s,
+      ey = by + (2 - 4 * paw) * s;
+    ctx.strokeStyle = body;
+    ctx.lineWidth = 2.6 * s;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(sx, sy);
+    ctx.lineTo(ex, ey);
+    ctx.stroke();
+    ctx.fillStyle = '#e8b27a';
+    ctx.beginPath();
+    ctx.arc(ex, ey, 1.7 * s, 0, 6.3);
+    ctx.fill();
+  }
   // occhio (ogni tanto sbatte le palpebre)
   const blink = (t + x * 0.01) % 4 < 0.12;
   ctx.fillStyle = '#111';
@@ -584,6 +632,60 @@ export function collarPoint(x: number, y: number, dx: number, dy: number): Pt {
   const ahead = P(x + dx, y + dy, 0);
   const f = ahead.x >= g.x ? 1 : -1;
   return { x: g.x + f * 8.5 * s, y: g.y - 12 * s };
+}
+
+/** Muso del cane seduto (dove arriva il premietto). */
+export function muzzlePoint(x: number, y: number, dx: number, dy: number): Pt {
+  const s = isoScale();
+  const g = P(x, y, 0);
+  const ahead = P(x + dx, y + dy, 0);
+  const f = ahead.x >= g.x ? 1 : -1;
+  return { x: g.x + f * 15 * s, y: g.y - 17 * s };
+}
+
+/**
+ * Premietto (un biscotto a forma di osso) che passa dalla mano del giocatore al muso del cane:
+ * `k` va da 0 (in mano) a 1 (in bocca). La mano è quella dal lato del cane.
+ */
+export function drawTreat(px: number, py: number, to: Pt, k: number): void {
+  const ctx = game.view.ctx;
+  const s = isoScale();
+  const hands = handsOf(px, py);
+  const hand = hands
+    ? hands.reduce((a, b) => (Math.abs(b.x - to.x) < Math.abs(a.x - to.x) ? b : a))
+    : P(px, py, 24);
+  // il braccio si allunga verso il cane: la mano scende e avanza fino a metà strada
+  const reach = Math.min(1, k * 2);
+  const hx = hand.x + (to.x - hand.x) * 0.35 * reach,
+    hy = hand.y + (to.y - hand.y) * 0.35 * reach;
+  if (k < 1) {
+    ctx.strokeStyle = 'rgba(0,0,0,0.25)';
+    ctx.lineWidth = 1 * s;
+    ctx.beginPath();
+    ctx.moveTo(hand.x, hand.y);
+    ctx.lineTo(hx, hy);
+    ctx.stroke();
+  }
+  // dopo metà animazione il biscotto lascia la mano e arriva al muso con un piccolo salto
+  const fly = Math.max(0, (k - 0.5) * 2);
+  if (fly >= 1) return;
+  const bx = hx + (to.x - hx) * fly,
+    by = hy + (to.y - hy) * fly - Math.sin(fly * Math.PI) * 6 * s;
+  ctx.fillStyle = '#d4a056';
+  ctx.strokeStyle = '#8d5524';
+  ctx.lineWidth = 0.6 * s;
+  ctx.beginPath();
+  ctx.roundRect
+    ? ctx.roundRect(bx - 3 * s, by - 1 * s, 6 * s, 2 * s, 1 * s)
+    : ctx.rect(bx - 3 * s, by - 1 * s, 6 * s, 2 * s);
+  ctx.fill();
+  ctx.stroke();
+  for (const ex of [-3, 3])
+    for (const ey of [-1, 1]) {
+      ctx.beginPath();
+      ctx.arc(bx + ex * s, by + ey * s, 1.3 * s, 0, 6.3);
+      ctx.fill();
+    }
 }
 
 /** Guinzaglio dalla mano del giocatore al collare del cane, un po' allentato. */

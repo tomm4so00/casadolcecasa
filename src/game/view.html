@@ -325,6 +325,32 @@
   🧍 Rialzati
 </button>
 <button id="btn-leave-dog" class="hidden" data-action="leaveDogHome">🏠 Lascia cane a casa</button>
+<!-- Addestramento del cane nell'area cani del parco (dog-training.ts) -->
+<div id="dog-train" class="hidden">
+  <div id="dog-train-skill"></div>
+  <button id="btn-dog-train" class="dog-train-btn" data-action="startDogTraining">
+    🎓 Addestra cane
+  </button>
+  <div id="dog-train-cmds" class="hidden">
+    <button id="btn-dog-sit" class="dog-train-btn" data-action="dogCommand" data-arg="sit">
+      🐕 Dì seduto
+    </button>
+    <button id="btn-dog-paw" class="dog-train-btn" data-action="dogCommand" data-arg="paw">
+      🐾 Dì dà la zampa
+    </button>
+    <button id="btn-dog-treat" class="dog-train-btn dog-treat" data-action="dogTreat">
+      🦴 Dai premietto (-1 €)
+    </button>
+    <button
+      class="dog-train-btn dog-train-stop"
+      data-action="stopDogTraining"
+      title="Basta addestramento"
+      aria-label="Basta addestramento"
+    >
+      ✖
+    </button>
+  </div>
+</div>
 <button
   id="btn-return-home"
   class="hidden"

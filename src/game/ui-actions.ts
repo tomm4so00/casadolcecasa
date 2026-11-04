@@ -1,6 +1,7 @@
 import { game } from './context.js';
 import { openArtSite, setArtTab } from './art-market.js';
 import { leaveDogHome } from './pets.js';
+import { dogCommand, dogTreat, startDogTraining, stopDogTraining } from './dog-training.js';
 import { openProjects } from './projects.js';
 import { spinSlot } from './betting.js';
 import { standUp } from './faint.js';
@@ -71,6 +72,11 @@ export const uiActions: Readonly<Record<string, UiAction>> = {
   setArtTab: ([tab]) => setArtTab(String(tab)),
   returnHomeFromActivity: () => returnHomeFromActivity(),
   leaveDogHome: () => leaveDogHome(),
+  // addestramento del cane nell'area cani
+  startDogTraining: () => startDogTraining(),
+  stopDogTraining: () => stopDogTraining(),
+  dogCommand: ([cmd]) => dogCommand(cmd === 'paw' ? 'paw' : 'sit'),
+  dogTreat: () => dogTreat(),
   reloadForUpdate: () => reloadForUpdate(),
   restoreFromCode: () => restoreFromCode(),
   chooseOrGoToJob: ([arg0, arg1]) => chooseOrGoToJob(String(arg0), String(arg1)),

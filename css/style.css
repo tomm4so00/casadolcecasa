@@ -2149,6 +2149,56 @@ body.ticker-on #app-version {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
 }
 
+/* Addestramento del cane nell'area cani: sopra il pulsante "Torna a casa" */
+#dog-train {
+  position: absolute;
+  bottom: 96px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  z-index: 100;
+  max-width: 96vw;
+}
+#dog-train-skill {
+  background: rgba(20, 24, 40, 0.8);
+  color: #fff;
+  font-size: 0.78rem;
+  padding: 3px 10px;
+  border-radius: 12px;
+  white-space: nowrap;
+}
+#dog-train-cmds {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+}
+.dog-train-btn {
+  background: #16a085;
+  color: white;
+  padding: 10px 16px;
+  border: 2px solid #fff;
+  border-radius: 24px;
+  font-weight: bold;
+  font-size: 0.9rem;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+}
+.dog-train-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.dog-train-btn.dog-treat {
+  background: #d35400;
+}
+.dog-train-btn.dog-train-stop {
+  background: #636e72;
+  padding: 10px 13px;
+}
+
 /* Fame degli animali: etichette su una riga sola */
 .pet-row .need-info {
   gap: 6px;

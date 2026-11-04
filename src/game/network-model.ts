@@ -31,8 +31,11 @@ export interface OnlinePlayer extends PresenceInfo {
   bed?: number;
   /** 1 se ha l'influenza (si attacca a chi gli si avvicina). */
   sick?: number;
-  /** 1 se porta a spasso il suo cane al guinzaglio. */
+  /** 1 se porta a spasso il suo cane al guinzaglio, 2 se il cane corre libero nell'area cani. */
   dog?: number;
+  /** Dove si trova il cane libero (solo con dog: 2). */
+  dogX?: number;
+  dogY?: number;
   /** Personalità ottenuta (artist, business, criminal, romantic). */
   pers?: string;
   /** Livello della personalità (1-3). */

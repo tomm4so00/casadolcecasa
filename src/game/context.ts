@@ -157,6 +157,8 @@ interface GameContext {
   dogWalk: GameValue;
   /** Dove è stato lasciato il cane togliendogli il guinzaglio. */
   dogLeftAt: { x: number; y: number } | null;
+  /** Fino a quando (animClock) il cancello dell'area cani resta aperto. */
+  dogGateOpenUntil: number;
   /** Cani e gatti di chi abita nella stanza che si sta visitando. */
   visitFreePets: string[];
   /** Stanza in cui si stava dormendo quando si è chiuso il gioco (null = la propria). */
@@ -201,6 +203,8 @@ interface GameContext {
   drugWindowMs: GameValue;
   discoMap: GameValue;
   barMap: GameValue;
+  /** Parco: il cancello dell'area cani (l'unico oggetto con un pulsante). */
+  parkMap: GameValue;
   DISCO_LINES: GameValue;
   DEALER_LINES: GameValue;
   SOC_RANGE: number;

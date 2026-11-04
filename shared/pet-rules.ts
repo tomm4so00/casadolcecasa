@@ -98,6 +98,8 @@ export interface PetState {
   x?: number;
   y?: number;
   rot?: number;
+  /** Solo il cane: premietti meritati nell'area cani per ogni comando (vedi dog-training-rules). */
+  train?: { sit: number; paw: number };
 }
 export type PetBook = Partial<Record<PetKind, PetState>>;
 
@@ -158,6 +160,12 @@ export function decodePets(value: unknown): PetBook {
     }
     if (Number.isInteger(p.rot) && (p.rot as number) >= 0 && (p.rot as number) < 4)
       st.rot = p.rot as number;
+    const tr = p.train as Record<string, unknown> | undefined;
+    if (kind === 'dog' && tr && typeof tr === 'object') {
+      const count = (v: unknown) =>
+        Number.isInteger(v) ? Math.max(0, Math.min(60, v as number)) : 0;
+      st.train = { sit: count(tr.sit), paw: count(tr.paw) };
+    }
     out[kind] = st;
   }
   return out;

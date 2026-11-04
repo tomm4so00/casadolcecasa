@@ -9,7 +9,8 @@ import {
 } from './bathroom.js';
 import { drawClothesPile, drawFluGerms, drawSmokePuffs, undressedLook } from './render/avatars.js';
 import { isSick } from './flu-rules.js';
-import { petDrawables, updatePets } from './pets.js';
+import { dogIsComing, petDrawables, updatePets } from './pets.js';
+import { bounceOffPark } from './dog-park-rules.js';
 import { updateSpaceHelmet } from './space-helmet.js';
 import { collarPoint, drawLeash, drawQuadruped } from './render/pets.js';
 import {
@@ -222,6 +223,7 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
     !game.rocketTrip &&
     !game.isMovingFurnitureMode &&
     !kissActive() &&
+    !dogIsComing() &&
     !faintAmount() &&
     (game.moveRight !== 0 || game.moveForward !== 0)
   ) {
@@ -251,8 +253,22 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
         : 'Laboratorio Ingegneristico 🔧';
   game.simulationBots.forEach((bot?: GameValue): GameValue => {
     if (bot.env === game.view.activeEnvironment) {
-      bot.x += bot.vx * delta;
-      bot.y += bot.vy * delta;
+      const nx = bot.x + bot.vx * delta,
+        ny = bot.y + bot.vy * delta;
+      // nel parco girano intorno all'area cani invece di passare attraverso la staccionata
+      const b =
+        bot.env === 'passeggiata'
+          ? bounceOffPark(bot.x, bot.y, nx, ny, bot.vx, bot.vy)
+          : { vx: bot.vx, vy: bot.vy, hit: false };
+      bot.vx = b.vx;
+      bot.vy = b.vy;
+      if (b.hit) {
+        bot.x += bot.vx * delta;
+        bot.y += bot.vy * delta;
+      } else {
+        bot.x = nx;
+        bot.y = ny;
+      }
       // al bordo si gira verso l'interno (invertire e basta, se si è andati oltre di un
       // fotogramma lento, lo faceva girare avanti e indietro sul posto)
       if (bot.x > 120) bot.vx = -Math.abs(bot.vx);
@@ -323,6 +339,8 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
               'streetlamp',
               'labWall',
               'labDoor',
+              'dogFence',
+              'dogGate',
             ].includes(p.kind)
           )
             softShadow(p.x, p.y, p.w, p.h);
@@ -602,11 +620,24 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
     // cane al guinzaglio di un altro giocatore: lo segue a distanza
     if (op.dog && !isOffline) {
       const dg = s.dog || (s.dog = { x: s.x - 22, y: s.y + 10, dx: 1, dy: 0, moving: false });
-      const ddx = s.x - dg.x,
-        ddy = s.y - dg.y;
+      // libero nell'area cani (dog: 2): va dove dice il suo padrone, senza guinzaglio
+      const free = op.dog === 2 && typeof op.dogX === 'number' && typeof op.dogY === 'number';
+      const ddx = (free ? op.dogX : s.x) - dg.x,
+        ddy = (free ? op.dogY : s.y) - dg.y;
       const dd = Math.hypot(ddx, ddy);
-      dg.moving = dd > 29;
-      if (dd > 80) {
+      dg.moving = free ? dd > 2 : dd > 29;
+      if (free) {
+        if (dd > 150) {
+          dg.x += ddx;
+          dg.y += ddy;
+        } else if (dg.moving) {
+          const kk = Math.min(1, delta * 10);
+          dg.x += ddx * kk;
+          dg.y += ddy * kk;
+          dg.dx = ddx;
+          dg.dy = ddy;
+        }
+      } else if (dd > 80) {
         dg.x = s.x - 22;
         dg.y = s.y + 10;
       } else if (dd > 28) {
@@ -623,7 +654,8 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
       });
       const ox = s.x,
         oy = s.y;
-      labels.push((): GameValue => drawLeash(ox, oy, collarPoint(dg.x, dg.y, dg.dx, dg.dy)));
+      if (!free)
+        labels.push((): GameValue => drawLeash(ox, oy, collarPoint(dg.x, dg.y, dg.dx, dg.dy)));
     } else if (s.dog) s.dog = null;
     if (act === 'smoke') {
       const sx = s.x,

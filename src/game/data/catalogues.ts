@@ -1,3 +1,5 @@
+import { DOG_GATE, DOG_PARK, dogParkFence } from '../dog-park-rules.js';
+
 export const SHOP_CATALOG = [
   {
     id: 'top_basic',
@@ -1581,7 +1583,7 @@ export const SIMULATION_BOTS = [
     lift: 20,
   },
   { name: 'Signora Rosa 🏷️', env: 'usato', x: -152, y: 99, vx: 0, vy: 0, clerk: true, lift: 20 },
-  { name: 'Bot_Luca', env: 'passeggiata', x: 60, y: -40, vx: -25, vy: 20 },
+  { name: 'Bot_Luca', env: 'passeggiata', x: 40, y: 80, vx: -25, vy: 20 },
   { name: 'Bot_Sara', env: 'bar', x: -50, y: -20, vx: 20, vy: -10 },
   { name: 'Spacciatore 🕴️', env: 'bar', x: 140, y: -35, vx: 0, vy: 0, dealer: true },
   { name: 'DJ Max 🎧', env: 'discoteca', x: 0, y: -165, vx: 0, vy: 0 },
@@ -2773,10 +2775,29 @@ export const WORK_JOBS = {
 
 export const ENV_PROPS = {
   passeggiata: [
-    { kind: 'flowers', x: 130, y: -140, w: 56, h: 30, solid: false, flat: true },
+    { kind: 'flowers', x: 150, y: 150, w: 56, h: 30, solid: false, flat: true },
     { kind: 'flowers', x: -140, y: 140, w: 50, h: 30, solid: false, flat: true },
     { kind: 'tree', x: -115, y: -95, w: 18, h: 18, size: 1.1, label: 'Albero 🌳', z: 90 },
-    { kind: 'tree', x: 115, y: -85, w: 18, h: 18, size: 1, z: 85 },
+    { kind: 'tree', x: -165, y: -155, w: 18, h: 18, size: 0.9, z: 80 },
+    // area cani: terreno, staccionata a pezzi e cancello (vedi dog-park-rules.ts)
+    {
+      kind: 'dogParkGround',
+      x: (DOG_PARK.x0 + DOG_PARK.x1) / 2,
+      y: (DOG_PARK.y0 + DOG_PARK.y1) / 2,
+      w: DOG_PARK.x1 - DOG_PARK.x0,
+      h: DOG_PARK.y1 - DOG_PARK.y0,
+      solid: false,
+      flat: true,
+    },
+    ...dogParkFence().map((f) => ({ kind: 'dogFence', ...f, z: 16 })),
+    {
+      kind: 'dogGate',
+      x: DOG_GATE.x,
+      y: DOG_GATE.y,
+      w: DOG_GATE.w,
+      h: 4,
+      z: 30,
+    },
     { kind: 'tree', x: -20, y: 130, w: 18, h: 18, size: 0.95, z: 80 },
     { kind: 'tree', x: 160, y: 75, w: 16, h: 16, size: 0.8, z: 70 },
     { kind: 'tree', x: -165, y: 35, w: 16, h: 16, size: 0.85, z: 75 },

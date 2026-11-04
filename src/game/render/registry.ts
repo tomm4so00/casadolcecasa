@@ -32,6 +32,7 @@ import {
 } from './arcade-props.js';
 import { drawBaseConsole, drawBaseDoor, drawMoonScreen } from './moonbase.js';
 import { drawPetBubble, drawPetHome, drawPetShelf, drawShopPet } from './pets.js';
+import { drawDogFence, drawDogGate, drawDogParkGround } from './dog-park.js';
 import { homeBubble } from '../pets.js';
 import type { PetKind } from '../pet-rules.js';
 import type { GameValue } from '../context.js';
@@ -237,6 +238,10 @@ export function registerDrawers(): void {
     bench: drawBenchProp,
     streetlamp: drawStreetLampProp,
     flowers: drawFlowersProp,
+    // area cani del parco
+    dogParkGround: drawDogParkGround,
+    dogFence: drawDogFence,
+    dogGate: drawDogGate,
     rocket: drawRocketProp,
     crater: drawCraterProp,
     moonRock: drawMoonRockProp,

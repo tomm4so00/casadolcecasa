@@ -592,6 +592,17 @@ export function presenceAlive(id?: GameValue, op?: GameValue, now?: GameValue): 
   return serverFresh || (tr.changes >= 2 && seenRecently);
 }
 
+/**
+ * Il cane per gli altri: dog 1 al guinzaglio; nell'area cani dog 2 con la sua posizione (le
+ * versioni vecchie del gioco lo vedono comunque, al guinzaglio).
+ */
+function dogPresence(): { dog?: number; dogX?: number; dogY?: number } {
+  const w = game.dogWalk;
+  if (!w) return {};
+  if ((w.mode || 'leash') === 'leash') return { dog: 1 };
+  return { dog: 2, dogX: Math.round(w.x), dogY: Math.round(w.y) };
+}
+
 export function startPresence(..._args: GameValue[]): GameValue {
   try {
     game.session.db.ref('.info/serverTimeOffset').on('value', (s?: GameValue): GameValue => {
@@ -652,7 +663,7 @@ export function startPresence(..._args: GameValue[]): GameValue {
       say: game.mySay,
       sayT: game.mySayT,
       ...(isSick(game.player.flu, Date.now()) ? { sick: 1 } : {}),
-      ...(game.dogWalk ? { dog: 1 } : {}),
+      ...dogPresence(),
       // personalità ottenuta: la vedono gli altri nella scheda del giocatore
       ...(obtainedPersonality(game.player.personality)
         ? {

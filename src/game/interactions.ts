@@ -4,7 +4,7 @@ import { facadeFootprint } from './render/facades.js';
 import { servicePrompt } from './restaurant.js';
 import { buyPlant, plantLabel, smokeJoint, tendPlant } from './weed.js';
 import { PETS, PET_FOOD_PRICE, type PetKind } from './pet-rules.js';
-import { PET_OF_KEY, buyPet, feed, giveUpForAdoption } from './pets.js';
+import { PET_OF_KEY, buyPet, dogGatePrompt, feed, giveUpForAdoption, useDogGate } from './pets.js';
 import { DAILY_LIMITS, recordUse, usesLeftToday } from './daily-limits.js';
 import {
   COIN_PRICE,
@@ -631,6 +631,15 @@ const MOON_BASE: Place = {
   },
 };
 
+// ---------------------------------------------------------------- parco
+// L'unico pulsante della passeggiata è il cancello dell'area cani (vedi pets.ts).
+const PARK: Place = {
+  prompt: (key, item) => (key === 'dogGate' ? dogGatePrompt() : touch(item)),
+  act(key) {
+    if (key === 'dogGate') useDogGate();
+  },
+};
+
 // ---------------------------------------------------------------- lavoro
 const WORK: Place = {
   prompt: (_key, item) =>
@@ -652,6 +661,7 @@ const PLACES: Record<string, Place> = {
   PLAYER_ROOM,
   CORTILE,
   CIMITERO,
+  passeggiata: PARK,
   centro_commerciale: MALL,
   negozio_mobili: FURNITURE_SHOP,
   negozio_vestiti: CLOTHES_SHOP,

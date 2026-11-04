@@ -56,6 +56,8 @@ import { mixColor } from './render/primitives.js';
 import { rebuildGraveyard } from './render/graveyard.js';
 
 import { firebaseOptions, isLocalMode, createDatabase } from './runtime.js';
+import { DOG_GATE } from './dog-park-rules.js';
+
 export function initializeGame() {
   const canvas = document.getElementById('game-canvas');
   if (!(canvas instanceof HTMLCanvasElement)) throw new Error('Canvas del gioco mancante');
@@ -303,6 +305,7 @@ export function initializeGame() {
   game.moonbaseInsideFurniture = structuredClone(MOONBASE_INSIDE_FURNITURE);
   game.dogWalk = null;
   game.dogLeftAt = null;
+  game.dogGateOpenUntil = 0;
   game.visitFreePets = [];
   game.moonCurve = 0;
   game.rocketTripAt = 0;
@@ -362,6 +365,9 @@ export function initializeGame() {
     Math.min(5, Math.max(1, game.player.drug.doses)) * 24 * 3600 * 1000;
   game.discoMap = { dealer: { x: 140, y: 70, w: 20, h: 20, name: 'Spacciatore' } };
   game.barMap = { dealer: { x: 140, y: -35, w: 20, h: 20, name: 'Spacciatore' } };
+  game.parkMap = {
+    dogGate: { x: DOG_GATE.x, y: DOG_GATE.y, w: DOG_GATE.w, h: 4, name: 'Area cani 🐕' },
+  };
   game.DISCO_LINES = [
     'Che musica! 🎶',
     'Balliamo! 💃',

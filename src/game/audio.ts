@@ -88,6 +88,34 @@ export function sfx(type?: GameValue): GameValue {
         tone(90, 0.08, 0.18, 'triangle', 0.18);
       },
       click: (): GameValue => tone(660, 0, 0.06, 'triangle', 0.05),
+      // il cane abbaia due volte: un colpo secco che scende, con un po' di fruscio
+      bark: (): void => {
+        for (const at of [0, 0.32]) {
+          tone(520, at, 0.09, 'square', 0.05);
+          tone(330, at + 0.04, 0.12, 'sawtooth', 0.05);
+          noise(at, 0.1, 0.03, 900);
+        }
+      },
+      // fischio al cane: due note che salgono, la seconda più lunga
+      whistle: (): void => {
+        for (const [start, from, to, dur] of [
+          [0, 1500, 2300, 0.22],
+          [0.3, 1600, 2700, 0.4],
+        ]) {
+          const o = game.audioCtx.createOscillator(),
+            g = game.audioCtx.createGain();
+          o.type = 'sine';
+          o.frequency.setValueAtTime(from, t0 + start);
+          o.frequency.linearRampToValueAtTime(to, t0 + start + dur);
+          g.gain.setValueAtTime(0.001, t0 + start);
+          g.gain.linearRampToValueAtTime(0.09, t0 + start + 0.04);
+          g.gain.exponentialRampToValueAtTime(0.001, t0 + start + dur);
+          o.connect(g);
+          g.connect(game.audioCtx.destination);
+          o.start(t0 + start);
+          o.stop(t0 + start + dur + 0.02);
+        }
+      },
       mission: (): GameValue =>
         [523, 659, 784, 1047].forEach(
           (f?: GameValue, i?: GameValue): GameValue => tone(f, i * 0.09, 0.22, 'triangle', 0.1),

@@ -326,6 +326,7 @@ const ENV_MAPS: Record<string, string> = {
   CIMITERO: 'graveMap',
   bar: 'barMap',
   discoteca: 'discoMap',
+  passeggiata: 'parkMap',
 };
 
 export function getCurrentFurnitureMap(..._args: GameValue[]): SceneMap {
