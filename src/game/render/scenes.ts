@@ -1229,9 +1229,14 @@ export function drawStaticScene(st?: GameValue, hour?: GameValue): GameValue {
   const r = cameraRange(s);
   const W: number = game.view.canvas.width,
     H: number = game.view.canvas.height;
+  // anche la misura della stanza: uno sfondo disegnato con i bordi di un altro ambiente non resta
   const key: GameValue = [
     game.view.activeEnvironment,
     game.currentRoomIdx,
+    game.X0,
+    game.X1,
+    game.Y0,
+    game.Y1,
     W,
     H,
     s,
@@ -1594,7 +1599,7 @@ function drawSafeKeypad(
   size: number,
 ): void {
   const kx = left + 6,
-    ky = top + 7,
+    ky = top + 11,
     kw = size * 0.6;
   ctx.fillStyle = '#0f172a';
   ctx.fillRect(kx, ky, kw, 8);
@@ -1612,10 +1617,10 @@ function drawSafeKeypad(
     ctx.font = 'bold 5px sans-serif';
     ctx.fillText(i < 5 ? String(i + 1) : 'OK', bx + kb / 2, by + kb * 0.55);
   }
-  // sulla porta d'oro la scritta è color bronzo
+  // in cima, sopra display e tasti: sulla porta d'oro la scritta è color bronzo
   ctx.fillStyle = '#5b4210';
   ctx.font = 'bold 5px sans-serif';
-  ctx.fillText('LV 2', left + size / 2, top + size - 3);
+  ctx.fillText('LV 2', kx + kw / 2, top + 8);
 }
 
 /** Livello 1: manopola con le tacche. */

@@ -691,6 +691,9 @@ function walkZones(): WalkZone[] {
 }
 
 let walkEnv = '';
+// Chi arriva passando una porta a piedi si trova davanti a quella da cui è entrato: finché non smette
+// di camminare le porte non scattano, così tenendo premuto non si torna subito indietro.
+let arrivedWalking = false;
 // Appena arrivati si è davanti alla porta da cui si entra: le zone valgono solo dopo essersene
 // allontanati di un passo (WALK_REARM), così non si torna subito indietro.
 let walkArmed = false;
@@ -712,10 +715,14 @@ export function checkWalkThrough(): void {
     game.benchSit ||
     game.fainted ||
     game.activeShift;
+  if (!game.isWalking) arrivedWalking = false;
   // salone: si passa la porta arrivando sul suo filo
   const gap = crossedDoor(x, y, roomBounds(), doorGapsHere());
   if (gap) {
-    if (!busy) void goThroughSaloonDoor(gap.key, game.saloonDoors[gap.key], false);
+    if (!busy && !arrivedWalking) {
+      arrivedWalking = true;
+      void goThroughSaloonDoor(gap.key, game.saloonDoors[gap.key], false);
+    }
     return;
   }
   const zones = walkZones();
@@ -727,6 +734,7 @@ export function checkWalkThrough(): void {
   // sul tappeto dell'uscita il menu dei posti si apre (non si richiude se è già aperto)
   if (zone.key === 'exitHouse' && game.view.isOutsideMenuOpen) return;
   game.activeTargetProp = zone.key;
+  if (zone.key !== 'exitHouse') arrivedWalking = true;
   void interactWith(zone.key, getCurrentFurnitureMap()[zone.key]);
 }
 

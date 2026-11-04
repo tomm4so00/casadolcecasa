@@ -224,8 +224,10 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
     if (stuck || !collidesAt(game.playerPos.x, ny, obstacles)) game.playerPos.y = ny;
     game.isWalking = true;
   }
-  // porte che si attraversano camminando (portone del salone, palazzine, uscita del condominio)
+  // porte che si attraversano camminando (portone del salone, palazzine, uscita del condominio):
+  // se si è cambiato ambiente, i suoi bordi valgono già per questo fotogramma
   checkWalkThrough();
+  applyRoomBounds(game.view.activeEnvironment);
   // laboratorio ingegneristico: il titolo dice se si è dentro o nella zona esterna
   if (game.view.activeEnvironment === 'ingegneria')
     game.view.currentRoomTitle =
