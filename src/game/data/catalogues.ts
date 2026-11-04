@@ -1608,9 +1608,10 @@ export const PLAYER_ROOM_FURNITURE = {
     topColor: '#576574',
     moveable: true,
   },
+  // zerbino sul bordo davanti della stanza
   doorExit: {
     x: 0,
-    y: 160,
+    y: 172,
     w: 60,
     h: 15,
     z: 110,
@@ -2433,14 +2434,14 @@ export const SALOON_DOORS = {
 // sul lato corto (parete di sinistra) altre 2; nell'ala destra una piazzola libera.
 // Il razzo e il cartello TO THE MOON (PROP_DRAW: kind 'rocket' e 'moonSign') andranno altrove.
 export const COURTYARD_DOORS = {
-  doorApt0: { x: -325, y: -205, w: 56, h: 10, z: 110, name: 'Appartamento 1', aptIdx: 0 },
-  doorApt1: { x: -195, y: -205, w: 56, h: 10, z: 110, name: 'Appartamento 2', aptIdx: 1 },
-  doorApt2: { x: -65, y: -205, w: 56, h: 10, z: 110, name: 'Appartamento 3', aptIdx: 2 },
-  doorApt3: { x: 65, y: -205, w: 56, h: 10, z: 110, name: 'Appartamento 4', aptIdx: 3 },
-  doorApt4: { x: 195, y: -205, w: 56, h: 10, z: 110, name: 'Appartamento 5', aptIdx: 4 },
-  doorApt5: { x: 325, y: -205, w: 56, h: 10, z: 110, name: 'Appartamento 6', aptIdx: 5 },
+  doorApt0: { x: -450, y: -205, w: 56, h: 10, z: 110, name: 'Appartamento 1', aptIdx: 0 },
+  doorApt1: { x: -264, y: -205, w: 56, h: 10, z: 110, name: 'Appartamento 2', aptIdx: 1 },
+  doorApt2: { x: -79, y: -205, w: 56, h: 10, z: 110, name: 'Appartamento 3', aptIdx: 2 },
+  doorApt3: { x: 79, y: -205, w: 56, h: 10, z: 110, name: 'Appartamento 4', aptIdx: 3 },
+  doorApt4: { x: 264, y: -205, w: 56, h: 10, z: 110, name: 'Appartamento 5', aptIdx: 4 },
+  doorApt5: { x: 450, y: -205, w: 56, h: 10, z: 110, name: 'Appartamento 6', aptIdx: 5 },
   doorApt6: {
-    x: -465,
+    x: -561,
     y: -70,
     w: 10,
     h: 56,
@@ -2450,7 +2451,7 @@ export const COURTYARD_DOORS = {
     side: 'left',
   },
   doorApt7: {
-    x: -465,
+    x: -561,
     y: 90,
     w: 10,
     h: 56,
@@ -2746,34 +2747,34 @@ export const ENV_PROPS = {
 export const ENV_DECOR = {
   CORTILE: [
     // bacheca immobiliare, sull'erba accanto al vialetto che porta all'uscita: si cambia stanza
-    { kind: 'realtyBoard', x: -95, y: 115, w: 58, h: 6, z: 95, label: 'Bacheca Immobiliare 🏘️' },
+    { kind: 'realtyBoard', x: -103, y: 115, w: 58, h: 6, z: 95, label: 'Bacheca Immobiliare 🏘️' },
     // accanto, la bacheca dei pettegolezzi: i fatti del condominio compaiono da soli
-    { kind: 'gossipBoard', x: -168, y: 115, w: 52, h: 6, z: 95, label: 'Pettegolezzi 📰' },
+    { kind: 'gossipBoard', x: -176, y: 115, w: 52, h: 6, z: 95, label: 'Pettegolezzi 📰' },
     // piazzetta della fontana
     { kind: 'fountain', x: 0, y: 0, w: 70, h: 70, label: 'Fontana ⛲', z: 60 },
     // due panchine sul bordo del vialetto che va all'ala sinistra, rivolte verso di lui
     // (le panchine guardano verso +y)
-    { kind: 'bench', x: -180, y: -37, w: 50, h: 16 },
-    { kind: 'bench', x: -300, y: -37, w: 50, h: 16 },
+    { kind: 'bench', x: -209, y: -37, w: 50, h: 16 },
+    { kind: 'bench', x: -357, y: -37, w: 50, h: 16 },
     // alberi nelle aiuole tra i vialetti
-    { kind: 'tree', x: -250, y: -95, w: 18, h: 18, size: 1.1, z: 90 },
-    { kind: 'tree', x: -150, y: -110, w: 16, h: 16, size: 0.9, z: 80 },
-    { kind: 'tree', x: 150, y: -110, w: 16, h: 16, size: 0.9, z: 80 },
-    { kind: 'tree', x: 320, y: -110, w: 18, h: 18, size: 1.05, z: 90 },
-    { kind: 'tree', x: -260, y: 120, w: 18, h: 18, size: 1.15, z: 95 },
-    { kind: 'tree', x: -225, y: 175, w: 16, h: 16, size: 0.95, z: 85 },
-    { kind: 'tree', x: -350, y: 175, w: 16, h: 16, size: 0.9, z: 80 },
-    { kind: 'tree', x: 150, y: 150, w: 16, h: 16, size: 0.95, z: 85 },
-    { kind: 'tree', x: 440, y: -110, w: 18, h: 18, size: 1.1, z: 90 },
-    { kind: 'tree', x: 440, y: 170, w: 16, h: 16, size: 0.95, z: 85 },
+    { kind: 'tree', x: -295, y: -95, w: 18, h: 18, size: 1.1, z: 90 },
+    { kind: 'tree', x: -171, y: -110, w: 16, h: 16, size: 0.9, z: 80 },
+    { kind: 'tree', x: 171, y: -110, w: 16, h: 16, size: 0.9, z: 80 },
+    { kind: 'tree', x: 382, y: -110, w: 18, h: 18, size: 1.05, z: 90 },
+    { kind: 'tree', x: -308, y: 120, w: 18, h: 18, size: 1.15, z: 95 },
+    { kind: 'tree', x: -264, y: 175, w: 16, h: 16, size: 0.95, z: 85 },
+    { kind: 'tree', x: -419, y: 175, w: 16, h: 16, size: 0.9, z: 80 },
+    { kind: 'tree', x: 171, y: 150, w: 16, h: 16, size: 0.95, z: 85 },
+    { kind: 'tree', x: 530, y: -110, w: 18, h: 18, size: 1.1, z: 90 },
+    { kind: 'tree', x: 530, y: 170, w: 16, h: 16, size: 0.95, z: 85 },
     // lampioni, sull'erba e sempre a coppie specchiate:
     // - all'incrocio davanti alle palazzine di sinistra
-    { kind: 'streetlamp', x: -400, y: -36, w: 8, h: 8 },
-    { kind: 'streetlamp', x: -400, y: 36, w: 8, h: 8 },
+    { kind: 'streetlamp', x: -481, y: -36, w: 8, h: 8 },
+    { kind: 'streetlamp', x: -481, y: 36, w: 8, h: 8 },
     // - uno tra le due panchine e il suo gemello dall'altra parte della fontana,
     //   sullo stesso bordo del vialetto che va verso destra
-    { kind: 'streetlamp', x: -240, y: -37, w: 8, h: 8 },
-    { kind: 'streetlamp', x: 195, y: -37, w: 8, h: 8 },
+    { kind: 'streetlamp', x: -283, y: -37, w: 8, h: 8 },
+    { kind: 'streetlamp', x: 227, y: -37, w: 8, h: 8 },
     // - sul vialetto che va dalla piazzetta della fontana alle 6 palazzine
     { kind: 'streetlamp', x: -36, y: -122, w: 8, h: 8 },
     { kind: 'streetlamp', x: 36, y: -122, w: 8, h: 8 },
@@ -3355,16 +3356,16 @@ export const ENV_STYLE = {
     floor: 'grass',
     floorColor: '#5fa84a',
     outdoor: true,
-    // vialetti (unità del pavimento dall'angolo di fondo: u = x + 480, v = y + 220)
+    // vialetti (unità del pavimento dall'angolo di fondo: u = x + 580, v = y + 220)
     paths: [
-      { u: 28, v: 28, w: 880, h: 40 }, // marciapiede davanti alle 6 palazzine
-      { u: 28, v: 28, w: 40, h: 342 }, // marciapiede davanti alle 2 palazzine di sinistra
-      { u: 480, v: 220, r: 95 }, // piazzetta della fontana
-      { u: 460, v: 64, w: 40, h: 72 }, // dal marciapiede alla piazzetta
-      { u: 64, v: 200, w: 326, h: 40 }, // dall'ala sinistra alla piazzetta
-      { u: 460, v: 306, w: 40, h: 134 }, // verso il bordo del cortile
-      { u: 570, v: 200, w: 226, h: 40 }, // verso l'ala destra
-      { u: 840, v: 220, r: 75 }, // piazzola libera nell'ala destra
+      { u: 35, v: 28, w: 1061, h: 40 }, // marciapiede davanti alle 6 palazzine
+      { u: 39, v: 28, w: 40, h: 342 }, // marciapiede davanti alle 2 palazzine di sinistra
+      { u: 580, v: 220, r: 95 }, // piazzetta della fontana
+      { u: 560, v: 64, w: 40, h: 72 }, // dal marciapiede alla piazzetta
+      { u: 79, v: 200, w: 404, h: 40 }, // dall'ala sinistra alla piazzetta
+      { u: 560, v: 306, w: 40, h: 134 }, // verso il bordo del cortile
+      { u: 677, v: 200, w: 280, h: 40 }, // verso l'ala destra
+      { u: 1011, v: 220, r: 75 }, // piazzola libera nell'ala destra
     ],
   },
   passeggiata: { floor: 'grass', floorColor: '#5fa84a', outdoor: true },

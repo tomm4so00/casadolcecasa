@@ -758,5 +758,7 @@ export function paintingTitleOf(key: string): string {
 
 /** I muri dell'ambiente in cui si è. */
 export function roomBounds(): RoomBounds {
-  return { x0: game.X0, x1: game.X1, y0: game.Y0, y1: game.Y1 };
+  // nella stanza privata si arriva fino al bordo davanti, dove c'è lo zerbino
+  const near = game.view.activeEnvironment === 'PLAYER_ROOM' ? 12 : undefined;
+  return { x0: game.X0, x1: game.X1, y0: game.Y0, y1: game.Y1, near };
 }

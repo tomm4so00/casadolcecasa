@@ -43,6 +43,11 @@ describe('porte da attraversare camminando', () => {
     expect(doorwayAt(-160, 0, B, [left])).toBeNull();
   });
 
+  it('sui lati senza muro si può arrivare più vicino al bordo', () => {
+    expect(clampToRoom(260, 260, { ...B, near: 12 }, [])).toEqual({ x: 188, y: 188 });
+    expect(clampToRoom(-260, -260, { ...B, near: 12 }, [])).toEqual({ x: -170, y: -170 });
+  });
+
   it('una porta chiusa (senza varco) è un muro', () => {
     expect(clampToRoom(-260, 0, B, [])).toEqual({ x: -170, y: 0 });
   });

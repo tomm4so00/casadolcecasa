@@ -17,7 +17,7 @@ interface Rect {
 }
 
 /**
- * Passaggio dall'ingresso (tappetino in x = 0, y = 160) alla cassaforte, tutto sul lato sinistro
+ * Passaggio dall'ingresso (tappetino in x = 0, y = 172) alla cassaforte, tutto sul lato sinistro
  * della stanza: verso sinistra lungo il fronte, poi su, poi fino alla parete. Qui non si possono
  * appoggiare mobili, così chiunque entri può sempre raggiungere la cassaforte.
  */

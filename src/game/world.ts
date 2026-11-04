@@ -341,6 +341,8 @@ export function getCurrentFurnitureMap(..._args: GameValue[]): SceneMap {
       game.visitFreePets = free;
       // La cassaforte è sempre a muro, anche nelle disposizioni pubblicate prima di questa versione.
       m.safe = { ...game.playerRoomFurniture.safe, moveable: false };
+      // e lo zerbino sta sul bordo della stanza, anche nelle disposizioni vecchie
+      m.doorExit = { ...game.playerRoomFurniture.doorExit };
       return m;
     }
     return Object.assign({}, game.playerRoomFurniture);

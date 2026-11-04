@@ -23,8 +23,21 @@ const FACADE_COLORS = [
 const FACADE_FLOORS = [2, 3, 2, 3, 3, 2, 3, 2];
 const AWNING_COLORS = ['#c0392b', '#2471a3', '#1e8449', '#b9770e'];
 const FLOWER_COLORS = ['#ff6b81', '#feca57', '#ff9ff3', '#ffffff', '#e84393'];
-const FACADE_W = 84;
-const FACADE_D = 26;
+const FACADE_W = 120;
+const FACADE_D = 30;
+// Altezze della facciata: il piano terra è alto quanto serve a un portone più alto del personaggio
+// (le porte del salone sono alte 89), i piani sopra hanno finestre slanciate.
+/** piano terra, dallo zoccolo al marcapiano */
+const GROUND_H = 92;
+/** ogni piano sopra il piano terra */
+const FLOOR_H = 56;
+/** finestre dei piani */
+const WIN_H = 34;
+/** portone: luce dallo zoccolo alla chiave dell'arco, e larghezza */
+const DOOR_H = 74;
+const DOOR_W = 36;
+/** zoccolo in pietra */
+const PLINTH = 10;
 
 /** Finestra con cornice, architrave, davanzale e (se accesa) tende. */
 function facadeWindow(
@@ -154,7 +167,7 @@ function facadeTexture(
   } else if (tex === 'bands') {
     // bugnato: fasce orizzontali in rilievo, più marcate al piano terra
     for (let v = top; v < bottom; v += 6) {
-      const ground = v > H - 58;
+      const ground = v > H - PLINTH - GROUND_H;
       ctx.fillStyle = ground ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.1)';
       ctx.fillRect(0, v, W, ground ? 1.5 : 1);
       ctx.fillStyle = 'rgba(255,255,255,0.12)';
@@ -164,9 +177,9 @@ function facadeTexture(
     // lesene chiare tra una colonna di finestre e l'altra, con il loro capitello
     for (const u of [W * 0.06, W * 0.375, W * 0.675, W * 0.94]) {
       ctx.fillStyle = game.lighten(wall, 0.3);
-      ctx.fillRect(u - 3, top, 6, bottom - top - 46);
+      ctx.fillRect(u - 3, top, 6, bottom - top - GROUND_H);
       ctx.fillStyle = 'rgba(0,0,0,0.12)';
-      ctx.fillRect(u + 2, top, 1, bottom - top - 46);
+      ctx.fillRect(u + 2, top, 1, bottom - top - GROUND_H);
       ctx.fillStyle = game.lighten(wall, 0.45);
       ctx.fillRect(u - 4.5, top, 9, 3);
     }
@@ -402,7 +415,7 @@ function drawFacade(
   const idx = (o.no - 1) % FACADE_COLORS.length;
   const wall = FACADE_COLORS[idx];
   const floors = FACADE_FLOORS[idx];
-  const tall = 70 + floors * 48;
+  const tall = PLINTH + GROUND_H + floors * FLOOR_H + 14;
   const awning = AWNING_COLORS[idx % AWNING_COLORS.length];
   const look = FACADE_LOOKS[idx];
   // balconi: sul piano più basso sempre, su tutti i piani nelle palazzine dispari
@@ -441,9 +454,9 @@ function drawFacade(
     }
     // piani: finestre con persiane e fioriere
     const ww = W * 0.17,
-      wh = 28;
+      wh = WIN_H;
     for (let f = 0; f < floors; f++) {
-      const wy = 16 + f * 48;
+      const wy = 18 + f * FLOOR_H;
       for (let c = 0; c < 3; c++) {
         const wx = W * (0.13 + c * 0.3);
         const lit = night && rnd(o.no * 13 + f * 3 + c) > 0.35;
@@ -464,19 +477,19 @@ function drawFacade(
       }
       // marcapiano
       ctx.fillStyle = 'rgba(0,0,0,0.12)';
-      ctx.fillRect(0, wy + 41, W, 3);
+      ctx.fillRect(0, wy + FLOOR_H - 9, W, 3);
     }
     // ombra sul muro sotto i balconi (i balconi sono in 3D, vedi sotto)
     ctx.fillStyle = 'rgba(0,0,0,0.18)';
-    for (const f of balconyFloors) ctx.fillRect(W * 0.5 - 16, 16 + f * 48 + wh + 2, 32, 5);
+    for (const f of balconyFloors) ctx.fillRect(W * 0.5 - 16, 18 + f * FLOOR_H + wh + 2, 32, 5);
     // piano terra
-    const gy = H - 56;
+    const gy = H - PLINTH - GROUND_H;
     ctx.fillStyle = game.darken(wall, 0.08);
-    ctx.fillRect(0, gy, W, 46);
-    // portone ad arco
-    const dx = W * 0.36,
-      dw = W * 0.28,
-      dy = gy + 8;
+    ctx.fillRect(0, gy, W, GROUND_H);
+    // portone ad arco, stretto e alto come una porta vera
+    const dw = DOOR_W,
+      dx = (W - dw) / 2,
+      dy = H - PLINTH - DOOR_H;
     ctx.fillStyle = game.lighten(wall, 0.4);
     ctx.beginPath();
     ctx.moveTo(dx - 4, H - 10);
@@ -511,45 +524,46 @@ function drawFacade(
     ctx.lineTo(dx + dw - 3, dy + dw / 2);
     ctx.stroke();
     // vetrine del piano terra con tende a strisce
-    for (const wx of [W * 0.07, W * 0.73]) {
+    for (const wx of [W * 0.06, W * 0.74]) {
       const vw = W * 0.2;
       ctx.fillStyle = night ? '#2c3e66' : '#9fd3ec';
-      ctx.fillRect(wx, gy + 18, vw, 20);
+      ctx.fillRect(wx, gy + 34, vw, 40);
       ctx.fillStyle = '#f5f0e6';
-      ctx.fillRect(wx + vw / 2 - 0.6, gy + 18, 1.2, 20);
+      ctx.fillRect(wx + vw / 2 - 0.6, gy + 34, 1.2, 40);
       for (let k = 0; k < 5; k++) {
         ctx.fillStyle = k % 2 ? '#ffffff' : awning;
         ctx.beginPath();
-        ctx.moveTo(wx - 2 + (k * (vw + 4)) / 5, gy + 9);
-        ctx.lineTo(wx - 2 + ((k + 1) * (vw + 4)) / 5, gy + 9);
-        ctx.lineTo(wx - 2 + ((k + 1) * (vw + 4)) / 5, gy + 15);
-        ctx.lineTo(wx - 2 + (k * (vw + 4)) / 5, gy + 15);
+        ctx.moveTo(wx - 2 + (k * (vw + 4)) / 5, gy + 22);
+        ctx.lineTo(wx - 2 + ((k + 1) * (vw + 4)) / 5, gy + 22);
+        ctx.lineTo(wx - 2 + ((k + 1) * (vw + 4)) / 5, gy + 29);
+        ctx.lineTo(wx - 2 + (k * (vw + 4)) / 5, gy + 29);
         ctx.fill();
       }
       ctx.fillStyle = game.darken(awning, 0.25);
       for (let k = 0; k <= 5; k++) {
         ctx.beginPath();
-        ctx.arc(wx - 2 + (k * (vw + 4)) / 5, gy + 15, 1.6, 0, Math.PI);
+        ctx.arc(wx - 2 + (k * (vw + 4)) / 5, gy + 29, 1.6, 0, Math.PI);
         ctx.fill();
       }
     }
     // lampioncini ai lati del portone
     for (const lx of [dx - 9, dx + dw + 5]) {
+      const ly = dy + dw / 2;
       if (night) {
-        const glow = ctx.createRadialGradient(lx + 2, dy + 8, 0, lx + 2, dy + 8, 12);
+        const glow = ctx.createRadialGradient(lx + 2, ly + 8, 0, lx + 2, ly + 8, 12);
         glow.addColorStop(0, 'rgba(255,224,138,0.8)');
         glow.addColorStop(1, 'rgba(255,224,138,0)');
         ctx.fillStyle = glow;
-        ctx.fillRect(lx - 10, dy - 4, 24, 24);
+        ctx.fillRect(lx - 10, ly - 4, 24, 24);
       }
       ctx.fillStyle = '#2d3436';
-      ctx.fillRect(lx, dy + 3, 4, 2);
+      ctx.fillRect(lx, ly + 3, 4, 2);
       ctx.fillStyle = night ? '#ffe08a' : '#d6d0c4';
-      ctx.fillRect(lx, dy + 5, 4, 6);
+      ctx.fillRect(lx, ly + 5, 4, 6);
     }
     // zoccolo in pietra
     ctx.fillStyle = game.darken(wall, 0.3);
-    ctx.fillRect(0, H - 10, W, 10);
+    ctx.fillRect(0, H - PLINTH, W, PLINTH);
     ctx.strokeStyle = 'rgba(0,0,0,0.2)';
     ctx.lineWidth = 0.8;
     for (let u = 0, r = 0; u < W; u += 10, r++) {
@@ -606,9 +620,9 @@ function drawFacade(
       facadeWindow(
         ctx,
         W / 2 - 4,
-        20 + f * 48,
+        18 + f * FLOOR_H,
         8,
-        20,
+        WIN_H - 6,
         night && rnd(o.no + f * 11) > 0.5,
         night,
         wall,
@@ -634,7 +648,7 @@ function drawFacade(
     return box(px, py, pw, ph, h, c, { z0 });
   };
   // elementi che sporgono dalla facciata: il cartello col numero sopra il portone e i balconi
-  const sign: GameValue = part(0, 1.5, 24, 3, 11, '#f5f0e6', 48);
+  const sign: GameValue = part(0, 1.5, 24, 3, 11, '#f5f0e6', PLINTH + DOOR_H + 5);
   onFace(sign, side ? 'right' : 'left', (W: number, H: number): void => {
     ctx.strokeStyle = '#5d4037';
     ctx.lineWidth = 1.2;
@@ -646,7 +660,7 @@ function drawFacade(
   });
   const rail = '#2d3436';
   for (const f of balconyFloors) {
-    const z0 = tall - (16 + f * 48 + 28) - 3;
+    const z0 = tall - (18 + f * FLOOR_H + WIN_H) - 3;
     part(0, 5, 32, 10, 2.5, game.darken(wall, 0.3), z0);
     for (let a = -14; a <= 14; a += 4) part(a, 9.5, 0.9, 0.9, 10, rail, z0 + 2.5);
     for (const a of [-15.5, 15.5]) part(a, 5, 0.9, 9, 0.9, rail, z0 + 11.5);
@@ -654,9 +668,9 @@ function drawFacade(
   }
   {
     const [sx, sy] = front(0, 5);
-    box(sx, sy, side ? 10 : 30, side ? 30 : 10, 4, '#bdb6aa');
+    box(sx, sy, side ? 10 : 40, side ? 40 : 10, 4, '#bdb6aa');
   }
-  for (const along of [-21, 21]) {
+  for (const along of [-28, 28]) {
     const [px, py] = front(along, 6);
     box(px, py, 7, 7, 8, '#a0522d');
     const top = isoProject(px, py, 14);
@@ -698,4 +712,4 @@ export function facadeFootprint(it: GameValue): { x: number; y: number; w: numbe
 }
 
 /** Spazio occupato sullo schermo da una palazzina (tetto e camino compresi). */
-const FACADE_BOUNDS = { left: 120, right: 120, up: 380, down: 90 };
+const FACADE_BOUNDS = { left: 150, right: 150, up: 470, down: 110 };

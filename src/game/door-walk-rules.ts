@@ -17,6 +17,8 @@ export interface RoomBounds {
   x1: number;
   y0: number;
   y1: number;
+  /** distanza dal bordo sui due lati verso chi guarda (x1, y1), dove non c'è un muro */
+  near?: number;
 }
 
 /** Distanza dal muro a cui il personaggio si ferma lontano dalle porte. */
@@ -71,9 +73,9 @@ export function clampToRoom(
 }
 
 const clampX = (x: number, b: RoomBounds) =>
-  Math.max(b.x0 + WALL_MARGIN, Math.min(b.x1 - WALL_MARGIN, x));
+  Math.max(b.x0 + WALL_MARGIN, Math.min(b.x1 - (b.near ?? WALL_MARGIN), x));
 const clampY = (y: number, b: RoomBounds) =>
-  Math.max(b.y0 + WALL_MARGIN, Math.min(b.y1 - WALL_MARGIN, y));
+  Math.max(b.y0 + WALL_MARGIN, Math.min(b.y1 - (b.near ?? WALL_MARGIN), y));
 
 /** La porta di cui il personaggio ha passato il filo, se c'è. */
 export function crossedDoor(
