@@ -17,7 +17,7 @@ import type { OnlinePlayer } from './network-model.js';
 /** Dynamic values at the boundary with the v8 save format and scene catalogues. */
 export type GameValue = any;
 
-export interface GameContext {
+interface GameContext {
   view: ViewState;
   player: CharacterState;
   session: SessionState;

@@ -6,13 +6,13 @@ const HOUR = 3_600_000;
 const DAY = 24 * HOUR;
 
 export const FLU_HOURS = 12;
-export const FLU_DAMAGE_PER_HOUR = 3;
+const FLU_DAMAGE_PER_HOUR = 3;
 /** Al massimo tanti giorni fra un'influenza "spontanea" e la successiva. */
 export const FLU_MAX_GAP_DAYS = 30;
 /** Dopo quanto ci si ammala essendosi avvicinati a un malato. */
 export const FLU_CONTAGION_DELAY_MS = 30_000;
 /** Dopo la guarigione non ci si riammala per contagio per qualche giorno (sennò ci si passa l'influenza all'infinito). */
-export const FLU_IMMUNITY_DAYS = 3;
+const FLU_IMMUNITY_DAYS = 3;
 
 export interface FluState {
   /** Inizio dell'influenza in corso (0 = mai stati malati). */

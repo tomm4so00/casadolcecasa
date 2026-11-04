@@ -5,7 +5,7 @@
 export type RelationAct = 'talk' | 'praise' | 'food' | 'gift' | 'insult' | 'punch' | 'theft';
 
 /** Quanto pesa ogni gesto ricevuto: positivi verso "amico", negativi verso "nemico". */
-export const RELATION_POINTS: Record<RelationAct, number> = {
+const RELATION_POINTS: Record<RelationAct, number> = {
   talk: 1,
   praise: 2,
   food: 3,
@@ -24,9 +24,9 @@ export const RELATION_LIMIT = 20;
 /** Quante persone si ricordano al massimo (le più vecchie vengono dimenticate). */
 export const RELATION_MAX = 60;
 
-export type RelationKind = 'friend' | 'enemy';
+type RelationKind = 'friend' | 'enemy';
 
-export interface RelationEntry {
+interface RelationEntry {
   /** Nome dell'altro giocatore, per i messaggi. */
   name: string;
   score: number;
@@ -68,7 +68,7 @@ export function noteRelation(
 }
 
 /** Tiene solo le persone con cui c'è stato qualcosa di recente. */
-export function trimRelations(book: RelationBook): RelationBook {
+function trimRelations(book: RelationBook): RelationBook {
   const ids = Object.keys(book);
   if (ids.length <= RELATION_MAX) return book;
   ids.sort((a, b) => book[a].t - book[b].t);

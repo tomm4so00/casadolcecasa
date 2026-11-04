@@ -2,7 +2,7 @@
 
 export type ProjectId = 'rocket' | 'moonbase';
 
-export interface ProjectDef {
+interface ProjectDef {
   id: ProjectId;
   name: string;
   description: string;
@@ -138,7 +138,7 @@ export const LAUNCH_IGNITION_MS = 4000;
 /** Durata di tutto il lancio (accensione + salita fino a sparire in cielo). */
 export const LAUNCH_ANIM_MS = 25000;
 
-export type LaunchPhase = 'building' | 'waiting' | 'countdown' | 'launching' | 'launched';
+type LaunchPhase = 'building' | 'waiting' | 'countdown' | 'launching' | 'launched';
 
 /**
  * Fase del lancio, uguale per tutti perché usa l'ora del server.
@@ -175,13 +175,13 @@ export function countdownText(ms: number): string {
 export const MOON_TRIP_PRICE = 500;
 /** Il razzo resta via per un po', poi torna e atterra sulla rampa. */
 export const FLIGHT_AWAY_MS = 60 * 1000;
-export const FLIGHT_LANDING_MS = 12 * 1000;
+const FLIGHT_LANDING_MS = 12 * 1000;
 /** Tempo totale di un volo: dopo questo il razzo è di nuovo pronto. */
 export const FLIGHT_TOTAL_MS = FLIGHT_AWAY_MS + FLIGHT_LANDING_MS;
 /** Chi è a bordo arriva a destinazione quando il razzo è ormai alto nel cielo. */
 export const FLIGHT_ARRIVE_MS = 9 * 1000;
 
-export type FlightPhase = 'idle' | 'launching' | 'away' | 'landing';
+type FlightPhase = 'idle' | 'launching' | 'away' | 'landing';
 
 /**
  * Dove si trova il razzo, dato l'ultimo decollo (ora del server): sale, resta via, torna giù

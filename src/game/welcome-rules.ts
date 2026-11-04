@@ -20,7 +20,7 @@ export interface WelcomeView {
 /** Contatore che la missione deve veder crescere (o null se basta guardare lo stato). */
 type Counter = 'meals' | 'showers' | 'shifts' | null;
 
-export interface WelcomeMission {
+interface WelcomeMission {
   id: string;
   title: string;
   reward: number;
@@ -130,8 +130,7 @@ export const newWelcome = (): WelcomeState => ({ i: 0, status: 'offer', base: 0,
 export const welcomeFinished = (s: WelcomeState): boolean => s.i >= WELCOME_MISSIONS.length;
 
 /** Valore del contatore di una missione. */
-export const counterOf = (m: WelcomeMission, v: WelcomeView): number =>
-  m.counter ? v[m.counter] : 0;
+const counterOf = (m: WelcomeMission, v: WelcomeView): number => (m.counter ? v[m.counter] : 0);
 
 /** È il momento di proporre la missione corrente? */
 export const shouldOffer = (s: WelcomeState, now: number): boolean =>

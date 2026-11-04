@@ -1,7 +1,7 @@
 // Bacheca immobiliare del cortile: trasferirsi in una stanza libera (regole, senza grafica).
 
 /** Una stanza come sta nel database (si spostano tutti i suoi campi, anche quelli non elencati). */
-export interface MovableRoom {
+interface MovableRoom {
   id: number;
   owner?: string | null;
   ownerId?: string | null;

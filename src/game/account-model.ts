@@ -1,4 +1,4 @@
-export interface AccountBinding {
+interface AccountBinding {
   playerId: string;
 }
 export function googlePlayerId(uid: string): string {
@@ -43,10 +43,10 @@ export function rebirthNameError(name: string, deadName: string): string | null 
  * indirizzo interno al gioco (che il giocatore non vede): nome@giocatori.casadolcecasa.app.
  */
 export const USERNAME_DOMAIN = 'giocatori.casadolcecasa.app';
-export const USERNAME_MIN = 3;
-export const USERNAME_MAX = 20;
-export const PASSWORD_MIN = 6;
-export const PASSWORD_MAX = 64;
+const USERNAME_MIN = 3;
+const USERNAME_MAX = 20;
+const PASSWORD_MIN = 6;
+const PASSWORD_MAX = 64;
 
 /** Il nome senza spazi ai lati e in minuscolo: "Mario" e "mario" sono lo stesso giocatore. */
 export const normalizeUsername = (name: string): string => name.trim().toLowerCase();

@@ -240,7 +240,7 @@ export function drawTargetRing(tg?: GameValue, t?: GameValue): GameValue {
 }
 
 // Freccia sopra il punto di consegna: resta visibile anche quando un mobile alto copre il cerchio.
-export function drawTargetArrow(tg?: GameValue, t?: GameValue): GameValue {
+function drawTargetArrow(tg?: GameValue, t?: GameValue): GameValue {
   const s: GameValue = isoScale(),
     bob: GameValue = Math.sin(t * 4) * 5,
     p: GameValue = isoProject(tg.x, tg.y, 100 + bob);

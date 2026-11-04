@@ -3,7 +3,7 @@
 export type VitalKey = 'health' | 'sleep' | 'hunger' | 'hygiene' | 'happiness';
 
 /** Nome breve del campo nei dati online di ogni parametro. */
-export const VITAL_FIELDS: Record<VitalKey, string> = {
+const VITAL_FIELDS: Record<VitalKey, string> = {
   health: 'hp',
   sleep: 'sleep',
   hunger: 'hun',
@@ -11,7 +11,7 @@ export const VITAL_FIELDS: Record<VitalKey, string> = {
   happiness: 'hap',
 };
 
-export interface PlayerVitals extends Record<VitalKey, number | null> {
+interface PlayerVitals extends Record<VitalKey, number | null> {
   /** Ambiente in cui si trova, come lo vede lui (es. "Banca Dolce Casa 🏦"). */
   place: string;
 }

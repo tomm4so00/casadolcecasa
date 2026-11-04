@@ -24,8 +24,8 @@ import {
 } from './weed-rules.js';
 
 /** Dove stanno il vaso e il barattolo nella camera (davanti a destra, fuori dal passaggio). */
-export const POT_SPOT = { x: 70, y: 118 };
-export const JAR_SPOT_WITH_POT = { x: 70, y: 82 };
+const POT_SPOT = { x: 70, y: 118 };
+const JAR_SPOT_WITH_POT = { x: 70, y: 82 };
 
 const weed = (): WeedState => (game.player.weed ??= emptyWeed());
 const euro = (n: number) => `${n.toLocaleString('it-IT')} €`;

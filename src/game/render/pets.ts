@@ -50,7 +50,7 @@ function dims(it: GameValue): { w: number; h: number } {
 
 // ---------------------------------------------------------------- uccellino
 
-export function drawBirdCage(it: GameValue, t: number): void {
+function drawBirdCage(it: GameValue, t: number): void {
   const ctx = game.view.ctx;
   const s = isoScale();
   const { x, y } = it;
@@ -162,7 +162,7 @@ function drawBird(px: number, py: number, s: number, t: number, face: number): v
 
 // ---------------------------------------------------------------- criceto
 
-export function drawHamsterCage(it: GameValue, t: number): void {
+function drawHamsterCage(it: GameValue, t: number): void {
   const ctx = game.view.ctx;
   const s = isoScale();
   const { x, y } = it;
@@ -249,7 +249,7 @@ function drawHamster(px: number, py: number, s: number, t: number, running: bool
 
 // ---------------------------------------------------------------- serpente
 
-export function drawTerrarium(it: GameValue, t: number): void {
+function drawTerrarium(it: GameValue, t: number): void {
   const ctx = game.view.ctx;
   const s = isoScale();
   const { x, y } = it;
@@ -325,7 +325,7 @@ export function drawTerrarium(it: GameValue, t: number): void {
 
 // ---------------------------------------------------------------- pesce
 
-export function drawAquarium(it: GameValue, t: number): void {
+function drawAquarium(it: GameValue, t: number): void {
   const ctx = game.view.ctx;
   const s = isoScale();
   const { x, y } = it;
@@ -405,7 +405,7 @@ export function drawAquarium(it: GameValue, t: number): void {
 
 // ---------------------------------------------------------------- cane e gatto
 
-export interface QuadOpts {
+interface QuadOpts {
   moving: boolean;
   /** Direzione di marcia nel mondo (per girare la testa a destra o a sinistra sullo schermo). */
   dx: number;

@@ -2,9 +2,9 @@
 import { type FurnitureTier, tierOf } from './furniture-tiers.js';
 
 /** Velocità di recupero del sonno dormendo nel letto. */
-export const BED_SLEEP_SPEED: Record<FurnitureTier, number> = { std: 1, premium: 1.25, lux: 1.5 };
+const BED_SLEEP_SPEED: Record<FurnitureTier, number> = { std: 1, premium: 1.25, lux: 1.5 };
 /** Quanto velocemente cala la felicità con la pianta in stanza (1 = senza pianta). */
-export const PLANT_HAPPINESS_DECAY: Record<FurnitureTier, number> = {
+const PLANT_HAPPINESS_DECAY: Record<FurnitureTier, number> = {
   std: 0.6,
   premium: 0.45,
   lux: 0.3,
@@ -20,10 +20,7 @@ export const RELAX_GAIN: Record<'sofa' | 'tv', Record<FurnitureTier, number>> = 
 export const LAMP_LIGHT: Record<FurnitureTier, number> = { std: 150, premium: 170, lux: 190 };
 
 /** Fascia migliore posseduta in una categoria (null se non se ne possiede nessuna). */
-export function bestOwnedTier(
-  owned: Record<string, boolean>,
-  category: string,
-): FurnitureTier | null {
+function bestOwnedTier(owned: Record<string, boolean>, category: string): FurnitureTier | null {
   if (owned[`${category}_lux`]) return 'lux';
   if (owned[`${category}_pre`]) return 'premium';
   if (owned[`${category}_std`]) return 'std';

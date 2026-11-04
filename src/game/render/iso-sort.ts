@@ -32,7 +32,7 @@ export function drawsBefore(a: IsoPart, b: IsoPart): boolean | null {
  * confrontare parti lontane crea vincoli inutili e a volte contraddittori.
  * Proiezione: orizzontale ∝ x − y, verticale ∝ (x + y) / 2 − z.
  */
-export function overlapOnScreen(a: IsoPart, b: IsoPart): boolean {
+function overlapOnScreen(a: IsoPart, b: IsoPart): boolean {
   const ax0 = a.minX - a.maxY,
     ax1 = a.maxX - a.minY,
     bx0 = b.minX - b.maxY,

@@ -9,7 +9,7 @@ export const KISS_DURATION_MS = 4500;
 /** Una richiesta di bacio più vecchia di così non viene più mostrata. */
 export const KISS_REQUEST_TTL_MS = 60_000;
 
-export interface RomanceEntry {
+interface RomanceEntry {
   /** Nome dell'altro giocatore, per i messaggi. */
   name: string;
   /** Dialoghi e complimenti ricevuti da quel giocatore. */

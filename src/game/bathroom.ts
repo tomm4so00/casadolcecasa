@@ -105,7 +105,7 @@ export const myUndressStep = (): number => (game.showerAnim ? game.showerAnim.un
 // ---------------------------------------------------------------- WC e lavandino
 
 /** Felicità data dal WC (si può usare solo DAILY_LIMITS.wc volte al giorno). */
-export const WC_HAPPY = 3;
+const WC_HAPPY = 3;
 const TOILET = { approach: 0.6, sit: 0.35, stay: 2.8, stand: 0.4 };
 const WASH = { approach: 0.6, rub: 2.4 };
 

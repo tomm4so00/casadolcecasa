@@ -280,7 +280,7 @@ export function setFurniturePosition(obj?: GameValue, x?: GameValue, y?: GameVal
 }
 
 // Un oggetto da parete scorre lungo la parete di fondo (y = -180) o quella di sinistra (x = -200).
-export function setWallItemPosition(obj: GameValue, x: number, y: number): void {
+function setWallItemPosition(obj: GameValue, x: number, y: number): void {
   const half = obj.w / 2 + 6;
   const onBack = obj.y <= -160;
   const minX = -200 + half,
@@ -323,6 +323,29 @@ export function toggleSprint(..._args: GameValue[]): GameValue {
   dom('btn-sprint').classList.toggle('active', game.isSprinting);
 }
 
+/** Dove stanno mobili e oggetti di ogni ambiente: il campo di `game` (alcuni si rifanno durante il gioco). */
+const ENV_MAPS: Record<string, string> = {
+  KITCHEN: 'kitchenFurniture',
+  BATHROOM: 'bathroomFurniture',
+  SALOON: 'saloonDoors',
+  CORTILE: 'courtyardDoors',
+  negozio_mobili: 'storeFloorFurniture',
+  negozio_vestiti: 'clothesStoreFurniture',
+  banca: 'bankFurniture',
+  laboratorio: 'artStudioFurniture',
+  ingegneria: 'engineeringFurniture',
+  scommesse: 'bettingFurniture',
+  sala_giochi: 'arcadeFurniture',
+  centro_commerciale: 'mallFurniture',
+  luna: 'moonFurniture',
+  base_lunare: 'moonbaseInsideFurniture',
+  growshop: 'growshopFurniture',
+  negozio_animali: 'petshopFurniture',
+  CIMITERO: 'graveMap',
+  bar: 'barMap',
+  discoteca: 'discoMap',
+};
+
 export function getCurrentFurnitureMap(..._args: GameValue[]): SceneMap {
   if (game.view.activeEnvironment === 'PLAYER_ROOM') {
     if (isMyRoomNow()) return getMyRoomMap();
@@ -343,26 +366,10 @@ export function getCurrentFurnitureMap(..._args: GameValue[]): SceneMap {
     }
     return Object.assign({}, game.playerRoomFurniture);
   }
-  if (game.view.activeEnvironment === 'KITCHEN') return game.kitchenFurniture;
-  if (game.view.activeEnvironment === 'BATHROOM') return game.bathroomFurniture;
-  if (game.view.activeEnvironment === 'SALOON') return game.saloonDoors;
-  if (game.view.activeEnvironment === 'CORTILE') return game.courtyardDoors;
-  if (game.view.activeEnvironment === 'negozio_mobili') return game.storeFloorFurniture;
-  if (game.view.activeEnvironment === 'negozio_vestiti') return game.clothesStoreFurniture;
-  if (game.view.activeEnvironment === 'banca') return game.bankFurniture;
-  if (game.view.activeEnvironment === 'laboratorio') return game.artStudioFurniture;
-  if (game.view.activeEnvironment === 'ingegneria') return game.engineeringFurniture;
-  if (game.view.activeEnvironment === 'scommesse') return game.bettingFurniture;
-  if (game.view.activeEnvironment === 'sala_giochi') return game.arcadeFurniture;
-  if (game.view.activeEnvironment === 'centro_commerciale') return game.mallFurniture;
-  if (game.view.activeEnvironment === 'luna') return game.moonFurniture;
-  if (game.view.activeEnvironment === 'base_lunare') return game.moonbaseInsideFurniture;
-  if (game.view.activeEnvironment === 'growshop') return game.growshopFurniture;
-  if (game.view.activeEnvironment === 'negozio_animali') return game.petshopFurniture;
-  if (game.view.activeEnvironment === 'CIMITERO') return game.graveMap;
-  if (game.MG.active && game.view.activeEnvironment === 'lavoro_' + game.MG.job) return game.MG.map;
-  if (game.view.activeEnvironment === 'bar') return game.barMap;
-  if (game.view.activeEnvironment === 'discoteca') return game.discoMap;
+  const env = game.view.activeEnvironment;
+  const field = ENV_MAPS[env];
+  if (field) return (game as GameValue)[field];
+  if (game.MG.active && env === 'lavoro_' + game.MG.job) return game.MG.map;
   return {};
 }
 
@@ -776,7 +783,7 @@ const OUTSIDE_MENU: Record<'' | 'fun', string[]> = {
 const OUTSIDE_BUTTONS = [...new Set(Object.values(OUTSIDE_MENU).flat())];
 
 /** Mostra i pulsanti del menu di uscita giusti (nessuno se il menu è chiuso). */
-export function renderOutsideMenu(): void {
+function renderOutsideMenu(): void {
   const shown = game.view.isOutsideMenuOpen ? OUTSIDE_MENU[game.view.outsideSubmenu || ''] : [];
   for (const id of OUTSIDE_BUTTONS) dom(id)?.classList.toggle('hidden', !shown.includes(id));
 }
@@ -788,7 +795,7 @@ export function openOutsideSubmenu(sub: string): void {
 }
 
 // Fa comparire il personaggio appena oltre la porta, spostato verso il centro dell'ambiente.
-export function spawnAtDoor(door: GameValue): void {
+function spawnAtDoor(door: GameValue): void {
   if (!door) {
     game.playerPos = { x: 0, y: 0 };
     return;

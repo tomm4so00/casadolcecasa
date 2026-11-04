@@ -95,7 +95,7 @@ async function finishMission(s: WelcomeState, next: WelcomeState): Promise<void>
 }
 
 /** Il messaggio con le istruzioni della missione e i tre pulsanti. */
-export async function offerMission(): Promise<void> {
+async function offerMission(): Promise<void> {
   const s = state();
   if (welcomeFinished(s) || offering) return;
   const m = WELCOME_MISSIONS[s.i];
@@ -138,7 +138,7 @@ export function welcomeTeachesPin(): boolean {
 }
 
 /** Scritta sotto i parametri: la missione in corso e il passo da fare. */
-export function welcomeHudText(): string | null {
+function welcomeHudText(): string | null {
   const s = state();
   if (welcomeFinished(s)) return null;
   const m = WELCOME_MISSIONS[s.i];

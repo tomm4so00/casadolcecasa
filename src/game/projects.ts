@@ -289,7 +289,7 @@ function projectCard(id: ProjectId): string {
     </div>`;
 }
 
-export function renderProjects(): void {
+function renderProjects(): void {
   const modal = dom('projects-modal');
   if (!modal || modal.classList.contains('hidden')) return;
   dom('projects-browser-bar').classList.toggle('hidden', !fromPc);
@@ -322,7 +322,7 @@ async function askDonation(id: ProjectId): Promise<void> {
   await donate(Number(String(res.value || '').trim()), id);
 }
 
-export async function donate(amount: number, id: ProjectId = 'rocket'): Promise<boolean> {
+async function donate(amount: number, id: ProjectId = 'rocket'): Promise<boolean> {
   const p = PROJECTS[id];
   if (!projectUnlocked(id, state.launchAt)) {
     toast('🔒 Questo progetto si sblocca dopo il primo lancio del razzo.', 4500);

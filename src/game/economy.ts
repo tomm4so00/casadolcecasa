@@ -21,7 +21,7 @@ export function syncRoomEconomy(room: RoomState) {
   // Firebase emits local speculative transaction events before the server accepts them.
   if (!wallet?.isPending()) applyConfirmedEconomy(room);
 }
-export function applyConfirmedEconomy(room: RoomState) {
+function applyConfirmedEconomy(room: RoomState) {
   game.vaultCache =
     Number.isSafeInteger(room.vaultMoney) && room.vaultMoney >= 0 ? room.vaultMoney : 0;
   const economy = decodeEconomy(room.economy);

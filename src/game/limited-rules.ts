@@ -3,8 +3,8 @@
 // Il registro (sims_limited/<oggetto>/<numero>) dice chi possiede ogni copia.
 
 export const LIMITED_COPIES = 5;
-export const OFFER_MIN = 1;
-export const OFFER_MAX = 1_000_000;
+const OFFER_MIN = 1;
+const OFFER_MAX = 1_000_000;
 
 export interface LedgerEntry {
   /** Proprietario (playerId) e suo nome. */

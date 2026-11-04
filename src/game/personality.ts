@@ -43,7 +43,7 @@ let offerAsked = false;
  * Chiude la giornata precedente (si chiama anche senza azioni, ogni minuto): avvisa quale
  * personalità ha prevalso, mostra quella appena ottenuta, il nuovo livello o la proposta di cambio.
  */
-export function settlePersonality(): void {
+function settlePersonality(): void {
   if (game.player.isDead || !game.session.saveReady) return;
   const state = (game.player.personality ??= emptyPersonality());
   const { won, reached, levelUp } = settlePersonalityDay(state, new Date());

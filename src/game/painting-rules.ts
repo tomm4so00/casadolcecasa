@@ -7,7 +7,7 @@ export const PAINT_CELLS = PAINT_W * PAINT_H;
 
 /** I primi quadri erano su una tela 40×30: si leggono ancora, ingranditi al doppio. */
 export const OLD_PAINT_W = 40;
-export const OLD_PAINT_H = 30;
+const OLD_PAINT_H = 30;
 export const OLD_PAINT_CELLS = OLD_PAINT_W * OLD_PAINT_H;
 
 /** Tavolozza a 16 colori: l'indice 0 è il bianco della tela. */

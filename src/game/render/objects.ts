@@ -114,7 +114,7 @@ export function box(
 }
 
 /** Per i disegni che non sono box: con un mobile ruotato vengono messi in coda nell'ordine giusto. */
-export function drawDeferred(x: number, y: number, z: number, fn: () => void): void {
+function drawDeferred(x: number, y: number, z: number, fn: () => void): void {
   if (game.furnQueue && game.furnRot?.k) {
     const c = worldPoint(x, y);
     game.furnQueue.push({
@@ -239,7 +239,7 @@ export function isLux(it?: GameValue): GameValue {
 }
 
 // Fascia intermedia fra standard e lusso.
-export function isPremium(it?: GameValue): boolean {
+function isPremium(it?: GameValue): boolean {
   return tierOfPlaced(it || {}) === 'premium';
 }
 

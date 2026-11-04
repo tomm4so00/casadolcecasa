@@ -146,7 +146,7 @@ function become(state: PersonalityState, id: PersonalityId): void {
   delete state.offer;
 }
 
-export interface DayOutcome {
+interface DayOutcome {
   /** Chi ha prevalso nella giornata chiusa. */
   won: PersonalityId | null;
   /** Personalità appena ottenuta (la prima volta). */
@@ -324,13 +324,13 @@ export function decodePersonality(value: unknown): PersonalityState {
 
 /** Premi per livello (indice 0 = livello 1). */
 /** Offerte dei collezionisti per l'Artista: +25%, +40%, +60%. */
-export const ARTIST_OFFER_BONUS = [1.25, 1.4, 1.6] as const;
+const ARTIST_OFFER_BONUS = [1.25, 1.4, 1.6] as const;
 /** Interesse giornaliero sul conto per l'Imprenditore: 1%, 1,5%, 2%. */
-export const BANK_INTEREST_PER_DAY = [0.01, 0.015, 0.02] as const;
+const BANK_INTEREST_PER_DAY = [0.01, 0.015, 0.02] as const;
 /** Al massimo si recuperano gli interessi di una settimana di assenza. */
-export const INTEREST_MAX_DAYS = 7;
+const INTEREST_MAX_DAYS = 7;
 /** Tentativi di furto per il Criminale: 4, 5, 6 (chi non è Criminale ne ha 3). */
-export const CRIMINAL_THEFT_TRIES = [4, 5, 6] as const;
+const CRIMINAL_THEFT_TRIES = [4, 5, 6] as const;
 /** Premio giornaliero del Romanticone (salute e felicità): +10%, +15%, +20%. */
 export const ROMANTIC_DAILY_BONUS = [10, 15, 20] as const;
 

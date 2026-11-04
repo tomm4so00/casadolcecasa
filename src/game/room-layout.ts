@@ -9,7 +9,7 @@ export const SAFE_SPOT = { x: -182, y: 20 };
 /** Metà della larghezza della cassaforte lungo la parete, con un po' di margine per i quadri. */
 export const SAFE_WALL_HALF = 26;
 
-export interface Rect {
+interface Rect {
   minX: number;
   maxX: number;
   minY: number;

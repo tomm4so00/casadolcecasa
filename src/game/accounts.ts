@@ -112,7 +112,7 @@ export function rememberedGoogleUser(): Promise<firebase.User | null> {
   });
 }
 
-export async function authenticateWithGoogle() {
+async function authenticateWithGoogle() {
   const auth = googleAuth();
   let user = auth.currentUser;
   if (!user || (await user.getIdTokenResult()).signInProvider !== 'google.com')

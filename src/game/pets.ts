@@ -62,7 +62,7 @@ export const PET_OF_KEY: Record<string, PetKind> = Object.fromEntries(
 
 const book = (): PetBook => (game.player.pets ??= {});
 const depletion = (): number => game.HUNGER_AWAKE_DEPLETION_SEC;
-export const hungerOf = (kind: PetKind): number => {
+const hungerOf = (kind: PetKind): number => {
   const p = book()[kind];
   return p ? petHunger(p, Date.now(), depletion()) : 100;
 };
@@ -540,7 +540,7 @@ const dyingWarned = new Set<PetKind>();
  * Controlla gli animali: avvisa quando la fame arriva a zero e, se restano senza cibo per 24 ore,
  * muoiono e il giocatore perde il 50% di felicità. Vale anche per il tempo a gioco chiuso.
  */
-export function checkPetHealth(): void {
+function checkPetHealth(): void {
   if (!game.session.saveReady || game.player.isDead) return;
   const now = Date.now();
   for (const kind of PET_KINDS) {

@@ -17,11 +17,11 @@ export interface NeedsRules {
   drugTaperHours: number;
 }
 /** Sotto questa felicità ci si intristisce e la salute cala piano… */
-export const SAD_HAPPINESS = 10;
+const SAD_HAPPINESS = 10;
 /** …di tanti punti all'ora. */
-export const SAD_HEALTH_PER_HOUR = 1;
+const SAD_HEALTH_PER_HOUR = 1;
 
-export function dependencyRate(drug: DrugState, now: number, rules: NeedsRules): number {
+function dependencyRate(drug: DrugState, now: number, rules: NeedsRules): number {
   if (!drug.active || now >= drug.endAt) return 0;
   const hours = drug.crisisAt ? (now - drug.crisisAt) / 3600000 : -1;
   const peak =

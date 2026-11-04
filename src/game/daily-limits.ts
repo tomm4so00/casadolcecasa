@@ -13,7 +13,7 @@ export const DAILY_LIMITS = {
   /** Passeggiata 🌳 */
   walk: 3,
 } as const;
-export type DailyAction = keyof typeof DAILY_LIMITS;
+type DailyAction = keyof typeof DAILY_LIMITS;
 
 export interface DailyUses {
   /** Giorno (AAAA-MM-GG) a cui si riferiscono i conteggi. */

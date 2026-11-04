@@ -72,7 +72,7 @@ const optionalFields = (
   fields: string[],
   validate: (entry: unknown) => boolean,
 ) => fields.every((key) => value[key] === undefined || validate(value[key]));
-export type ValidatedSave = Partial<SaveV8> & { savedAt: number };
+type ValidatedSave = Partial<SaveV8> & { savedAt: number };
 
 /** Validate untrusted JSON before allowing it into typed character state. Keep v8 extensions. */
 export function decodeSaveV8(value: unknown): ValidatedSave | null {

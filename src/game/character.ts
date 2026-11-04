@@ -208,7 +208,7 @@ function itemThumbHtml(it: GameValue): string {
 }
 
 // Disegna il capo indossato da un manichino, inquadrato sulla parte del corpo giusta.
-export function drawItemThumb(cv: HTMLCanvasElement, it: GameValue): void {
+function drawItemThumb(cv: HTMLCanvasElement, it: GameValue): void {
   const look: GameValue = resolveLook({ [it.slot]: it.id });
   look.mannequin = true;
   const [z0, z1] = THUMB_FRAME[it.slot] || [0, 70];
@@ -336,7 +336,7 @@ export async function buyClothing(id: string): Promise<void> {
 }
 
 /** Rivende un vestito comprato: si riprende l'85% del prezzo; se lo indossavi torna quello base. */
-export async function sellClothing(id: string): Promise<void> {
+async function sellClothing(id: string): Promise<void> {
   const it: GameValue = itemById(id);
   if (!it || it.starter || !game.player.ownedItems[id]) return;
   const refund = resaleValue(it.price);

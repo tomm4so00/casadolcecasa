@@ -26,7 +26,7 @@ export interface ViewOverride {
   scale: number;
 }
 /** Un oggetto di una scena: mobile, porta, bancone… (catalogues.ts). */
-export interface MapItem extends Point {
+interface MapItem extends Point {
   w: number;
   h: number;
   z?: number;
@@ -50,7 +50,7 @@ export interface MapItem extends Point {
   [extra: string]: unknown;
 }
 export type SceneMap = Record<string, MapItem>;
-export interface Investment {
+interface Investment {
   units: number;
   cost: number;
 }

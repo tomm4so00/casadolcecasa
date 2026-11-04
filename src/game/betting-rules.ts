@@ -6,7 +6,7 @@
 export const SLOT_BET = 5;
 
 /** Simboli dei rulli, con quante volte compaiono su 100 (i più rari pagano di più). */
-export const SLOT_SYMBOLS = [
+const SLOT_SYMBOLS = [
   { id: 'cherry', emoji: '🍒', weight: 30 },
   { id: 'lemon', emoji: '🍋', weight: 25 },
   { id: 'bell', emoji: '🔔', weight: 20 },
@@ -18,7 +18,7 @@ export const SLOT_SYMBOLS = [
 export type SlotSymbol = (typeof SLOT_SYMBOLS)[number]['id'];
 
 /** Quante volte la puntata si vince con tre simboli uguali. */
-export const SLOT_THREE: Record<SlotSymbol, number> = {
+const SLOT_THREE: Record<SlotSymbol, number> = {
   cherry: 5,
   lemon: 10,
   bell: 20,
@@ -27,7 +27,7 @@ export const SLOT_THREE: Record<SlotSymbol, number> = {
   seven: 300,
 };
 /** Due simboli uguali: pagano solo ciliegie (riprendi la puntata), diamanti e sette. */
-export const SLOT_TWO: Partial<Record<SlotSymbol, number>> = { cherry: 1, diamond: 2, seven: 3 };
+const SLOT_TWO: Partial<Record<SlotSymbol, number>> = { cherry: 1, diamond: 2, seven: 3 };
 
 const TOTAL_WEIGHT = SLOT_SYMBOLS.reduce((sum, s) => sum + s.weight, 0);
 

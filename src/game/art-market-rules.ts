@@ -8,14 +8,14 @@ export const BOT_DELAY_MIN_MS = 3 * 3600 * 1000;
 export const BOT_DELAY_MAX_MS = 72 * 3600 * 1000;
 
 /** Offerte dei collezionisti: crescono con i quadri già venduti. */
-export const BOT_TIERS = [
+const BOT_TIERS = [
   { fromSold: 0, min: 10, max: 50 },
   { fromSold: 3, min: 30, max: 90 },
   { fromSold: 7, min: 70, max: 150 },
   { fromSold: 15, min: 150, max: 300 },
 ] as const;
 
-export interface SaleListing {
+interface SaleListing {
   price: number;
   /** Momento della messa in vendita. */
   t: number;

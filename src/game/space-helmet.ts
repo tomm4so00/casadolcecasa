@@ -7,9 +7,9 @@ import { sendNotify } from './needs.js';
 import { sfx } from './audio.js';
 import { ownsItem } from './character.js';
 
-export const SPACE_HELMET = 'hat_space';
+const SPACE_HELMET = 'hat_space';
 /** Salute persa ogni secondo sulla luna senza casco. */
-export const NO_HELMET_DAMAGE_PER_SEC = 1;
+const NO_HELMET_DAMAGE_PER_SEC = 1;
 /** Ogni quanto ricordare di tornare indietro (secondi). */
 const REMIND_EVERY = 25;
 
@@ -18,7 +18,7 @@ let lastEnv = '';
 let savedHat: string | null | undefined;
 let nextRemindAt = 0;
 
-export const hasSpaceHelmet = (): boolean => !!ownsItem(SPACE_HELMET);
+const hasSpaceHelmet = (): boolean => !!ownsItem(SPACE_HELMET);
 
 /** Ogni fotogramma: casco addosso sulla luna, e salute che scende a chi non ce l'ha. */
 export function updateSpaceHelmet(dt: number, t: number): void {

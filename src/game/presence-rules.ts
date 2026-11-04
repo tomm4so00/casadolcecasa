@@ -19,7 +19,7 @@ export interface PresenceInfo {
   act?: string;
 }
 
-export type PresenceState = 'online' | 'offline' | 'fainted' | 'sleeping' | 'gone';
+type PresenceState = 'online' | 'offline' | 'fainted' | 'sleeping' | 'gone';
 
 /** Momento in cui il sonno di chi è uscito sveglio arriva a zero. */
 export function faintTime(sleep: number, offAt: number, sleepDepletionSec: number): number {

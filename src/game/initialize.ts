@@ -1,18 +1,8 @@
+import { MOONBASE_PARTS } from './render/moonbase.js';
 import { canSellJoint } from './weed.js';
-import { drawGoldStatue, drawJukebox } from './render/limited-props.js';
-import { drawBNTable, drawC4Table, drawReflexCabinet } from './render/arcade-props.js';
-import {
-  MOONBASE_DRAW,
-  MOONBASE_INSIDE_DRAW,
-  MOONBASE_PARTS,
-  drawBaseConsole,
-  drawBaseDoor,
-  drawMoonScreen,
-} from './render/moonbase.js';
-import { drawPetBubble, drawPetHome, drawPetShelf, drawShopPet } from './render/pets.js';
-import { homeBubble } from './pets.js';
-import type { PetKind } from './pet-rules.js';
+
 import { canKiss } from './romance.js';
+import { registerDrawers } from './render/registry.js';
 import { applyRoomBounds, growSceneData } from './room-size.js';
 import { startMarket } from './market-client.js';
 import { resetEconomy } from './economy.js';
@@ -56,112 +46,13 @@ import { hasRoom } from './saves.js';
 import { toast } from './missions.js';
 import { musicTick, musicUnlock } from './audio.js';
 import { resizeCanvas, startGame } from './interface.js';
-import { drawCoffeeMachine, tickNeeds } from './needs.js';
+import { tickNeeds } from './needs.js';
 import { bizUpdate, mktPrice } from './business.js';
 import { closeGlobalChat, sendChat } from './chat.js';
 import { mixColor } from './render/primitives.js';
-import {
-  drawArchiveProp,
-  drawBallProp,
-  drawBarCounterProp,
-  drawBathmatProp,
-  drawBed,
-  drawBenchProp,
-  drawBricksProp,
-  drawChefStoveProp,
-  drawConeProp,
-  drawConsoleProp,
-  drawCoolerProp,
-  drawCounter,
-  drawCraneProp,
-  drawDesk,
-  drawDinnerTableProp,
-  drawDiscoBallProp,
-  drawDjBoothProp,
-  drawFlowersProp,
-  drawFountainProp,
-  drawRealtyBoardProp,
-  drawGossipBoardProp,
-  drawHeartMonitorProp,
-  drawHospitalBedProp,
-  drawIvStandProp,
-  drawJukeboxProp,
-  drawLamp,
-  drawMedCabinetProp,
-  drawMixerProp,
-  drawNightstand,
-  drawOfficeDeskProp,
-  drawPalmProp,
-  drawPlant,
-  drawRestCounterProp,
-  drawRoundTableProp,
-  drawSafe,
-  drawSandcastleProp,
-  drawShower,
-  drawSink,
-  drawSofa,
-  drawSpeakerProp,
-  drawStoolProp,
-  drawStove,
-  drawStreetLampProp,
-  drawSunbedProp,
-  drawTV,
-  drawTableProp,
-  drawToilet,
-  drawTreeProp,
-  drawUmbrellaProp,
-  drawWaitingChairsProp,
-  drawWardrobe,
-} from './render/objects.js';
-import {
-  drawRocketProp,
-  drawRocketPad,
-  drawMoonRocket,
-  drawCraterProp,
-  drawMoonRockProp,
-  drawMoonFlagProp,
-  drawLaunchButton,
-  drawProjectBoard,
-  drawWorkbench,
-  drawMoonSignProp,
-  drawLabWall,
-  drawLabDoor,
-} from './render/rocket.js';
-import { drawSlotMachine, drawRpsTable } from './render/arcade-props.js';
-import {
-  drawShopFacade,
-  drawMallColumnProp,
-  drawMallPalmProp,
-  drawIceCreamCartProp,
-  drawBalloonStandProp,
-  drawMannequinProp,
-} from './render/mall.js';
-import { drawWeedPot, drawWeedJar, drawStrainDisplay } from './render/weed-props.js';
-import { drawFridge } from './render/fridge.js';
-import { drawBankCounter } from './render/bank.js';
-import { drawEasel, drawPaintTableProp } from './render/studio.js';
-import { drawGraveProp, drawMemorialProp, rebuildGraveyard } from './render/graveyard.js';
-import {
-  wallBottles,
-  wallCabinets,
-  wallClock,
-  wallCross,
-  wallLogo,
-  wallMenu,
-  wallMirror,
-  wallNeon,
-  wallPainting,
-  wallPoster,
-  wallShelf,
-  wallTowels,
-  wallWhiteboard,
-  wallVaultDoor,
-  wallRoomPainting,
-  wallSafe,
-  wallWindow,
-  wallRocketPlaque,
-  wallAdScreen,
-} from './render/scenes.js';
+
+import { rebuildGraveyard } from './render/graveyard.js';
+
 import { firebaseOptions, isLocalMode, createDatabase } from './runtime.js';
 export function initializeGame() {
   const canvas = document.getElementById('game-canvas');
@@ -665,72 +556,8 @@ export function initializeGame() {
   game._rgbCache = {};
   game.lighten = (c?: GameValue, t?: GameValue): GameValue => mixColor(c, '#ffffff', t);
   game.darken = (c?: GameValue, t?: GameValue): GameValue => mixColor(c, '#000000', t);
-  game.FURNITURE_DRAW = {
-    bed: drawBed,
-    wardrobe: drawWardrobe,
-    desk: drawDesk,
-    nightstand: drawNightstand,
-    lamp: drawLamp,
-    sofa: drawSofa,
-    tv: drawTV,
-    plant: drawPlant,
-    safe: drawSafe,
-    stove: drawStove,
-    fridge: drawFridge,
-    bankCounter: drawBankCounter,
-    easel1: drawEasel,
-    easel2: drawEasel,
-    easel3: drawEasel,
-    projectBoard: drawProjectBoard,
-    workbench: drawWorkbench,
-    rocketPad: drawRocketPad,
-    slot1: drawSlotMachine,
-    slot2: drawSlotMachine,
-    slot3: drawSlotMachine,
-    rpsTable: drawRpsTable,
-    tableC4: drawC4Table,
-    tableBN: drawBNTable,
-    reflexCab: drawReflexCabinet,
-    shopFurniture: drawShopFacade,
-    shopClothes: drawShopFacade,
-    shopBetting: drawShopFacade,
-    shopArcade: drawShopFacade,
-    ltd_statue: drawGoldStatue,
-    ltd_jukebox: drawJukebox,
-    moonRocket: drawMoonRocket,
-    weedPot: drawWeedPot,
-    // schermo del laboratorio con la diretta dalla base lunare
-    moonScreen: drawMoonScreen,
-    // base lunare: ingresso sulla luna e pannello di controllo dentro
-    baseDoor: drawBaseDoor,
-    baseConsole: drawBaseConsole,
-    // animali: casette nella stanza (con il fumetto se hanno fame) ed espositori del negozio
-    petBird: (it: GameValue, t: GameValue) => drawPetHomeWithBubble('bird', it, t),
-    petHamster: (it: GameValue, t: GameValue) => drawPetHomeWithBubble('hamster', it, t),
-    petSnake: (it: GameValue, t: GameValue) => drawPetHomeWithBubble('snake', it, t),
-    petFish: (it: GameValue, t: GameValue) => drawPetHomeWithBubble('fish', it, t),
-    petDog: () => {},
-    petCat: () => {},
-    shopDog: drawShopPet,
-    shopCat: drawShopPet,
-    shopBird: drawShopPet,
-    shopHamster: drawShopPet,
-    shopSnake: drawShopPet,
-    shopFish: drawShopPet,
-    weedJar: drawWeedJar,
-    strainLemon: drawStrainDisplay,
-    strainAmnesia: drawStrainDisplay,
-    strainPurple: drawStrainDisplay,
-    shopGrow: drawShopFacade,
-    shopPets: drawShopFacade,
-    launchButton: drawLaunchButton,
-    coffee: drawCoffeeMachine,
-    toilet: drawToilet,
-    sink: drawSink,
-    shower: drawShower,
-    shopCounter: drawCounter,
-    petCounter: drawCounter,
-  };
+  // come si disegnano mobili, oggetti di scena e decorazioni a parete
+  registerDrawers();
   game.discoRGB = (h?: GameValue): GameValue => {
     const f: GameValue = (n?: GameValue): GameValue => {
       const k: GameValue = (n + h / 60) % 6;
@@ -741,66 +568,6 @@ export function initializeGame() {
   game.DISCO_PRICE = 20;
   game.DISCO_HAPPY = 35;
   game.DISCO_SLEEP = 15;
-  game.PROP_DRAW = {
-    // muro di fondo e porta del laboratorio ingegneristico (dietro c'è la zona esterna)
-    labWall: drawLabWall,
-    labDoor: drawLabDoor,
-    grave: drawGraveProp,
-    memorial: drawMemorialProp,
-    tree: drawTreeProp,
-    fountain: drawFountainProp,
-    realtyBoard: drawRealtyBoardProp,
-    gossipBoard: drawGossipBoardProp,
-    bench: drawBenchProp,
-    streetlamp: drawStreetLampProp,
-    flowers: drawFlowersProp,
-    rocket: drawRocketProp,
-    crater: drawCraterProp,
-    moonRock: drawMoonRockProp,
-    moonFlag: drawMoonFlagProp,
-    ...MOONBASE_DRAW,
-    ...MOONBASE_INSIDE_DRAW,
-    petShelf: drawPetShelf,
-    mallColumn: drawMallColumnProp,
-    mallPalm: drawMallPalmProp,
-    iceCreamCart: drawIceCreamCartProp,
-    balloonStand: drawBalloonStandProp,
-    moonSign: drawMoonSignProp,
-    palm: drawPalmProp,
-    umbrella: drawUmbrellaProp,
-    sunbed: drawSunbedProp,
-    sandcastle: drawSandcastleProp,
-    ball: drawBallProp,
-    crane: drawCraneProp,
-    bricks: drawBricksProp,
-    mixer: drawMixerProp,
-    cone: drawConeProp,
-    hospitalBed: drawHospitalBedProp,
-    ivStand: drawIvStandProp,
-    heartMonitor: drawHeartMonitorProp,
-    medCabinet: drawMedCabinetProp,
-    waitingChairs: drawWaitingChairsProp,
-    restCounter: drawRestCounterProp,
-    chefStove: drawChefStoveProp,
-    dinnerTable: drawDinnerTableProp,
-    officeDesk: drawOfficeDeskProp,
-    archive: drawArchiveProp,
-    cooler: drawCoolerProp,
-    djBooth: drawDjBoothProp,
-    speaker: drawSpeakerProp,
-    discoBall: drawDiscoBallProp,
-    barCounter: drawBarCounterProp,
-    stool: drawStoolProp,
-    roundTable: drawRoundTableProp,
-    jukebox: drawJukeboxProp,
-    plant: (it?: GameValue, t?: GameValue): GameValue =>
-      drawPlant(Object.assign({ name: '' }, it), t),
-    table: drawTableProp,
-    mannequin: drawMannequinProp,
-    console: drawConsoleProp,
-    bathmat: drawBathmatProp,
-    paintTable: drawPaintTableProp,
-  };
   game.graveList = [];
   game.graveMap = {};
   game.ENV_PROPS = structuredClone(ENV_PROPS);
@@ -822,30 +589,6 @@ export function initializeGame() {
   game.ENV_STYLE = structuredClone(ENV_STYLE);
   applyRoomBounds('');
   growSceneData();
-  game.WALL_DECOR = {
-    window: (d?: GameValue, ctxInfo?: GameValue): GameValue =>
-      wallWindow(d, ctxInfo.hour, ctxInfo.wallH),
-    painting: wallPainting,
-    shelf: wallShelf,
-    cabinets: wallCabinets,
-    mirror: wallMirror,
-    towels: wallTowels,
-    bottles: wallBottles,
-    poster: wallPoster,
-    logo: wallLogo,
-    cross: wallCross,
-    menu: wallMenu,
-    whiteboard: wallWhiteboard,
-    vaultDoor: wallVaultDoor,
-  };
-  game.WALL_DECOR_DYNAMIC = {
-    clock: wallClock,
-    neon: wallNeon,
-    roomPainting: wallRoomPainting,
-    wallSafe,
-    rocketPlaque: wallRocketPlaque,
-    adScreen: wallAdScreen,
-  };
   game.bgCache = { key: '', canvas: null };
   game.lightCanvas = null;
   game.SKIN_TONES = ['#ffdbac', '#f1c27d', '#e0ac69', '#c68642', '#8d5524'];
@@ -866,11 +609,4 @@ export function initializeGame() {
   ];
   game.lastTime = performance.now();
   game.animClock = 0;
-}
-
-/** Casetta di un animale nella stanza, con il fumetto quando ha fame o ha appena mangiato. */
-function drawPetHomeWithBubble(kind: PetKind, it: GameValue, t: number): void {
-  drawPetHome(kind, it, t || 0);
-  const text = homeBubble(kind, t || 0);
-  if (text) drawPetBubble(it.x, it.y, (it.z || 30) + 6, text);
 }

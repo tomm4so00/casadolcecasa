@@ -313,7 +313,7 @@ export function onArtSold(buyer: string, amount: number): void {
 // ---------------------------------------------------------------- offerte dei collezionisti
 
 /** Controlla gli annunci: se è arrivato il momento, un collezionista fa la sua offerta. */
-export async function checkBotOffers(): Promise<void> {
+async function checkBotOffers(): Promise<void> {
   if (offerOpen || game.dialogResolve || !hasRoom() || game.player.isDead) return;
   const room = myRoom();
   const hung = roomPaintings(room);

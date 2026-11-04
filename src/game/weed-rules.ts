@@ -11,10 +11,10 @@ export const STRAINS: Record<
   amnesia: { name: 'Amnesia', price: 150, leaf: '#388e3c', bud: '#a5d6a7', hair: '#ffffff' },
   purple: { name: 'Purple Haze', price: 180, leaf: '#2e7d32', bud: '#8e24aa', hair: '#ff8a65' },
 };
-export const isStrain = (v: unknown): v is StrainId => typeof v === 'string' && v in STRAINS;
+const isStrain = (v: unknown): v is StrainId => typeof v === 'string' && v in STRAINS;
 
 /** Giorni (reali) prima del raccolto per la varietà di riferimento (quella da 150 €). */
-export const GROW_DAYS = 5;
+const GROW_DAYS = 5;
 export const GROW_MS = GROW_DAYS * 24 * 3600 * 1000;
 /** Prezzo della varietà che cresce in GROW_DAYS. */
 const BASE_PRICE = 150;
@@ -34,7 +34,7 @@ export function growMsFor(strain?: StrainId): number {
 /** Grammi che una pianta mette nel barattolo. */
 export const HARVEST_GRAMS = 100;
 /** Ogni canna usa 1 grammo, alza la felicità del 10% e si vende a 5 €. */
-export const JOINT_GRAMS = 1;
+const JOINT_GRAMS = 1;
 export const JOINT_HAPPY = 10;
 export const JOINT_PRICE = 5;
 

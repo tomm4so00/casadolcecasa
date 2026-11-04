@@ -40,7 +40,7 @@ import { finishCreator, openCharacterCreator, randomizeCreator } from './render/
 /** Attività del sito degli investimenti (tutte, non solo le tre di partenza). */
 const isBusinessId = (id: unknown): id is BusinessId => BUSINESSES.some((b) => b.id === id);
 export type UiArgument = string | number | boolean | null;
-export type UiAction = (args: readonly UiArgument[]) => unknown;
+type UiAction = (args: readonly UiArgument[]) => unknown;
 export const uiActions: Readonly<Record<string, UiAction>> = {
   openMissions: () => openMissions(),
   toggleSound: () => toggleSound(),

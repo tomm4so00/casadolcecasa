@@ -107,7 +107,7 @@ export function bnRandomFleet(rnd: () => number = Math.random): string {
 
 export const bnEmptyShots = (): string => '.'.repeat(BN_CELLS);
 
-export type ShotResult = 'miss' | 'hit' | 'sunk';
+type ShotResult = 'miss' | 'hit' | 'sunk';
 
 /**
  * Colpo sulla casella `i` della flotta avversaria. `shots`: 'x' colpito, 'o' acqua, '.' non ancora.

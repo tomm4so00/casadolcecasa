@@ -14,7 +14,7 @@ interface Sprite {
 }
 
 /** Spazio attorno al punto a terra in cui può stare il disegno (in unità della scena). */
-export interface SpriteBounds {
+interface SpriteBounds {
   left: number;
   right: number;
   up: number;

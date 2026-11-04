@@ -21,7 +21,7 @@ export function mountLatestGame() {
   return disposeLatestGame;
 }
 
-export async function disposeLatestGame() {
+async function disposeLatestGame() {
   if (!lifetime.active) return;
   const reference =
     game.session.db && game.session.myPlayerId && (game.session.OFFLINE || game.session.authUid)

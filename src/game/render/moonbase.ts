@@ -9,7 +9,7 @@ type Pt = { x: number; y: number };
 const P = (x: number, y: number, z: number): Pt => isoProject(x, y, z);
 
 /** Centro della base sulla luna (per inquadrarla nella diretta). */
-export const BASE_CENTER = { x: 175, y: -5 };
+const BASE_CENTER = { x: 175, y: -5 };
 
 /**
  * Pezzi della base: `stage` = fase del progetto da cui si vedono; `until` = fase da cui spariscono

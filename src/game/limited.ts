@@ -47,7 +47,7 @@ const ref = (item: string, n: number | string): GameValue =>
   game.session.db.ref(`sims_limited/${item}/${n}`);
 
 /** Nome dell'oggetto (vestito o mobile). */
-export function limitedName(item: string): string {
+function limitedName(item: string): string {
   const cloth = (game.shopCatalog || []).find((i: GameValue) => i.id === item);
   const furn = LIMITED_FURNITURE.find((f) => f.id === item);
   return cloth?.name || furn?.name || item;
@@ -316,7 +316,7 @@ async function takeOffer(o: LimitedOffer): Promise<boolean> {
 }
 
 /** Il proprietario valuta un'offerta: accetta o rifiuta, una volta sola. */
-export async function reviewOffer(o: LimitedOffer): Promise<void> {
+async function reviewOffer(o: LimitedOffer): Promise<void> {
   if (reviewing) return;
   reviewing = true;
   try {

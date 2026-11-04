@@ -23,7 +23,7 @@ let wasSick: boolean | null = null;
 let nextSneezeAt = 0;
 
 /** Lo stato dell'influenza del giocatore, con la prossima influenza spontanea già in programma. */
-export function myFlu(): FluState {
+function myFlu(): FluState {
   const flu = game.player.flu || (game.player.flu = healthyFlu());
   if (!flu.nextAt) flu.nextAt = nextFluAt(Date.now(), Math.random());
   return flu;
