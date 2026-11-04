@@ -736,7 +736,7 @@ export function wallClock(d?: GameValue): GameValue {
     r: GameValue = 11;
   if (d.side) {
     // orologio in rilievo: ombra sul muro, cassa tonda spessa 4 e quadrante sul davanti
-    const H = wallHere();
+    const H: number = d.wallH || wallHere();
     ctx.fillStyle = 'rgba(0,0,0,0.22)';
     ctx.beginPath();
     ctx.arc(u + 2, t + 3, r + 2, 0, 6.3);
@@ -1250,7 +1250,10 @@ export function drawDynamicWalls(st?: GameValue, t?: GameValue): GameValue {
   );
   if (labLive.length) {
     setPlane([game.X0, game.Y1, st.lab.wallH], [0, -1, 0], [0, 0, -1]);
-    labLive.forEach((d: GameValue) => game.WALL_DECOR_DYNAMIC[d.t](d, t));
+    // la parete del laboratorio è più bassa di quelle della stanza: l'altezza va passata
+    labLive.forEach((d: GameValue) =>
+      game.WALL_DECOR_DYNAMIC[d.t]({ ...d, side: 'left', wallH: st.lab.wallH }, t),
+    );
     resetPlane();
   }
   if (st.outdoor && !st.fence) return;

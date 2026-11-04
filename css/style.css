@@ -601,27 +601,6 @@ input[type='number'] {
   gap: 8px;
   border-bottom: 1px solid #333;
 }
-.browser-dot {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  background: #ff4757;
-}
-.browser-dot:nth-child(2) {
-  background: #feca57;
-}
-.browser-dot:nth-child(3) {
-  background: #2ed573;
-}
-.browser-url {
-  background: #2a2a3d;
-  padding: 4px 12px;
-  border-radius: 6px;
-  font-size: 0.8rem;
-  color: #aaa;
-  flex-grow: 1;
-  margin-left: 10px;
-}
 .chat-title {
   flex-grow: 1;
   font-weight: bold;

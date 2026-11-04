@@ -582,10 +582,16 @@
 <div id="pc-modal" class="fullscreen-modal hidden" style="z-index: 490">
   <div class="browser-window">
     <div class="browser-header">
-      <div class="browser-dot"></div>
-      <div class="browser-dot"></div>
-      <div class="browser-dot"></div>
-      <div class="browser-url">🖥️ Il mio PC — Siti preferiti</div>
+      <div class="chat-title">🖥️ Il mio PC</div>
+      <button
+        class="browser-close"
+        data-action="closeModal"
+        data-args='["pc-modal"]'
+        title="Chiudi"
+        aria-label="Chiudi"
+      >
+        ✕
+      </button>
     </div>
     <div class="browser-body">
       <h3 style="text-align: center">🖥️ Dove vuoi andare?</h3>
@@ -650,14 +656,6 @@
         </div>
         <span>›</span>
       </button>
-      <button
-        class="btn-primary"
-        style="margin-top: auto"
-        data-action="closeModal"
-        data-args='["pc-modal"]'
-      >
-        Spegni il PC
-      </button>
     </div>
   </div>
 </div>
@@ -666,10 +664,16 @@
 <div id="art-modal" class="fullscreen-modal hidden">
   <div class="browser-window">
     <div class="browser-header">
-      <div class="browser-dot"></div>
-      <div class="browser-dot"></div>
-      <div class="browser-dot"></div>
-      <div class="browser-url">🌐 https://www.quadrivendo.it/galleria</div>
+      <div class="chat-title">🖼️ quadrivendo.it</div>
+      <button
+        class="browser-close"
+        data-action="closeModal"
+        data-args='["art-modal"]'
+        title="Chiudi"
+        aria-label="Chiudi"
+      >
+        ✕
+      </button>
     </div>
     <div class="browser-body">
       <h3 style="color: #e17055; text-align: center">🖼️ QuadriVendo — la galleria dei giocatori</h3>
@@ -696,7 +700,6 @@
       </div>
       <div id="art-list" class="art-list"></div>
     </div>
-    <button class="btn-primary" data-action="closeModal" data-args='["art-modal"]'>Chiudi</button>
   </div>
 </div>
 
@@ -750,10 +753,16 @@
 <div id="projects-modal" class="fullscreen-modal hidden">
   <div class="browser-window">
     <div id="projects-browser-bar" class="browser-header">
-      <div class="browser-dot"></div>
-      <div class="browser-dot"></div>
-      <div class="browser-dot"></div>
-      <div class="browser-url">🌐 https://www.progettinsieme.it/razzo</div>
+      <div class="chat-title">🚀 progettinsieme.it</div>
+      <button
+        class="browser-close"
+        data-action="closeModal"
+        data-args='["projects-modal"]'
+        title="Chiudi"
+        aria-label="Chiudi"
+      >
+        ✕
+      </button>
     </div>
     <div class="browser-body">
       <h3 id="projects-title" style="color: #74b9ff; text-align: center">
@@ -770,10 +779,16 @@
 <div id="biz-modal" class="fullscreen-modal hidden">
   <div class="browser-window">
     <div class="browser-header">
-      <div class="browser-dot"></div>
-      <div class="browser-dot"></div>
-      <div class="browser-dot"></div>
-      <div class="browser-url">🌐 https://www.bizlancio.it/investi</div>
+      <div class="chat-title">📈 bizlancio.it</div>
+      <button
+        class="browser-close"
+        data-action="closeModal"
+        data-args='["biz-modal"]'
+        title="Chiudi"
+        aria-label="Chiudi"
+      >
+        ✕
+      </button>
     </div>
     <div class="browser-body">
       <h3 style="color: #2ed573; text-align: center">📈 Bizlancio — il tuo business online</h3>
@@ -793,14 +808,6 @@
       ></div>
       <p id="market-status" role="status">In attesa delle quotazioni?</p>
       <div id="biz-list" style="display: flex; flex-direction: column; gap: 10px"></div>
-      <button
-        class="btn-primary"
-        style="margin-top: auto"
-        data-action="closeModal"
-        data-args='["biz-modal"]'
-      >
-        Chiudi sito
-      </button>
     </div>
   </div>
 </div>
@@ -857,10 +864,16 @@
 <div id="furniture-shop-modal" class="fullscreen-modal hidden">
   <div class="browser-window">
     <div class="browser-header">
-      <div class="browser-dot"></div>
-      <div class="browser-dot"></div>
-      <div class="browser-dot"></div>
-      <div class="browser-url">🌐 https://www.arredocasa.it/catalogo</div>
+      <div class="chat-title">🛋️ arredocasa.it</div>
+      <button
+        class="browser-close"
+        data-action="closeModal"
+        data-args='["furniture-shop-modal"]'
+        title="Chiudi"
+        aria-label="Chiudi"
+      >
+        ✕
+      </button>
     </div>
     <div class="browser-body">
       <h3 style="color: #e67e22; text-align: center">🛋️ Showroom Negozio di Mobili</h3>
@@ -872,14 +885,6 @@
         id="furniture-catalog-container"
         style="display: flex; flex-direction: column; gap: 10px"
       ></div>
-      <button
-        class="btn-primary"
-        style="margin-top: auto"
-        data-action="closeModal"
-        data-args='["furniture-shop-modal"]'
-      >
-        Chiudi Showroom
-      </button>
     </div>
   </div>
 </div>

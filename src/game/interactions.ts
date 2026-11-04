@@ -760,9 +760,10 @@ function walkZones(): WalkZone[] {
 let walkEnv = '';
 // Appena arrivati si è davanti alla porta da cui si entra (nel salone il portone è in fondo come la
 // porta della palazzina, quindi chi va dritto ci finisce contro): le porte valgono solo dopo
-// essersene allontanati di un passo (WALK_REARM), e fino ad allora sono un muro.
+// essersene allontanati (WALK_REARM oltre la zona della porta), e fino ad allora sono un muro.
+// Si ricompare a 45 dalla porta: con meno di 70 bastava un passettino indietro per riarmarla.
 let walkArmed = false;
-const WALK_REARM = 30;
+const WALK_REARM = 70;
 
 /** Le porte del salone che in questo momento si aprono a chi ci cammina contro. */
 export function openGapsHere(): DoorGap[] {
