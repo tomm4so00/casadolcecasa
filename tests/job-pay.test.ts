@@ -9,20 +9,22 @@ import {
 } from '../src/game/job-pay.js';
 
 describe('paga dei turni', () => {
-  it('dà 40 € + 5 € per oggetto nei primi 30 turni, 60 € + 8 € fino al 60° e 90 € + 12 € dopo', () => {
+  it('sale di livello ogni 15 turni, con 5 livelli e aumenti piccoli', () => {
     expect(jobPayTier(1)).toMatchObject({ base: 40, perItem: 5 });
-    expect(jobPayTier(30)).toMatchObject({ base: 40, perItem: 5 });
-    expect(jobPayTier(31)).toMatchObject({ base: 60, perItem: 8 });
-    expect(jobPayTier(60)).toMatchObject({ base: 60, perItem: 8 });
-    expect(jobPayTier(61)).toMatchObject({ base: 90, perItem: 12 });
+    expect(jobPayTier(15)).toMatchObject({ base: 40, perItem: 5 });
+    expect(jobPayTier(16)).toMatchObject({ base: 45, perItem: 6 });
+    expect(jobPayTier(31)).toMatchObject({ base: 50, perItem: 7 });
+    expect(jobPayTier(46)).toMatchObject({ base: 55, perItem: 8 });
+    expect(jobPayTier(61)).toMatchObject({ base: 60, perItem: 9 });
+    expect(jobPayTier(200)).toMatchObject({ base: 60, perItem: 9 });
   });
 
   it('spiega quanti turni mancano al prossimo aumento', () => {
-    expect(nextPayMessage(1)).toContain('Ancora 29 turni');
-    expect(nextPayMessage(29)).toContain('Ancora 1 turno ');
-    expect(nextPayMessage(30)).toContain('Dal prossimo turno guadagni 60 € + 8 €');
-    expect(nextPayMessage(30)).toContain('Ancora 30 turni');
-    expect(nextPayMessage(60)).toContain('Dal prossimo turno guadagni 90 € + 12 €');
+    expect(nextPayMessage(1)).toContain('Ancora 14 turni');
+    expect(nextPayMessage(14)).toContain('Ancora 1 turno ');
+    expect(nextPayMessage(15)).toContain('Dal prossimo turno guadagni 45 € + 6 €');
+    expect(nextPayMessage(15)).toContain('Ancora 15 turni');
+    expect(nextPayMessage(60)).toContain('Dal prossimo turno guadagni 60 € + 9 €');
     expect(nextPayMessage(60)).toContain('paga massima');
     expect(nextPayMessage(75)).not.toContain('Dal prossimo turno');
   });
