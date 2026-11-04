@@ -4,6 +4,7 @@ import { isoProject, isoScale, setPlane } from './primitives.js';
 import { parseLook, resolveLook } from '../character.js';
 import { drawGlasses, drawHat, drawPlayerAvatar } from './avatars.js';
 import { resetPlane, box, onFace, drawShirtShape, drawPalmProp } from './objects.js';
+import { drawCollectibleArt } from './collectible-art.js';
 
 // ---------------------------------------------------------------- CENTRO COMMERCIALE
 const FACADE_STYLE: Record<
@@ -245,17 +246,14 @@ function drawWindowDisplay(shop: string, x: number, y: number, w: number, h: num
     glow.addColorStop(1, 'rgba(255,225,150,0)');
     ctx.fillStyle = glow;
     ctx.fillRect(x, y, w, h);
-    const pieces = ['🌍', '⏳'];
+    const pieces = ['col_globo', 'col_clessidra'];
     for (let i = 0; i < 2; i++) {
       const px = x + (w * (i + 0.5)) / 2;
       ctx.fillStyle = '#4e342e';
       ctx.fillRect(px - 6, base - 14, 12, 13);
       ctx.fillStyle = '#c9a227';
       ctx.fillRect(px - 7, base - 15, 14, 2);
-      ctx.font = '12px "Segoe UI Emoji","Apple Color Emoji","Noto Color Emoji",sans-serif';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'alphabetic';
-      ctx.fillText(pieces[i], px, base - 17 + Math.sin(t * 2 + i) * 0.5);
+      drawCollectibleArt(ctx, pieces[i], px, base - 15, 16, t);
     }
   } else if (shop === 'sala') {
     // cabinati con gli schermi colorati che lampeggiano

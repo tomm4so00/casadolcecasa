@@ -1552,10 +1552,11 @@ export const PLAYER_ROOM_FURNITURE = {
     wallItem: true,
   },
   // Mensola dei collezionabili: fino a tre pezzi unici; scorre lungo le pareti come i quadri.
+  // Parte tra il primo quadro e la tenda della finestra.
   collectShelf: {
-    x: -75,
+    x: -82,
     y: -165,
-    w: 84,
+    w: 70,
     h: 8,
     z: 80,
     name: 'Mensola dei collezionabili 🏺',

@@ -8,15 +8,13 @@
 export interface Collectible {
   id: string;
   name: string;
-  /** Emoji per i testi (e per il disegno, se non ne ha uno suo). */
+  /** Emoji per i testi (pulsanti e finestre); il disegno è in render/collectible-art.ts. */
   emoji: string;
   price: number;
-  /** Disegno fatto a mano per i pezzi che non hanno un'emoji adatta. */
-  draw?: 'lava' | 'newton' | 'bust' | 'record' | 'clock' | 'cactus';
 }
 
 export const COLLECTIBLES: Collectible[] = [
-  { id: 'col_tomo', name: 'Tomo Antico di Alchimia e Botanica', emoji: '📖', price: 900 },
+  { id: 'col_tomo', name: 'Tomo Antico di Alchimia e Botanica', emoji: '📗', price: 900 },
   { id: 'col_globo', name: "Globo Terrestre d'Epoca in Ottone", emoji: '🌍', price: 1200 },
   { id: 'col_clessidra', name: 'Clessidra di Cristallo con Sabbia Nera', emoji: '⏳', price: 700 },
   {
@@ -27,19 +25,18 @@ export const COLLECTIBLES: Collectible[] = [
   },
   { id: 'col_pendolo', name: 'Orologio a Pendolo da Tavolo', emoji: '🕰️', price: 1300 },
   { id: 'col_torso', name: 'Torso Anatomico Scomposto', emoji: '🫀', price: 800 },
-  { id: 'col_busto', name: 'Busto Classico in Marmo', emoji: '🏛️', price: 1500, draw: 'bust' },
+  { id: 'col_busto', name: 'Busto Classico in Marmo', emoji: '🏛️', price: 1500 },
   {
     id: 'col_lava',
     name: 'Lampada Lava "Liquid Motion" Vintage',
-    emoji: '🪔',
+    emoji: '💡',
     price: 600,
-    draw: 'lava',
   },
   { id: 'col_fumetti', name: 'Collezione di Fumetti Vintage', emoji: '📚', price: 750 },
   {
     id: 'col_manuale',
     name: 'Manuale di Filosofia Esoterica & Geometria Sacra',
-    emoji: '📐',
+    emoji: '📘',
     price: 650,
   },
   {
@@ -47,7 +44,6 @@ export const COLLECTIBLES: Collectible[] = [
     name: 'Culla di Newton Magnetica (Pendolo di Urto)',
     emoji: '🧲',
     price: 550,
-    draw: 'newton',
   },
   { id: 'col_cranio', name: 'Modello Anatomico del Cranio Umano', emoji: '💀', price: 700 },
   {
@@ -55,9 +51,8 @@ export const COLLECTIBLES: Collectible[] = [
     name: 'Giradischi Portatile con Vinile in Miniatura',
     emoji: '💿',
     price: 850,
-    draw: 'record',
   },
-  { id: 'col_cactus', name: 'Mini Cactus in Vaso', emoji: '🌵', price: 300, draw: 'cactus' },
+  { id: 'col_cactus', name: 'Mini Cactus in Vaso', emoji: '🌵', price: 300 },
   {
     id: 'col_ametista',
     name: 'Pezzo di Ametista o Quarzo Grezzo Naturale',
@@ -67,10 +62,10 @@ export const COLLECTIBLES: Collectible[] = [
   {
     id: 'col_horus',
     name: 'Occhio di Horus, amuleto egizio in miniatura',
-    emoji: '🧿',
+    emoji: '👁️',
     price: 900,
   },
-  { id: 'col_sveglia', name: 'Sveglia da Comodino', emoji: '⏰', price: 400, draw: 'clock' },
+  { id: 'col_sveglia', name: 'Sveglia da Comodino', emoji: '⏰', price: 400 },
   { id: 'col_barca', name: 'Barchetta in Miniatura', emoji: '⛵', price: 450 },
   { id: 'col_telescopio', name: "Telescopio d'Ottone", emoji: '🔭', price: 1100 },
   { id: 'col_scacchi', name: 'Scacchiera in Legno Intarsiato', emoji: '♟️', price: 800 },

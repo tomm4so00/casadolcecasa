@@ -281,6 +281,9 @@ export function applySave(value: unknown): void {
   game.player.activeJobKey = s.activeJobKey || null;
   game.player.jobExperience = Object.assign(game.player.jobExperience, s.jobExperience || {});
   let fp: GameValue = s.furniturePos || {};
+  // la mensola mai spostata stava nel primo posto scelto, ora coperto dalla tenda: riparte dal nuovo
+  const shelf: GameValue = fp.base_collectShelf;
+  if (shelf && shelf.x === -75 && shelf.y === -165) fp = { ...fp, base_collectShelf: undefined };
   Object.keys(game.playerRoomFurniture).forEach((k?: GameValue): GameValue => {
     // solo i mobili spostabili: cassaforte e porta restano dove sono
     if (fp['base_' + k] && game.playerRoomFurniture[k].moveable)
