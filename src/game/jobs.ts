@@ -12,6 +12,16 @@ import { drawBeamTarget, drawPanelTarget } from './render/construction.js';
 import { openDialog } from './interface.js';
 import { nextPayMessage, shiftsLeftToday } from './job-pay.js';
 import { applyRoomBounds } from './room-size.js';
+import {
+  serviceDrawables,
+  serviceHudLine,
+  serviceInteract,
+  serviceOn,
+  servicePrompt,
+  startService,
+  stopService,
+  tickService,
+} from './restaurant.js';
 export function mgFlash(ok?: GameValue): GameValue {
   if (!game.MG.el) return;
   game.MG.el.classList.remove('mg-flash-ok', 'mg-flash-ko');
@@ -47,6 +57,11 @@ export function mgMultiplier(r?: GameValue): GameValue {
 export function mgHud(..._args: GameValue[]): GameValue {
   const el: GameValue = game.MG.el;
   if (!el || !game.MG.active) return;
+  if (serviceOn()) {
+    el.innerHTML = MG_TOP + `<div class="mg-step">${serviceHudLine()}</div>`;
+    mgShiftHud();
+    return;
+  }
   const { cfg, task, stepIdx, carry } = game.MG;
   const st: GameValue = task.steps[stepIdx];
   const [e, label] = cfg.pool[st.item];
@@ -67,11 +82,14 @@ export function mgHud(..._args: GameValue[]): GameValue {
         ? "Prendi l'oggetto e portalo al cerchio giallo"
         : '';
   el.innerHTML =
-    `<div class="mg-top"><span id="mg-time"></span><div class="mg-bar"><div id="mg-fill"></div></div><span id="mg-pay"></span></div>` +
+    MG_TOP +
     `<div class="mg-step"><span class="${held ? 'held' : ''}">${held ? '🤲 ' : ''}${e} ${label}</span> → 🎯 ${target?.label ?? ''}<span class="mg-dots">${dots}</span></div>` +
     (sub ? `<div class="mg-sub">${sub}</div>` : '');
   mgShiftHud();
 }
+
+/** Tempo e paga in cima al riquadro del lavoro. */
+const MG_TOP = `<div class="mg-top"><span id="mg-time"></span><div class="mg-bar"><div id="mg-fill"></div></div><span id="mg-pay"></span></div>`;
 
 /** Tempo e paga del turno nel riquadro del lavoro (a ogni fotogramma). */
 function mgShiftHud(): void {
@@ -80,7 +98,8 @@ function mgShiftHud(): void {
   if (!s || !time) return;
   time.textContent = `⏱ ${Math.ceil(Math.max(0, s.remaining))}s`;
   dom('mg-fill').style.width = Math.max(0, (s.remaining / game.SHIFT_SECONDS) * 100) + '%';
-  dom('mg-pay').textContent = `💰 ${s.pay + (s.delivered || 0) * (s.perItem || 0)} €`;
+  dom('mg-pay').textContent =
+    `💰 ${s.pay + (s.delivered || 0) * (s.perItem || 0) + (s.tips || 0)} €`;
 }
 
 export function mgSpawnTask(..._args: GameValue[]): GameValue {
@@ -159,10 +178,13 @@ export function mgStart(jobKey?: GameValue): GameValue {
   game.MG.el.classList.remove('hidden');
   // durante il turno il ritorno a casa è un'icona in un angolo, lontana dal riquadro
   dom('btn-return-home').classList.add('compact');
-  mgSpawnTask();
+  // il ristorante ha il servizio ai tavoli, gli altri lavori i compiti da portare al cerchio
+  if (game.MG.cfg.mode === 'service') startService();
+  else mgSpawnTask();
 }
 
 export function mgStop(..._args: GameValue[]): GameValue {
+  stopService();
   game.MG.active = false;
   game.MG.map = {};
   game.MG.carry = null;
@@ -174,9 +196,12 @@ export function mgStop(..._args: GameValue[]): GameValue {
   }
 }
 
-export function mgTick(..._args: GameValue[]): GameValue {}
+export function mgTick(delta: number): void {
+  tickService(delta);
+}
 
 export function mgButtonText(item?: GameValue): GameValue {
+  if (serviceOn()) return servicePrompt(item).text;
   if (item.kind === 'pickup')
     return game.MG.carry
       ? `🔁 Scambia con ${item.item.e} ${item.item.label}`
@@ -188,6 +213,7 @@ export function mgButtonText(item?: GameValue): GameValue {
 
 export function mgInteract(item?: GameValue, key?: GameValue): GameValue {
   if (!game.MG.active) return;
+  if (serviceOn()) return serviceInteract(item);
   if (item.kind === 'pickup') {
     if (game.MG.carry) {
       // scambio: l'oggetto in mano resta a terra
@@ -300,23 +326,8 @@ export function mgAddDrawables(
   drawables?: GameValue,
   t?: GameValue,
 ): GameValue {
-  const st: GameValue = game.MG.task.steps[game.MG.stepIdx];
-  game.MG.cfg.targets.forEach((tg?: GameValue): GameValue => {
-    if (tg.draw)
-      addThing(tg.x, tg.y, tg.w, tg.h, tg.z || 30, tg.label, (): GameValue => drawWorkTarget(tg));
-    if (st && tg.id === st.target) {
-      drawables.push({ depth: -1e5 + 2, draw: (): GameValue => drawTargetRing(tg, t) });
-      drawables.push({ depth: 1e9, draw: (): GameValue => drawTargetArrow(tg, t) });
-    }
-  });
-  Object.keys(game.MG.map).forEach((k?: GameValue): GameValue => {
-    const o: GameValue = game.MG.map[k];
-    if (o.kind !== 'pickup') return;
-    // il nome solo sull'oggetto che serve adesso o su quello vicino: gli altri restano icone
-    const named =
-      o.item.id === st?.item || Math.hypot(o.x - game.playerPos.x, o.y - game.playerPos.y) < 70;
-    addThing(o.x, o.y, 16, 16, 34, named ? o.item.label : '', (): GameValue => drawWorkItem(o, t));
-  });
+  if (serviceOn()) serviceDrawables(drawables, t);
+  else addTaskDrawables(addThing, drawables, t);
   if (game.MG.carry) {
     const px: GameValue = game.playerPos.x,
       py: GameValue = game.playerPos.y,
@@ -339,6 +350,27 @@ export function mgAddDrawables(
       },
     });
   }
+}
+
+/** Cerchi, frecce e oggetti da raccogliere dei lavori a compiti. */
+function addTaskDrawables(addThing: GameValue, drawables: GameValue, t: GameValue): void {
+  const st: GameValue = game.MG.task.steps[game.MG.stepIdx];
+  game.MG.cfg.targets.forEach((tg?: GameValue): GameValue => {
+    if (tg.draw)
+      addThing(tg.x, tg.y, tg.w, tg.h, tg.z || 30, tg.label, (): GameValue => drawWorkTarget(tg));
+    if (st && tg.id === st.target) {
+      drawables.push({ depth: -1e5 + 2, draw: (): GameValue => drawTargetRing(tg, t) });
+      drawables.push({ depth: 1e9, draw: (): GameValue => drawTargetArrow(tg, t) });
+    }
+  });
+  Object.keys(game.MG.map).forEach((k?: GameValue): GameValue => {
+    const o: GameValue = game.MG.map[k];
+    if (o.kind !== 'pickup') return;
+    // il nome solo sull'oggetto che serve adesso o su quello vicino: gli altri restano icone
+    const named =
+      o.item.id === st?.item || Math.hypot(o.x - game.playerPos.x, o.y - game.playerPos.y) < 70;
+    addThing(o.x, o.y, 16, 16, 34, named ? o.item.label : '', (): GameValue => drawWorkItem(o, t));
+  });
 }
 
 export async function updateShift(delta: number): Promise<void> {
@@ -364,7 +396,8 @@ export async function updateShift(delta: number): Promise<void> {
     const basePay: number = Math.round(s.pay * mult);
     const delivered: number = s.delivered || 0;
     const itemsPay: number = delivered * (s.perItem || 0);
-    s.pay = basePay + itemsPay;
+    const tips: number = s.tips || 0;
+    s.pay = basePay + itemsPay + tips;
     s.rating = rating;
     s.mult = mult;
     game.player.jobExperience[s.jobKey] = (game.player.jobExperience[s.jobKey] || 0) + 1;

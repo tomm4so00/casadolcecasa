@@ -1759,9 +1759,9 @@ export const BATHROOM_FURNITURE = {
   },
   sink: {
     x: 0,
-    y: -60,
+    y: -66,
     w: 60,
-    h: 50,
+    h: 36,
     z: 40,
     name: 'Lavandino di Design 🚰',
     color: '#0984e3',
@@ -2693,6 +2693,8 @@ export const WORK_JOBS = {
   },
   ristorante: {
     title: '🍳 Ristorante',
+    // servizio ai tavoli (restaurant.ts): i compiti qui sotto non si usano
+    mode: 'service',
     targets: [
       { id: 'cucina', label: 'Cucina', x: -135, y: 25, w: 50, h: 60 },
       { id: 'tavolo', label: 'Tavolo clienti', x: 65, y: 10, w: 48, h: 48 },
@@ -3107,14 +3109,16 @@ export const ENV_STYLE = {
     wallStyle: 'wainscot',
     trim: '#6d4c41',
     rug: { u: 110, v: 105, w: 180, h: 150, color: '#8e2c2c', border: '#d4ac0d' },
+    // finestre con cornice e davanzale in rilievo; niente quadri
     decor: {
       back: [
         { t: 'clock', u: 40 },
         { t: 'window', u: 360, w: 40, h: 50 },
+        { t: 'windowDepth', side: 'back', u: 360, w: 40, h: 50 },
       ],
       left: [
         { t: 'window', u: 130, w: 32, h: 50 },
-        { t: 'painting', u: 230, w: 30, h: 40, seed: 8 },
+        { t: 'windowDepth', side: 'left', u: 130, w: 32, h: 50 },
       ],
     },
     lights: [{ x: 0, y: 0, z: 0, r: 280, color: '255,210,150' }],

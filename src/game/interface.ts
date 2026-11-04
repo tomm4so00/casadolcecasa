@@ -234,7 +234,8 @@ export function resizeCanvas(..._args: GameValue[]): GameValue {
 /** Mostra la scena con una breve dissolvenza, con la telecamera già sul personaggio. */
 function revealScene(): void {
   const canvas: HTMLCanvasElement = game.view.canvas;
-  if (canvas.style.opacity !== '0') return;
+  if (canvas.dataset.revealed) return;
+  canvas.dataset.revealed = '1';
   game.cam = null;
   canvas.style.transition = 'opacity 0.35s ease-out';
   canvas.style.opacity = '1';

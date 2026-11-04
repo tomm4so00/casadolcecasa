@@ -1,6 +1,7 @@
 // Pulsanti degli oggetti di ogni ambiente: cosa c'è scritto quando ci si avvicina e cosa
 // succede premendolo. Per un posto nuovo basta aggiungere la sua voce in PLACES.
 import { facadeFootprint } from './render/facades.js';
+import { servicePrompt } from './restaurant.js';
 import { buyPlant, plantLabel, smokeJoint, tendPlant } from './weed.js';
 import { PETS, PET_FOOD_PRICE, type PetKind } from './pet-rules.js';
 import { PET_OF_KEY, buyPet, feed, giveUpForAdoption } from './pets.js';
@@ -636,10 +637,13 @@ const MOON_BASE: Place = {
 
 // ---------------------------------------------------------------- lavoro
 const WORK: Place = {
-  prompt: (_key, item) => ({
-    text: mgButtonText(item),
-    locked: item.kind === 'target' && !game.MG.carry,
-  }),
+  prompt: (_key, item) =>
+    item.kind === 'station' || item.kind === 'table'
+      ? servicePrompt(item)
+      : {
+          text: mgButtonText(item),
+          locked: item.kind === 'target' && !game.MG.carry,
+        },
   act(key, item) {
     if (item) mgInteract(item, key);
   },
@@ -735,12 +739,13 @@ function walkZones(): WalkZone[] {
     // nelle palazzine ancora vuote (col nastro) si entra solo col pulsante
     if (it.aptIdx === undefined || freeRoomsInApt(it.aptIdx) === game.ROOMS_PER_APT) continue;
     const fp = facadeFootprint(it);
+    // si passa dentro solo una volta entrati nel vano del portone
     out.push({
       key,
       inside:
         it.side === 'left'
-          ? (x, y, m) => Math.abs(y - it.y) < 16 + m && x < fp.x + fp.w / 2 + 16 + m
-          : (x, y, m) => Math.abs(x - it.x) < 16 + m && y < fp.y + fp.h / 2 + 16 + m,
+          ? (x, y, m) => Math.abs(y - it.y) < 10 + m && x < fp.x + fp.w / 2 - 3 + m
+          : (x, y, m) => Math.abs(x - it.x) < 10 + m && y < fp.y + fp.h / 2 - 3 + m,
     });
   }
   const ex: GameValue = game.courtyardDoors.exitHouse;
@@ -764,8 +769,30 @@ export function openGapsHere(): DoorGap[] {
   return walkArmed ? doorGapsHere() : [];
 }
 
+/**
+ * Davanti a un portone del cortile chi cammina verso la facciata viene accompagnato verso il centro
+ * del vano: largo quanto il portone, non bisogna centrarlo al pixel.
+ */
+function funnelToPortone(): void {
+  if (game.view.activeEnvironment !== 'CORTILE' || !game.isWalking) return;
+  const p = game.playerPos;
+  for (const it of Object.values(game.courtyardDoors) as GameValue[]) {
+    if (it.aptIdx === undefined) continue;
+    const fp = facadeFootprint(it);
+    const side = it.side === 'left';
+    const along = side ? p.y - it.y : p.x - it.x;
+    const toFront = side ? p.x - (fp.x + fp.w / 2) : p.y - (fp.y + fp.h / 2);
+    const pushing = side ? game.moveRight < 0 : game.moveForward > 0;
+    if (!pushing || Math.abs(along) > 26 || toFront > 26) continue;
+    const step = Math.sign(along) * Math.min(Math.abs(along), 1.6);
+    if (side) p.y -= step;
+    else p.x -= step;
+  }
+}
+
 /** A ogni fotogramma: chi entra camminando nella zona di una porta la attraversa. */
 export function checkWalkThrough(): void {
+  funnelToPortone();
   const env = game.view.activeEnvironment;
   if (env !== walkEnv) {
     walkEnv = env;

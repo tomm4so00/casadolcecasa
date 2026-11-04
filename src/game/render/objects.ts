@@ -2058,10 +2058,17 @@ export function drawChefStoveProp(it?: GameValue, t?: GameValue): GameValue {
   });
 }
 
+let tableGuest: ((it: GameValue) => void) | null = null;
+/** Chi siede dietro i tavoli del ristorante (i clienti del turno): va tra la sedia e il tavolo. */
+export function setTableGuestDrawer(fn: ((it: GameValue) => void) | null): void {
+  tableGuest = fn;
+}
+
 export function drawDinnerTableProp(it?: GameValue): GameValue {
   const ctx = game.view.ctx;
   const { x, y, w, h }: GameValue = it;
   drawChair(x, y - h / 2 - 2, '#a0522d');
+  tableGuest?.(it);
   box(x, y, 6, 6, 30, '#5d4037');
   const top: GameValue = box(x, y, w, h, 8, '#ffffff', { z0: 28 });
   onFace(top, 'left', (W?: GameValue, H?: GameValue): GameValue => {

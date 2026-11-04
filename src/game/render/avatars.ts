@@ -17,6 +17,20 @@ const lerpPt = (a: Pt, b: Pt, k: number): Pt => ({
   x: a.x + (b.x - a.x) * k,
   y: a.y + (b.y - a.y) * k,
 });
+
+/**
+ * Dove vanno le mani al lavandino del bagno: sotto il getto del rubinetto, ma non più lontano di
+ * quanto arrivano le braccia dalle spalle.
+ */
+function underTap(neck: Pt, s: number): Pt | null {
+  const sk: GameValue = game.bathroomFurniture?.sink;
+  if (!sk || game.view.activeEnvironment !== 'BATHROOM') return null;
+  const p = isoProject(sk.x, sk.y - sk.h / 2 + 13, sk.z + 3);
+  const sh = { x: neck.x, y: neck.y + 3 * s };
+  const d = Math.hypot(p.x - sh.x, p.y - sh.y),
+    reach = 22 * s;
+  return d <= reach ? p : lerpPt(sh, p, reach / d);
+}
 function seg(a: Pt, b: Pt, color: string, width: number): void {
   const ctx = game.view.ctx;
   ctx.strokeStyle = color;
@@ -1737,16 +1751,19 @@ export function drawPlayerAvatar(
   // reggono il giornale per i bordi, coi gomiti piegati
   const rub = pose === 'wash' ? Math.sin(animTime * 16) * 1.6 * s : 0;
   const reading = !!(sitting && opts && opts.newspaper);
-  const handBack: Pt | null =
-    pose === 'wash'
+  const tap = pose === 'wash' ? underTap(neck, s) : null;
+  const handBack: Pt | null = tap
+    ? { x: tap.x + 2.5 * s + rub, y: tap.y - 0.5 * s - Math.abs(rub) * 0.4 }
+    : pose === 'wash'
       ? { x: neck.x + 3 * s + rub, y: hip.y - 6 * s }
       : reading
         ? { x: neck.x + 9 * s, y: neck.y + 11 * s }
         : sitting
           ? { x: P(3.5, 11, 20).x + 1 * s, y: P(3.5, 11, 20).y - 1 * s }
           : null;
-  const handFront: Pt | null =
-    pose === 'wash'
+  const handFront: Pt | null = tap
+    ? { x: tap.x - 2.5 * s - rub, y: tap.y + 0.8 * s }
+    : pose === 'wash'
       ? { x: neck.x - 3 * s - rub, y: hip.y - 5 * s }
       : reading
         ? { x: neck.x - 9 * s, y: neck.y + 11 * s }
@@ -2180,12 +2197,14 @@ export function drawPlayerAvatar(
 
   // ---- braccio davanti
   drawArm({ x: neck.x - tw + 1 * s, y: neck.y + 3 * s }, frontTo, false);
-  // schiuma del sapone tra le mani
+  // schiuma del sapone tra le mani, sotto il getto
   if (pose === 'wash')
-    for (let i = 0; i < 6; i++) {
-      const k = (animTime * 1.3 + i / 6) % 1;
-      const bx = neck.x + Math.sin(i * 2.3 + animTime * 3) * 5 * s;
-      const by = hip.y - 6 * s - k * 9 * s;
+    for (let i = 0; i < 8; i++) {
+      const k = (animTime * 1.3 + i / 8) % 1;
+      const cx = tap ? tap.x : neck.x,
+        cy = tap ? tap.y : hip.y - 6 * s;
+      const bx = cx + Math.sin(i * 2.3 + animTime * 3) * 5 * s;
+      const by = cy - k * 7 * s;
       ctx.fillStyle = `rgba(255,255,255,${0.85 * (1 - k)})`;
       ctx.strokeStyle = `rgba(116,185,255,${0.8 * (1 - k)})`;
       ctx.lineWidth = 0.6;

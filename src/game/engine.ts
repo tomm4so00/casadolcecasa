@@ -71,15 +71,19 @@ import { footprintOf, isoProject, isoScale } from './render/primitives.js';
 import { overlapsCorridor } from './room-layout.js';
 import { approachKissPartner, drawKissHearts, kissActive } from './romance.js';
 import { faintAmount } from './faint.js';
-import { updateCamera } from './camera.js';
+import { fadeOnRoomChange, updateCamera } from './camera.js';
 import { applyRoomBounds } from './room-size.js';
 import { presenceState, shownWhileOffline } from './presence-rules.js';
 import type { OnlinePlayer } from './network-model.js';
 import { LAB_WALL_Y } from './data/catalogues.js';
 import { clerkLines } from './clerks.js';
-import { facadeFootprint } from './render/facades.js';
+import { facadeFootprint, facadeSolids } from './render/facades.js';
 import { checkWalkThrough, doorGapsHere, openGapsHere, roomBounds } from './interactions.js';
 import { clampToRoom, doorwayAt } from './door-walk-rules.js';
+
+/** La stanza in cui si è: cambiandola, chi dorme compare già sdraiato. */
+const sleepSceneKey = (): string => game.view.activeEnvironment + ':' + game.currentRoomIdx;
+let ownSleepScene = '';
 
 // Chi siede in panchina sta davanti allo schienale: anche sul posto di sinistra, che ha x + y
 // più piccolo della panchina, va disegnato sopra di lei.
@@ -127,7 +131,7 @@ function courtyardBuildings(map: GameValue): GameValue[] {
   if (game.view.activeEnvironment !== 'CORTILE') return [];
   return Object.values(map)
     .filter((it: GameValue) => it.aptIdx !== undefined)
-    .map(facadeFootprint);
+    .flatMap(facadeSolids);
 }
 
 export function collidesAt(x?: GameValue, y?: GameValue, obstacles?: GameValue): GameValue {
@@ -184,7 +188,10 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
   keepOwnPillow();
   const sleepTarget: GameValue =
     game.player.isSleeping && game.view.activeEnvironment === 'PLAYER_ROOM' && map.bed ? 1 : 0;
+  const scene = sleepSceneKey();
   if (game.view.activeEnvironment !== 'PLAYER_ROOM' || !map.bed) game.sleepK = 0;
+  // appena arrivati in una stanza chi dorme è già nel letto: l'animazione si vede solo coricandosi
+  else if (scene !== ownSleepScene) game.sleepK = sleepTarget;
   else
     game.sleepK = Math.max(
       0,
@@ -193,6 +200,7 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
         game.sleepK + Math.max(-delta / 0.9, Math.min(delta / 0.9, sleepTarget - game.sleepK)),
       ),
     );
+  ownSleepScene = scene;
   if (game.showerAnim && game.view.activeEnvironment !== 'BATHROOM') game.showerAnim = null;
   if (game.bathAnim && game.view.activeEnvironment !== 'BATHROOM') game.bathAnim = null;
   if (game.showerAnim) updateShower(animTime);
@@ -234,6 +242,7 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
   // se si è cambiato ambiente, i suoi bordi valgono già per questo fotogramma
   checkWalkThrough();
   applyRoomBounds(game.view.activeEnvironment);
+  fadeOnRoomChange();
   // laboratorio ingegneristico: il titolo dice se si è dentro o nella zona esterna
   if (game.view.activeEnvironment === 'ingegneria')
     game.view.currentRoomTitle =
@@ -576,6 +585,12 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
       labels.push((): GameValue => drawKissHearts(s.x, s.y, since));
     } else s.kissSince = 0;
     const sTarget: GameValue = act === 'sleep' && map.bed ? 1 : 0;
+    // chi dorme già quando lo si vede per la prima volta in questa stanza è già sdraiato
+    const scene = sleepSceneKey();
+    if (s.sleepScene !== scene) {
+      s.sleepScene = scene;
+      s.sleepK = sTarget;
+    }
     s.sleepK = Math.max(
       0,
       Math.min(

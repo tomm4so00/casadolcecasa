@@ -171,7 +171,8 @@ export function updateBathroom(now: number): void {
   }
   // lavandino
   const sk: GameValue = game.bathroomFurniture.sink;
-  const front = { x: sk.x, y: sk.y + 44 };
+  // attaccati al bordo del lavandino: le mani arrivano sotto il rubinetto
+  const front = { x: sk.x, y: sk.y + sk.h / 2 + 9 };
   if (e < WASH.approach) return walk(from, front, e / WASH.approach);
   e -= WASH.approach;
   if (e < WASH.rub) {

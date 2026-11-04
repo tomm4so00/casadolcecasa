@@ -755,5 +755,34 @@ export function facadeFootprint(it: GameValue): { x: number; y: number; w: numbe
   return { x: b.x, y: b.y, w: side ? FACADE_D : FACADE_W, h: side ? FACADE_W : FACADE_D };
 }
 
+/** Quanto si entra a piedi nel vano del portone prima di passare dentro la palazzina. */
+export const PORTONE_DEPTH = 14;
+
+/**
+ * Parti solide di una palazzina: tutta la pianta tranne il vano del portone, largo quanto il
+ * portone e profondo PORTONE_DEPTH, in cui si entra camminando.
+ */
+export function facadeSolids(it: GameValue): { x: number; y: number; w: number; h: number }[] {
+  const fp = facadeFootprint(it);
+  const rect = (ax: number, ay: number, bx: number, by: number) => ({
+    x: (ax + bx) / 2,
+    y: (ay + by) / 2,
+    w: bx - ax,
+    h: by - ay,
+  });
+  const x0 = fp.x - fp.w / 2,
+    x1 = fp.x + fp.w / 2,
+    y0 = fp.y - fp.h / 2,
+    y1 = fp.y + fp.h / 2;
+  if (it.side === 'left') {
+    const a = it.y - DOOR_W / 2,
+      b = it.y + DOOR_W / 2;
+    return [rect(x0, y0, x1, a), rect(x0, b, x1, y1), rect(x0, a, x1 - PORTONE_DEPTH, b)];
+  }
+  const a = it.x - DOOR_W / 2,
+    b = it.x + DOOR_W / 2;
+  return [rect(x0, y0, a, y1), rect(b, y0, x1, y1), rect(a, y0, b, y1 - PORTONE_DEPTH)];
+}
+
 /** Spazio occupato sullo schermo da una palazzina (tetto e camino compresi). */
 const FACADE_BOUNDS = { left: 170, right: 170, up: 480, down: 120 };

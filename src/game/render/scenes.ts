@@ -723,23 +723,65 @@ export function wallPainting(d?: GameValue): GameValue {
   ctx.fill();
 }
 
+/** Il piano della parete spostato di `out` verso la stanza: ci si disegna ciò che sporge dal muro. */
+function wallPlaneOut(side: string, H: number, out: number): void {
+  if (side === 'back') setPlane([game.X0, game.Y0 + out, H], [1, 0, 0], [0, 0, -1]);
+  else setPlane([game.X0 + out, game.Y1, H], [0, -1, 0], [0, 0, -1]);
+}
+
 export function wallClock(d?: GameValue): GameValue {
   const ctx = game.view.ctx;
   const u: GameValue = d.u,
     t: GameValue = d.top || 30,
     r: GameValue = 11;
+  if (d.side) {
+    // orologio in rilievo: ombra sul muro, cassa tonda spessa 4 e quadrante sul davanti
+    const H = wallHere();
+    ctx.fillStyle = 'rgba(0,0,0,0.22)';
+    ctx.beginPath();
+    ctx.arc(u + 2, t + 3, r + 2, 0, 6.3);
+    ctx.fill();
+    for (let k = 0.5; k < 4; k += 0.5) {
+      wallPlaneOut(d.side, H, k);
+      ctx.fillStyle = k < 3.5 ? '#1e2427' : '#2d3436';
+      ctx.beginPath();
+      ctx.arc(u, t, r + 2, 0, 6.3);
+      ctx.fill();
+    }
+    wallPlaneOut(d.side, H, 4);
+    drawClockFace(ctx, u, t, r);
+    wallPlane(d.side, H);
+    return;
+  }
   ctx.fillStyle = '#2d3436';
   ctx.beginPath();
   ctx.arc(u, t, r + 2, 0, 6.3);
   ctx.fill();
-  ctx.fillStyle = '#ffffff';
+  drawClockFace(ctx, u, t, r);
+}
+
+/** Quadrante con le tacche delle ore e le lancette all'ora vera. */
+function drawClockFace(ctx: CanvasRenderingContext2D, u: number, t: number, r: number): void {
+  const g = ctx.createRadialGradient(u - 3, t - 3, 1, u, t, r);
+  g.addColorStop(0, '#ffffff');
+  g.addColorStop(1, '#e6e9ec');
+  ctx.fillStyle = g;
   ctx.beginPath();
   ctx.arc(u, t, r, 0, 6.3);
   ctx.fill();
+  ctx.fillStyle = '#636e72';
+  for (let i = 0; i < 12; i++) {
+    const a = (i / 12) * 6.283,
+      big = i % 3 === 0;
+    ctx.beginPath();
+    ctx.arc(u + Math.sin(a) * (r - 2), t - Math.cos(a) * (r - 2), big ? 0.9 : 0.5, 0, 6.3);
+    ctx.fill();
+  }
   const now = new Date();
   const m: GameValue = now.getMinutes() + now.getSeconds() / 60,
-    h: GameValue = realHour(now) % 12;
+    h: GameValue = (realHour(now) % 12) + m / 60;
   ctx.strokeStyle = '#2d3436';
+  ctx.lineCap = 'round';
   ctx.lineWidth = 1.6;
   ctx.beginPath();
   ctx.moveTo(u, t);
@@ -750,6 +792,11 @@ export function wallClock(d?: GameValue): GameValue {
   ctx.moveTo(u, t);
   ctx.lineTo(u + Math.sin((m / 60) * 6.283) * 9, t - Math.cos((m / 60) * 6.283) * 9);
   ctx.stroke();
+  ctx.lineCap = 'butt';
+  ctx.fillStyle = '#c0392b';
+  ctx.beginPath();
+  ctx.arc(u, t, 1.2, 0, 6.3);
+  ctx.fill();
 }
 
 export function wallShelf(d?: GameValue): GameValue {
@@ -1214,7 +1261,10 @@ export function drawDynamicWalls(st?: GameValue, t?: GameValue): GameValue {
     );
     if (!list.length) return;
     wallPlane(side, H);
-    list.forEach((d?: GameValue): GameValue => game.WALL_DECOR_DYNAMIC[d.t](d, t));
+    // ognuno sa su quale parete sta: chi sporge dal muro si disegna in rilievo
+    list.forEach(
+      (d?: GameValue): GameValue => game.WALL_DECOR_DYNAMIC[d.t](d.side ? d : { ...d, side }, t),
+    );
     resetPlane();
   });
 }

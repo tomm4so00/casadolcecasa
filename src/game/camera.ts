@@ -29,6 +29,25 @@ export function surfaceDrop(x: number, y: number): number {
   return k ? k * (x * x + y * y) : 0;
 }
 
+/** Cambiando stanza la scena riparte dal nero e si schiarisce (dopo che è comparsa all'avvio). */
+const FADE_IN = 0.45;
+let fadedEnv = '';
+export function fadeOnRoomChange(): void {
+  const env = game.view.activeEnvironment;
+  if (env === fadedEnv) return;
+  const first = !fadedEnv;
+  fadedEnv = env;
+  const canvas: HTMLCanvasElement = game.view.canvas;
+  if (first || !canvas?.dataset.revealed) return;
+  canvas.style.transition = 'none';
+  canvas.style.opacity = '0';
+  // il nero deve arrivare a schermo prima che parta la dissolvenza
+  requestAnimationFrame(() => {
+    canvas.style.transition = `opacity ${FADE_IN}s ease-out`;
+    canvas.style.opacity = '1';
+  });
+}
+
 /**
  * Scala della scena intera: come prima sul computer, ingrandita sul telefono. Mentre si arreda
  * il telefono torna alla vista intera, così si vede tutta la stanza.
