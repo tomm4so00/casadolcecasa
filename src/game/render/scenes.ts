@@ -660,16 +660,11 @@ export function wallWindow(d?: GameValue, hour?: GameValue, wallH?: GameValue): 
   g.addColorStop(1, b);
   ctx.fillStyle = g;
   ctx.fillRect(u, t, w, h);
+  // di notte qualche stella; di giorno solo il cielo
   if (hour >= 20 || hour < 6) {
     ctx.fillStyle = '#ffffff';
     for (let i: GameValue = 0; i < 6; i++)
       ctx.fillRect(u + rnd(i + d.u) * w, t + rnd(i + 9 + d.u) * h * 0.7, 1.2, 1.2);
-  } else {
-    ctx.fillStyle = 'rgba(255,255,255,0.85)';
-    ctx.beginPath();
-    ctx.arc(u + w * 0.3, t + h * 0.35, h * 0.12, 0, 6.3);
-    ctx.arc(u + w * 0.42, t + h * 0.32, h * 0.14, 0, 6.3);
-    ctx.fill();
   }
   ctx.fillStyle = 'rgba(255,255,255,0.18)';
   ctx.beginPath();
@@ -1551,10 +1546,10 @@ export function wallSafe(d?: GameValue, t?: GameValue): GameValue {
   wallPlane('left', H);
 }
 
-// Cornice, davanzale e tende in rilievo davanti alla finestra della stanza (il vetro resta sul muro).
+// Cornice, davanzale ed eventuali tende in rilievo davanti a una finestra (il vetro resta sul muro).
 export function wallWindowDepth(d?: GameValue): GameValue {
   if (d.side !== 'back') return;
-  const H: number = game.ENV_STYLE.PLAYER_ROOM?.wallH || 130;
+  const H: number = game.ENV_STYLE[game.view.activeEnvironment]?.wallH || 130;
   const w: number = d.w,
     h: number = d.h,
     top: number = d.top || Math.max(18, H * 0.2);

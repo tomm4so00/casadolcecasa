@@ -1949,8 +1949,10 @@ export function drawChair(
 ): GameValue {
   box(x, y, 14, 14, 16, game.darken(color, 0.3));
   box(x, y, 16, 16, 3, color, { z0: 16 });
+  // 'y0': sedia dietro il tavolo, schienale verso il fondo; 'x': sedia sul lato destro del tavolo,
+  // schienale dalla parte opposta al tavolo
   if (backSide === 'y0') box(x, y - 7, 16, 3, 18, color, { z0: 19 });
-  else box(x - 7, y, 3, 16, 18, color, { z0: 19 });
+  else box(x + 7, y, 3, 16, 18, color, { z0: 19 });
 }
 
 export function drawWaitingChairsProp(it?: GameValue): GameValue {
