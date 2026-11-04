@@ -141,6 +141,7 @@ src/game/
 src/storage/tab-lock.ts        blocco fra schede del browser
 css/style.css                  stile del gioco completo
 tests/                        test unitari, parità e prove browser
+scripts/shot.mjs               screenshot di una scena in modalità prova (npm run shot)
 ```
 
 La migrazione conserva la provenienza delle funzioni v8, documentando anche quelle
