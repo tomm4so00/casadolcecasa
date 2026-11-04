@@ -130,6 +130,7 @@ import {
   wallRoomPainting,
   wallSafe,
   wallWindow,
+  wallWindowDepth,
   wallRocketPlaque,
   wallAdScreen,
 } from './scenes.js';
@@ -303,6 +304,8 @@ export function registerDrawers(): void {
     neon: wallNeon,
     roomPainting: wallRoomPainting,
     wallSafe,
+    // finestra della stanza: cornice e tende in rilievo
+    windowDepth: wallWindowDepth,
     rocketPlaque: wallRocketPlaque,
     adScreen: wallAdScreen,
     collectShelf: wallCollectShelf,

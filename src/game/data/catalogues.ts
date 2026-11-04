@@ -3023,7 +3023,8 @@ export const ENV_STYLE = {
       back: [
         { t: 'roomPainting', side: 'back' },
         { t: 'collectShelf', side: 'back' },
-        { t: 'window', u: 200, w: 64, h: 52, curtains: true },
+        { t: 'window', u: 200, w: 64, h: 52 },
+        { t: 'windowDepth', side: 'back', u: 200, w: 64, h: 52, curtains: true },
       ],
       left: [
         { t: 'wallSafe', side: 'left' },

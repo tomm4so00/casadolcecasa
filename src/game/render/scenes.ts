@@ -5,7 +5,7 @@ import type { GameValue } from '../context.js';
 import { game } from '../context.js';
 import { cameraPx, cameraRange, cameraScale } from '../camera.js';
 import { isoProject, isoScale, mixColor, poly, rnd, setPlane } from './primitives.js';
-import { resetPlane } from './objects.js';
+import { box, onFace, resetPlane } from './objects.js';
 import { getMyRoomMap, isMyRoomNow } from '../saves.js';
 import { paintingTitle } from '../painting-titles.js';
 import { SAFE_SPOT } from '../room-layout.js';
@@ -1475,43 +1475,97 @@ function drawHungPainting(d: GameValue, code: string, spot: GameValue): void {
   ctx.textBaseline = 'alphabetic';
 }
 
-// Cassaforte incassata nella parete di sinistra.
+// Cassaforte nella parete di sinistra: un blocco d'acciaio che sporge dal muro.
 export function wallSafe(d?: GameValue, t?: GameValue): GameValue {
   if (d.side !== 'left') return;
   const ctx: GameValue = game.view.ctx;
   const u = 180 - SAFE_SPOT.y,
     size = 42,
-    left = u - size / 2,
     top = 48;
   const room: GameValue = game.roomsState[game.currentRoomIdx ?? -1];
   const level2 = safeLevel(room?.economy?.ownedFurniture) >= 2;
-  // vano nel muro e telaio (dorato per la cassaforte livello 2)
-  ctx.fillStyle = 'rgba(0,0,0,0.35)';
-  ctx.fillRect(left - 5, top - 5, size + 10, size + 10);
-  ctx.fillStyle = level2 ? '#c9a227' : '#4b5563';
-  ctx.fillRect(left - 3, top - 3, size + 6, size + 6);
-  const g = ctx.createLinearGradient(left, top, left + size, top + size);
-  g.addColorStop(0, level2 ? '#6b7280' : '#9aa5b1');
-  g.addColorStop(1, level2 ? '#1f2937' : '#4b5563');
-  ctx.fillStyle = g;
-  ctx.fillRect(left, top, size, size);
-  ctx.strokeStyle = 'rgba(0,0,0,0.45)';
-  ctx.lineWidth = 1;
-  ctx.strokeRect(left + 3, top + 3, size - 6, size - 6);
-  if (level2) drawSafeKeypad(ctx, left, top, size);
-  else drawSafeDial(ctx, left, top, size);
-  // maniglia e cerniere
-  ctx.fillStyle = level2 ? '#e3c565' : '#d1d5db';
-  ctx.fillRect(left + size * 0.76, top + size * 0.3, 3.5, size * 0.4);
-  ctx.fillStyle = '#1f2937';
-  ctx.fillRect(left + 1, top + size * 0.18, 2.5, 6);
-  ctx.fillRect(left + 1, top + size * 0.7, 2.5, 6);
-  // lucina: verde se la cassaforte ha un PIN, rossa altrimenti
-  const pulse = 0.6 + 0.4 * Math.sin((t || 0) * 3);
-  ctx.fillStyle = room?.pin ? `rgba(46,213,115,${pulse})` : `rgba(255,71,87,${pulse})`;
-  ctx.beginPath();
-  ctx.arc(left + size - 6, top + 6, 2, 0, 6.3);
-  ctx.fill();
+  // ombra sul muro attorno al blocco
+  ctx.fillStyle = 'rgba(0,0,0,0.3)';
+  ctx.fillRect(u - size / 2 - 4, top - 2, size + 6, size + 8);
+  // dal piano del muro alle coordinate della stanza
+  const H: number = game.ENV_STYLE.PLAYER_ROOM?.wallH || 130;
+  resetPlane();
+  const depth = 12,
+    z0 = H - top - size,
+    x = game.X0 + depth / 2,
+    y = SAFE_SPOT.y;
+  const steel = level2 ? '#374151' : '#6b7785';
+  // telaio (dorato per la cassaforte livello 2) e corpo
+  box(x, y, depth - 2, size + 6, size + 6, level2 ? '#c9a227' : '#4b5563', { z0: z0 - 3 });
+  const b: GameValue = box(x + 1, y, depth, size, size, steel, { z0 });
+  onFace(b, 'right', (W: number, FH: number): void => {
+    const g = ctx.createLinearGradient(0, 0, W, FH);
+    g.addColorStop(0, level2 ? '#6b7280' : '#9aa5b1');
+    g.addColorStop(1, level2 ? '#1f2937' : '#4b5563');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, W, FH);
+    ctx.strokeStyle = 'rgba(0,0,0,0.45)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(3, 3, W - 6, FH - 6);
+    if (level2) drawSafeKeypad(ctx, 0, 0, size);
+    else drawSafeDial(ctx, 0, 0, size);
+    // lucina: verde se la cassaforte ha un PIN, rossa altrimenti
+    const pulse = 0.6 + 0.4 * Math.sin((t || 0) * 3);
+    ctx.fillStyle = room?.pin ? `rgba(46,213,115,${pulse})` : `rgba(255,71,87,${pulse})`;
+    ctx.beginPath();
+    ctx.arc(W - 6, 6, 2, 0, 6.3);
+    ctx.fill();
+  });
+  // cerniere dal lato verso il fondo e maniglia che sporge dalla porta
+  const front = game.X0 + depth + 1;
+  for (const k of [0.25, 0.75])
+    box(front + 1, y + size / 2 - 1, 2, 3, 7, '#1f2937', { z0: z0 + size * k - 3.5 });
+  box(front + 2, y - size * 0.3, 4, 3, size * 0.4, level2 ? '#e3c565' : '#d1d5db', {
+    z0: z0 + size * 0.3,
+  });
+  wallPlane('left', H);
+}
+
+// Cornice, davanzale e tende in rilievo davanti alla finestra della stanza (il vetro resta sul muro).
+export function wallWindowDepth(d?: GameValue): GameValue {
+  if (d.side !== 'back') return;
+  const H: number = game.ENV_STYLE.PLAYER_ROOM?.wallH || 130;
+  const w: number = d.w,
+    h: number = d.h,
+    top: number = d.top || Math.max(18, H * 0.2);
+  resetPlane();
+  const x0 = game.X0 + d.u - w / 2,
+    x1 = x0 + w,
+    zt = H - top,
+    zb = zt - h,
+    y = game.Y0;
+  const white = '#f5f5f5';
+  // cornice: montanti, architrave e traverse in croce
+  box(x0 - 2, y + 2, 4, 4, h + 4, white, { z0: zb - 2 });
+  box(x1 + 2, y + 2, 4, 4, h + 4, white, { z0: zb - 2 });
+  box((x0 + x1) / 2, y + 2, w + 8, 4, 4, white, { z0: zt });
+  box((x0 + x1) / 2, y + 1.5, 3, 3, h, '#ececec', { z0: zb });
+  box((x0 + x1) / 2, y + 1.5, w, 3, 3, '#ececec', { z0: zb + h / 2 - 1.5 });
+  // davanzale che sporge
+  box((x0 + x1) / 2, y + 5, w + 16, 10, 3, '#e0e0e0', { z0: zb - 6 });
+  if (!d.curtains) return wallPlane('back', H);
+  // bastone e tende staccate dal muro, con le pieghe
+  box((x0 + x1) / 2, y + 8, w + 40, 2.5, 2.5, '#7f8c8d', { z0: zt + 7 });
+  for (const cx of [x0 - 8, x1 + 8]) {
+    const c: GameValue = box(cx, y + 8, 14, 3, h + 18, '#c0392b', { z0: zb - 10 });
+    onFace(c, 'left', (W: number, CH: number): void => {
+      const ctx = game.view.ctx;
+      for (let k = 0; k < 4; k++) {
+        const g = ctx.createLinearGradient(k * (W / 4), 0, (k + 1) * (W / 4), 0);
+        g.addColorStop(0, 'rgba(0,0,0,0.22)');
+        g.addColorStop(0.5, 'rgba(255,255,255,0.08)');
+        g.addColorStop(1, 'rgba(0,0,0,0.22)');
+        ctx.fillStyle = g;
+        ctx.fillRect(k * (W / 4), 0, W / 4, CH);
+      }
+    });
+  }
+  wallPlane('back', H);
 }
 
 /** Livello 2: piccolo display e tastiera con i tasti da 1 a 5. */
