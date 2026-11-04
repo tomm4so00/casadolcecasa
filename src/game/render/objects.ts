@@ -1,3 +1,4 @@
+import { PANEL_DOOR, PORTONE, doorOpenAmount } from './doors.js';
 import { clockText } from '../game-clock.js';
 import { type GameValue, game } from '../context.js';
 import {
@@ -1162,39 +1163,8 @@ function drawFrontDoor(it: GameValue): void {
     top = 14;
   const rw = (W - side * 2) / 2;
   const spring = top + rw; // dove finisce l'arco e iniziano le ante
-  const leafW = rw,
-    leafH = H - spring;
+  const leafH = H - spring;
   const wood = '#6b3e26';
-  const paintLeaf = (LW: number, LH: number, mirror: boolean): void => {
-    const g = ctx.createLinearGradient(0, 0, LW, 0);
-    g.addColorStop(0, mirror ? '#5a321e' : '#7a4a2e');
-    g.addColorStop(1, mirror ? '#7a4a2e' : '#5a321e');
-    ctx.fillStyle = g;
-    ctx.fillRect(0, 0, LW, LH);
-    woodGrain(LW, LH, 'rgba(0,0,0,0.14)', true, 5);
-    // due pannelli in rilievo
-    for (const [py, ph] of [
-      [6, LH * 0.38],
-      [LH * 0.5, LH * 0.38],
-    ]) {
-      ctx.fillStyle = 'rgba(255,255,255,0.07)';
-      ctx.fillRect(4, py, LW - 8, ph);
-      ctx.strokeStyle = 'rgba(0,0,0,0.35)';
-      ctx.lineWidth = 1;
-      ctx.strokeRect(4, py, LW - 8, ph);
-      ctx.strokeStyle = 'rgba(255,255,255,0.15)';
-      ctx.strokeRect(6, py + 2, LW - 12, ph - 4);
-    }
-    // maniglia in ottone vicino al centro e piastra in basso
-    const hx = mirror ? 4 : LW - 6;
-    ctx.fillStyle = '#d4a017';
-    ctx.fillRect(hx, LH * 0.44, 2, 9);
-    ctx.beginPath();
-    ctx.arc(hx + 1, LH * 0.44, 2, 0, 6.3);
-    ctx.fill();
-    ctx.fillStyle = 'rgba(212,160,23,0.55)';
-    ctx.fillRect(2, LH - 7, LW - 4, 4);
-  };
   onFace(b, 'left', (FW: number, FH: number): void => {
     // cornice in pietra a conci
     ctx.fillStyle = '#d8d0bf';
@@ -1270,98 +1240,20 @@ function drawFrontDoor(it: GameValue): void {
     ctx.font = 'bold 5px sans-serif';
     ctx.textAlign = 'center';
     ctx.fillText('CORTILE', cx, 8);
-    // ante chiuse
-    if (open < 0.02) {
-      ctx.save();
-      ctx.translate(side, spring + 1.5);
-      paintLeaf(leafW, leafH - 1.5, false);
-      ctx.translate(leafW, 0);
-      paintLeaf(leafW, leafH - 1.5, true);
-      ctx.restore();
-      ctx.fillStyle = 'rgba(0,0,0,0.4)';
-      ctx.fillRect(cx - 0.5, spring + 1.5, 1, leafH - 1.5);
-    }
   });
-  if (open >= 0.02) {
-    // le due ante girano sui cardini verso il salone fino a quasi appoggiarsi al muro:
-    // aperte solo a 90° la destra, vista da qui, coprirebbe metà del passaggio
-    const a = open * FRONT_DOOR_OPEN_ANGLE;
-    const zLeaf = b.z1 - spring - 1.5;
-    for (const left of [true, false]) {
-      const hinge = [left ? b.x0 + side : b.x1 - side, b.y1, zLeaf];
-      const u = left ? [Math.cos(a), Math.sin(a), 0] : [-Math.cos(a), Math.sin(a), 0];
-      doorLeaf(hinge, u, leafW, leafH - 1.5, 4, wood, (LW, LH) => {
-        paintLeaf(LW, LH, false); // da aperta la maniglia sta lontano dal cardine
-        ctx.fillStyle = `rgba(0,0,0,${0.25 * open})`;
-        ctx.fillRect(0, 0, LW, LH);
-      });
-    }
-  }
+  // le due ante girano sui cardini verso il salone
+  PORTONE.draw(
+    {
+      hinge: [b.x0 + side, b.y1, b.z1 - spring - 1.5],
+      along: [1, 0],
+      normal: [0, 1],
+      w: W - side * 2,
+      h: leafH - 1.5,
+    },
+    { color: wood },
+    open,
+  );
 }
-
-/**
- * Anta aperta di una porta, con il suo spessore. `hinge` è lo spigolo in alto sul cardine, `u` la
- * direzione (orizzontale) in cui si allunga l'anta, larga W e alta H. Disegna retro e bordi del colore
- * `edge`, poi `paint(W, H)` dipinge la faccia verso chi guarda (origine in alto sul cardine).
- */
-export function doorLeaf(
-  hinge: number[],
-  u: number[],
-  W: number,
-  H: number,
-  thick: number,
-  edge: string,
-  paint: (W: number, H: number) => void,
-): void {
-  const ctx = game.view.ctx;
-  // lo spessore va verso il fondo della scena: chi guarda sta dalla parte di +x +y
-  let nx = -u[1],
-    ny = u[0];
-  if (nx + ny > 0) {
-    nx = -nx;
-    ny = -ny;
-  }
-  const [hx, hy, hz] = hinge;
-  const ex = hx + u[0] * W,
-    ey = hy + u[1] * W;
-  const bx = nx * thick,
-    by = ny * thick;
-  const P = isoProject;
-  poly(
-    [
-      P(hx + bx, hy + by, hz),
-      P(ex + bx, ey + by, hz),
-      P(ex + bx, ey + by, hz - H),
-      P(hx + bx, hy + by, hz - H),
-    ],
-    game.darken(edge, 0.35),
-  );
-  // bordo dal lato della maniglia e bordo in alto
-  poly(
-    [P(ex, ey, hz), P(ex + bx, ey + by, hz), P(ex + bx, ey + by, hz - H), P(ex, ey, hz - H)],
-    game.darken(edge, 0.2),
-    'rgba(0,0,0,0.25)',
-  );
-  poly(
-    [P(hx, hy, hz), P(ex, ey, hz), P(ex + bx, ey + by, hz), P(hx + bx, hy + by, hz)],
-    game.lighten(edge, 0.15),
-    'rgba(0,0,0,0.25)',
-  );
-  ctx.save();
-  setPlane([hx, hy, hz], [u[0], u[1], 0], [0, 0, -1]);
-  try {
-    ctx.beginPath();
-    ctx.rect(0, 0, W, H);
-    ctx.clip();
-    paint(W, H);
-  } finally {
-    ctx.restore();
-    resetPlane();
-  }
-}
-
-/** Di quanto si aprono le ante del portone (radianti): circa 150°, quasi contro il muro. */
-const FRONT_DOOR_OPEN_ANGLE = 2.6;
 
 export function drawSaloonDoor(key?: GameValue, it?: GameValue): GameValue {
   if (key === 'courtyard') return drawFrontDoor(it);
@@ -1386,29 +1278,6 @@ export function drawSaloonDoor(key?: GameValue, it?: GameValue): GameValue {
   // la porta si apre solo quando si preme per entrare (le stanze vuote restano chiuse a chiave)
   const locked = it.roomIdx !== undefined && doorC === '#7f8c8d';
   const open = doorOpenAmount('saloon:' + key, it.x, it.y, !locked, false);
-  const paintLeaf = (W: number, H: number): void => {
-    ctx.fillStyle = doorC;
-    ctx.fillRect(5, 7, W - 10, H - 7);
-    woodGrain(W, H, 'rgba(0,0,0,0.12)', true, 6);
-    ctx.strokeStyle = 'rgba(0,0,0,0.28)';
-    ctx.lineWidth = 1;
-    ctx.strokeRect(9, 13, W - 18, H * 0.3);
-    ctx.strokeRect(9, H * 0.48, W - 18, H * 0.42);
-    ctx.fillStyle = '#f1c40f';
-    ctx.beginPath();
-    ctx.arc(W - 11, H * 0.55, 2.2, 0, 6.3);
-    ctx.fill();
-    if (sign) {
-      ctx.fillStyle = 'rgba(255,255,255,0.92)';
-      ctx.fillRect(W / 2 - 8, 15, 16, 12);
-      ctx.fillStyle = '#2d3436';
-      ctx.font = 'bold 9px sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText(sign, W / 2, 24.5);
-    }
-  };
-  const W: number = thinX ? it.h : it.w,
-    H = 96;
   // vano della porta: buio con un po' di luce calda dall'altra parte
   onFace(b, thinX ? 'right' : 'left', (FW: number, FH: number): void => {
     const g = ctx.createLinearGradient(0, 7, 0, FH);
@@ -1416,47 +1285,21 @@ export function drawSaloonDoor(key?: GameValue, it?: GameValue): GameValue {
     g.addColorStop(1, '#5a3b22');
     ctx.fillStyle = g;
     ctx.fillRect(5, 7, FW - 10, FH - 7);
-    if (open < 0.02) paintLeaf(FW, FH);
   });
-  if (open < 0.02) return;
-  // anta che gira sui cardini verso chi guarda
-  const a = open * 1.45;
-  // l'anta va da 5 a W-5 e da 7 a H sulla faccia della porta
-  const zTop = b.z1 - 7;
-  const hinge = thinX ? [b.x1, b.y1 - 5, zTop] : [b.x0 + 5, b.y1, zTop];
-  const u = thinX ? [Math.sin(a), -Math.cos(a), 0] : [Math.cos(a), Math.sin(a), 0];
-  doorLeaf(hinge, u, W - 10, H - 7, 3, doorC, () => {
-    ctx.translate(-5, -7);
-    paintLeaf(W, H);
-    // più l'anta è aperta, più è in ombra
-    ctx.fillStyle = `rgba(0,0,0,${0.25 * open})`;
-    ctx.fillRect(5, 7, W - 10, H - 7);
-  });
-}
-
-// Apertura delle porte (0 = chiusa, 1 = aperta), che si muove piano verso quella voluta.
-const doorOpenState = new Map<string, { k: number; t: number }>();
-
-/**
- * Quanto è aperta una porta: si apre quando il giocatore la sta attraversando (game.doorForce)
- * e, se `byProximity`, anche quando le si avvicina; poi si richiude.
- */
-export function doorOpenAmount(
-  id: string,
-  x: number,
-  y: number,
-  enabled: boolean,
-  byProximity = true,
-): number {
-  const now = performance.now();
-  const st = doorOpenState.get(id) || { k: 0, t: now };
-  const dt = Math.min(0.1, Math.max(0, (now - st.t) / 1000));
-  const near = byProximity && Math.hypot(game.playerPos.x - x, game.playerPos.y - y) < 75;
-  const target = enabled && (near || (game.doorForce[id] || 0) > now) ? 1 : 0;
-  st.k += (target - st.k) * Math.min(1, dt * 6);
-  st.t = now;
-  doorOpenState.set(id, st);
-  return st.k * st.k * (3 - 2 * st.k);
+  // l'anta riempie il vano (da 5 a W-5 lungo il muro, da 7 in giù) e si apre verso chi guarda
+  const along: [number, number] = thinX ? [0, -1] : [1, 0];
+  const ox: number = thinX ? b.x1 : b.x0;
+  PANEL_DOOR.draw(
+    {
+      hinge: [ox + along[0] * 5, b.y1 + along[1] * 5, b.z1 - 7],
+      along,
+      normal: thinX ? [1, 0] : [0, 1],
+      w: (thinX ? it.h : it.w) - 10,
+      h: 96 - 7,
+    },
+    { color: doorC, sign },
+    open,
+  );
 }
 
 export function drawFurnitureByKind(

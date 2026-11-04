@@ -5,7 +5,8 @@ import { isoProject, isoScale, poly, rnd } from './primitives.js';
 import { hasRoom } from '../saves.js';
 import { freeRoomsInApt } from '../character.js';
 import { drawCached } from './sprite-cache.js';
-import { box, onFace, doorLeaf, doorOpenAmount } from './objects.js';
+import { box, onFace } from './objects.js';
+import { PORTONE, doorOpenAmount } from './doors.js';
 
 // ---------------------------------------------------------------- PALAZZINE DEL CORTILE
 const FACADE_COLORS = [
@@ -492,11 +493,6 @@ function drawFacade(
     ctx.arc(dx + dw / 2, dy + dw / 2, dw / 2, Math.PI, 0);
     ctx.lineTo(dx + dw, H - 10);
     ctx.fill();
-    // battenti chiusi (aperti si disegnano in 3D, qui sotto)
-    if (opening < 0.02) {
-      ctx.fillStyle = o.doorColor;
-      ctx.fillRect(dx, dy + dw / 2, dw, H - 10 - (dy + dw / 2));
-    }
     ctx.fillStyle = o.doorColor;
     ctx.beginPath();
     ctx.arc(dx + dw / 2, dy + dw / 2, dw / 2, Math.PI, 0);
@@ -514,32 +510,6 @@ function drawFacade(
     ctx.moveTo(dx + 3, dy + dw / 2);
     ctx.lineTo(dx + dw - 3, dy + dw / 2);
     ctx.stroke();
-    if (opening < 0.02) {
-      ctx.strokeRect(dx + 3, dy + dw / 2 + 5, dw / 2 - 6, 10);
-      ctx.strokeRect(dx + dw / 2 + 3, dy + dw / 2 + 5, dw / 2 - 6, 10);
-      ctx.fillStyle = '#f1c40f';
-      ctx.beginPath();
-      ctx.arc(dx + dw / 2 - 3, dy + dw / 2 + 21, 1.5, 0, 6.3);
-      ctx.arc(dx + dw / 2 + 3, dy + dw / 2 + 21, 1.5, 0, 6.3);
-      ctx.fill();
-    }
-    if (o.building) {
-      // appartamento ancora vuoto: nastro bianco e rosso sul portone
-      ctx.save();
-      ctx.beginPath();
-      ctx.rect(dx - 4, dy + dw / 2 + 2, dw + 8, 9);
-      ctx.clip();
-      for (let u = dx - 14, i = 0; u < dx + dw + 8; u += 8, i++) {
-        ctx.fillStyle = i % 2 ? '#ffffff' : '#e74c3c';
-        ctx.beginPath();
-        ctx.moveTo(u, dy + dw / 2 + 11);
-        ctx.lineTo(u + 8, dy + dw / 2 + 2);
-        ctx.lineTo(u + 16, dy + dw / 2 + 2);
-        ctx.lineTo(u + 8, dy + dw / 2 + 11);
-        ctx.fill();
-      }
-      ctx.restore();
-    }
     // vetrine del piano terra con tende a strisce
     for (const wx of [W * 0.07, W * 0.73]) {
       const vw = W * 0.2;
@@ -589,43 +559,41 @@ function drawFacade(
       ctx.stroke();
     }
   });
-  if (opening >= 0.02) {
-    // i due battenti girano sui cardini verso il cortile
-    const along = side ? [0, -1] : [1, 0],
-      normal = side ? [1, 0] : [0, 1];
-    const ox = side ? b.x1 : b.x0,
-      oy = b.y1;
-    const a = opening * 1.7;
-    const leafW = door.dw / 2,
-      leafH = door.bottom - door.spring;
-    for (const first of [true, false]) {
-      const fu = first ? door.dx : door.dx + door.dw;
-      const dir = first ? 1 : -1;
-      const u = [
-        along[0] * dir * Math.cos(a) + normal[0] * Math.sin(a),
-        along[1] * dir * Math.cos(a) + normal[1] * Math.sin(a),
-        0,
-      ];
-      doorLeaf(
-        [ox + along[0] * fu, oy + along[1] * fu, b.z1 - door.spring],
-        u,
-        leafW,
-        leafH,
-        2.5,
-        o.doorColor,
-        (LW: number, LH: number): void => {
-          ctx.fillStyle = game.darken(o.doorColor, 0.25 * opening);
-          ctx.fillRect(0, 0, LW, LH);
-          ctx.strokeStyle = 'rgba(0,0,0,0.3)';
-          ctx.lineWidth = 1;
-          ctx.strokeRect(3, 5, LW - 6, 10);
-          ctx.fillStyle = '#f1c40f';
-          ctx.beginPath();
-          ctx.arc(LW - 3, 21, 1.5, 0, 6.3);
-          ctx.fill();
-        },
-      );
-    }
+  // i due battenti, chiusi o aperti verso il cortile
+  const along: [number, number] = side ? [0, -1] : [1, 0];
+  const ox = side ? b.x1 : b.x0;
+  PORTONE.draw(
+    {
+      hinge: [ox + along[0] * door.dx, b.y1 + along[1] * door.dx, b.z1 - door.spring],
+      along,
+      normal: side ? [1, 0] : [0, 1],
+      w: door.dw,
+      h: door.bottom - door.spring,
+    },
+    { color: o.doorColor },
+    opening,
+  );
+  if (o.building) {
+    // appartamento ancora vuoto: nastro bianco e rosso sopra il portone chiuso
+    onFace(b, side ? 'right' : 'left', (): void => {
+      const { dx, dw } = door;
+      const dy = door.spring - dw / 2;
+      // appartamento ancora vuoto: nastro bianco e rosso sul portone
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(dx - 4, dy + dw / 2 + 2, dw + 8, 9);
+      ctx.clip();
+      for (let u = dx - 14, i = 0; u < dx + dw + 8; u += 8, i++) {
+        ctx.fillStyle = i % 2 ? '#ffffff' : '#e74c3c';
+        ctx.beginPath();
+        ctx.moveTo(u, dy + dw / 2 + 11);
+        ctx.lineTo(u + 8, dy + dw / 2 + 2);
+        ctx.lineTo(u + 16, dy + dw / 2 + 2);
+        ctx.lineTo(u + 8, dy + dw / 2 + 11);
+        ctx.fill();
+      }
+      ctx.restore();
+    });
   }
   // fianco della palazzina: finestrelle per piano
   onFace(b, side ? 'left' : 'right', (W: number, H: number): void => {

@@ -43,7 +43,8 @@ Un oggetto di scena che compare come un blocco grigio ha il `kind` non registrat
   oggetto (`prompt`) e cosa fa (`act`). Un posto o un oggetto nuovo si aggiunge qui.
 - `src/game/engine.ts`: il ciclo di disegno di ogni fotogramma.
 - `src/game/render/`: disegno. `primitives.ts` (proiezione `isoProject`, `setPlane`),
-  `objects.ts` (`box`, `onFace`, `doorLeaf`, mobili di casa), un file per zona (`facades`,
+  `objects.ts` (`box`, `onFace`, mobili di casa), `doors.ts` (la classe `DoorModel` e i tre
+  modelli di porta: `PANEL_DOOR`, `PORTONE`, `SERVICE_DOOR`; una porta nuova ne usa uno), un file per zona (`facades`,
   `mall`, `rocket`, `fridge`…) e `registry.ts` (quale funzione disegna ogni mobile, oggetto
   e decorazione a parete).
 - `*-rules.ts`: regole senza dipendenze dal browser, coperte dai test.

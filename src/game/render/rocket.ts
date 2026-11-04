@@ -2,7 +2,8 @@
 import { countdownText, launchPhase, rocketFlight } from '../project-rules.js';
 import { type GameValue, game } from '../context.js';
 import { isoProject, isoScale, rnd } from './primitives.js';
-import { box, doorLeaf, onFace, woodGrain } from './objects.js';
+import { box, onFace, woodGrain } from './objects.js';
+import { SERVICE_DOOR, doorOpenAmount } from './doors.js';
 import { paintWallSurface } from './scenes.js';
 import { LAB_WALL_Y } from '../data/catalogues.js';
 
@@ -461,8 +462,6 @@ function drawRocketWorks(
 
 // ---------------------------------------------------------------- LABORATORIO INGEGNERISTICO
 // apertura della porta verso la zona esterna (0 = chiusa, 1 = aperta) e ultimo istante disegnato
-let labDoorOpen = 0;
-let labDoorT = 0;
 
 // ---------------------------------------------------------------- MURO DI FONDO DEL LABORATORIO
 let labCut = 0;
@@ -551,11 +550,7 @@ export function drawLabWall(p?: GameValue, t?: GameValue): GameValue {
 export function drawLabDoor(it?: GameValue, t?: GameValue): GameValue {
   const ctx = game.view.ctx;
   const now: number = t || 0;
-  const dt = Math.min(0.1, Math.max(0, now - labDoorT));
-  labDoorT = now;
-  const near = Math.hypot(game.playerPos.x - it.x, game.playerPos.y - it.y) < 70;
-  labDoorOpen += ((near ? 1 : 0) - labDoorOpen) * Math.min(1, dt * 6);
-  const open = labDoorOpen * labDoorOpen * (3 - 2 * labDoorOpen);
+  const open = doorOpenAmount('lab:door', it.x, it.y, true, true);
   const lab: GameValue = game.ENV_STYLE.ingegneria.lab;
   const wallH = labWallHeight(now);
   const x0 = it.x - it.w / 2,
@@ -579,21 +574,11 @@ export function drawLabDoor(it?: GameValue, t?: GameValue): GameValue {
   box(x1 + 3, wy + 2, 6, 6, H + 6, '#2d3436');
   box(it.x, wy + 2, it.w + 12, 6, 8, '#2d3436', { z0: H });
   // anta: ruota sul cardine di sinistra verso l'interno del laboratorio
-  const ang = open * 1.5; // fino a circa 86 gradi
-  const leafColor = open > 0.02 ? game.darken('#0984e3', 0.15 + 0.2 * open) : '#0984e3';
-  doorLeaf([x0, wy + 4, H], [Math.cos(ang), Math.sin(ang), 0], it.w, H, 3, '#0984e3', (W, LH) => {
-    ctx.fillStyle = leafColor;
-    ctx.fillRect(0, 0, W, LH);
-    // oblò e maniglione antipanico
-    ctx.fillStyle = 'rgba(200,235,255,0.85)';
-    ctx.fillRect(W * 0.25, LH * 0.15, W * 0.5, LH * 0.25);
-    ctx.strokeStyle = '#dfe6e9';
-    ctx.lineWidth = 2.5;
-    ctx.beginPath();
-    ctx.moveTo(W * 0.15, LH * 0.55);
-    ctx.lineTo(W * 0.85, LH * 0.55);
-    ctx.stroke();
-  });
+  SERVICE_DOOR.draw(
+    { hinge: [x0, wy + 4, H], along: [1, 0], normal: [0, 1], w: it.w, h: H },
+    { color: '#0984e3' },
+    open,
+  );
   // cartello sopra la porta (si vede con il muro alzato)
   if (wallH > 100) {
     const s = isoScale();
