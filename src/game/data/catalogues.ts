@@ -2146,9 +2146,10 @@ export const ARCADE_FURNITURE = {
 
 // Banca: lo sportello per depositare e prelevare, e l'uscita.
 export const BANK_FURNITURE = {
+  // più avanti del muro: dietro c'è la zona del personale con il caveau
   bankCounter: {
     x: 0,
-    y: -112,
+    y: -60,
     w: 190,
     h: 38,
     z: 60,
@@ -2938,6 +2939,10 @@ export const ENV_DECOR = {
   banca: [
     { kind: 'plant', x: -168, y: -160, w: 26, h: 26, z: 60 },
     { kind: 'plant', x: 168, y: -160, w: 26, h: 26, z: 60 },
+    // caveau contro il muro di fondo, chiuso ai lati dai divisori: dietro il bancone non si passa
+    { kind: 'bankVault', x: 0, y: -170, w: 124, h: 20, z: 138 },
+    { kind: 'bankRail', x: -98, y: -130, w: 6, h: 100, z: 44 },
+    { kind: 'bankRail', x: 98, y: -130, w: 6, h: 100, z: 44 },
     { kind: 'waitingChairs', x: -120, y: 40, w: 80, h: 20, z: 35, label: "Sala d'attesa" },
     { kind: 'cooler', x: 165, y: 60, w: 22, h: 22, z: 70 },
     { kind: 'plant', x: 168, y: 150, w: 26, h: 26, z: 60 },
@@ -3248,7 +3253,6 @@ export const ENV_STYLE = {
     decor: {
       back: [
         { t: 'clock', u: 40 },
-        { t: 'vaultDoor', u: 200 },
         { t: 'poster', u: 335, text: 'CONTI SICURI', color: '#1e3a5f' },
       ],
       left: [

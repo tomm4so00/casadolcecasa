@@ -23,6 +23,8 @@ export interface DoorPlace {
   normal: [number, number];
   w: number;
   h: number;
+  /** porta a un'anta con i cardini a destra (a fine `along`) invece che a sinistra */
+  hingeEnd?: boolean;
 }
 
 /** Faccia di un'anta larga W e alta H; `hingeLeft` dice da che parte sono i cardini. */
@@ -48,7 +50,8 @@ export class DoorModel {
     const [ax, ay] = at.along,
       [nx, ny] = at.normal;
     for (let i = 0; i < leaves; i++) {
-      const first = i === 0;
+      // con i cardini a destra l'unica anta si comporta come la seconda del portone
+      const first = i === 0 && !at.hingeEnd;
       if (open < 0.001) {
         // chiusa: l'anta sta nel piano del muro
         const o: V3 = [at.hinge[0] + ax * lw * i, at.hinge[1] + ay * lw * i, at.hinge[2]];

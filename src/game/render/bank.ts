@@ -1,9 +1,9 @@
-// Banca: sportelli con i cassieri.
+// Banca: sportelli con i cassieri, il caveau e i divisori della zona del personale.
 import { type GameValue, game } from '../context.js';
-import { isoProject, isoScale, poly, rnd } from './primitives.js';
+import { isoProject, isoScale, poly, rnd, setPlane } from './primitives.js';
 import { parseLook, resolveLook } from '../character.js';
 import { drawPlayerAvatar } from './avatars.js';
-import { box, onFace } from './objects.js';
+import { box, onFace, resetPlane } from './objects.js';
 
 // ---------------------------------------------------------------- BANCA
 const BANK_TELLERS = [
@@ -147,4 +147,151 @@ export function drawBankCounter(it?: GameValue, t?: GameValue): GameValue {
     ctx.fillStyle = '#7f8c8d';
     ctx.fillRect(bell.x - 4 * s, bell.y, 8 * s, 1.2 * s);
   });
+}
+
+// ---------------------------------------------------------------- CAVEAU
+type V3 = [number, number, number];
+
+/** Disegna su un piano verticale parallelo al muro di fondo, centrato in `c` (y verso il basso). */
+function onWallPlane(c: V3, fn: (ctx: CanvasRenderingContext2D) => void): void {
+  setPlane(c, [1, 0, 0], [0, 0, -1]);
+  try {
+    fn(game.view.ctx);
+  } finally {
+    resetPlane();
+  }
+}
+
+/** Cilindro con l'asse verso chi guarda (+y): `depth` dischi uno davanti all'altro, poi la faccia. */
+function cylinder(
+  x: number,
+  y0: number,
+  z: number,
+  r: number,
+  depth: number,
+  side: string,
+  face: (ctx: CanvasRenderingContext2D) => string | CanvasGradient,
+): void {
+  for (let k = 0; k <= depth; k += 0.75) {
+    onWallPlane([x, y0 + k, z], (ctx) => {
+      ctx.fillStyle = side;
+      ctx.beginPath();
+      ctx.arc(0, 0, r, 0, Math.PI * 2);
+      ctx.fill();
+    });
+  }
+  onWallPlane([x, y0 + depth, z], (ctx) => {
+    ctx.fillStyle = face(ctx);
+    ctx.beginPath();
+    ctx.arc(0, 0, r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(0,0,0,0.35)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  });
+}
+
+/** Caveau incassato nel muro di fondo: telaio d'acciaio e porta rotonda spessa, con il volante. */
+export function drawBankVault(it?: GameValue): GameValue {
+  const front = it.y + it.h / 2;
+  const zc = 62,
+    r = 44;
+  // telaio
+  const frame = box(it.x, it.y, it.w, it.h, it.z, '#5d6873', { top: '#7d8894' });
+  onFace(frame, 'left', (W?: GameValue, H?: GameValue): GameValue => {
+    const ctx = game.view.ctx;
+    const g = ctx.createLinearGradient(0, 0, W, H);
+    g.addColorStop(0, '#8a96a3');
+    g.addColorStop(1, '#55606b');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, W, H);
+    ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(4, 4, W - 8, H - 8);
+    // rivetti lungo il bordo
+    ctx.fillStyle = '#3d4650';
+    for (let u = 9; u < W - 4; u += 12) {
+      ctx.fillRect(u - 1, 7, 2, 2);
+      ctx.fillRect(u - 1, H - 9, 2, 2);
+    }
+    // targa
+    ctx.fillStyle = '#b08d57';
+    ctx.fillRect(W / 2 - 22, 6, 44, 11);
+    ctx.fillStyle = '#2d1e0f';
+    ctx.font = 'bold 7px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('CAVEAU', W / 2, 14.5);
+    ctx.textAlign = 'left';
+  });
+  // incavo scuro e anello che regge la porta
+  cylinder(it.x, front, zc, r + 7, 1.5, '#2d3436', () => '#3d4650');
+  cylinder(it.x, front + 1.5, zc, r + 3, 2, '#4b5563', () => '#6b7785');
+  // cerniere sul lato destro
+  for (const dz of [-22, 22]) box(it.x + r + 4, front + 5, 8, 8, 9, '#4b5563', { z0: zc + dz - 4 });
+  // la porta, spessa
+  cylinder(it.x, front + 3.5, zc, r, 7, '#4f5964', (ctx) => {
+    const g = ctx.createRadialGradient(-14, -16, 4, 0, 0, r);
+    g.addColorStop(0, '#e1e6ea');
+    g.addColorStop(1, '#808b96');
+    return g;
+  });
+  const face = front + 10.5;
+  onWallPlane([it.x, face, zc], (ctx) => {
+    // bulloni e anello interno
+    ctx.fillStyle = '#4b5563';
+    for (let i = 0; i < 16; i++) {
+      const a = (i / 16) * Math.PI * 2;
+      ctx.beginPath();
+      ctx.arc(Math.cos(a) * (r - 6), Math.sin(a) * (r - 6), 2.1, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.strokeStyle = 'rgba(0,0,0,0.25)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.arc(0, 0, r * 0.64, 0, Math.PI * 2);
+    ctx.stroke();
+    // serratura a combinazione sotto il volante
+    ctx.fillStyle = '#2d3436';
+    ctx.beginPath();
+    ctx.arc(0, r * 0.47, 5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#b08d57';
+    ctx.fillRect(-0.6, r * 0.47 - 5, 1.2, 3);
+  });
+  // perno e volante, staccati dalla porta
+  cylinder(it.x, face, zc, 5, 6, '#2d3436', () => '#4b5563');
+  const wheel = face + 8;
+  for (const [dy, color, width] of [
+    [0, '#1e2326', 4],
+    [1.5, '#3d4650', 3],
+  ] as const) {
+    onWallPlane([it.x, wheel + dy, zc], (ctx) => {
+      ctx.strokeStyle = color;
+      ctx.lineWidth = width;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.arc(0, 0, 21, 0, Math.PI * 2);
+      for (let i = 0; i < 3; i++) {
+        const a = (i / 3) * Math.PI + 0.3;
+        ctx.moveTo(-Math.cos(a) * 21, -Math.sin(a) * 21);
+        ctx.lineTo(Math.cos(a) * 21, Math.sin(a) * 21);
+      }
+      ctx.stroke();
+      ctx.lineCap = 'butt';
+    });
+  }
+  cylinder(it.x, wheel + 1.5, zc, 6, 1.5, '#8a6d3b', () => '#d4a017');
+}
+
+/** Divisorio basso di legno con il corrimano d'ottone: chiude ai lati la zona dietro il bancone. */
+export function drawBankRail(it?: GameValue): GameValue {
+  const ctx: GameValue = game.view.ctx;
+  const b: GameValue = box(it.x, it.y, it.w, it.h, it.z, '#6d4c41', { top: '#5d3f35' });
+  onFace(b, 'right', (W?: GameValue, H?: GameValue): GameValue => {
+    ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+    ctx.lineWidth = 1;
+    const n = 4;
+    for (let i = 0; i < n; i++) ctx.strokeRect(4 + (i * (W - 8)) / n, 6, (W - 8) / n - 4, H - 12);
+  });
+  box(it.x, it.y, it.w + 2, it.h + 2, 3, '#b08d57', { z0: it.z, top: '#d4b373' });
 }

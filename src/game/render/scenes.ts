@@ -1399,57 +1399,6 @@ export function nameHash(str?: GameValue): GameValue {
   return Math.abs(h);
 }
 
-// Porta rotonda del caveau sulla parete della banca.
-export function wallVaultDoor(d?: GameValue): GameValue {
-  const ctx: GameValue = game.view.ctx;
-  const cx: number = d.u,
-    cy = 66,
-    r = 40;
-  ctx.fillStyle = '#5d6d7e';
-  ctx.beginPath();
-  ctx.arc(cx, cy, r + 6, 0, 6.3);
-  ctx.fill();
-  const g = ctx.createRadialGradient(cx - 12, cy - 14, 6, cx, cy, r);
-  g.addColorStop(0, '#d5dbdf');
-  g.addColorStop(1, '#7f8c8d');
-  ctx.fillStyle = g;
-  ctx.beginPath();
-  ctx.arc(cx, cy, r, 0, 6.3);
-  ctx.fill();
-  ctx.strokeStyle = 'rgba(0,0,0,0.35)';
-  ctx.lineWidth = 2;
-  ctx.stroke();
-  // bulloni sul bordo
-  for (let i = 0; i < 16; i++) {
-    const a = (i / 16) * Math.PI * 2;
-    ctx.fillStyle = '#4b5563';
-    ctx.beginPath();
-    ctx.arc(cx + Math.cos(a) * (r - 5), cy + Math.sin(a) * (r - 5), 2, 0, 6.3);
-    ctx.fill();
-  }
-  // volante di apertura
-  ctx.strokeStyle = '#2d3436';
-  ctx.lineWidth = 3;
-  for (let i = 0; i < 3; i++) {
-    const a = (i / 3) * Math.PI;
-    ctx.beginPath();
-    ctx.moveTo(cx - Math.cos(a) * 18, cy - Math.sin(a) * 18);
-    ctx.lineTo(cx + Math.cos(a) * 18, cy + Math.sin(a) * 18);
-    ctx.stroke();
-  }
-  ctx.beginPath();
-  ctx.arc(cx, cy, 18, 0, 6.3);
-  ctx.stroke();
-  ctx.fillStyle = '#b08d57';
-  ctx.beginPath();
-  ctx.arc(cx, cy, 6, 0, 6.3);
-  ctx.fill();
-  // cerniere
-  ctx.fillStyle = '#4b5563';
-  ctx.fillRect(cx + r + 2, cy - 20, 7, 12);
-  ctx.fillRect(cx + r + 2, cy + 8, 7, 12);
-}
-
 // Quadro dipinto dal proprietario della stanza, appeso sulla parete di fondo.
 const paintingCache = new Map<string, HTMLCanvasElement>();
 export function paintingImage(code: string): HTMLCanvasElement | null {
