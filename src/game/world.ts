@@ -1,4 +1,3 @@
-import { buyPlant, plantLabel, smokeJoint, tendPlant } from './weed.js';
 import { postGossip } from './gossip.js';
 import {
   SAFE_LEVEL2_PRICE,
@@ -9,25 +8,11 @@ import {
   safeLevel,
 } from './safe-pin.js';
 import { resaleValue } from './resale-rules.js';
-import { PETS, PET_FOOD_PRICE, type PetKind } from './pet-rules.js';
-import { PET_OF_KEY, buyPet, feed, giveUpForAdoption, petSpots } from './pets.js';
+import { petSpots } from './pets.js';
 import { DAILY_LIMITS, recordUse, usesLeftToday } from './daily-limits.js';
-import {
-  COIN_PRICE,
-  ICE_CREAM_PRICE,
-  buyIceCream,
-  funSpots,
-  onSofa,
-  othersHere,
-  toggleBench,
-  toggleSofa,
-  tossCoin,
-} from './courtyard-fun.js';
-import { STRAINS, type StrainId, growTimeText } from './weed-rules.js';
-import { earthFlight, moonFlight, moonOpen, returnToEarth, travelToMoon } from './moon.js';
-import { MOON_TRIP_PRICE } from './project-rules.js';
-import { openRpsTable, openSlot } from './betting.js';
-import { SLOT_BET } from './betting-rules.js';
+import { funSpots, onSofa, othersHere } from './courtyard-fun.js';
+import {} from './project-rules.js';
+import {} from './betting-rules.js';
 import { levelOf, theftTriesFor } from './personality-rules.js';
 import {
   THEFT_TRIES,
@@ -37,7 +22,7 @@ import {
   theftLockLeft,
   theftTriesLeft,
 } from './theft-rules.js';
-import { bedtimeThought, notePersonality } from './personality.js';
+import { notePersonality } from './personality.js';
 import { purchaseItem, sellItem, spendMoney, creditMoney } from './economy.js';
 import type { GameValue } from './context.js';
 import type { SceneMap } from './models.js';
@@ -54,48 +39,28 @@ import {
 } from './saves.js';
 import { applyRoomBounds } from './room-size.js';
 import { openDialog } from './interface.js';
-import { openRealtyBoard } from './realty.js';
+import {} from './realty.js';
 import { sendSocial } from './social.js';
-import { openGossipBoard } from './gossip.js';
+import {} from './gossip.js';
 import { LIMITED_FURNITURE } from './data/catalogues.js';
-import {
-  buyLimited,
-  isLimitedId,
-  limitedLeft,
-  myCopy,
-  makeOffer,
-  offerButtonText,
-  visitedCopy,
-  visitedLimitedClothes,
-  wardrobeOffers,
-} from './limited.js';
-import { openArcadeStation } from './arcade.js';
-import { ARCADE_GAMES, type ArcadeGame, isArcadeGame } from './arcade-rules.js';
-import { quotedTitle } from './painting-titles.js';
-import { roomPaintings, slotOfKey } from './painting-rules.js';
-import { relaxWith, toast } from './missions.js';
-import {
-  freeRoomsInApt,
-  openClothesShop,
-  openWardrobe,
-  placeFurniture,
-  rotateFurniture,
-  returnHomeFromActivity,
-} from './character.js';
+import { buyLimited, limitedLeft, myCopy } from './limited.js';
+import {} from './arcade.js';
+import {} from './painting-titles.js';
+import { toast } from './missions.js';
+import { placeFurniture, rotateFurniture, returnHomeFromActivity } from './character.js';
 import { footprintOf, isoProject, isoScale } from './render/primitives.js';
-import { mgButtonText, mgInteract, mgStart, openComputerShopModal } from './jobs.js';
-import { coffeeLeftMs, openDealer, promptSetSafePin, useCoffee } from './needs.js';
-import { showGraveInfo } from './render/graveyard.js';
-import { startShower, startToilet, startWash } from './bathroom.js';
+import { mgStart } from './jobs.js';
+import { promptSetSafePin } from './needs.js';
+import {} from './render/graveyard.js';
 import { sfx } from './audio.js';
-import { openBankCounter } from './bank.js';
-import { openProjects, pressLaunchButton, rocketFunded, rocketLaunch } from './projects.js';
+import {} from './bank.js';
+import { rocketFunded } from './projects.js';
 import { PROJECTS, projectGoal } from './project-rules.js';
 import { avoidWallSafe, pushOutOfCorridor } from './room-layout.js';
-import { managePainting, openPaintStudio } from './paint-studio.js';
-import { bestOwnedByProp, nextUpgrade, TIER_LABEL, TIER_RANK, tierOf } from './furniture-tiers.js';
+import { bestOwnedByProp, TIER_LABEL, TIER_RANK, tierOf } from './furniture-tiers.js';
 import { furnitureBenefit } from './furniture-benefits.js';
 import { SHIFTS_PER_DAY, jobPayTier, recordShift, shiftsLeftToday } from './job-pay.js';
+import { interactWith, promptFor } from './interactions.js';
 // Il proprietario può cambiare la combinazione della propria cassaforte quando vuole
 export async function changeSafePin(..._args: GameValue[]): Promise<GameValue> {
   if (!hasRoom() || !isMyRoomNow()) return;
@@ -425,330 +390,13 @@ export function checkProximity(..._args: GameValue[]): GameValue {
     let item: GameValue = map[found] || spots[found] || pets[found];
     // vicino a qualcosa che non è l'uscita del condominio il menu per uscire si chiude
     if (found !== 'exitHouse') game.view.isOutsideMenuOpen = false;
-    if (found === 'exitHouse') {
-      btnMain.innerText = game.view.isOutsideMenuOpen
-        ? '🚪 Chiudi Menu Uscita'
-        : '🚪 Esci dal Condominio';
-      btnMain.classList.remove('btn-pop-locked');
-      btnSub.classList.add('hidden');
-    } else if (game.view.activeEnvironment === 'SALOON') {
-      if (item.roomIdx !== undefined) {
-        game.view.isOutsideMenuOpen = false;
-        let room: GameValue = game.roomsState[game.gRoomIdx(item)];
-        if (!room || !room.owner) {
-          btnMain.innerText = `🔒 Stanza Vuota (Chiusa)`;
-          btnMain.classList.add('btn-pop-locked');
-          btnMove.classList.add('hidden');
-          btnSub.classList.add('hidden');
-          return;
-        } else {
-          btnMain.innerText = `🚪 Entra nella Stanza di ${room.owner}`;
-          btnMain.classList.remove('btn-pop-locked');
-          btnSub.classList.add('hidden');
-        }
-      } else {
-        game.view.isOutsideMenuOpen = false;
-        btnMain.innerText = `✋ ${item.name}`;
-        btnMain.classList.remove('btn-pop-locked');
-        btnSub.classList.add('hidden');
-      }
-    } else if (game.view.activeEnvironment === 'laboratorio') {
-      btnMain.classList.remove('btn-pop-locked');
-      btnSub.classList.add('hidden');
-      btnMain.innerText = found.startsWith('easel') ? '🎨 Dipingi un quadro' : '🚪 Torna Fuori';
-    } else if (
-      game.view.activeEnvironment === 'ingegneria' &&
-      found !== 'launchButton' &&
-      found !== 'rocketPad'
-    ) {
-      btnMain.classList.remove('btn-pop-locked');
-      btnSub.classList.add('hidden');
-      const labels: Record<string, string> = {
-        projectBoard: '📌 Guarda i progetti',
-        moonScreen: '📺 Guarda la diretta dalla luna',
-        workbench: '🔧 Lavora al bancone',
-      };
-      btnMain.innerText = labels[found] || '🚪 Torna Fuori';
-    } else if (game.view.activeEnvironment === 'negozio_animali') {
-      btnMain.classList.remove('btn-pop-locked');
-      btnSub.classList.add('hidden');
-      if (item.pet) {
-        const info = PETS[item.pet as PetKind];
-        const owned = !!game.player.pets?.[item.pet as PetKind];
-        btnMain.innerText = owned
-          ? `${info.emoji} Hai già un ${info.name}`
-          : `${info.emoji} Compra un ${info.name} (${info.price} €)`;
-        btnMain.classList.toggle('btn-pop-locked', owned);
-      } else if (found === 'petCounter') btnMain.innerText = '🏡 Dai in adozione un animale';
-      else btnMain.innerText = '🚪 Torna Fuori';
-    } else if (game.view.activeEnvironment === 'growshop') {
-      btnMain.classList.remove('btn-pop-locked');
-      btnSub.classList.add('hidden');
-      btnMain.innerText = item.strain
-        ? `🌱 Compra ${STRAINS[item.strain as StrainId].name} (${STRAINS[item.strain as StrainId].price} €, cresce in ${growTimeText(item.strain as StrainId)})`
-        : '🚪 Torna Fuori';
-    } else if (game.view.activeEnvironment === 'luna' && found === 'baseDoor') {
-      btnSub.classList.add('hidden');
-      btnMain.classList.remove('btn-pop-locked');
-      btnMain.innerText = '🚪 Entra dentro la base spaziale';
-    } else if (game.view.activeEnvironment === 'base_lunare') {
-      btnSub.classList.add('hidden');
-      btnMain.classList.remove('btn-pop-locked');
-      btnMain.innerText =
-        found === 'baseConsole' ? '🖥️ Guarda il pannello di controllo' : '🚀 Esci sulla luna';
-    } else if (game.view.activeEnvironment === 'luna') {
-      btnSub.classList.add('hidden');
-      const flight = moonFlight();
-      btnMain.innerText =
-        flight.phase === 'idle' ? '🌍 Torna sulla Terra' : '🚀 Il razzo è in viaggio…';
-      btnMain.classList.toggle('btn-pop-locked', flight.phase !== 'idle');
-    } else if (game.view.activeEnvironment === 'centro_commerciale') {
-      btnMain.classList.remove('btn-pop-locked');
-      btnSub.classList.add('hidden');
-      if (item.fun === 'iceCream') {
-        btnMain.innerText = game.iceCream
-          ? '🍦 Stai mangiando il gelato…'
-          : `🍦 Compra un gelato (${ICE_CREAM_PRICE} €)`;
-        btnMain.classList.toggle('btn-pop-locked', !!game.iceCream);
-      } else btnMain.innerText = item.enter ? `🚪 Entra: ${item.name}` : '🏠 Torna a casa';
-    } else if (game.view.activeEnvironment === 'sala_giochi') {
-      btnMain.classList.remove('btn-pop-locked');
-      btnSub.classList.add('hidden');
-      btnMain.innerText = isArcadeGame(item.game)
-        ? `${ARCADE_GAMES[item.game as ArcadeGame].emoji} Sfida qualcuno a ${ARCADE_GAMES[item.game as ArcadeGame].name}`
-        : '🚪 Torna Fuori';
-    } else if (game.view.activeEnvironment === 'scommesse') {
-      btnMain.classList.remove('btn-pop-locked');
-      btnSub.classList.add('hidden');
-      btnMain.innerText = found.startsWith('slot')
-        ? `🎰 Gioca alla slot (${SLOT_BET} €)`
-        : found === 'rpsTable'
-          ? '✊ Sfida qualcuno a morra cinese'
-          : '🚪 Torna Fuori';
-    } else if (game.view.activeEnvironment === 'ingegneria') {
-      // zona esterna: la rampa del razzo e il pulsante di lancio
-      btnMain.classList.remove('btn-pop-locked');
-      btnSub.classList.add('hidden');
-      if (found === 'launchButton') {
-        const phase = rocketLaunch().phase;
-        btnMain.innerText =
-          phase === 'waiting'
-            ? '🔴 Premi il pulsante: lancia il razzo!'
-            : phase === 'building'
-              ? '🔒 Pulsante di lancio (razzo non completo)'
-              : phase === 'launched'
-                ? '✅ Razzo già lanciato'
-                : '⏳ Lancio in corso…';
-        btnMain.classList.toggle('btn-pop-locked', phase !== 'waiting');
-      } else if (found === 'rocketPad' && moonOpen()) {
-        const flight = earthFlight();
-        btnMain.innerText =
-          flight.phase === 'idle'
-            ? `🌙 Vola sulla luna (${MOON_TRIP_PRICE} €)`
-            : '🚀 Il razzo è in viaggio…';
-        btnMain.classList.toggle('btn-pop-locked', flight.phase !== 'idle');
-      } else btnMain.innerText = '🚀 Guarda il progetto del razzo';
-    } else if (game.view.activeEnvironment === 'banca') {
-      btnMain.classList.remove('btn-pop-locked');
-      btnSub.classList.add('hidden');
-      btnMain.innerText = found === 'bankCounter' ? '🏦 Vai allo Sportello' : '🚪 Torna Fuori';
-    } else if (game.view.activeEnvironment === 'negozio_vestiti') {
-      btnMain.classList.remove('btn-pop-locked');
-      btnSub.classList.add('hidden');
-      if (found === 'clothesCounter') btnMain.innerText = '🛍️ Catalogo: compra e rivendi';
-      else if (item.slot)
-        btnMain.innerText = `${game.SLOT_INFO[item.slot].icon} Guarda ${game.SLOT_INFO[item.slot].label}`;
-      else btnMain.innerText = '🚪 Torna Fuori';
-    } else if (game.view.activeEnvironment === 'negozio_mobili') {
-      btnMain.classList.remove('btn-pop-locked');
-      if (found === 'shopCounter') {
-        btnMain.innerText = '🛋️ Catalogo: compra e rivendi';
-        btnSub.classList.add('hidden');
-      } else if (item.category) {
-        // Progressione: standard → pregiato → lusso.
-        const next: GameValue = nextUpgrade(
-          game.furnitureCatalog,
-          game.player.ownedFurniture,
-          item.category,
-        );
-        btnSub.classList.add('hidden');
-        if (!next) {
-          btnMain.innerText = `✅ Già posseduto (Versione Lusso)`;
-          btnMain.classList.add('btn-pop-locked');
-        } else {
-          const icon = { std: '🛒', premium: '💎', lux: '✨' }[tierOf(next)];
-          btnMain.innerText = `${icon} Acquista ${next.name} (${next.price} €)`;
-        }
-      } else {
-        btnMain.innerText = `🚪 Torna Fuori`;
-        btnSub.classList.add('hidden');
-      }
-    } else if (
-      game.view.activeEnvironment === 'bar' ||
-      game.view.activeEnvironment === 'discoteca'
-    ) {
-      btnMain.innerText = '🕴️ Parla con lo spacciatore';
-      btnMain.classList.remove('btn-pop-locked');
-      btnSub.classList.add('hidden');
-    } else if (game.MG.active && game.view.activeEnvironment === 'lavoro_' + game.MG.job) {
-      btnMain.innerText = mgButtonText(item);
-      btnMain.classList.toggle('btn-pop-locked', item.kind === 'target' && !game.MG.carry);
-      btnSub.classList.add('hidden');
-    } else if (game.view.activeEnvironment === 'CIMITERO') {
-      btnMain.innerText =
-        item.kind === 'memorial'
-          ? '📜 Leggi il registro dei defunti'
-          : `⚰️ Leggi la lapide di ${item.who}`;
-      btnMain.classList.remove('btn-pop-locked');
-      btnSub.classList.add('hidden');
-    } else if (game.view.activeEnvironment === 'CORTILE' && item.fun) {
-      btnSub.classList.add('hidden');
-      btnMain.classList.remove('btn-pop-locked');
-      if (item.fun === 'bench')
-        btnMain.innerText = game.benchSit ? '🧍 Alzati' : '🪑 Siediti sulla panchina';
-      else if (item.fun === 'realty') btnMain.innerText = '🏘️ Bacheca immobiliare: cambia stanza';
-      else if (item.fun === 'gossip') btnMain.innerText = '📰 Leggi i pettegolezzi del condominio';
-      else {
-        btnMain.innerText = `⛲ Lancia una moneta nella fontana (${COIN_PRICE} €)`;
-        btnMain.classList.toggle('btn-pop-locked', !!game.coinToss);
-      }
-    } else if (game.view.activeEnvironment === 'CORTILE') {
-      const mine: GameValue = hasRoom() && game.aptOfRoom(game.myAssignedRoomIdx) === item.aptIdx;
-      btnMain.innerText = mine
-        ? '🚪 Entra nel tuo appartamento 🏠'
-        : `🚪 Entra nell'Appartamento ${item.aptIdx + 1} (${freeRoomsInApt(item.aptIdx)} stanze libere)`;
-      btnMain.classList.remove('btn-pop-locked');
-      btnSub.classList.add('hidden');
-    } else if (game.view.activeEnvironment === 'PLAYER_ROOM') {
-      if (found === 'safe') {
-        let isMyRoom: GameValue = isMyRoomNow();
-        btnMain.innerText = isMyRoom
-          ? '🔐 Apri la Cassaforte'
-          : '🕵️ Prova a Rubare (Tentativo PIN)';
-        btnMain.classList.remove('btn-pop-locked');
-        if (isMyRoom) {
-          btnSub.innerText = game.hasSetSafePin
-            ? '🔑 Cambia combinazione'
-            : '🔑 Imposta combinazione';
-          btnSub.classList.remove('hidden');
-        } else {
-          btnSub.classList.add('hidden');
-        }
-      } else if (found === 'bed') {
-        btnMain.innerText = game.player.isSleeping ? '⏰ Svegliati' : '😴 Coricati a Letto';
-        btnMain.classList.remove('btn-pop-locked');
-        btnSub.classList.add('hidden');
-      } else if (item.pet && PET_OF_KEY[found] && isMyRoomNow()) {
-        const kind = item.pet as PetKind;
-        btnMain.innerText = `🍖 Dai da mangiare ${/^[aeiou]/.test(PETS[kind].name) ? "all'" : 'al '}${PETS[kind].name} (${PET_FOOD_PRICE} €)`;
-        btnMain.classList.remove('btn-pop-locked');
-        if (kind === 'dog') {
-          btnSub.innerText = '🦮 Porta a spasso';
-          btnSub.classList.remove('hidden');
-        } else btnSub.classList.add('hidden');
-      } else if (isLimitedId(found)) {
-        // mobile in edizione limitata: il mio, o di un altro (offerta)
-        btnMain.innerText = isMyRoomNow()
-          ? `💎 ${item.name}`
-          : offerButtonText(found) || `💎 ${item.name}`;
-        btnMain.classList.remove('btn-pop-locked');
-        btnSub.classList.add('hidden');
-      } else if (found === 'wardrobe' && !isMyRoomNow() && visitedLimitedClothes()) {
-        btnMain.innerText = `💎 ${visitedLimitedClothes()}`;
-        btnMain.classList.remove('btn-pop-locked');
-        btnSub.classList.add('hidden');
-      } else if (found.startsWith('painting')) {
-        const name = quotedTitle(
-          roomPaintings(game.roomsState[game.currentRoomIdx ?? -1])[slotOfKey(found) || 'p1'],
-        );
-        btnMain.innerText = isMyRoomNow()
-          ? `🖼️ ${name || item.name}`
-          : `🖼️ Ammira ${name || 'il quadro'}`;
-        btnMain.classList.remove('btn-pop-locked');
-        btnSub.classList.add('hidden');
-      } else if (found === 'sofa' || found === 'tv') {
-        btnMain.innerText =
-          found === 'tv' ? '📺 Guarda la TV' : onSofa() ? '🧍 Alzati' : '🛋️ Siediti sul Divano';
-        btnMain.classList.remove('btn-pop-locked');
-        btnSub.classList.add('hidden');
-      } else {
-        btnMain.innerText = `✋ ${item.name}`;
-        btnMain.classList.remove('btn-pop-locked');
-        btnSub.classList.add('hidden');
-      }
-    } else if (game.view.activeEnvironment === 'KITCHEN') {
-      btnMain.classList.remove('btn-pop-locked');
-      if (found === 'fridge') {
-        if (!game.view.fridgeIsOpen) {
-          btnMain.innerText = '🧊 Apri Frigorifero';
-          btnSub.classList.add('hidden');
-        } else {
-          btnMain.innerText = '🧊 Chiudi Frigorifero';
-          if (!game.player.hasFoodInInventory) {
-            btnSub.innerText = '🍎 Prendi Cibo (-5 €)';
-            btnSub.classList.remove('hidden');
-          } else {
-            btnSub.classList.add('hidden');
-          }
-        }
-      } else if (found === 'stove') {
-        if (game.player.hasFoodInInventory && !game.player.foodIsCooked) {
-          btnMain.innerText = '🍳 Cucina Cibo';
-          btnSub.classList.add('hidden');
-        } else if (game.player.foodIsCooked) {
-          btnMain.innerText = '🍽️ Mangia';
-          btnSub.classList.add('hidden');
-        } else {
-          btnMain.innerText = '🍳 Fornello (Serve Cibo)';
-          btnSub.classList.add('hidden');
-        }
-      } else if (found === 'coffee') {
-        const left: GameValue = coffeeLeftMs();
-        btnMain.innerText =
-          left > 0
-            ? `☕ Macchina in pausa (${Math.ceil(left / 60000)} min)`
-            : `☕ Prepara un caffè (+${game.COFFEE_SLEEP}% sonno, −${game.COFFEE_HEALTH}% salute)`;
-        btnMain.classList.toggle('btn-pop-locked', left > 0);
-        btnSub.classList.add('hidden');
-      } else {
-        btnMain.innerText = `✋ ${item.name}`;
-        btnSub.classList.add('hidden');
-      }
-    } else {
-      btnMain.innerText = `✋ ${item.name}`;
-      btnSub.classList.add('hidden');
-    }
-    if (
-      game.view.activeEnvironment === 'PLAYER_ROOM' &&
-      (found === 'weedPot' || found === 'weedJar')
-    ) {
-      const mine = isMyRoomNow();
-      btnSub.classList.add('hidden');
-      btnMain.innerText =
-        found === 'weedPot'
-          ? mine
-            ? plantLabel()
-            : `🌱 ${item.name}`
-          : mine
-            ? `🚬 Fuma una canna (${game.player.weed?.grams || 0} g)`
-            : '🌿 Barattolo di erba';
-      btnMain.classList.toggle('btn-pop-locked', !mine);
-    }
-    if (game.view.activeEnvironment === 'BATHROOM') {
-      const busy = !!(game.showerAnim || game.bathAnim);
-      const labels: Record<string, [string, string]> = {
-        shower: ['🚿 Fai la doccia', '🚿 Doccia in corso…'],
-        toilet: [
-          `🚽 Usa il WC (${usesLeftToday(game.player.daily, 'wc', new Date())}/${DAILY_LIMITS.wc} oggi)`,
-          '🚽 Occupato…',
-        ],
-        sink: ['🚰 Lavati le mani', '🚰 Ti stai lavando…'],
-      };
-      if (labels[found]) {
-        btnMain.innerText = labels[found][busy ? 1 : 0];
-        btnMain.classList.toggle('btn-pop-locked', busy);
-      }
-    }
+    const p = promptFor(found, item);
+    btnMain.innerText = p.text;
+    btnMain.classList.toggle('btn-pop-locked', !!p.locked);
+    if (p.sub) {
+      btnSub.innerText = p.sub;
+      btnSub.classList.remove('hidden');
+    } else btnSub.classList.add('hidden');
     if (item.moveable && isMyRoomNow()) {
       if (found === 'bed' && game.player.isSleeping) {
         btnMove.classList.add('hidden');
@@ -783,7 +431,7 @@ const OUTSIDE_MENU: Record<'' | 'fun', string[]> = {
 const OUTSIDE_BUTTONS = [...new Set(Object.values(OUTSIDE_MENU).flat())];
 
 /** Mostra i pulsanti del menu di uscita giusti (nessuno se il menu è chiuso). */
-function renderOutsideMenu(): void {
+export function renderOutsideMenu(): void {
   const shown = game.view.isOutsideMenuOpen ? OUTSIDE_MENU[game.view.outsideSubmenu || ''] : [];
   for (const id of OUTSIDE_BUTTONS) dom(id)?.classList.toggle('hidden', !shown.includes(id));
 }
@@ -795,7 +443,7 @@ export function openOutsideSubmenu(sub: string): void {
 }
 
 // Fa comparire il personaggio appena oltre la porta, spostato verso il centro dell'ambiente.
-function spawnAtDoor(door: GameValue): void {
+export function spawnAtDoor(door: GameValue): void {
   if (!door) {
     game.playerPos = { x: 0, y: 0 };
     return;
@@ -861,13 +509,13 @@ export async function resumeLastSpot(): Promise<boolean> {
 // Ritorno al salone davanti alla porta da cui si esce (stanza, cucina, bagno, cortile);
 // da fuori (lavoro, negozi, gite…) si rientra invece dall'uscita del condominio, nel cortile.
 /** La porta si spalanca (con il suo rumore) e dopo un attimo si passa dall'altra parte. */
-function throughDoor(id: string): Promise<void> {
+export function throughDoor(id: string): Promise<void> {
   game.doorForce[id] = performance.now() + 900;
   sfx('door');
   return new Promise((resolve) => lifetime.setTimeout(() => resolve(), 380));
 }
 
-function backToSaloon(): void {
+export function backToSaloon(): void {
   const env: GameValue = game.view.activeEnvironment;
   if (MALL_SHOPS[env]) {
     backToMall(env);
@@ -913,7 +561,7 @@ const TRIP_HEALTH = 15;
 // ---------------------------------------------------------------- base spaziale lunare
 
 /** Si entra nella base finita dal portellone del primo modulo. */
-function enterMoonBase(): void {
+export function enterMoonBase(): void {
   if ((game.moonBaseStage || 0) < 3) {
     toast('🔒 La base lunare non è ancora finita.');
     return;
@@ -926,7 +574,7 @@ function enterMoonBase(): void {
 }
 
 /** Dal portellone si torna sulla luna, davanti alla base. */
-function exitMoonBase(): void {
+export function exitMoonBase(): void {
   sfx('door');
   const d: GameValue = game.moonFurniture.baseDoor || { x: 162, y: -20 };
   game.view.activeEnvironment = 'luna';
@@ -974,7 +622,7 @@ function bedSlotsTaken(): Map<number, string> {
 }
 
 /** Cuscino libero nel letto di questa stanza (ci stanno al massimo due persone), o null se è pieno. */
-function freeBedSlot(): number | null {
+export function freeBedSlot(): number | null {
   const taken = bedSlotsTaken();
   if (!taken.has(0)) return 0;
   if (!taken.has(1)) return 1;
@@ -1002,232 +650,10 @@ export function keepOwnPillow(): void {
 }
 
 export async function handleObjectInteract(..._args: GameValue[]): Promise<void> {
-  if (!game.activeTargetProp) return;
+  const key: string | null = game.activeTargetProp;
+  if (!key) return;
   if (game.showerAnim || game.bathAnim || game.rocketTrip) return;
-  let map = getCurrentFurnitureMap();
-  let item: GameValue = map[game.activeTargetProp];
-  if (game.view.activeEnvironment === 'CIMITERO') {
-    if (item) showGraveInfo(item);
-    return;
-  }
-  if (game.MG.active && game.view.activeEnvironment === 'lavoro_' + game.MG.job) {
-    if (item) mgInteract(item, game.activeTargetProp);
-    return;
-  }
-  if (game.view.activeEnvironment === 'bar' || game.view.activeEnvironment === 'discoteca') {
-    if (item) openDealer();
-    return;
-  }
-  if (game.view.activeEnvironment === 'CORTILE' && game.activeTargetProp === 'exitHouse') {
-    // l'uscita del condominio apre il menu dei posti dove andare
-    game.view.isOutsideMenuOpen = !game.view.isOutsideMenuOpen;
-    game.view.outsideSubmenu = '';
-    dom('btn-act-main').innerText = game.view.isOutsideMenuOpen
-      ? '🚪 Chiudi Menu Uscita'
-      : '🚪 Esci dal Condominio';
-    renderOutsideMenu();
-    return;
-  }
-  if (game.view.activeEnvironment === 'SALOON') {
-    if (item.targetEnv === 'PLAYER_ROOM') {
-      const gi: GameValue = game.gRoomIdx(item);
-      let room: GameValue = game.roomsState[gi];
-      if (!room || !room.owner) {
-        toast('🔒 Questa stanza è vuota.');
-        return;
-      }
-      await throughDoor('saloon:' + game.activeTargetProp);
-      game.view.currentRoomTitle =
-        gi === game.myAssignedRoomIdx ? `La tua stanza 🏠` : `Stanza di ${room.owner}`;
-      game.currentRoomIdx = gi;
-      game.view.activeEnvironment = 'PLAYER_ROOM';
-      if (gi !== game.myAssignedRoomIdx) notePersonality('enterOtherRoom');
-      spawnAtDoor(getCurrentFurnitureMap().doorExit);
-    } else {
-      await throughDoor('saloon:' + game.activeTargetProp);
-      game.view.currentRoomTitle = item.title;
-      game.view.activeEnvironment = item.targetEnv;
-      if (item.targetEnv === 'CORTILE')
-        spawnAtDoor(game.courtyardDoors['doorApt' + game.currentApt]);
-      else spawnAtDoor(getCurrentFurnitureMap().doorExit);
-    }
-  } else if (game.view.activeEnvironment === 'CORTILE') {
-    const spot = funSpots()[game.activeTargetProp];
-    if (spot?.fun === 'bench') toggleBench(game.activeTargetProp);
-    else if (spot?.fun === 'realty') await openRealtyBoard();
-    else if (spot?.fun === 'gossip') await openGossipBoard();
-    else if (spot?.fun === 'fountain') await tossCoin();
-    else if (item && item.aptIdx !== undefined) {
-      await throughDoor('cortile:' + game.activeTargetProp);
-      game.currentApt = item.aptIdx;
-      backToSaloon();
-    }
-  } else if (game.view.activeEnvironment === 'laboratorio') {
-    if (String(game.activeTargetProp).startsWith('easel')) openPaintStudio();
-    else if (game.activeTargetProp === 'doorExit') {
-      backToSaloon();
-    }
-  } else if (game.view.activeEnvironment === 'ingegneria') {
-    if (game.activeTargetProp === 'projectBoard' || game.activeTargetProp === 'moonScreen')
-      openProjects(false);
-    else if (game.activeTargetProp === 'workbench') workbenchMessage();
-    else if (game.activeTargetProp === 'rocketPad') {
-      if (moonOpen()) await travelToMoon();
-      else openProjects(false);
-    } else if (game.activeTargetProp === 'launchButton') await pressLaunchButton();
-    else if (game.activeTargetProp === 'doorExit') backToSaloon();
-  } else if (game.view.activeEnvironment === 'negozio_animali') {
-    if (item?.pet) await buyPet(item.pet as PetKind);
-    else if (game.activeTargetProp === 'petCounter') await giveUpForAdoption();
-    else if (game.activeTargetProp === 'doorExit') backToSaloon();
-  } else if (game.view.activeEnvironment === 'growshop') {
-    if (item?.strain) await buyPlant(item.strain);
-    else if (game.activeTargetProp === 'doorExit') backToSaloon();
-  } else if (game.view.activeEnvironment === 'luna') {
-    if (game.activeTargetProp === 'baseDoor') enterMoonBase();
-    else if (game.activeTargetProp === 'moonRocket') await returnToEarth();
-  } else if (game.view.activeEnvironment === 'base_lunare') {
-    if (game.activeTargetProp === 'baseConsole') openProjects(false);
-    else if (game.activeTargetProp === 'doorExit') exitMoonBase();
-  } else if (game.view.activeEnvironment === 'centro_commerciale') {
-    if (game.activeTargetProp === 'iceCream') await buyIceCream();
-    else if (item?.enter) await doActivity(item.enter);
-    else if (game.activeTargetProp === 'doorExit') backToSaloon();
-  } else if (game.view.activeEnvironment === 'sala_giochi') {
-    if (isArcadeGame(item?.game)) await openArcadeStation(item.game);
-    else if (game.activeTargetProp === 'doorExit') backToSaloon();
-  } else if (game.view.activeEnvironment === 'scommesse') {
-    if (String(game.activeTargetProp).startsWith('slot')) openSlot();
-    else if (game.activeTargetProp === 'rpsTable') openRpsTable();
-    else if (game.activeTargetProp === 'doorExit') backToSaloon();
-  } else if (game.view.activeEnvironment === 'banca') {
-    if (game.activeTargetProp === 'bankCounter') await openBankCounter();
-    else if (game.activeTargetProp === 'doorExit') {
-      backToSaloon();
-    }
-  } else if (game.view.activeEnvironment === 'negozio_vestiti') {
-    if (game.activeTargetProp === 'doorExit') {
-      backToSaloon();
-    } else {
-      openClothesShop(item.slot || 'top', false);
-    }
-  } else if (game.view.activeEnvironment === 'negozio_mobili') {
-    if (game.activeTargetProp === 'shopCounter') {
-      openFurnitureShopModal();
-    } else if (game.activeTargetProp === 'doorExit') {
-      backToSaloon();
-    } else if (item.category) {
-      const next: GameValue = nextUpgrade(
-        game.furnitureCatalog,
-        game.player.ownedFurniture,
-        item.category,
-      );
-      if (!next) return;
-      if (game.moneyLevel < next.price) {
-        toast(`Non hai abbastanza soldi: ${next.name} costa ${next.price} €.`);
-        return;
-      }
-      if (!(await purchaseItem('ownedFurniture', next.id, next.price))) return;
-      const tier = tierOf(next);
-      toast(
-        tier === 'std'
-          ? `✅ Hai acquistato ${next.name}! È comparso nella tua stanza.`
-          : `${tier === 'lux' ? '✨' : '💎'} Complimenti! Hai acquistato ${next.name}: ha sostituito il modello precedente nella tua stanza!`,
-      );
-      announceFurnitureBenefit(next);
-    }
-  } else if (game.view.activeEnvironment === 'KITCHEN') {
-    if (game.activeTargetProp === 'fridge') {
-      game.view.fridgeIsOpen = !game.view.fridgeIsOpen;
-      sfx(game.view.fridgeIsOpen ? 'fridgeOpen' : 'fridgeClose');
-      // il cibo preso resta in mano anche chiudendo il frigo: serve per il fornello
-    } else if (game.activeTargetProp === 'coffee') {
-      useCoffee();
-    } else if (game.activeTargetProp === 'stove') {
-      if (game.player.hasFoodInInventory && !game.player.foodIsCooked) {
-        game.player.foodIsCooked = true;
-        toast('Hai cucinato il cibo! 🍽️');
-      } else if (game.player.foodIsCooked) {
-        game.player.hungerLevel = Math.min(100, game.player.hungerLevel + 50);
-        game.player.stats.meals++;
-        game.player.hasFoodInInventory = false;
-        game.player.foodIsCooked = false;
-        game.view.fridgeIsOpen = false;
-        toast('Gnam! Fame +50%');
-      }
-    } else if (game.activeTargetProp === 'doorExit') {
-      backToSaloon();
-    }
-  } else if (game.view.activeEnvironment === 'BATHROOM') {
-    if (game.activeTargetProp === 'shower') {
-      startShower();
-    } else if (game.activeTargetProp === 'sink') {
-      startWash();
-    } else if (game.activeTargetProp === 'toilet') {
-      if (game.showerAnim || game.bathAnim) return;
-      if (usesLeftToday(game.player.daily, 'wc', new Date()) <= 0) {
-        toast(`🚽 Oggi hai già usato il WC ${DAILY_LIMITS.wc} volte: riprova domani.`);
-        return;
-      }
-      game.player.daily = recordUse(game.player.daily, 'wc', new Date());
-      startToilet();
-      saveGame();
-    } else if (game.activeTargetProp === 'doorExit') {
-      backToSaloon();
-    }
-  } else {
-    if (game.activeTargetProp === 'doorExit') {
-      backToSaloon();
-    } else if (game.activeTargetProp === 'weedPot') {
-      if (isMyRoomNow()) tendPlant();
-      else toast('🌱 Questa pianta non è tua!');
-    } else if (game.activeTargetProp === 'weedJar') {
-      if (isMyRoomNow()) smokeJoint();
-      else toast('🚫 Questo barattolo non è tuo!');
-    } else if (game.activeTargetProp === 'bed') {
-      if (!game.player.isSleeping) {
-        const slot = freeBedSlot();
-        if (slot === null) {
-          toast('🛏️ Letto pieno, prova un altro letto.');
-          return;
-        }
-        game.bedSlot = slot;
-      }
-      game.player.isSleeping = !game.player.isSleeping;
-      sfx(game.player.isSleeping ? 'sleep' : 'wake');
-      if (game.player.isSleeping) bedtimeThought();
-      toast(game.player.isSleeping ? 'Ti sei coricato a letto 🛏️' : 'Ti sei svegliato.');
-    } else if (game.activeTargetProp === 'wardrobe') {
-      if (isMyRoomNow()) openWardrobe();
-      // nell'armadio di un altro si vedono solo i capi in edizione limitata, per fare un'offerta
-      else if (!(await wardrobeOffers())) toast("🚫 Non puoi frugare nell'armadio di un altro!");
-    } else if (isLimitedId(game.activeTargetProp)) {
-      const n = visitedCopy(game.activeTargetProp);
-      if (!isMyRoomNow() && n) await makeOffer(game.activeTargetProp, n);
-      else
-        toast(
-          `💎 ${item?.name || ''}: edizione limitata. Puoi spostarlo con 🖐️ Sposta Mobile.`,
-          4000,
-        );
-    } else if (game.activeTargetProp === 'desk') {
-      openComputerShopModal();
-    } else if (PET_OF_KEY[game.activeTargetProp] && isMyRoomNow()) {
-      await feed(PET_OF_KEY[game.activeTargetProp]);
-    } else if (game.activeTargetProp === 'sofa') {
-      toggleSofa(item);
-    } else if (game.activeTargetProp === 'tv') {
-      relaxWith(game.activeTargetProp, item);
-    } else if (game.activeTargetProp === 'safe') {
-      handleSafeInteraction();
-    } else if (String(game.activeTargetProp).startsWith('painting')) {
-      if (isMyRoomNow()) await managePainting(game.activeTargetProp);
-      else
-        toast(
-          `🖼️ ${quotedTitle(roomPaintings(game.roomsState[game.currentRoomIdx ?? -1])[slotOfKey(game.activeTargetProp) || 'p1']) || 'Un quadro'}, appeso nella stanza di ${game.roomsState[game.currentRoomIdx ?? -1]?.owner || 'chi abita qui'}.`,
-          4000,
-        );
-    }
-  }
+  await interactWith(key, getCurrentFurnitureMap()[key]);
 }
 
 export async function handleSafeInteraction(..._args: GameValue[]): Promise<GameValue> {
@@ -1535,7 +961,7 @@ export function goToLaunchSite(): void {
 }
 
 /** Al bancone si vede a che punto sono i lavori del razzo. */
-function workbenchMessage(): void {
+export function workbenchMessage(): void {
   const stage = game.rocketStage || 0;
   const left = (projectGoal(PROJECTS.rocket) - rocketFunded()).toLocaleString('it-IT');
   toast(
@@ -1549,7 +975,7 @@ function workbenchMessage(): void {
 }
 
 // Dopo un acquisto spiega al giocatore cosa fa il mobile.
-function announceFurnitureBenefit(def: GameValue): void {
+export function announceFurnitureBenefit(def: GameValue): void {
   const text = furnitureBenefit(def);
   if (text) toast(text, 6500, false);
 }
