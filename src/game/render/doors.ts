@@ -49,7 +49,7 @@ export class DoorModel {
       [nx, ny] = at.normal;
     for (let i = 0; i < leaves; i++) {
       const first = i === 0;
-      if (open < 0.02) {
+      if (open < 0.001) {
         // chiusa: l'anta sta nel piano del muro
         const o: V3 = [at.hinge[0] + ax * lw * i, at.hinge[1] + ay * lw * i, at.hinge[2]];
         onPlane(o, [ax, ay, 0], lw, at.h, () => paint(lw, at.h, look, first));
@@ -57,6 +57,9 @@ export class DoorModel {
       }
       // aperta: ruota sul suo cardine (a sinistra la prima, a destra la seconda)
       const a = open * maxAngle;
+      // da chiusa lo spessore sta nello stipite: il bordo esce piano piano mentre l'anta gira
+      // (pieno da circa 25°), invece di comparire tutto insieme
+      const shownThick = thick * Math.min(1, a / 0.45);
       const dir = first ? 1 : -1;
       const hinge: V3 = first
         ? at.hinge
@@ -66,7 +69,7 @@ export class DoorModel {
         ay * dir * Math.cos(a) + ny * Math.sin(a),
         0,
       ];
-      doorLeaf(hinge, u, lw, at.h, thick, look.color, (W, H) => {
+      doorLeaf(hinge, u, lw, at.h, shownThick, look.color, (W, H) => {
         paint(W, H, look, true); // da aperta i cardini sono sempre all'origine dell'anta
         // più è aperta, più l'anta è in ombra
         game.view.ctx.fillStyle = `rgba(0,0,0,${0.25 * open})`;
