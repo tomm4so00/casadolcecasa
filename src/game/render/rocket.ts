@@ -739,7 +739,8 @@ export function drawMoonSignProp(it?: GameValue): GameValue {
     ctx.fillStyle = '#ffffff';
     ctx.font = 'bold 9px sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText('TO THE MOON', W / 2 - 6, H / 2 + 3);
+    // la scritta sta tra il bordo e la luna: se non ci entra si stringe
+    ctx.fillText('TO THE MOON', W / 2 - 6, H / 2 + 3, W - 24);
     // spicchio di luna
     ctx.fillStyle = '#f5f3ce';
     ctx.beginPath();
