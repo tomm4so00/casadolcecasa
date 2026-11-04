@@ -155,6 +155,12 @@ const doorOpenState = new Map<string, { k: number; t: number }>();
  * Quanto è aperta una porta: si apre quando il giocatore la sta attraversando (game.doorForce)
  * e, se `byProximity`, anche quando le si avvicina; poi si richiude.
  */
+/** La porta da cui si è appena arrivati: finché fa da muro non si apre avvicinandosi. */
+let blockedDoorId: string | null = null;
+export function setBlockedDoor(id: string | null): void {
+  blockedDoorId = id;
+}
+
 export function doorOpenAmount(
   id: string,
   x: number,
@@ -165,7 +171,10 @@ export function doorOpenAmount(
   const now = performance.now();
   const st = doorOpenState.get(id) || { k: 0, t: now };
   const dt = Math.min(0.1, Math.max(0, (now - st.t) / 1000));
-  const near = byProximity && Math.hypot(game.playerPos.x - x, game.playerPos.y - y) < 75;
+  const near =
+    byProximity &&
+    id !== blockedDoorId &&
+    Math.hypot(game.playerPos.x - x, game.playerPos.y - y) < 75;
   const target = enabled && (near || (game.doorForce[id] || 0) > now) ? 1 : 0;
   st.k += (target - st.k) * Math.min(1, dt * 6);
   st.t = now;

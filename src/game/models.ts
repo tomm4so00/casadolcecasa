@@ -68,7 +68,8 @@ export interface DialogOptions {
   title: string;
   text?: string;
   input?: { placeholder?: string; numeric?: boolean; maxLength?: number } | null;
-  buttons: { label: string; value: string | null; color?: string }[];
+  /** `wide`: il pulsante occupa una riga intera, sotto gli altri */
+  buttons: { label: string; value: string | null; color?: string; wide?: boolean }[];
 }
 export interface DrugState {
   active: boolean;
@@ -119,6 +120,8 @@ export interface CharacterState {
   invest: Record<string, Investment>;
   drug: DrugState;
   drugStock: number;
+  /** fino a quando si hanno gli occhi rossi dopo una canna (ms, ora del dispositivo) */
+  stonedUntil: number;
   coffeeAt: number;
   bornAt: number;
   isDead: boolean;
@@ -186,6 +189,7 @@ export const createCharacterState = (): CharacterState => ({
   invest: {},
   drug: { active: false, doses: 0, lastDose: 0, endAt: 0, dAtDose: 0, crisisAt: 0 },
   drugStock: 0,
+  stonedUntil: 0,
   coffeeAt: 0,
   bornAt: 0,
   isDead: false,

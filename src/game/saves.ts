@@ -6,7 +6,7 @@ import { myBenchPose } from './courtyard-fun.js';
 import { decodeDailyUses } from './daily-limits.js';
 import { decodePets } from './pet-rules.js';
 import { freePetsForLayout, petRoomItems, syncPetHomes } from './pets.js';
-import { syncWeedPot, weedRoomItems } from './weed.js';
+import { isStoned, syncWeedPot, weedRoomItems } from './weed.js';
 import { publishVitals } from './players-hud-rules.js';
 import { advanceNeeds } from './simulation.js';
 import { needsRules } from './needs-rules.js';
@@ -143,6 +143,7 @@ export function buildSaveData(..._args: GameValue[]): SaveV8 {
     foodCooked: !!game.player.foodIsCooked,
   };
   if (game.player.drugStock > 0) data.drugStock = game.player.drugStock;
+  if (game.player.stonedUntil > Date.now()) data.stonedUntil = game.player.stonedUntil;
   if (game.player.romance && Object.keys(game.player.romance).length)
     data.romance = game.player.romance;
   if (game.player.relations && Object.keys(game.player.relations).length)
@@ -219,6 +220,7 @@ export function applySave(value: unknown): void {
   game.player.gameMinutes = num(s.gameMinutes, game.player.gameMinutes);
   game.player.bornAt = num(s.bornAt, 0);
   game.player.drugStock = Math.max(0, Math.floor(num(s.drugStock, 0)));
+  game.player.stonedUntil = num(s.stonedUntil, 0);
   game.player.romance = decodeRomance(s.romance);
   game.player.relations = decodeRelations(s.relations);
   game.player.personality = decodePersonality(s.personality);
@@ -631,6 +633,8 @@ export function startPresence(..._args: GameValue[]): GameValue {
           ? 'Nella sua stanza 🏠'
           : game.view.currentRoomTitle,
       ),
+      // occhi rossi dopo una canna: li vedono anche gli altri
+      ...(isStoned() ? { stoned: true } : {}),
       act: game.rocketTrip
         ? 'rocket'
         : performance.now() < game.smokeUntil

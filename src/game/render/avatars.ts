@@ -812,6 +812,8 @@ export function drawFace(
   hair?: GameValue,
   animTime?: GameValue,
   hsh?: GameValue,
+  /** colore della pelle per le palpebre pesanti degli occhi rossi; null = occhi normali */
+  stonedLid: string | null = null,
 ): GameValue {
   const ctx = game.view.ctx;
   const hx: GameValue = head.x,
@@ -866,13 +868,24 @@ export function drawFace(
       ctx.stroke();
       return;
     }
-    ctx.fillStyle = '#ffffff';
+    // occhi rossi: il bianco arrossato con le venuzze
+    ctx.fillStyle = stonedLid ? '#ffc9c9' : '#ffffff';
     ctx.strokeStyle = 'rgba(0,0,0,0.5)';
     ctx.lineWidth = 0.7;
     ctx.beginPath();
     ctx.ellipse(ex, ey, shape[0] * s, shape[1] * s, 0, 0, 6.3);
     ctx.fill();
     ctx.stroke();
+    if (stonedLid) {
+      ctx.strokeStyle = 'rgba(214,48,49,0.75)';
+      ctx.lineWidth = 0.4 * s;
+      ctx.beginPath();
+      ctx.moveTo(ex - shape[0] * s, ey + 0.2 * s);
+      ctx.lineTo(ex - shape[0] * 0.4 * s, ey + 0.6 * s);
+      ctx.moveTo(ex + shape[0] * s, ey + 0.1 * s);
+      ctx.lineTo(ex + shape[0] * 0.45 * s, ey + 0.5 * s);
+      ctx.stroke();
+    }
     ctx.fillStyle = eyeC;
     ctx.beginPath();
     ctx.arc(ex, ey + 0.1 * s, Math.min(shape[2], shape[1]) * s, 0, 6.3);
@@ -885,6 +898,22 @@ export function drawFace(
     ctx.beginPath();
     ctx.arc(ex + 0.5 * s, ey - 0.5 * s, 0.4 * s, 0, 6.3);
     ctx.fill();
+    if (stonedLid) {
+      // palpebre pesanti: coprono la metà di sopra dell'occhio
+      ctx.fillStyle = stonedLid;
+      ctx.beginPath();
+      ctx.ellipse(ex, ey, shape[0] * s + 0.4, shape[1] * s + 0.4, 0, Math.PI, Math.PI * 2);
+      ctx.lineTo(ex + shape[0] * s + 0.4, ey + 0.2 * s);
+      ctx.lineTo(ex - shape[0] * s - 0.4, ey + 0.2 * s);
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(0,0,0,0.55)';
+      ctx.lineWidth = 0.8;
+      ctx.beginPath();
+      ctx.moveTo(ex - shape[0] * s, ey + 0.2 * s);
+      ctx.lineTo(ex + shape[0] * s, ey + 0.2 * s);
+      ctx.stroke();
+      return;
+    }
     if (bd.eyeShape === 2) {
       ctx.strokeStyle = '#2d3436';
       ctx.lineWidth = 1.1;
@@ -2276,7 +2305,7 @@ export function drawPlayerAvatar(
   ctx.lineWidth = 1;
   ctx.stroke();
   if (!mannequin) {
-    drawFace(head, s, bd, hair, animTime, hsh);
+    drawFace(head, s, bd, hair, animTime, hsh, look.stoned ? skin : null);
     drawHairFront(head, s, bd.hairStyle, hair);
   }
   drawGlasses(head, s, look.glasses);

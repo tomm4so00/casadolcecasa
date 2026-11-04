@@ -33,6 +33,8 @@ export interface OnlinePlayer extends PresenceInfo {
   sick?: number;
   /** 1 se porta a spasso il suo cane al guinzaglio. */
   dog?: number;
+  /** true per un quarto d'ora dopo una canna: occhi rossi. */
+  stoned?: boolean;
   /** Personalità ottenuta (artist, business, criminal, romantic). */
   pers?: string;
   /** Livello della personalità (1-3). */

@@ -1569,7 +1569,18 @@ export const SIMULATION_BOTS = [
     lift: 26,
   },
   { name: 'Lucia 🐾', env: 'negozio_animali', x: 62, y: 86, vx: 0, vy: 0, clerk: true, lift: 30 },
-  { name: 'Rocco 🌿', env: 'growshop', x: 98, y: 44, vx: 0, vy: 0, clerk: true, lift: 20 },
+  {
+    name: 'Rocco 🌿',
+    env: 'growshop',
+    x: 98,
+    y: 44,
+    vx: 0,
+    vy: 0,
+    clerk: true,
+    lift: 20,
+    // occhi rossi, sempre
+    stoned: true,
+  },
   {
     name: 'Antiquario Ettore 🏺',
     env: 'collezionismo',
@@ -3026,8 +3037,12 @@ export const ENV_DECOR = {
   growshop: [
     { kind: 'plant', x: -168, y: -160, w: 26, h: 26, z: 60 },
     { kind: 'plant', x: 168, y: -160, w: 26, h: 26, z: 60 },
-    { kind: 'plant', x: -168, y: 140, w: 26, h: 26, z: 60 },
-    { kind: 'plant', x: 168, y: 140, w: 26, h: 26, z: 60 },
+    // lungo il muro di sinistra: la grow tent accesa e lo scaffale di semi e fertilizzanti
+    { kind: 'growTent', x: -174, y: 8, w: 40, h: 56, z: 84 },
+    { kind: 'growShelf', x: -188, y: 100, w: 18, h: 64, z: 74 },
+    // angolo relax: tappeto rasta e pouf
+    { kind: 'rastaRug', x: -50, y: 60, w: 80, h: 56, solid: false, flat: true },
+    { kind: 'beanbag', x: 150, y: 132, w: 52, h: 52, z: 22 },
   ],
   luna: [
     { kind: 'crater', x: -170, y: -150, w: 80, h: 80, r: 40, solid: false, flat: true },

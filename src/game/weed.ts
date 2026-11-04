@@ -171,10 +171,17 @@ export function smokeJoint(): void {
   );
 }
 
+/** Per quanto restano gli occhi rossi dopo una canna. */
+const STONED_MS = 15 * 60 * 1000;
+
+/** Se il proprio personaggio ha ancora gli occhi rossi. */
+export const isStoned = (): boolean => game.player.stonedUntil > Date.now();
+
 /** Effetto di una canna: felicità, fumetto e nuvolette di fumo (le vedono anche gli altri). */
 function enjoyJoint(): void {
   game.player.happinessLevel = Math.min(100, game.player.happinessLevel + JOINT_HAPPY);
   game.smokeUntil = performance.now() + 6000;
+  game.player.stonedUntil = Date.now() + STONED_MS;
   game.mySay = '💨 Che relax…';
   game.mySayT = Date.now();
 }
