@@ -4,6 +4,7 @@ import type { GameValue } from '../context.js';
 import { game } from '../context.js';
 import { footprintOf, isoProject, isoScale, poly } from './primitives.js';
 import { box, ellipseShadow, onFace } from './objects.js';
+import { handsOf } from './avatars.js';
 import type { PetKind } from '../pet-rules.js';
 
 type Pt = { x: number; y: number };
@@ -589,7 +590,11 @@ export function collarPoint(x: number, y: number, dx: number, dy: number): Pt {
 export function drawLeash(px: number, py: number, collar: Pt): void {
   const ctx = game.view.ctx;
   const s = isoScale();
-  const hand = P(px, py, 30);
+  // la mano dal lato del cane (se il giocatore non è stato disegnato, a metà fianco)
+  const hands = handsOf(px, py);
+  const hand = hands
+    ? hands.reduce((a, b) => (Math.abs(b.x - collar.x) < Math.abs(a.x - collar.x) ? b : a))
+    : P(px, py, 22);
   const mx = (hand.x + collar.x) / 2,
     my = Math.max(hand.y, collar.y) + 8 * s;
   ctx.strokeStyle = '#c0392b';

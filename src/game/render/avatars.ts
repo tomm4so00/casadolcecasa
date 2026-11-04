@@ -10,6 +10,9 @@ import { box, onFace, withFurnitureRotation } from './objects.js';
 import { nameHash } from './scenes.js';
 // ---------- piccoli aiuti per il disegno dei vestiti ----------
 type Pt = { x: number; y: number };
+/** Mani dell'ultimo disegno di ogni personaggio, per posizione a terra (servono al guinzaglio). */
+const handsAt = new Map<string, [Pt, Pt]>();
+export const handsOf = (x: number, y: number): [Pt, Pt] | undefined => handsAt.get(x + ',' + y);
 const lerpPt = (a: Pt, b: Pt, k: number): Pt => ({
   x: a.x + (b.x - a.x) * k,
   y: a.y + (b.y - a.y) * k,
@@ -1778,11 +1781,11 @@ export function drawPlayerAvatar(
     }
     dot(to.x, to.y, 2.6 * s, sk);
   };
-  drawArm(
-    { x: neck.x + tw - 1 * s, y: neck.y + 3 * s },
-    handBack || { x: hip.x + 11 * s + armX, y: hip.y + 1 * s + armY },
-    true,
-  );
+  const backTo: Pt = handBack || { x: hip.x + 11 * s + armX, y: hip.y + 1 * s + armY },
+    frontTo: Pt = handFront || { x: hip.x - 11 * s - armX, y: hip.y + 1 * s - armY };
+  if (handsAt.size > 200) handsAt.clear();
+  handsAt.set(x + ',' + y, [backTo, frontTo]);
+  drawArm({ x: neck.x + tw - 1 * s, y: neck.y + 3 * s }, backTo, true);
 
   // ---- cappuccio (dietro al collo)
   if (top.style === 'hoodie') {
@@ -2145,11 +2148,7 @@ export function drawPlayerAvatar(
   if (neckItem) drawNeckFront(neckItem, neck, tyTop, tH, tw, s);
 
   // ---- braccio davanti
-  drawArm(
-    { x: neck.x - tw + 1 * s, y: neck.y + 3 * s },
-    handFront || { x: hip.x - 11 * s - armX, y: hip.y + 1 * s - armY },
-    false,
-  );
+  drawArm({ x: neck.x - tw + 1 * s, y: neck.y + 3 * s }, frontTo, false);
   // schiuma del sapone tra le mani
   if (pose === 'wash')
     for (let i = 0; i < 6; i++) {

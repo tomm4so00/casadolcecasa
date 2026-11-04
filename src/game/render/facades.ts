@@ -666,11 +666,12 @@ function drawFacade(
 export function drawCourtyardDoor(key?: GameValue, it?: GameValue): GameValue {
   const mine: GameValue = hasRoom() && game.aptOfRoom(game.myAssignedRoomIdx) === it.aptIdx;
   const free: number = freeRoomsInApt(it.aptIdx);
+  const building = free === game.ROOMS_PER_APT;
   const o = {
     no: it.aptIdx + 1,
     doorColor: mine ? '#2e86de' : free === 0 ? '#7f8c8d' : '#27ae60',
-    building: free === game.ROOMS_PER_APT,
-    open: doorOpenAmount('cortile:' + key, it.x, it.y, true),
+    building,
+    open: doorOpenAmount('cortile:' + key, it.x, it.y, !building),
   };
   // la palazzina si ridisegna solo se cambia qualcosa che si vede (notte, portone, colore…)
   const hour = realHour(new Date());
