@@ -377,7 +377,8 @@ export function checkProximity(..._args: GameValue[]): GameValue {
     } // l'oggetto più vicino
   });
   // cane e gatto che girano per la propria stanza
-  const pets = arrange ? {} : petSpots();
+  // a letto si ignorano cane e gatto: il pulsante resta "Svegliati"
+  const pets = arrange || game.player.isSleeping ? {} : petSpots();
   for (const key of Object.keys(pets)) {
     const d = Math.hypot(game.playerPos.x - pets[key].x, game.playerPos.y - pets[key].y);
     if (d < Math.min(bestDist, 45)) {
@@ -397,6 +398,8 @@ export function checkProximity(..._args: GameValue[]): GameValue {
       found = key;
     }
   }
+  // a letto il pulsante resta sempre quello per svegliarsi
+  if (game.player.isSleeping && map.bed && !arrange) found = 'bed';
   const pop: GameValue = dom('pop-interaction');
   const btnMain: GameValue = dom('btn-act-main');
   const btnSub: GameValue = dom('btn-act-sub');
