@@ -471,11 +471,14 @@ let labCutT = 0;
  * Quanto è abbassato il muro tra laboratorio e zona esterna (0 alto, 1 abbassato): si abbassa
  * quando si esce, come in una casa delle bambole, così non copre il piazzale e chi ci sta.
  */
+// Per ora spento: il muro resta sempre alto (true per riaccenderlo).
+const LAB_WALL_CUTAWAY = false;
+
 function labWallCut(t: number): number {
   if (t !== labCutT) {
     const dt = Math.min(0.1, Math.max(0, t - labCutT));
     labCutT = t;
-    const out = game.playerPos.y < LAB_WALL_Y ? 1 : 0;
+    const out = LAB_WALL_CUTAWAY && game.playerPos.y < LAB_WALL_Y ? 1 : 0;
     labCut += (out - labCut) * Math.min(1, dt * 5);
   }
   return labCut * labCut * (3 - 2 * labCut);
