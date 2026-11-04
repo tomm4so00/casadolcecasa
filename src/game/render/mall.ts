@@ -60,6 +60,13 @@ const FACADE_STYLE: Record<
     awning: ['#7d2a3c', '#f5e6c8'],
     title: '🏺 COLLEZIONI',
   },
+  usato: {
+    wall: '#2e7d5b',
+    sign: '#14382a',
+    text: '#fdf6e3',
+    awning: ['#f39c12', '#fdf6e3'],
+    title: "🏷️ L'USATO",
+  },
 };
 
 /** Vetrina di un negozio del centro commerciale: insegna, tenda, due vetrine e la porta a vetri. */
@@ -67,7 +74,8 @@ export function drawShopFacade(it?: GameValue, t?: GameValue): GameValue {
   const ctx = game.view.ctx;
   const st = FACADE_STYLE[it.shop] || FACADE_STYLE.mobili;
   const front: GameValue = box(it.x, it.y, it.w, it.h, it.z, st.wall);
-  onFace(front, 'left', (W: number, H: number): void => {
+  // le vetrine sulla parete di sinistra guardano verso destra: si disegna sull'altra faccia
+  onFace(front, it.side === 'left' ? 'right' : 'left', (W: number, H: number): void => {
     // insegna
     ctx.fillStyle = st.sign;
     ctx.fillRect(4, 6, W - 8, 22);
@@ -238,6 +246,28 @@ function drawWindowDisplay(shop: string, x: number, y: number, w: number, h: num
       ctx.beginPath();
       ctx.arc(px, base - 34, 2.5, 0, 6.3);
       ctx.fill();
+    }
+  } else if (shop === 'usato') {
+    // pezzi di seconda mano con il cartellino del prezzo
+    const pieces = ['col_giradischi', 'col_cactus'];
+    for (let i = 0; i < 2; i++) {
+      const px = x + (w * (i + 0.5)) / 2;
+      ctx.fillStyle = '#8d6e63';
+      ctx.fillRect(px - 7, base - 4, 14, 3);
+      drawCollectibleArt(ctx, pieces[i], px, base - 4, 14, t);
+      // cartellino appeso
+      ctx.strokeStyle = '#5d4037';
+      ctx.lineWidth = 0.6;
+      ctx.beginPath();
+      ctx.moveTo(px + 4, y + 4);
+      ctx.lineTo(px + 4, y + 9);
+      ctx.stroke();
+      ctx.fillStyle = '#fdf6e3';
+      ctx.fillRect(px + 1, y + 9, 7, 5);
+      ctx.fillStyle = '#c0392b';
+      ctx.font = 'bold 3.5px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('€', px + 4.5, y + 13);
     }
   } else if (shop === 'collezione') {
     // due piedistalli con un pezzo ciascuno, sotto una luce calda

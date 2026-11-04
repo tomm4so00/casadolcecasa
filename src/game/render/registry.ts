@@ -195,6 +195,13 @@ export function registerDrawers(): void {
     shopGrow: drawShopFacade,
     shopPets: drawShopFacade,
     shopCollect: drawShopFacade,
+    shopUsed: drawShopFacade,
+    // espositori del negozio dell'usato
+    usedStand0: drawCollectStand,
+    usedStand1: drawCollectStand,
+    usedStand2: drawCollectStand,
+    usedStand3: drawCollectStand,
+    usedStand4: drawCollectStand,
     // espositori del negozio di oggetti da collezione
     colStand0: drawCollectStand,
     colStand1: drawCollectStand,

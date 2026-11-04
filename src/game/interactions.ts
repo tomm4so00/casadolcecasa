@@ -37,6 +37,7 @@ import {
 } from './limited.js';
 import { openArcadeStation } from './arcade.js';
 import { buyFromStand, openShelf, shelfPrompt, standPrompt } from './collect.js';
+import { usedAct, usedPrompt } from './used-shop.js';
 import { ARCADE_GAMES, type ArcadeGame, isArcadeGame } from './arcade-rules.js';
 import { quotedTitle } from './painting-titles.js';
 import { type DoorGap, type RoomBounds, crossedDoor, gapFor } from './door-walk-rules.js';
@@ -466,6 +467,13 @@ const COLLECT_SHOP = shop(
   },
 );
 
+const USED_SHOP = shop(
+  (_key, item) => (item.stand !== undefined ? usedPrompt(item.stand) : null),
+  async (_key, item) => {
+    if (item?.stand !== undefined) await usedAct(item.stand);
+  },
+);
+
 const GROW_SHOP = shop(
   (_key, item) =>
     item.strain
@@ -618,6 +626,7 @@ const PLACES: Record<string, Place> = {
   negozio_vestiti: CLOTHES_SHOP,
   negozio_animali: PET_SHOP,
   collezionismo: COLLECT_SHOP,
+  usato: USED_SHOP,
   growshop: GROW_SHOP,
   banca: BANK,
   sala_giochi: ARCADE,

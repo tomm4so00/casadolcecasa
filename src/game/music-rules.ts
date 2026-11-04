@@ -15,6 +15,7 @@ export const ENV_MUSIC: Record<string, string> = {
   negozio_animali: 'mall',
   growshop: 'mall',
   collezionismo: 'mall',
+  usato: 'mall',
   scommesse: 'casino',
   sala_giochi: 'arcade',
   banca: 'bank',

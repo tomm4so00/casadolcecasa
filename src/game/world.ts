@@ -74,6 +74,7 @@ import {
 } from './job-pay.js';
 import { interactWith, paintingTitleOf, promptFor, walkThroughKeys } from './interactions.js';
 import { COLLECT_ENV, refillStands } from './collect.js';
+import { USED_ENV } from './used-shop.js';
 // Il proprietario può cambiare la combinazione della propria cassaforte quando vuole
 export async function changeSafePin(..._args: GameValue[]): Promise<GameValue> {
   if (!hasRoom() || !isMyRoomNow()) return;
@@ -320,6 +321,7 @@ const ENV_MAPS: Record<string, string> = {
   growshop: 'growshopFurniture',
   negozio_animali: 'petshopFurniture',
   collezionismo: 'collectShopFurniture',
+  usato: 'usedShopFurniture',
   CIMITERO: 'graveMap',
   bar: 'barMap',
   discoteca: 'discoMap',
@@ -615,6 +617,7 @@ const MALL_SHOPS: Record<string, { facade: string; activity: string }> = {
   growshop: { facade: 'shopGrow', activity: 'growshop' },
   negozio_animali: { facade: 'shopPets', activity: 'petshop' },
   collezionismo: { facade: 'shopCollect', activity: 'collectshop' },
+  usato: { facade: 'shopUsed', activity: 'usedshop' },
 };
 
 /** Esce da un negozio e torna nel centro commerciale, davanti alla sua vetrina. */
@@ -622,9 +625,12 @@ function backToMall(fromEnv?: string): void {
   game.view.activeEnvironment = 'centro_commerciale';
   game.view.currentRoomTitle = 'Centro Commerciale 🏬';
   const facade: GameValue = fromEnv ? game.mallFurniture[MALL_SHOPS[fromEnv].facade] : null;
-  game.playerPos = facade
-    ? { x: facade.x, y: facade.y + facade.h / 2 + 30 }
-    : { x: 0, y: game.mallFurniture.doorExit.y - 45 };
+  // davanti alla vetrina: quelle della parete di sinistra guardano verso destra
+  game.playerPos = !facade
+    ? { x: 0, y: game.mallFurniture.doorExit.y - 45 }
+    : facade.side === 'left'
+      ? { x: facade.x + facade.w / 2 + 30, y: facade.y }
+      : { x: facade.x, y: facade.y + facade.h / 2 + 30 };
 }
 
 /**
@@ -932,6 +938,12 @@ export async function doActivity(type?: GameValue): Promise<void> {
     dom('btn-return-home').classList.add('hidden');
     game.playerPos = { x: 0, y: 110 };
     void refillStands();
+    return;
+  } else if (type === 'usedshop') {
+    game.view.activeEnvironment = USED_ENV;
+    game.view.currentRoomTitle = "Negozio dell'Usato 🏷️";
+    dom('btn-return-home').classList.add('hidden');
+    game.playerPos = { x: 0, y: 110 };
     return;
   } else if (type === 'growshop') {
     game.view.activeEnvironment = 'growshop';

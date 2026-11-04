@@ -195,16 +195,23 @@ describe('sala giochi nel gioco', () => {
     const { MALL_FURNITURE, ARCADE_FURNITURE } = await import('../src/game/data/catalogues');
     const shops = Object.values(MALL_FURNITURE).filter((s) => 'shop' in s) as {
       x: number;
+      y: number;
       w: number;
+      h: number;
+      side?: string;
       enter: string;
     }[];
     expect(shops.some((s) => s.enter === 'arcade')).toBe(true);
-    // le vetrine non si sovrappongono
-    const sorted = shops.slice().sort((p, q) => p.x - q.x);
-    for (let i = 1; i < sorted.length; i++)
-      expect(sorted[i].x - sorted[i].w / 2).toBeGreaterThanOrEqual(
-        sorted[i - 1].x + sorted[i - 1].w / 2,
-      );
+    // le vetrine non si sovrappongono, su ognuna delle due pareti
+    const overlapFree = (list: { at: number; len: number }[]) => {
+      const sorted = list.slice().sort((p, q) => p.at - q.at);
+      for (let i = 1; i < sorted.length; i++)
+        expect(sorted[i].at - sorted[i].len / 2).toBeGreaterThanOrEqual(
+          sorted[i - 1].at + sorted[i - 1].len / 2,
+        );
+    };
+    overlapFree(shops.filter((s) => !s.side).map((s) => ({ at: s.x, len: s.w })));
+    overlapFree(shops.filter((s) => s.side === 'left').map((s) => ({ at: s.y, len: s.h })));
     const games = Object.values(ARCADE_FURNITURE)
       .map((it) => (it as { game?: string }).game)
       .filter(Boolean);

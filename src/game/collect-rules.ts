@@ -3,7 +3,13 @@
 // con un pezzo a caso tra quelli non ancora venduti; quando qualcuno compra, al suo posto arriva un
 // altro pezzo a caso. Nel database:
 //   sims_collect/slots/<0-4>      → id del pezzo nell'espositore
-//   sims_collect/owners/<pezzo>   → chi lo possiede ({o, on, t}) e il posto sulla mensola (s, 0-2)
+//   sims_collect/owners/<pezzo>   → chi lo possiede ({o, on, t}), il posto sulla mensola (s, 0-2)
+//                                   e, se è in vendita all'usato, l'annuncio (sale)
+//   sims_collect/used/<0-4>       → id del pezzo in vendita in quell'espositore dell'usato
+//
+// Usato: il venditore mette l'annuncio sul suo pezzo (prezzo e espositore). Chi compra prima lo
+// prenota (sale.to), poi paga il venditore, poi diventa proprietario: due compratori non possono
+// pagare per lo stesso pezzo. Una prenotazione mai pagata scade dopo RESERVE_MS.
 
 export interface Collectible {
   id: string;
@@ -88,11 +94,30 @@ export interface CollectOwner {
   t: number;
   /** Posto sulla mensola (0-2), se ce l'ha messo. */
   s?: number;
+  /** Annuncio nel negozio dell'usato. */
+  sale?: CollectSale;
 }
+
+export interface CollectSale {
+  /** Prezzo, quando è stato messo in vendita e in quale espositore (0-4). */
+  p: number;
+  t: number;
+  st: number;
+  /** Chi lo sta comprando e da quando (prenotazione). */
+  to?: string;
+  rt?: number;
+}
+
+/** Una prenotazione non pagata entro questo tempo scade. */
+export const RESERVE_MS = 120_000;
+export const USED_MIN_PRICE = 1;
+export const USED_MAX_PRICE = 1_000_000;
 
 export interface CollectState {
   /** Pezzo in ogni espositore (null = ancora da riempire). */
   slots: (string | null)[];
+  /** Pezzo annunciato in ogni espositore dell'usato (vale solo se il suo annuncio è lì). */
+  used: (string | null)[];
   owners: Record<string, CollectOwner>;
 }
 
@@ -110,6 +135,12 @@ export function decodeCollect(value: unknown): CollectState {
     const id = rawSlots[i];
     slots.push(isCollectibleId(id) ? id : null);
   }
+  const rawUsed = (v.used && typeof v.used === 'object' ? v.used : {}) as Record<string, unknown>;
+  const used: (string | null)[] = [];
+  for (let i = 0; i < STANDS; i++) {
+    const id = rawUsed[i];
+    used.push(isCollectibleId(id) ? id : null);
+  }
   const owners: Record<string, CollectOwner> = {};
   const rawOwners = (v.owners && typeof v.owners === 'object' ? v.owners : {}) as Record<
     string,
@@ -126,9 +157,26 @@ export function decodeCollect(value: unknown): CollectState {
     };
     if (Number.isInteger(e.s) && (e.s as number) >= 0 && (e.s as number) < SHELF_SPOTS)
       entry.s = e.s as number;
+    const sale = decodeSale(e.sale);
+    if (sale) entry.sale = sale;
     owners[id] = entry;
   }
-  return { slots, owners };
+  return { slots, used, owners };
+}
+
+function decodeSale(value: unknown): CollectSale | null {
+  if (!value || typeof value !== 'object') return null;
+  const v = value as Record<string, unknown>;
+  const p = v.p as number,
+    st = v.st as number;
+  if (!Number.isInteger(p) || p < USED_MIN_PRICE || p > USED_MAX_PRICE) return null;
+  if (!Number.isInteger(st) || st < 0 || st >= STANDS) return null;
+  const sale: CollectSale = { p, st, t: Number.isFinite(v.t) ? (v.t as number) : 0 };
+  if (typeof v.to === 'string' && PLAYER.test(v.to) && Number.isFinite(v.rt)) {
+    sale.to = v.to;
+    sale.rt = v.rt as number;
+  }
+  return sale;
 }
 
 /** L'espositore `i` va riempito: è vuoto, il suo pezzo è stato venduto o è un doppione. */
@@ -175,4 +223,64 @@ export function shelfOf(state: CollectState, playerId: string): (Collectible | n
 export function freeShelfSpot(state: CollectState, playerId: string): number | null {
   const i = shelfOf(state, playerId).findIndex((c) => !c);
   return i < 0 ? null : i;
+}
+
+// ---------------------------------------------------------------- negozio dell'usato
+
+export interface UsedListing {
+  c: Collectible;
+  owner: CollectOwner;
+  sale: CollectSale;
+}
+
+/** L'annuncio nell'espositore `i` dell'usato (null = espositore libero). */
+export function usedListing(state: CollectState, i: number): UsedListing | null {
+  const id = state.used[i];
+  const owner = id ? state.owners[id] : undefined;
+  const c = collectible(id);
+  if (!c || !owner?.sale || owner.sale.st !== i) return null;
+  return { c, owner, sale: owner.sale };
+}
+
+/** Pezzi di un giocatore che può mettere in vendita (quelli non già in vendita). */
+export function sellable(state: CollectState, playerId: string): Collectible[] {
+  return collectionOf(state, playerId).filter((c) => !state.owners[c.id].sale);
+}
+
+/** Chi ha prenotato il pezzo in questo momento (null se nessuno o se la prenotazione è scaduta). */
+export function reservedBy(sale: CollectSale | undefined, now: number): string | null {
+  return sale?.to && now - (sale.rt || 0) < RESERVE_MS ? sale.to : null;
+}
+
+/** Perché il prezzo non va bene (null se va bene). */
+export function usedPriceError(price: number): string | null {
+  if (!Number.isInteger(price) || price < USED_MIN_PRICE)
+    return 'Scrivi un prezzo in euro, senza decimali.';
+  if (price > USED_MAX_PRICE)
+    return `Il prezzo massimo è ${USED_MAX_PRICE.toLocaleString('it-IT')} €.`;
+  return null;
+}
+
+/** Annuncio prenotato da `buyer`, o null se non si può (già suo, già prenotato da altri). */
+export function reserveSale(
+  owner: CollectOwner | null,
+  buyer: string,
+  price: number,
+  now: number,
+): CollectOwner | null {
+  if (!owner?.sale || owner.o === buyer || owner.sale.p !== price) return null;
+  const other = reservedBy(owner.sale, now);
+  if (other && other !== buyer) return null;
+  return { ...owner, sale: { ...owner.sale, to: buyer, rt: now } };
+}
+
+/** Il pezzo passa a chi l'ha prenotato (senza annuncio e fuori dalla mensola del venditore). */
+export function completeSale(
+  owner: CollectOwner | null,
+  buyer: string,
+  buyerName: string,
+  now: number,
+): CollectOwner | null {
+  if (!owner?.sale || owner.sale.to !== buyer) return null;
+  return { o: buyer, on: buyerName.slice(0, 20), t: now };
 }

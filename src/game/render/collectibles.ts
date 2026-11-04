@@ -2,7 +2,7 @@
 import { type GameValue, game } from '../context.js';
 import { isoProject, isoScale } from './primitives.js';
 import { box, onFace } from './objects.js';
-import { type Collectible, onSale, shelfOf } from '../collect-rules.js';
+import { type Collectible, onSale, shelfOf, usedListing } from '../collect-rules.js';
 import { collectState } from '../collect.js';
 import { getMyRoomMap, isMyRoomNow } from '../saves.js';
 import { drawCollectibleArt } from './collectible-art.js';
@@ -34,21 +34,32 @@ export function drawCollectible(
 export function drawCollectStand(it: GameValue, t: GameValue): void {
   const ctx: CanvasRenderingContext2D = game.view.ctx;
   const s = isoScale();
-  const c = onSale(collectState(), it.stand);
-  const base = box(it.x, it.y, 30, 30, 40, '#4e342e', { top: '#3e2723' });
+  // nel negozio dell'usato i pezzi sono quelli messi in vendita dai giocatori
+  const listing = it.used ? usedListing(collectState(), it.stand) : null;
+  const c = it.used ? listing?.c || null : onSale(collectState(), it.stand);
+  const price = it.used ? listing?.sale.p : c?.price;
+  const base = box(it.x, it.y, 30, 30, 40, it.used ? '#8d6e63' : '#4e342e', {
+    top: it.used ? '#6d4c41' : '#3e2723',
+  });
   onFace(base, 'left', (W: number, H: number) => {
-    // targhetta d'ottone col prezzo
-    ctx.fillStyle = '#c9a227';
+    // targhetta col prezzo: d'ottone nel negozio, cartellino di carta all'usato
+    ctx.fillStyle = it.used ? '#fdf6e3' : '#c9a227';
     ctx.fillRect(W / 2 - 11, H * 0.35, 22, 9);
-    ctx.fillStyle = '#3d2b12';
+    ctx.fillStyle = it.used ? '#2d3436' : '#3d2b12';
     ctx.font = 'bold 6px sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(c ? `${c.price} €` : 'VENDUTO', W / 2, H * 0.35 + 4.8, 20);
+    const empty = it.used ? 'LIBERO' : 'VENDUTO';
+    ctx.fillText(
+      c ? `${(price || 0).toLocaleString('it-IT')} €` : empty,
+      W / 2,
+      H * 0.35 + 4.8,
+      20,
+    );
   });
-  box(it.x, it.y, 34, 34, 3, '#c9a227', { z0: 40 });
+  box(it.x, it.y, 34, 34, 3, it.used ? '#bcaaa4' : '#c9a227', { z0: 40 });
   // cuscino di velluto
-  box(it.x, it.y, 18, 18, 2, '#8e1b3a', { z0: 43 });
+  box(it.x, it.y, 18, 18, 2, it.used ? '#2e7d5b' : '#8e1b3a', { z0: 43 });
   if (c) {
     const p = isoProject(it.x, it.y, 45);
     drawCollectible(ctx, c, p.x, p.y, 30 * s, t || 0);

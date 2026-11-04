@@ -2,6 +2,14 @@ import fs from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import {
   COLLECTIBLES,
+  RESERVE_MS,
+  USED_MAX_PRICE,
+  completeSale,
+  reserveSale,
+  reservedBy,
+  sellable,
+  usedListing,
+  usedPriceError,
   SHELF_SPOTS,
   STANDS,
   collectionOf,
@@ -114,5 +122,67 @@ describe('oggetti da collezione', () => {
       "!root.child('sims_collect').child('owners').child(newData.val())",
     );
     expect(slot['.validate']).toContain('/^[0-4]$/');
+  });
+});
+
+describe("negozio dell'usato", () => {
+  const listed = (extra: Record<string, unknown> = {}) =>
+    decodeCollect({
+      used: [null, 'col_tomo', 'col_barca'],
+      owners: {
+        col_tomo: { o: A, on: 'Anna', t: 1, s: 0, sale: { p: 900, t: 5, st: 1, ...extra } },
+        // annuncio rimasto in un altro espositore: quello 2 risulta libero
+        col_barca: { o: B, on: 'Luca', t: 1, sale: { p: 50, t: 5, st: 4 } },
+        col_globo: { o: A, on: 'Anna', t: 1 },
+      },
+    });
+
+  it('un espositore mostra il pezzo solo se il suo annuncio è proprio lì', () => {
+    const s = listed();
+    expect(usedListing(s, 0)).toBeNull();
+    expect(usedListing(s, 1)?.c.id).toBe('col_tomo');
+    expect(usedListing(s, 1)?.sale.p).toBe(900);
+    expect(usedListing(s, 2)).toBeNull();
+  });
+
+  it('si mette in vendita solo ciò che non è già in vendita', () => {
+    expect(sellable(listed(), A).map((c) => c.id)).toEqual(['col_globo']);
+  });
+
+  it('il prezzo è un intero tra 1 e 1.000.000', () => {
+    expect(usedPriceError(250)).toBeNull();
+    expect(usedPriceError(0)).not.toBeNull();
+    expect(usedPriceError(12.5)).not.toBeNull();
+    expect(usedPriceError(NaN)).not.toBeNull();
+    expect(usedPriceError(USED_MAX_PRICE + 1)).not.toBeNull();
+  });
+
+  it('prenotare: non il proprio pezzo, non se prenotato da un altro, sì se la prenotazione è scaduta', () => {
+    const owner = listed().owners.col_tomo;
+    expect(reserveSale(owner, A, 900, 1000)).toBeNull(); // è suo
+    expect(reserveSale(owner, B, 800, 1000)).toBeNull(); // prezzo cambiato
+    const mine = reserveSale(owner, B, 900, 1000);
+    expect(mine?.sale).toEqual({ p: 900, t: 5, st: 1, to: B, rt: 1000 });
+    expect(reserveSale(mine, 'player_x', 900, 1000 + RESERVE_MS - 1)).toBeNull();
+    expect(reserveSale(mine, 'player_x', 900, 1000 + RESERVE_MS)?.sale?.to).toBe('player_x');
+    expect(reservedBy(mine?.sale, 1000 + RESERVE_MS - 1)).toBe(B);
+    expect(reservedBy(mine?.sale, 1000 + RESERVE_MS)).toBeNull();
+  });
+
+  it('il pezzo passa solo a chi l’ha prenotato, senza annuncio e fuori dalla mensola', () => {
+    const owner = listed({ to: B, rt: 10 }).owners.col_tomo;
+    expect(completeSale(owner, 'player_x', 'X', 20)).toBeNull();
+    expect(completeSale(owner, B, 'Luca', 20)).toEqual({ o: B, on: 'Luca', t: 20 });
+  });
+
+  it('il database: prenota chi compra, passa a chi ha prenotato, gli espositori li cambia chi vende', () => {
+    const r = JSON.parse(fs.readFileSync('firebase/database.rules.proposed.json', 'utf8')).rules;
+    const w: string = r.sims_collect.owners.$item['.write'];
+    expect(w).toContain("newData.child('sale/to').val() ===");
+    expect(w).toContain("data.child('sale/to').val() ===");
+    expect(w).toContain(`now - data.child('sale/rt').val() < ${RESERVE_MS}`);
+    expect(r.sims_collect.owners.$item.sale.$other['.validate']).toBe(false);
+    expect(r.sims_collect.used.$i['.validate']).toContain('/^[0-4]$/');
+    expect(r.sims_interactions.$pid.$key['.validate']).toContain('|usedSold');
   });
 });

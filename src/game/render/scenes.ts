@@ -888,13 +888,15 @@ export function wallPoster(d?: GameValue): GameValue {
 
 export function wallLogo(d?: GameValue): GameValue {
   const ctx = game.view.ctx;
+  const top: number = d.top || 44,
+    size: number = d.size || 18;
   ctx.fillStyle = d.color || '#d35400';
-  ctx.font = 'bold 18px sans-serif';
+  ctx.font = `bold ${size}px sans-serif`;
   ctx.textAlign = 'center';
-  ctx.fillText(d.text, d.u, 44);
+  ctx.fillText(d.text, d.u, top, d.maxW);
   ctx.fillStyle = '#2d3436';
-  ctx.font = '9px sans-serif';
-  ctx.fillText(d.sub || 'arredamento dal 1998', d.u, 58);
+  ctx.font = `${Math.round(size / 2)}px sans-serif`;
+  ctx.fillText(d.sub || 'arredamento dal 1998', d.u, top + size * 0.78, d.maxW);
 }
 
 export function wallCross(d?: GameValue): GameValue {

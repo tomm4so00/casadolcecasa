@@ -40,6 +40,12 @@ const euro = (n: number) => `${n.toLocaleString('it-IT')} €`;
 /** Stato attuale di espositori e proprietari (per il disegno). */
 export const collectState = (): CollectState => state;
 
+const listeners = new Set<() => void>();
+/** Si chiama a ogni cambio di espositori, proprietari o annunci (per esempio dal negozio dell'usato). */
+export function onCollectChange(fn: () => void): void {
+  listeners.add(fn);
+}
+
 /** Ascolta espositori e proprietari. */
 export function startCollect(): void {
   if (started) return;
@@ -47,6 +53,7 @@ export function startCollect(): void {
   ref('').on('value', (snap: GameValue): void => {
     state = decodeCollect(snap.val());
     updateStandNames();
+    listeners.forEach((fn) => fn());
     if (game.view.activeEnvironment === COLLECT_ENV) void refillStands();
   });
 }
@@ -192,7 +199,8 @@ export async function openShelf(
         ...owned.map((c) => {
           const on = state.owners[c.id]?.s !== undefined;
           return {
-            label: `${on ? '✅' : '➕'} ${c.emoji} ${c.name}`,
+            // 🏷️ = in vendita al negozio dell'usato
+            label: `${on ? '✅' : '➕'} ${c.emoji} ${c.name}${state.owners[c.id]?.sale ? ' 🏷️' : ''}`,
             value: c.id,
             color: on ? '#2e86de' : '#636e72',
           };

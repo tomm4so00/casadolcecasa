@@ -1853,7 +1853,7 @@ function labWall(): {
 // si entra. `enter` è l'attività che porta dentro il negozio.
 export const MALL_FURNITURE = {
   shopFurniture: {
-    x: -390,
+    x: -325,
     y: -189,
     w: 92,
     h: 22,
@@ -1864,7 +1864,7 @@ export const MALL_FURNITURE = {
     moveable: false,
   },
   shopClothes: {
-    x: -260,
+    x: -195,
     y: -189,
     w: 92,
     h: 22,
@@ -1875,7 +1875,7 @@ export const MALL_FURNITURE = {
     moveable: false,
   },
   shopPets: {
-    x: -130,
+    x: -65,
     y: -189,
     w: 92,
     h: 22,
@@ -1886,7 +1886,7 @@ export const MALL_FURNITURE = {
     moveable: false,
   },
   shopGrow: {
-    x: 0,
+    x: 65,
     y: -189,
     w: 92,
     h: 22,
@@ -1897,7 +1897,7 @@ export const MALL_FURNITURE = {
     moveable: false,
   },
   shopBetting: {
-    x: 130,
+    x: 195,
     y: -189,
     w: 92,
     h: 22,
@@ -1909,7 +1909,7 @@ export const MALL_FURNITURE = {
   },
   // sala giochi: tre postazioni, una per gioco (Forza 4, Battaglia navale, Riflessi)
   shopArcade: {
-    x: 260,
+    x: 325,
     y: -189,
     w: 92,
     h: 22,
@@ -1919,13 +1919,27 @@ export const MALL_FURNITURE = {
     enter: 'arcade',
     moveable: false,
   },
-  // oggetti da collezione: cinque espositori con pezzi unici
-  shopCollect: {
-    x: 390,
-    y: -189,
-    w: 92,
-    h: 22,
+  // parete di sinistra, ai lati del cartellone: l'usato verso l'ingresso, i pezzi da collezione
+  // verso il fondo (side: 'left' = la vetrina guarda verso destra)
+  shopUsed: {
+    x: -409,
+    y: 134,
+    w: 22,
+    h: 92,
     z: 128,
+    side: 'left',
+    name: "Negozio dell'Usato 🏷️",
+    shop: 'usato',
+    enter: 'usedshop',
+    moveable: false,
+  },
+  shopCollect: {
+    x: -409,
+    y: -100,
+    w: 22,
+    h: 92,
+    z: 128,
+    side: 'left',
     name: 'Oggetti da Collezione 🏺',
     shop: 'collezione',
     enter: 'collectshop',
@@ -2064,6 +2078,17 @@ export const COLLECT_SHOP_FURNITURE = {
   colStand2: stand(2, 120, -105),
   colStand3: stand(3, -85, 40),
   colStand4: stand(4, 85, 40),
+  doorExit: { x: 0, y: 160, w: 60, h: 15, z: 110, name: 'Torna Fuori 🚪', moveable: false },
+};
+
+// Negozio dell'usato: cinque espositori dove i giocatori mettono in vendita i loro pezzi (used-shop.ts).
+const usedStand = (i: number, x: number, y: number) => ({ ...stand(i, x, y), used: true });
+export const USED_SHOP_FURNITURE = {
+  usedStand0: usedStand(0, -120, -105),
+  usedStand1: usedStand(1, 0, -120),
+  usedStand2: usedStand(2, 120, -105),
+  usedStand3: usedStand(3, -85, 40),
+  usedStand4: usedStand(4, 85, 40),
   doorExit: { x: 0, y: 160, w: 60, h: 15, z: 110, name: 'Torna Fuori 🚪', moveable: false },
 };
 
@@ -2870,6 +2895,12 @@ export const ENV_DECOR = {
     { kind: 'plant', x: -168, y: 140, w: 26, h: 26, z: 60 },
     { kind: 'plant', x: 168, y: 140, w: 26, h: 26, z: 60 },
   ],
+  usato: [
+    { kind: 'plant', x: -168, y: -160, w: 26, h: 26, z: 60 },
+    { kind: 'bookshelf', x: -184, y: 70, w: 22, h: 70, z: 110 },
+    { kind: 'coatRack', x: 170, y: -150, w: 18, h: 18, z: 80 },
+    { kind: 'plant', x: 168, y: 140, w: 26, h: 26, z: 60 },
+  ],
   collezionismo: [
     { kind: 'plant', x: -168, y: -160, w: 26, h: 26, z: 60 },
     { kind: 'plant', x: 168, y: -160, w: 26, h: 26, z: 60 },
@@ -2900,23 +2931,21 @@ export const ENV_DECOR = {
     { kind: 'bench', x: -210, y: 50, w: 50, h: 16 },
     { kind: 'bench', x: 210, y: 50, w: 50, h: 16 },
     // colonne tra le vetrine (con un pezzo di muro in mezzo), con le lampade
-    { kind: 'mallColumn', x: -479, y: -186, w: 12, h: 16, z: 128 },
-    { kind: 'mallColumn', x: -325, y: -186, w: 10, h: 16, z: 128 },
-    { kind: 'mallColumn', x: -195, y: -186, w: 10, h: 16, z: 128 },
-    { kind: 'mallColumn', x: -65, y: -186, w: 10, h: 16, z: 128 },
-    { kind: 'mallColumn', x: 65, y: -186, w: 10, h: 16, z: 128 },
-    { kind: 'mallColumn', x: 195, y: -186, w: 10, h: 16, z: 128 },
-    { kind: 'mallColumn', x: 325, y: -186, w: 10, h: 16, z: 128 },
-    { kind: 'mallColumn', x: 479, y: -186, w: 12, h: 16, z: 128 },
-    { kind: 'plant', x: -325, y: -152, w: 22, h: 22, z: 55 },
-    { kind: 'plant', x: 325, y: -152, w: 22, h: 22, z: 55 },
-    { kind: 'plant', x: -65, y: -152, w: 22, h: 22, z: 55 },
-    { kind: 'plant', x: 65, y: -152, w: 22, h: 22, z: 55 },
-    // palme nei vasi agli angoli
-    { kind: 'mallPalm', x: -447, y: -95, w: 30, h: 30, z: 110 },
-    { kind: 'mallPalm', x: 447, y: -95, w: 30, h: 30, z: 110 },
-    { kind: 'mallPalm', x: -447, y: 165, w: 30, h: 30, z: 110 },
-    { kind: 'mallPalm', x: 447, y: 165, w: 30, h: 30, z: 110 },
+    { kind: 'mallColumn', x: -414, y: -186, w: 12, h: 16, z: 128 },
+    { kind: 'mallColumn', x: -260, y: -186, w: 10, h: 16, z: 128 },
+    { kind: 'mallColumn', x: -130, y: -186, w: 10, h: 16, z: 128 },
+    { kind: 'mallColumn', x: 0, y: -186, w: 10, h: 16, z: 128 },
+    { kind: 'mallColumn', x: 130, y: -186, w: 10, h: 16, z: 128 },
+    { kind: 'mallColumn', x: 260, y: -186, w: 10, h: 16, z: 128 },
+    { kind: 'mallColumn', x: 414, y: -186, w: 12, h: 16, z: 128 },
+    { kind: 'plant', x: -260, y: -152, w: 22, h: 22, z: 55 },
+    { kind: 'plant', x: 260, y: -152, w: 22, h: 22, z: 55 },
+    { kind: 'plant', x: 0, y: -152, w: 22, h: 22, z: 55 },
+    // palme nei vasi, un po' verso il centro della galleria
+    { kind: 'mallPalm', x: -300, y: -70, w: 30, h: 30, z: 110 },
+    { kind: 'mallPalm', x: 300, y: -70, w: 30, h: 30, z: 110 },
+    { kind: 'mallPalm', x: -300, y: 150, w: 30, h: 30, z: 110 },
+    { kind: 'mallPalm', x: 300, y: 150, w: 30, h: 30, z: 110 },
     // gelateria e palloncini vicino all'ingresso
     { kind: 'iceCreamCart', x: -140, y: 145, w: 46, h: 24, z: 80, label: 'Gelateria 🍦' },
     { kind: 'balloonStand', x: 140, y: 145, w: 26, h: 26, z: 100, label: 'Palloncini 🎈' },
@@ -3081,6 +3110,29 @@ export const ENV_STYLE = {
       { x: 0, y: 90, z: 0, r: 220, color: '235,245,255' },
     ],
   },
+  usato: {
+    floor: 'wood',
+    floorColor: '#b08a62',
+    wall: '#f3e2b3',
+    wallStyle: 'stripes',
+    trim: '#2e7d5b',
+    decor: {
+      back: [
+        { t: 'neon', u: 200, text: 'USATO', color: '120,230,160' },
+        { t: 'poster', u: 70, text: 'VENDI E COMPRA', color: '#2e7d5b' },
+        { t: 'poster', u: 330, text: 'PEZZI UNICI', color: '#e67e22' },
+      ],
+      left: [
+        { t: 'shelf', u: 120 },
+        { t: 'clock', u: 280 },
+      ],
+    },
+    lights: [
+      { x: -120, y: -100, z: 0, r: 150, color: '255,240,200' },
+      { x: 120, y: -100, z: 0, r: 150, color: '255,240,200' },
+      { x: 0, y: 40, z: 0, r: 220, color: '255,248,225' },
+    ],
+  },
   collezionismo: {
     floor: 'carpet',
     floorColor: '#5b1a2b',
@@ -3152,19 +3204,30 @@ export const ENV_STYLE = {
     decor: {
       back: [],
       left: [
-        { t: 'logo', u: 85, text: 'CENTRO COMMERCIALE', sub: 'Dolce Casa', color: '#b8860b' },
-        { t: 'adScreen', u: 235, w: 130, h: 64 },
-        { t: 'clock', u: 355 },
+        // tra le due vetrine: il cartellone e, sotto, la scritta del centro
+        { t: 'adScreen', u: 197, w: 106, h: 64 },
+        {
+          t: 'logo',
+          u: 197,
+          top: 100,
+          size: 12,
+          maxW: 100,
+          text: 'CENTRO COMMERCIALE',
+          sub: 'Dolce Casa',
+          color: '#b8860b',
+        },
+        { t: 'clock', u: 372 },
       ],
     },
     lights: [
-      { x: -390, y: -130, z: 0, r: 130, color: '255,190,120' },
-      { x: -260, y: -130, z: 0, r: 130, color: '255,170,215' },
-      { x: -130, y: -130, z: 0, r: 130, color: '255,215,150' },
-      { x: 0, y: -130, z: 0, r: 130, color: '170,255,150' },
-      { x: 130, y: -130, z: 0, r: 130, color: '220,180,255' },
-      { x: 260, y: -130, z: 0, r: 130, color: '90,230,255' },
-      { x: 390, y: -130, z: 0, r: 130, color: '255,225,160' },
+      { x: -325, y: -130, z: 0, r: 130, color: '255,190,120' },
+      { x: -195, y: -130, z: 0, r: 130, color: '255,170,215' },
+      { x: -65, y: -130, z: 0, r: 130, color: '255,215,150' },
+      { x: 65, y: -130, z: 0, r: 130, color: '170,255,150' },
+      { x: 195, y: -130, z: 0, r: 130, color: '220,180,255' },
+      { x: 325, y: -130, z: 0, r: 130, color: '90,230,255' },
+      { x: -360, y: -100, z: 0, r: 120, color: '255,225,160' },
+      { x: -360, y: 134, z: 0, r: 120, color: '190,240,200' },
       { x: 0, y: 60, z: 0, r: 260, color: '255,245,225' },
       { x: -150, y: 150, z: 0, r: 150, color: '255,235,200' },
       { x: 150, y: 150, z: 0, r: 150, color: '255,235,200' },
