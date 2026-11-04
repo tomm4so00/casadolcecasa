@@ -140,6 +140,9 @@ export async function onGameInvite(m: GameValue, who: string): Promise<void> {
   let ok = false;
   try {
     const result = await ref(m.gid).transaction((cur: GameValue) => {
+      // Firebase prova prima con la copia locale, vuota se la partita non è mai stata letta:
+      // si restituisce null così riprova con il valore del server invece di rinunciare.
+      if (cur === null) return null;
       const match = decodeMatch(cur);
       if (!match || match.status !== 'wait' || match.b !== game.session.myPlayerId)
         return undefined;
@@ -148,7 +151,7 @@ export async function onGameInvite(m: GameValue, who: string): Promise<void> {
       if (match.kind === 'rx') next.goAt = serverNow() + rxDelay() + 1500;
       return next;
     });
-    ok = !!result?.committed;
+    ok = !!result?.committed && decodeMatch(result.snapshot?.val())?.status === 'play';
   } catch (error) {
     console.warn('[sala giochi]', error);
   }
@@ -204,10 +207,11 @@ async function move(change: (m: ArcadeMatch) => ArcadeMatch | null): Promise<boo
   if (!current) return false;
   try {
     const result = await ref(current.gid).transaction((cur: GameValue) => {
+      if (cur === null) return null; // copia locale non ancora arrivata: riprova col server
       const m = decodeMatch(cur);
       return (m && change(m)) || undefined;
     });
-    return !!result?.committed;
+    return !!result?.committed && !!decodeMatch(result.snapshot?.val());
   } catch (error) {
     console.warn('[sala giochi]', error);
     return false;
