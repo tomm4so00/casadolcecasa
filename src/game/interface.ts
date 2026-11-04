@@ -40,7 +40,13 @@ import { checkMissions, toast } from './missions.js';
 import { openFurnitureShopModal, resumeLastSpot, setupControls } from './world.js';
 import { renderClothesShop } from './character.js';
 import { startLoop } from './engine.js';
-import { die, reapAbsentPlayers, showDeathScreen, updateNotifyButton } from './needs.js';
+import {
+  die,
+  reapAbsentPlayers,
+  recordDeathUntilDone,
+  showDeathScreen,
+  updateNotifyButton,
+} from './needs.js';
 import { updateSoundButton } from './audio.js';
 // ---------- Finestre di dialogo in-game ----------
 export function openDialog({
@@ -301,7 +307,8 @@ export async function startGame(..._args: GameValue[]): Promise<GameValue> {
   if (game.player.isDead || game.player.healthLevel <= 0) {
     // morto in una sessione precedente, oppure durante l'assenza
     if (!game.player.isDead) await die();
-    else writeGrave();
+    // già morto: si completa quello che allora non era arrivato online (lapide, stanza…)
+    else void recordDeathUntilDone();
     revealScene();
     showDeathScreen();
     return;
@@ -390,7 +397,6 @@ export function writeGrave(..._args: GameValue[]): GameValue {
   };
   if (game.player.bornAt) g.lived = Math.max(0, g.deadAt - game.player.bornAt);
   if (game.player.epitaph) g.epitaph = game.player.epitaph;
-  try {
-    game.session.db.ref('sims_graveyard/' + game.session.myPlayerId).update(g);
-  } catch (e: GameValue) {} // update: conserva i fiori già lasciati
+  // update: conserva i fiori già lasciati; chi muore aspetta la risposta (vedi recordDeath)
+  return game.session.db.ref('sims_graveyard/' + game.session.myPlayerId).update(g);
 }

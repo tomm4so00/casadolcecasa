@@ -15,6 +15,7 @@ import { canPlaySession } from './accounts.js';
 import type { GameValue } from './context.js';
 import type { SaveV8 } from './save-model.js';
 import { decodeSaveV8 } from './save-model.js';
+import { absentDeath } from './absent-death-rules.js';
 import { game } from './context.js';
 import { lifetime, dom } from './runtime.js';
 import { getWealth, toast } from './missions.js';
@@ -426,6 +427,10 @@ export async function loadGame(..._args: GameValue[]): Promise<GameValue> {
   } else if (best) {
     applySave(best);
     catchUpOffline(best);
+    // morto mentre era via: sulla lapide va il momento in cui la salute è arrivata a zero
+    if (game.player.healthLevel <= 0)
+      game.player.deadAt =
+        absentDeath(best, game.player.ownedFurniture || {}, Date.now())?.deadAt || 0;
   }
   if (!game.player.bornAt && !game.player.isDead) game.player.bornAt = Date.now(); // nascita del personaggio (salvataggi vecchi: da ora)
   // Arrivo da un altro dispositivo con il codice: riprendo anche il nome
@@ -620,6 +625,8 @@ export function startPresence(..._args: GameValue[]): GameValue {
   let lastSentKey: GameValue = '',
     lastSentAt: GameValue = 0;
   lifetime.setInterval((): GameValue => {
+    // da morto non si manda più niente: rimetterebbe in giro il personaggio appena tolto
+    if (game.player.isDead) return;
     const payload: GameValue = {
       name: game.player.myData.nick,
       x: Math.round(game.playerPos.x),

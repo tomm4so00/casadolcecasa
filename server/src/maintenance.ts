@@ -9,6 +9,9 @@ import {
   decodePets,
   petDiesAt,
 } from '../../shared/pet-rules.js';
+import { graveFromSave, releaseRoomsOf } from '../../shared/death-rules.js';
+import { ACTIVE_MARGIN_MS, absentDeath } from '../../src/game/absent-death-rules.js';
+import { dayNumber } from '../../src/game/game-clock.js';
 
 interface Snapshot {
   val(): unknown;
@@ -89,6 +92,8 @@ export async function maintainGame(database: MaintenanceDatabase, now: number): 
         .ref('sims_rooms_state/' + roomIndex + '/pendingDeath')
         .transaction((value) => (record(value) && value.id === player.id ? null : undefined));
     }
+  await markAbsentDeaths(database, now, linkedPlayers);
+  await tidyDeadPlayers(database, now);
   const chat = (await database.ref('sims_chat').get()).val();
   if (record(chat)) {
     const oldKeys = Object.keys(chat).sort().slice(0, -500);
@@ -112,6 +117,99 @@ export async function maintainGame(database: MaintenanceDatabase, now: number): 
       await database
         .ref('sims_gossip')
         .update(Object.fromEntries(oldKeys.map((key) => [key, null])));
+  }
+}
+
+/**
+ * Chi ha una stanza e non sta giocando, ma con i bisogni andati a zero sarebbe morto mentre era
+ * via: si segna morto nel momento esatto in cui la salute è arrivata a zero (lo stesso calcolo
+ * che il gioco farebbe al rientro). Lapide e stanza le sistema poi tidyDeadPlayers.
+ */
+export async function markAbsentDeaths(
+  database: MaintenanceDatabase,
+  now: number,
+  linkedPlayers: Set<string>,
+): Promise<void> {
+  const rooms = (await database.ref('sims_rooms_state').get()).val();
+  const online = (await database.ref('sims_online_players').get()).val();
+  if (!record(rooms)) return;
+  for (const room of Object.values(rooms)) {
+    if (!record(room) || room.pendingDeath || typeof room.ownerId !== 'string') continue;
+    const id = room.ownerId;
+    // i Sims vecchi non ancora collegati a un account restano com'erano
+    if (!linkedPlayers.has(id)) continue;
+    // si è fatto vedere da poco: se è in gioco, ci pensa il suo gioco
+    if (typeof room.lastSeen === 'number' && now - room.lastSeen < ACTIVE_MARGIN_MS) continue;
+    const here = record(online) ? online[id] : null;
+    if (record(here)) {
+      // offline: da quando è uscito; online: l'ultimo invio della posizione (t)
+      const at = here.offline ? here.offAt : here.t;
+      if (typeof at !== 'number' || now - at < ACTIVE_MARGIN_MS) continue;
+    }
+    const save = (await database.ref('sims_saves/' + id).get()).val();
+    if (!record(save) || save.dead === true) continue;
+    if (typeof save.savedAt !== 'number' || now - save.savedAt < ACTIVE_MARGIN_MS) continue;
+    const economy = record(room.economy) ? room.economy : {};
+    const furniture = record(economy.ownedFurniture)
+      ? (economy.ownedFurniture as Record<string, boolean>)
+      : record(save.ownedFurniture)
+        ? (save.ownedFurniture as Record<string, boolean>)
+        : {};
+    const death = absentDeath(save, furniture, now);
+    if (!death) continue;
+    await database.ref('sims_saves/' + id).update({
+      dead: true,
+      deadAt: death.deadAt,
+      healthLevel: 0,
+      gameMinutes: death.gameMinutes,
+    });
+    // la lapide con il giorno come lo conta il gioco
+    await database.ref('sims_graveyard/' + id).update({
+      ...graveFromSave(
+        { ...save, deadAt: death.deadAt },
+        typeof room.owner === 'string' ? room.owner : '',
+        now,
+      ),
+      days: dayNumber(death.gameMinutes, new Date(death.deadAt)),
+    });
+  }
+}
+
+/**
+ * Chi è morto nel gioco (salvataggio con dead: true) ma ha ancora la stanza, il personaggio
+ * visibile agli altri o un posto in classifica, oppure non ha la lapide: si sistema qui. Succede se
+ * il telefono ha perso la rete proprio mentre il personaggio moriva.
+ */
+export async function tidyDeadPlayers(database: MaintenanceDatabase, now: number): Promise<void> {
+  const keysOf = async (path: string) => {
+    const v = (await database.ref(path).get()).val();
+    return record(v) ? v : {};
+  };
+  const rooms = await keysOf('sims_rooms_state');
+  const online = await keysOf('sims_online_players');
+  const board = await keysOf('sims_leaderboard');
+  const ownerName = new Map<string, string>();
+  for (const room of Object.values(rooms))
+    if (record(room) && typeof room.ownerId === 'string')
+      ownerName.set(room.ownerId, typeof room.owner === 'string' ? room.owner : '');
+  const ids = new Set([...ownerName.keys(), ...Object.keys(online), ...Object.keys(board)]);
+  for (const id of ids) {
+    // si legge solo il segno di morte: i salvataggi interi sono grandi
+    if ((await database.ref('sims_saves/' + id + '/dead').get()).val() !== true) continue;
+    const save = (await database.ref('sims_saves/' + id).get()).val();
+    const grave = (await database.ref('sims_graveyard/' + id).get()).val();
+    if (!record(grave) || typeof grave.name !== 'string')
+      await database
+        .ref('sims_graveyard/' + id)
+        .update({ ...graveFromSave(record(save) ? save : {}, ownerName.get(id) || '', now) });
+    await database.ref('sims_leaderboard/' + id).remove();
+    await database.ref('sims_online_players/' + id).remove();
+    if (ownerName.has(id))
+      await database
+        .ref('sims_rooms_state')
+        .transaction((value) =>
+          record(value) ? (releaseRoomsOf(value, id) ?? undefined) : undefined,
+        );
   }
 }
 

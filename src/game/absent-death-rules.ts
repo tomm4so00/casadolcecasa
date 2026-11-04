@@ -1,0 +1,97 @@
+// Quando muore chi non sta giocando: dal suo ultimo salvataggio online si rifà lo stesso calcolo
+// dei bisogni che il gioco fa al rientro (simulation.ts) e si trova il momento in cui la salute
+// arriva a zero. Lo usa la manutenzione sul server, così il personaggio muore in quel momento e
+// non quando il giocatore riapre il gioco; il gioco lo usa per la data sulla lapide.
+// Niente browser qui: il server importa questo file.
+import { type NeedsRules, advanceNeeds } from './simulation.js';
+import type { CharacterState } from './models.js';
+import { decodeFlu } from './flu-rules.js';
+
+/** Velocità dei bisogni (secondi perché una barra passi da 100 a 0, e simili). */
+export const NEEDS_RULES: NeedsRules = {
+  sleepDepletion: 86400,
+  sleepRecovery: 5400,
+  hungerAwake: 86400,
+  hungerSleeping: 172800,
+  hygieneDepletion: 86400,
+  happinessDepletion: 172800,
+  healthDamage: 172800,
+  gameMinutesPerSecond: 1 / 60,
+  drugBase: 0.35,
+  drugPeak: 2.5,
+  drugHighHours: 6,
+  drugTaperHours: 18,
+};
+
+/**
+ * Chi ha salvato o si è fatto vedere da meno di così potrebbe stare ancora giocando (il gioco
+ * salva online ogni 15 secondi): ci pensa il suo gioco.
+ */
+export const ACTIVE_MARGIN_MS = 10 * 60000;
+
+type Save = Record<string, unknown>;
+const num = (v: unknown, d: number) => (typeof v === 'number' && Number.isFinite(v) ? v : d);
+
+/** I bisogni del salvataggio, letti come fa applySave (i valori mancanti non uccidono nessuno). */
+export function needsStateFromSave(
+  save: Save,
+  ownedFurniture: Record<string, boolean> = {},
+): CharacterState {
+  const drug = (save.drug && typeof save.drug === 'object' ? save.drug : {}) as Save;
+  const active = num(drug.endAt, 0) > 0;
+  return {
+    healthLevel: num(save.healthLevel, 100),
+    sleepLevel: num(save.sleepLevel, 100),
+    hungerLevel: num(save.hungerLevel, 100),
+    hygieneLevel: num(save.hygieneLevel, 100),
+    happinessLevel: num(save.happinessLevel, 100),
+    isSleeping: save.sleeping === true,
+    sleepGainedSinceLastHealthBoost: Math.min(
+      19.999999,
+      num(save.sleepGainedSinceLastHealthBoost, 0),
+    ),
+    ownedFurniture,
+    drug: {
+      active,
+      doses: active ? num(drug.doses, 1) : 0,
+      lastDose: active ? num(drug.lastDose, 0) : 0,
+      endAt: active ? num(drug.endAt, 0) : 0,
+      dAtDose: active ? num(drug.dAtDose, 0) : 0,
+      crisisAt: active ? num(drug.crisisAt, 0) : 0,
+    },
+    flu: decodeFlu(save.flu),
+    gameMinutes: num(save.gameMinutes, 8 * 60),
+    isDead: false,
+  } as unknown as CharacterState;
+}
+
+/** Salute e minuti di gioco dopo essere stati via fino a `until`. */
+function after(save: Save, furniture: Record<string, boolean>, until: number, rules: NeedsRules) {
+  const state = needsStateFromSave(save, furniture);
+  const from = num(save.savedAt, 0);
+  advanceNeeds(state, (until - from) / 1000, until, rules);
+  return state;
+}
+
+/**
+ * Se il personaggio è morto mentre era via, il momento (ms) e i minuti di gioco a quel punto;
+ * altrimenti null. Il momento si cerca dimezzando l'intervallo: precisione di pochi secondi.
+ */
+export function absentDeath(
+  save: Save,
+  ownedFurniture: Record<string, boolean>,
+  now: number,
+  rules: NeedsRules = NEEDS_RULES,
+): { deadAt: number; gameMinutes: number } | null {
+  const from = num(save.savedAt, 0);
+  if (!from || now <= from || save.dead === true) return null;
+  if (after(save, ownedFurniture, now, rules).healthLevel > 0) return null;
+  let lo = from,
+    hi = now;
+  while (hi - lo > 5000) {
+    const mid = Math.floor((lo + hi) / 2);
+    if (after(save, ownedFurniture, mid, rules).healthLevel > 0) lo = mid;
+    else hi = mid;
+  }
+  return { deadAt: hi, gameMinutes: after(save, ownedFurniture, hi, rules).gameMinutes };
+}

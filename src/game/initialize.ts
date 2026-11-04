@@ -57,6 +57,7 @@ import { rebuildGraveyard } from './render/graveyard.js';
 
 import { firebaseOptions, isLocalMode, createDatabase } from './runtime.js';
 import { DOG_GATE } from './dog-park-rules.js';
+import { NEEDS_RULES } from './absent-death-rules.js';
 
 export function initializeGame() {
   const canvas = document.getElementById('game-canvas');
@@ -138,12 +139,13 @@ export function initializeGame() {
   game.view.outsideSubmenu = '';
   game.view.fridgeIsOpen = false;
   game.player.sleepGainedSinceLastHealthBoost = 0;
-  game.SLEEP_DEPLETION_SEC = 86400;
-  game.SLEEP_RECOVERY_SEC = 5400;
-  game.HUNGER_AWAKE_DEPLETION_SEC = 86400;
-  game.HUNGER_SLEEP_DEPLETION_SEC = 172800;
-  game.HYGIENE_DEPLETION_SEC = 86400;
-  game.HEALTH_DAMAGE_SEC = 172800;
+  // velocità dei bisogni: le stesse che usa il server per chi muore mentre è via
+  game.SLEEP_DEPLETION_SEC = NEEDS_RULES.sleepDepletion;
+  game.SLEEP_RECOVERY_SEC = NEEDS_RULES.sleepRecovery;
+  game.HUNGER_AWAKE_DEPLETION_SEC = NEEDS_RULES.hungerAwake;
+  game.HUNGER_SLEEP_DEPLETION_SEC = NEEDS_RULES.hungerSleeping;
+  game.HYGIENE_DEPLETION_SEC = NEEDS_RULES.hygieneDepletion;
+  game.HEALTH_DAMAGE_SEC = NEEDS_RULES.healthDamage;
   game.player.hasFoodInInventory = false;
   game.player.foodIsCooked = false;
   game.shopCatalog = structuredClone(SHOP_CATALOG);
@@ -233,13 +235,13 @@ export function initializeGame() {
   game.session.gameStarted = false;
   game.currentRoomIdx = null;
   game.player.gameMinutes = 8 * 60;
-  game.GAME_MINUTES_PER_SEC = 1 / 60;
+  game.GAME_MINUTES_PER_SEC = NEEDS_RULES.gameMinutesPerSecond;
   game.activeShift = null;
   game.SHIFT_SECONDS = 45;
   game.mySay = '';
   game.mySayT = 0;
   game.dialogResolve = null;
-  game.HAPPINESS_DEPLETION_SEC = 172800;
+  game.HAPPINESS_DEPLETION_SEC = NEEDS_RULES.happinessDepletion;
   game.lastMoneyForSound = null;
   game.lastEnvForSound = null;
   game.relaxCooldownUntil = 0;
@@ -356,10 +358,10 @@ export function initializeGame() {
   game.DRUG_PRICE = 30;
   game.DRUG_DOSE = 35;
   game.DRUG_EUPHORIA = 20;
-  game.DRUG_BASE = 0.35;
-  game.DRUG_PEAK = 2.5;
-  game.DRUG_HIGH_H = 6;
-  game.DRUG_TAPER_H = 18;
+  game.DRUG_BASE = NEEDS_RULES.drugBase;
+  game.DRUG_PEAK = NEEDS_RULES.drugPeak;
+  game.DRUG_HIGH_H = NEEDS_RULES.drugHighHours;
+  game.DRUG_TAPER_H = NEEDS_RULES.drugTaperHours;
   game.player.drug = { active: false, doses: 0, lastDose: 0, endAt: 0, dAtDose: 0, crisisAt: 0 };
   game.drugWindowMs = (): GameValue =>
     Math.min(5, Math.max(1, game.player.drug.doses)) * 24 * 3600 * 1000;

@@ -19,6 +19,7 @@ import {
 } from './saves.js';
 import { mgStop, updateShift } from './jobs.js';
 import { openDialog, writeGrave } from './interface.js';
+import { releaseRoomsOf } from '../../shared/death-rules.js';
 import { toast } from './missions.js';
 import { socDo } from './social.js';
 import { box, onFace } from './render/objects.js';
@@ -82,50 +83,82 @@ export async function reapAbsentPlayers(..._args: GameValue[]): Promise<GameValu
 export async function die(..._args: GameValue[]): Promise<GameValue> {
   if (game.player.isDead) return;
   game.player.isDead = true;
-  game.player.deadAt = Date.now();
+  // chi è morto mentre era via ha già il suo momento (vedi loadGame)
+  game.player.deadAt = game.player.deadAt || Date.now();
   game.player.isSleeping = false;
   game.activeShift = null;
   game.showerAnim = null;
   game.bathAnim = null;
   mgStop();
-  const data: GameValue = buildSaveData(); // contiene dead:true
   try {
-    localStorage.setItem(game.session.SAVE_KEY, JSON.stringify(data));
+    localStorage.setItem(game.session.SAVE_KEY, JSON.stringify(buildSaveData())); // dead: true
   } catch (e: GameValue) {}
-  try {
-    game.session.db.ref('sims_saves/' + game.session.myPlayerId).set(data);
-  } catch (e: GameValue) {}
-  try {
-    game.session.db.ref('sims_leaderboard/' + game.session.myPlayerId).remove();
-  } catch (e: GameValue) {}
-  try {
-    game.session.db.ref('sims_online_players/' + game.session.myPlayerId).remove();
-  } catch (e: GameValue) {}
-  writeGrave();
   postGossip(`${game.player.myData.nick} ci ha lasciati ⚰️ Riposa nel cimitero del quartiere.`);
-  // La stanza torna libera per un altro giocatore (cassaforte, PIN e arredi si perdono con il personaggio)
-  try {
-    await withTimeout(
-      game.session.db.ref('sims_rooms_state').transaction((cur?: GameValue): GameValue => {
-        const rooms: GameValue = normalizeRooms(cur);
-        const i: GameValue = rooms.findIndex(
-          (r?: GameValue): GameValue => r.ownerId === game.session.myPlayerId,
-        );
-        if (i !== -1)
-          rooms[i] = {
-            id: rooms[i].id,
-            vaultMoney: 0,
-            ...(rooms[i].pendingDeath ? { pendingDeath: rooms[i].pendingDeath } : {}),
-          };
-        return rooms;
-      }),
-      8000,
-    );
-  } catch (e: GameValue) {
-    console.warn('Liberazione stanza fallita', e);
-  }
+  // da qui la stanza non è più sua: smettono anche i "sono ancora qui" ogni minuto
   game.myAssignedRoomIdx = -1;
+  await recordDeathUntilDone();
   showDeathScreen();
+}
+
+/**
+ * Scrive online tutto quello che cambia con la morte: il salvataggio con dead: true, la lapide,
+ * la stanza libera (cassaforte, PIN e arredi si perdono con il personaggio) e niente più
+ * personaggio visibile agli altri né posto in classifica. Ogni scrittura aspetta la risposta:
+ * ritorna false se qualcosa non è arrivato (rete assente, accesso non ancora pronto).
+ */
+export async function recordDeath(): Promise<boolean> {
+  const me = game.session.myPlayerId;
+  const db = game.session.db;
+  let ok = true;
+  const attempt = async (what: string, write: () => GameValue): Promise<void> => {
+    try {
+      await withTimeout(Promise.resolve(write()), 8000);
+    } catch (e: GameValue) {
+      ok = false;
+      console.warn('Morte: ' + what + ' non registrata', e);
+    }
+  };
+  // prima il segno di morte: senza, le regole non lasciano ricominciare con un nuovo personaggio
+  await attempt('salvataggio', () => db.ref('sims_saves/' + me).set(buildSaveData()));
+  await attempt('lapide', () => writeGrave());
+  await attempt('classifica', () => db.ref('sims_leaderboard/' + me).remove());
+  await attempt('presenza', async () => {
+    // chiudendo la pagina non deve ricomparire come "offline"
+    await db
+      .ref('sims_online_players/' + me)
+      .onDisconnect()
+      .cancel();
+    await db.ref('sims_online_players/' + me).remove();
+  });
+  await attempt('stanza', () =>
+    db.ref('sims_rooms_state').transaction((cur?: GameValue): GameValue => {
+      const rooms = normalizeRooms(cur);
+      // il primo giro può arrivare senza dati (non ancora letti): si propone l'elenco così
+      // com'è, il database risponde con quello vero e si rifà il giro
+      if (!cur) return rooms;
+      return releaseRoomsOf(rooms, me) ?? undefined;
+    }),
+  );
+  return ok;
+}
+
+let deathRecording: Promise<void> | null = null;
+/**
+ * Registra la morte e, se qualcosa non è arrivato, riprova ogni 20 secondi finché la pagina
+ * resta aperta. Si chiama morendo e anche riaprendo il gioco con il personaggio già morto: così
+ * una morte rimasta a metà si completa. Aspetta solo il primo tentativo.
+ */
+export function recordDeathUntilDone(): Promise<void> {
+  if (deathRecording) return deathRecording;
+  let tries = 0;
+  const again = async (): Promise<boolean> => {
+    tries++;
+    const done = await recordDeath();
+    if (!done && tries < 60) lifetime.setTimeout(() => void again(), 20000);
+    return done;
+  };
+  deathRecording = again().then(() => undefined);
+  return deathRecording;
 }
 
 export function showDeathScreen(..._args: GameValue[]): GameValue {
