@@ -1571,7 +1571,18 @@ export const SIMULATION_BOTS = [
     lift: 26,
   },
   { name: 'Lucia 🐾', env: 'negozio_animali', x: 62, y: 86, vx: 0, vy: 0, clerk: true, lift: 30 },
-  { name: 'Rocco 🌿', env: 'growshop', x: 98, y: 44, vx: 0, vy: 0, clerk: true, lift: 20 },
+  {
+    name: 'Rocco 🌿',
+    env: 'growshop',
+    x: 98,
+    y: 44,
+    vx: 0,
+    vy: 0,
+    clerk: true,
+    lift: 20,
+    // occhi rossi, sempre
+    stoned: true,
+  },
   {
     name: 'Antiquario Ettore 🏺',
     env: 'collezionismo',
@@ -2877,17 +2888,42 @@ export const ENV_PROPS = {
     { kind: 'plant', x: 175, y: 30, w: 24, h: 24, z: 55 },
   ],
   lavoro_ristorante: [
-    { kind: 'restCounter', x: 0, y: -130, w: 140, h: 34, z: 55, label: 'Banco Ristorante 🍽️' },
-    { kind: 'chefStove', x: -135, y: 25, w: 50, h: 60, z: 55, label: 'Cucina Chef 🍳' },
-    { kind: 'dinnerTable', x: 65, y: 10, w: 48, h: 48, z: 36 },
-    { kind: 'dinnerTable', x: 115, y: 115, w: 48, h: 48, z: 36 },
-    { kind: 'plant', x: 165, y: -150, w: 24, h: 24, z: 55 },
-    { kind: 'dinnerTable', x: -20, y: 120, w: 48, h: 48, z: 36 },
-    { kind: 'dinnerTable', x: 160, y: -45, w: 48, h: 48, z: 36 },
-    { kind: 'bottleShelf', x: -160, y: -164, w: 50, h: 16, z: 90, label: 'Cantina 🍷' },
-    { kind: 'dessertCart', x: 105, y: -110, w: 30, h: 20, z: 40, label: 'Dolci 🍰' },
-    { kind: 'coatRack', x: -175, y: 140, w: 12, h: 12, z: 72 },
-    { kind: 'plant', x: -175, y: -60, w: 24, h: 24, z: 55 },
+    // in fondo: bancone, carrello dei dolci e il portone da cui entrano i clienti
+    { kind: 'restCounter', x: -40, y: -160, w: 110, h: 34, z: 55, label: 'Banco Ristorante 🍽️' },
+    { kind: 'dessertCart', x: 60, y: -166, w: 30, h: 20, z: 40, label: 'Dolci 🍰' },
+    {
+      kind: 'wallEntrance',
+      side: 'back',
+      model: 'portone',
+      x: 140,
+      y: -180,
+      w: 60,
+      h: 10,
+      solid: false,
+      door: 'rest:door',
+    },
+    { kind: 'coatRack', x: 185, y: -125, w: 12, h: 12, z: 72 },
+    // a sinistra, contro il muro e girate verso la sala: forno per la pizza e fornelli per la pasta
+    { kind: 'pizzaOven', x: -172, y: -100, w: 50, h: 56, z: 70, label: 'Forno a legna 🍕' },
+    {
+      kind: 'chefStove',
+      x: -175,
+      y: 0,
+      w: 46,
+      h: 60,
+      z: 55,
+      facing: 'x',
+      label: 'Fornelli 🍝',
+    },
+    // i vini contro il muro, accanto ai fornelli: la cantinetta a rombi e una botte
+    { kind: 'wineRack', x: -188, y: 80, w: 18, h: 52, z: 92, label: 'Cantina 🍷' },
+    { kind: 'wineBarrel', x: -176, y: 128, w: 26, h: 26, z: 38 },
+    // i tavoli dei clienti, a destra in due file
+    { kind: 'dinnerTable', x: -45, y: -55, w: 48, h: 48, z: 36 },
+    { kind: 'dinnerTable', x: 70, y: -55, w: 48, h: 48, z: 36 },
+    { kind: 'dinnerTable', x: -45, y: 55, w: 48, h: 48, z: 36 },
+    { kind: 'dinnerTable', x: 70, y: 55, w: 48, h: 48, z: 36 },
+    { kind: 'plant', x: -172, y: 160, w: 24, h: 24, z: 55 },
   ],
   lavoro_ufficio: [
     { kind: 'officeDesk', x: -100, y: -70, w: 70, h: 46, z: 40, label: 'Scrivania Ufficio 💻' },
@@ -3047,8 +3083,12 @@ export const ENV_DECOR = {
   growshop: [
     { kind: 'plant', x: -168, y: -160, w: 26, h: 26, z: 60 },
     { kind: 'plant', x: 168, y: -160, w: 26, h: 26, z: 60 },
-    { kind: 'plant', x: -168, y: 140, w: 26, h: 26, z: 60 },
-    { kind: 'plant', x: 168, y: 140, w: 26, h: 26, z: 60 },
+    // lungo il muro di sinistra: la grow tent accesa e lo scaffale di semi e fertilizzanti
+    { kind: 'growTent', x: -174, y: 8, w: 40, h: 56, z: 84 },
+    { kind: 'growShelf', x: -188, y: 100, w: 18, h: 64, z: 74 },
+    // angolo relax: tappeto rasta e pouf
+    { kind: 'rastaRug', x: -50, y: 60, w: 80, h: 56, solid: false, flat: true },
+    { kind: 'beanbag', x: 150, y: 132, w: 52, h: 52, z: 22 },
   ],
   luna: [
     { kind: 'crater', x: -170, y: -150, w: 80, h: 80, r: 40, solid: false, flat: true },
@@ -3613,14 +3653,13 @@ export const ENV_STYLE = {
     wallStyle: 'wainscot',
     trim: '#7b4a2e',
     decor: {
-      back: [
-        { t: 'painting', u: 70, w: 50, h: 36, seed: 21 },
-        { t: 'menu', u: 200 },
-        { t: 'painting', u: 330, w: 50, h: 36, seed: 22 },
-      ],
+      back: [{ t: 'menu', u: 200 }],
       left: [
-        { t: 'window', u: 120, w: 44, h: 50 },
-        { t: 'window', u: 250, w: 44, h: 50 },
+        // negli spazi liberi del muro: tra vini e fornelli, e tra fornelli e forno
+        { t: 'window', u: 135, w: 40, h: 46 },
+        { t: 'windowDepth', side: 'left', u: 135, w: 40, h: 46 },
+        { t: 'window', u: 230, w: 40, h: 46 },
+        { t: 'windowDepth', side: 'left', u: 230, w: 40, h: 46 },
       ],
     },
     lights: [

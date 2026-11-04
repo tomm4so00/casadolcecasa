@@ -782,6 +782,10 @@ input[type='number'] {
   font-size: 0.9rem;
   box-shadow: none;
 }
+/* pulsante su una riga tutta sua, sotto gli altri (es. Esci dall'account) */
+#dialog-buttons .btn-primary.wide {
+  flex-basis: 100%;
+}
 
 /* Lavoro: un solo riquadro con tempo, paga e compito */
 #minigame {

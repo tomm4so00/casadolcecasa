@@ -1,6 +1,7 @@
 // Pulsanti degli oggetti di ogni ambiente: cosa c'è scritto quando ci si avvicina e cosa
 // succede premendolo. Per un posto nuovo basta aggiungere la sua voce in PLACES.
 import { facadeFootprint } from './render/facades.js';
+import { setBlockedDoor } from './render/doors.js';
 import { servicePrompt } from './restaurant.js';
 import { buyPlant, plantLabel, smokeJoint, tendPlant } from './weed.js';
 import { PETS, PET_FOOD_PRICE, type PetKind } from './pet-rules.js';
@@ -765,15 +766,15 @@ function walkZones(): WalkZone[] {
 
 let walkEnv = '';
 // Appena arrivati si è davanti alla porta da cui si entra (nel salone il portone è in fondo come la
-// porta della palazzina, quindi chi va dritto ci finisce contro): le porte valgono solo dopo
-// essersene allontanati (WALK_REARM oltre la zona della porta), e fino ad allora sono un muro.
-// Si ricompare a 45 dalla porta: con meno di 70 bastava un passettino indietro per riarmarla.
-let walkArmed = false;
-const WALK_REARM = 70;
+// porta della palazzina, quindi chi va dritto ci finisce contro): quella porta, e solo quella, fa da
+// muro finché le si resta vicino (entro WALK_REARM dalla sua zona). Le altre porte valgono sempre.
+let blockedDoor: string | null = null;
+let pickBlocked = false;
+const WALK_REARM = 45;
 
 /** Le porte del salone che in questo momento si aprono a chi ci cammina contro. */
 export function openGapsHere(): DoorGap[] {
-  return walkArmed ? doorGapsHere() : [];
+  return doorGapsHere().filter((g) => g.key !== blockedDoor);
 }
 
 /**
@@ -803,7 +804,8 @@ export function checkWalkThrough(): void {
   const env = game.view.activeEnvironment;
   if (env !== walkEnv) {
     walkEnv = env;
-    walkArmed = false;
+    blockedDoor = null;
+    pickBlocked = true;
   }
   const { x, y } = game.playerPos;
   const busy =
@@ -817,21 +819,37 @@ export function checkWalkThrough(): void {
   const bounds = roomBounds(),
     gaps = doorGapsHere(),
     zones = walkZones();
-  if (!zones.some((z) => z.inside(x, y, WALK_REARM)) && !nearDoor(x, y, bounds, gaps, WALK_REARM))
-    walkArmed = true;
+  const near = (key: string): boolean => {
+    const g = gaps.find((d) => d.key === key);
+    if (g) return nearDoor(x, y, bounds, [g], WALK_REARM);
+    return !!zones.find((z) => z.key === key)?.inside(x, y, WALK_REARM);
+  };
+  // appena cambiato ambiente: la porta accanto a cui si è comparsi è quella da cui si arriva
+  if (pickBlocked) {
+    pickBlocked = false;
+    blockedDoor = [...gaps.map((g) => g.key), ...zones.map((z) => z.key)].find(near) ?? null;
+  }
+  if (blockedDoor && !near(blockedDoor)) blockedDoor = null;
+  // la porta bloccata resta chiusa: si apre di nuovo avvicinandosi solo quando il blocco è tolto
+  setBlockedDoor(blockedDoor ? (env === 'CORTILE' ? 'cortile:' : 'saloon:') + blockedDoor : null);
   // salone: si passa la porta arrivando sul suo filo
-  const gap = walkArmed ? crossedDoor(x, y, bounds, gaps) : null;
+  const gap = crossedDoor(
+    x,
+    y,
+    bounds,
+    gaps.filter((g) => g.key !== blockedDoor),
+  );
   if (gap) {
     if (!busy) {
-      walkArmed = false;
+      blockedDoor = gap.key;
       void goThroughSaloonDoor(gap.key, game.saloonDoors[gap.key], false);
     }
     return;
   }
-  const zone = zones.find((z) => z.inside(x, y, 0));
-  if (!zone) return;
-  if (!walkArmed || busy || !game.isWalking) return;
-  walkArmed = false;
+  const zone = zones.find((z) => z.key !== blockedDoor && z.inside(x, y, 0));
+  if (!zone || busy || !game.isWalking) return;
+  // finché si resta sulla zona non riscatta (la porta si sta aprendo, il menu è aperto)
+  blockedDoor = zone.key;
   // sul tappeto dell'uscita il menu dei posti si apre (non si richiude se è già aperto)
   if (zone.key === 'exitHouse' && game.view.isOutsideMenuOpen) return;
   game.activeTargetProp = zone.key;

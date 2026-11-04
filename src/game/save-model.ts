@@ -29,6 +29,7 @@ export interface SaveV8 {
   equippedAcc?: Record<string, boolean>;
   body?: string;
   drugStock?: number;
+  stonedUntil?: number;
   coffeeAt?: number;
   invest?: Record<string, { units: number; cost: number }>;
   drug?: { doses: number; lastDose: number; endAt: number; dAtDose: number; crisisAt: number };
@@ -102,6 +103,7 @@ export function decodeSaveV8(value: unknown): ValidatedSave | null {
         'missionIndex',
         'missionSet',
         'drugStock',
+        'stonedUntil',
         'coffeeAt',
         'bornAt',
         'deadAt',

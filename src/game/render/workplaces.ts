@@ -135,7 +135,8 @@ export function drawBottleShelfProp(it?: GameValue): GameValue {
   const { x, y, w, h } = it;
   const H: number = it.z || 90;
   const b = box(x, y, w, h, H, '#6d4c2f', { top: '#7d5a3a' });
-  onFace(b, 'left', (W: number, FH: number): void => {
+  // `facing: 'x'`: contro il muro di sinistra, con le bottiglie verso la sala
+  onFace(b, it.facing === 'x' ? 'right' : 'left', (W: number, FH: number): void => {
     ctx.fillStyle = '#3e2a19';
     ctx.fillRect(3, 3, W - 6, FH - 6);
     const rows = 5;
@@ -287,4 +288,217 @@ export function drawBookshelfProp(it?: GameValue): GameValue {
   };
   onFace(b, 'right', (W: number, FH: number) => paint(W, FH, x + y));
   onFace(b, 'left', (W: number, FH: number) => paint(W, FH, x - y));
+}
+
+/** Forno a legna per la pizza: base in mattoni, cupola, bocca col fuoco verso la sala (+x) e il
+ * comignolo in cima, col fumo. */
+export function drawPizzaOvenProp(it?: GameValue, t?: GameValue): GameValue {
+  const ctx = game.view.ctx;
+  const time = t || 0;
+  const baseH = 34;
+  const base: GameValue = box(it.x, it.y, it.w, it.h, baseH, '#8d6e63', { top: '#a1887f' });
+  const bricks = (W: number, H: number): void => {
+    ctx.strokeStyle = 'rgba(0,0,0,0.18)';
+    ctx.lineWidth = 0.8;
+    for (let r = 0, v = 0; v < H; r++, v += 6) {
+      ctx.beginPath();
+      ctx.moveTo(0, v);
+      ctx.lineTo(W, v);
+      ctx.stroke();
+      for (let u = r % 2 ? 6 : 0; u < W; u += 12) {
+        ctx.beginPath();
+        ctx.moveTo(u, v);
+        ctx.lineTo(u, v + 6);
+        ctx.stroke();
+      }
+    }
+  };
+  onFace(base, 'right', (W: number, H: number): void => {
+    bricks(W, H);
+    // la legna nella nicchia sotto il piano
+    ctx.fillStyle = '#3e2723';
+    ctx.fillRect(W * 0.2, H * 0.45, W * 0.6, H * 0.45);
+    ctx.fillStyle = '#a1887f';
+    for (let i = 0; i < 4; i++) {
+      ctx.beginPath();
+      ctx.arc(W * 0.3 + i * W * 0.13, H * 0.78, 2.6, 0, 6.3);
+      ctx.fill();
+    }
+  });
+  onFace(base, 'left', bricks);
+  // cupola: anelli veri (cerchi nel mondo, non ellissi sullo schermo) che salgono e si stringono
+  const R = (Math.min(it.w, it.h) / 2) * 0.92,
+    HD = R * 0.95;
+  const ring = (r: number, z: number): void => {
+    ctx.beginPath();
+    for (let k = 0; k <= 24; k++) {
+      const a = (k / 24) * Math.PI * 2;
+      const p = isoProject(it.x + Math.cos(a) * r, it.y + Math.sin(a) * r, z);
+      if (k) ctx.lineTo(p.x, p.y);
+      else ctx.moveTo(p.x, p.y);
+    }
+    ctx.fill();
+  };
+  const layers = 10;
+  for (let i = 0; i <= layers; i++) {
+    const a = (i / layers) * (Math.PI / 2);
+    ctx.fillStyle = i % 2 ? '#b5532f' : '#c0623a';
+    ring(R * Math.cos(a) + 0.4, baseH + HD * Math.sin(a));
+  }
+  // bocca ad arco sul davanti della cupola, verso la sala, col fuoco dentro
+  const mw = R * 1.05,
+    mh = HD * 0.62;
+  setPlane([it.x + R * 0.82, it.y + mw / 2, baseH + mh], [0, -1, 0], [0, 0, -1]);
+  const arch = (inset: number): void => {
+    ctx.beginPath();
+    ctx.moveTo(inset, mh);
+    ctx.lineTo(inset, mh * 0.45);
+    ctx.quadraticCurveTo(mw / 2, -mh * 0.35 + inset * 2, mw - inset, mh * 0.45);
+    ctx.lineTo(mw - inset, mh);
+    ctx.closePath();
+  };
+  ctx.fillStyle = '#7b3a1f';
+  arch(-2);
+  ctx.fill();
+  ctx.fillStyle = '#1b0f0a';
+  arch(1.5);
+  ctx.fill();
+  const glow = ctx.createRadialGradient(mw / 2, mh, 1, mw / 2, mh, mw * 0.6);
+  glow.addColorStop(0, 'rgba(255,170,60,0.85)');
+  glow.addColorStop(1, 'rgba(255,90,0,0)');
+  ctx.fillStyle = glow;
+  arch(1.5);
+  ctx.fill();
+  for (let f = 0; f < 5; f++) {
+    const fl = 5 + Math.sin(time * 11 + f * 1.7) * 2.5;
+    ctx.fillStyle = f % 2 ? 'rgba(255,210,0,0.95)' : 'rgba(255,100,0,0.95)';
+    ctx.beginPath();
+    ctx.moveTo(mw * 0.18 + f * mw * 0.13, mh);
+    ctx.lineTo(mw * 0.24 + f * mw * 0.13, mh - fl);
+    ctx.lineTo(mw * 0.3 + f * mw * 0.13, mh);
+    ctx.fill();
+  }
+  resetPlane();
+  // comignolo tondo al centro della cupola: anelli uno sull'altro, col bordo e la bocca scura
+  const top = baseH + HD;
+  const cr = 4.5;
+  for (let z = top - 3; z <= top + 13; z += 1) {
+    ctx.fillStyle = z % 4 < 2 ? '#7b5341' : '#6d4c41';
+    ring(cr, z);
+  }
+  ctx.fillStyle = '#5d4037';
+  ring(cr + 1.2, top + 14);
+  ctx.fillStyle = '#1b0f0a';
+  ring(cr * 0.7, top + 14.5);
+  for (let k = 0; k < 3; k++) {
+    const ph = (time * 0.5 + k / 3) % 1;
+    const p = isoProject(it.x, it.y, top + 16 + ph * 26);
+    ctx.fillStyle = `rgba(200,200,200,${0.45 * (1 - ph)})`;
+    ctx.beginPath();
+    ctx.arc(p.x + Math.sin(time + k) * 3, p.y, (3 + ph * 5) * isoScale(), 0, 6.3);
+    ctx.fill();
+  }
+}
+
+/**
+ * Cantinetta dei vini contro il muro di sinistra: legno scuro, griglia a rombi con una bottiglia
+ * coricata in ogni casella e qualche bottiglia in piedi sopra.
+ */
+export function drawWineRackProp(it?: GameValue): GameValue {
+  const ctx = game.view.ctx;
+  const { x, y, w, h } = it;
+  const H: number = it.z || 92;
+  const b: GameValue = box(x, y, w, h, H, '#4e342e', { top: '#5d4037' });
+  onFace(b, 'right', (W: number, FH: number): void => {
+    // fondo scuro e cornice
+    ctx.fillStyle = '#21140f';
+    ctx.fillRect(3, 3, W - 6, FH - 6);
+    const x0 = 3,
+      y0 = 3,
+      iw = W - 6,
+      ih = FH - 6;
+    const n = 2; // rombi per riga: pochi e grandi, si vedono bene
+    const cw = iw / n,
+      chh = cw;
+    // una bottiglia in ogni rombo: il fondo tondo verso chi guarda
+    const colors = ['#5b1a24', '#1e4d2b', '#7d2633', '#2d3436'];
+    for (let r = 0; r * (chh / 2) < ih + chh; r++)
+      for (let c = 0; c <= n; c++) {
+        const cx = x0 + c * cw + (r % 2 ? 0 : cw / 2),
+          cy = y0 + r * (chh / 2);
+        if (cx < x0 + 3 || cx > x0 + iw - 3 || cy < y0 + 3 || cy > y0 + ih - 3) continue;
+        ctx.fillStyle = colors[(r * 3 + c) % colors.length];
+        ctx.beginPath();
+        ctx.arc(cx, cy, cw * 0.24, 0, 6.3);
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(0,0,0,0.5)';
+        ctx.lineWidth = 0.8;
+        ctx.stroke();
+        ctx.fillStyle = 'rgba(255,255,255,0.4)';
+        ctx.beginPath();
+        ctx.arc(cx - cw * 0.07, cy - cw * 0.07, cw * 0.06, 0, 6.3);
+        ctx.fill();
+      }
+    // la griglia a X di listelli chiari
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(x0, y0, iw, ih);
+    ctx.clip();
+    ctx.strokeStyle = '#a1887f';
+    ctx.lineWidth = 2.4;
+    for (let k = -ih; k < iw + ih; k += cw) {
+      ctx.beginPath();
+      ctx.moveTo(x0 + k, y0);
+      ctx.lineTo(x0 + k + ih, y0 + ih);
+      ctx.moveTo(x0 + k, y0);
+      ctx.lineTo(x0 + k - ih, y0 + ih);
+      ctx.stroke();
+    }
+    ctx.restore();
+    ctx.strokeStyle = '#3e2723';
+    ctx.lineWidth = 3;
+    ctx.strokeRect(1.5, 1.5, W - 3, FH - 3);
+  });
+  // sopra: tre bottiglie in piedi col collo e la capsula
+  const tops: [number, string][] = [
+    [-0.28, '#5b1a24'],
+    [0, '#1e4d2b'],
+    [0.28, '#7d2633'],
+  ];
+  for (const [k, color] of tops) {
+    const by = y + h * k;
+    box(x + 1, by, 4, 4, 11, color, { z0: H });
+    box(x + 1, by, 1.8, 1.8, 6, color, { z0: H + 11 });
+    box(x + 1, by, 2, 2, 2, '#d4ac0d', { z0: H + 16 });
+  }
+}
+
+/** Botte di legno in piedi, con i cerchi di ferro e il rubinetto. */
+export function drawWineBarrelProp(it?: GameValue): GameValue {
+  const ctx = game.view.ctx;
+  const R = Math.min(it.w, it.h) / 2;
+  const H: number = it.z || 40;
+  const ring = (r: number, z: number): void => {
+    ctx.beginPath();
+    for (let k = 0; k <= 24; k++) {
+      const a = (k / 24) * Math.PI * 2;
+      const p = isoProject(it.x + Math.cos(a) * r, it.y + Math.sin(a) * r, z);
+      if (k) ctx.lineTo(p.x, p.y);
+      else ctx.moveTo(p.x, p.y);
+    }
+    ctx.fill();
+  };
+  // doghe: la pancia è più larga a metà altezza; i cerchi di ferro a un quarto e tre quarti
+  for (let z = 0; z <= H; z += 1) {
+    const bulge = Math.sin((z / H) * Math.PI) * 0.14;
+    const hoop = Math.abs(z - H * 0.2) < 1.5 || Math.abs(z - H * 0.8) < 1.5;
+    ctx.fillStyle = hoop ? '#4a4a4a' : z % 6 < 3 ? '#8d5a3b' : '#7b4a2e';
+    ring(R * (0.86 + bulge), z);
+  }
+  ctx.fillStyle = '#a1785a';
+  ring(R * 0.86, H + 0.5);
+  ctx.fillStyle = 'rgba(0,0,0,0.18)';
+  ring(R * 0.6, H + 0.6);
+  // rubinetto verso la sala
+  box(it.x + R * 0.95, it.y, 4, 2.5, 2.5, '#b8860b', { z0: H * 0.35 });
 }

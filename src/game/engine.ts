@@ -73,6 +73,7 @@ import { overlapsCorridor } from './room-layout.js';
 import { approachKissPartner, drawKissHearts, kissActive } from './romance.js';
 import { faintAmount } from './faint.js';
 import { fadeOnRoomChange, updateCamera } from './camera.js';
+import { isStoned } from './weed.js';
 import { applyRoomBounds } from './room-size.js';
 import { presenceState, shownWhileOffline } from './presence-rules.js';
 import type { OnlinePlayer } from './network-model.js';
@@ -81,6 +82,10 @@ import { clerkLines } from './clerks.js';
 import { facadeFootprint, facadeSolids } from './render/facades.js';
 import { checkWalkThrough, doorGapsHere, openGapsHere, roomBounds } from './interactions.js';
 import { clampToRoom, doorwayAt } from './door-walk-rules.js';
+
+/** Lo stesso aspetto con gli occhi rossi (dopo una canna). */
+const withStonedEyes = (look: GameValue, on: boolean): GameValue =>
+  on && look ? { ...look, stoned: true } : look;
 
 /** La stanza in cui si è: cambiandola, chi dorme compare già sdraiato. */
 const sleepSceneKey = (): string => game.view.activeEnvironment + ':' + game.currentRoomIdx;
@@ -445,7 +450,7 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
               game.playerPos.y,
               game.player.myData.nick,
               animTime,
-              myShownLook(),
+              withStonedEyes(myShownLook(), isStoned()),
               game.isWalking,
               mySayNow,
               game.sleepK,
@@ -517,7 +522,10 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
             bot.y,
             bot.name,
             animTime,
-            botLook(bot.name),
+            // Rocco del grow shop: sempre con gli occhi rossi, senza occhiali da sole
+            bot.stoned
+              ? { ...withStonedEyes(botLook(bot.name), true), glasses: null }
+              : botLook(bot.name),
             !!(bot.vx || bot.vy),
             say,
             {
@@ -668,7 +676,10 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
       labels.push((): GameValue => drawFluGerms(sx, sy, animTime));
     }
     const und: number = act === 'shower' ? Number(op.und) || 0 : 0;
-    const shownLook: GameValue = und ? undressedLook(s.look, und) : s.look;
+    const shownLook: GameValue = withStonedEyes(
+      und ? undressedLook(s.look, und) : s.look,
+      op.stoned === true,
+    );
     addPile(s.look, und);
     if (act === 'wash') game.frameSinkRunning = true;
     const pose: string = act === 'sit' || act === 'wash' || act === 'bench' ? act : '';

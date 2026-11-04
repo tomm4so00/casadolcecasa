@@ -72,7 +72,7 @@ export function openDialog({
     game.dialogResolve = resolve;
     buttons.forEach((b) => {
       const btn: GameValue = document.createElement('button');
-      btn.className = 'btn-primary';
+      btn.className = b.wide ? 'btn-primary wide' : 'btn-primary';
       btn.type = 'button';
       if (b.color) btn.style.background = b.color;
       btn.textContent = b.label;
@@ -175,7 +175,7 @@ export async function openProfile(..._args: GameValue[]): Promise<GameValue> {
       ...(canLink ? [{ label: '🔗 Collega Google', value: 'google', color: '#2e86de' }] : []),
       ...(game.session.OFFLINE
         ? []
-        : [{ label: "🚪 Esci dall'account", value: 'logout', color: '#c0392b' }]),
+        : [{ label: "🚪 Esci dall'account", value: 'logout', color: '#c0392b', wide: true }]),
     ],
   });
   if (res.action === 'logout') await logOut();

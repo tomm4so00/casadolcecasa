@@ -1695,12 +1695,13 @@ export function wallMirror3d(d?: GameValue): GameValue {
     ctx.lineTo(FW * 0.55, 13);
     ctx.stroke();
   });
-  // mensolina di vetro con il bicchiere degli spazzolini
-  W.box(d.u, 6, w * 0.8, 10, 2, 'rgba(200,230,240,0.85)', zb - 10);
-  W.box(d.u - w * 0.22, 6, 5, 5, 8, '#74b9ff', zb - 8);
-  W.box(d.u - w * 0.22 - 1, 6, 1.2, 1.2, 6, '#ff7675', zb);
-  W.box(d.u - w * 0.22 + 1.5, 6, 1.2, 1.2, 5, '#55efc4', zb);
-  W.box(d.u + w * 0.2, 6, 5, 4, 10, '#ffeaa7', zb - 8);
+  // mensolina di vetro stretta e attaccata al muro: sporgendo poco resta sotto il centro dello
+  // specchio anche vista di sbieco; sopra il bicchiere degli spazzolini e il sapone
+  W.box(d.u, 4, w, 5, 2, 'rgba(200,230,240,0.85)', zb - 10);
+  W.box(d.u - w * 0.25, 4, 4, 4, 8, '#74b9ff', zb - 8);
+  W.box(d.u - w * 0.25 - 1, 4, 1.2, 1.2, 6, '#ff7675', zb);
+  W.box(d.u - w * 0.25 + 1.2, 4, 1.2, 1.2, 5, '#55efc4', zb);
+  W.box(d.u + w * 0.25, 4, 4, 3.5, 10, '#ffeaa7', zb - 8);
   wallPlane(d.side, H);
 }
 

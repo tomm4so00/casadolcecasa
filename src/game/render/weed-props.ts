@@ -181,3 +181,138 @@ export function drawStrainDisplay(it?: GameValue, t?: GameValue): GameValue {
   ctx.closePath();
   ctx.fill();
 }
+
+// ---------------------------------------------------------------- arredo del grow shop
+/** Grow tent: tenda nera con la cerniera aperta, dentro la luce viola e una piantina. */
+export function drawGrowTent(it?: GameValue, t?: GameValue): GameValue {
+  const ctx = game.view.ctx;
+  const tent: GameValue = box(it.x, it.y, it.w, it.h, it.z, '#1c1f1d');
+  onFace(tent, 'right', (W: number, H: number): void => {
+    // apertura con la cerniera: dentro la luce viola che pulsa piano
+    const glow = 0.75 + 0.25 * Math.sin((t || 0) * 1.5);
+    const ox = W * 0.18,
+      ow = W * 0.64,
+      oy = 8,
+      oh = H - 14;
+    const g = ctx.createLinearGradient(0, oy, 0, oy + oh);
+    g.addColorStop(0, `rgba(205,120,255,${glow})`);
+    g.addColorStop(1, `rgba(90,30,140,${glow})`);
+    ctx.fillStyle = g;
+    ctx.fillRect(ox, oy, ow, oh);
+    weedLeaf(W / 2, oy + oh * 0.62, 14, -Math.PI / 2, '#2e7d32');
+    weedLeaf(W / 2 - 6, oy + oh * 0.72, 9, -Math.PI * 0.7, '#388e3c');
+    weedLeaf(W / 2 + 6, oy + oh * 0.72, 9, -Math.PI * 0.3, '#388e3c');
+    ctx.fillStyle = '#5d4037';
+    ctx.fillRect(W / 2 - 6, oy + oh - 8, 12, 8);
+    // lembi arrotolati e cerniere
+    ctx.fillStyle = '#2b2f2c';
+    ctx.fillRect(ox - 4, oy, 4, oh);
+    ctx.fillRect(ox + ow, oy, 4, oh);
+    ctx.strokeStyle = 'rgba(200,200,200,0.45)';
+    ctx.setLineDash([1.5, 1.5]);
+    ctx.strokeRect(ox - 0.5, oy - 0.5, ow + 1, oh + 1);
+    ctx.setLineDash([]);
+  });
+  onFace(tent, 'left', (W: number, H: number): void => {
+    ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+    for (const u of [W * 0.33, W * 0.66]) {
+      ctx.beginPath();
+      ctx.moveTo(u, 0);
+      ctx.lineTo(u, H);
+      ctx.stroke();
+    }
+    // etichetta della marca
+    ctx.fillStyle = '#9cff57';
+    ctx.fillRect(W / 2 - 7, 10, 14, 4);
+  });
+  // filtro a carbone sopra la tenda
+  const f: GameValue = box(it.x, it.y, it.w * 0.35, it.w * 0.35, 8, '#7f8c8d', { z0: it.z });
+  onFace(f, 'top', (W: number, H: number): void => {
+    ctx.fillStyle = '#2d3436';
+    ctx.beginPath();
+    ctx.arc(W / 2, H / 2, Math.min(W, H) * 0.3, 0, 6.3);
+    ctx.fill();
+  });
+}
+
+/** Scaffale contro il muro: barattoli di semi, fertilizzanti e sacchi di terriccio. */
+export function drawGrowShelf(it?: GameValue): GameValue {
+  const wood = '#6d4c41';
+  const { x, y, w, h, z } = it;
+  // fianchi e ripiani
+  box(x, y - h / 2 + 2, w, 4, z, wood);
+  box(x, y + h / 2 - 2, w, 4, z, wood);
+  const shelves = [2, z * 0.36, z * 0.68];
+  for (const sz of shelves) box(x, y, w, h - 4, 3, game.darken(wood, 0.1), { z0: sz });
+  box(x, y, w, h, 3, game.darken(wood, 0.15), { z0: z - 3 });
+  const bottles = ['#e17055', '#00b894', '#fdcb6e', '#6c5ce7', '#0984e3'];
+  // ripiano basso: sacchi di terriccio
+  for (const [k, dy] of [-1, 1].entries())
+    box(x + 1, y + dy * h * 0.22, w * 0.7, h * 0.36, z * 0.26, k ? '#795548' : '#8d6e63', {
+      z0: 5,
+    });
+  // in mezzo: flaconi di fertilizzante
+  for (let i = 0; i < 5; i++)
+    box(x + 2, y - h * 0.36 + i * (h * 0.18), 6, 6, 12 + (i % 2) * 4, bottles[i], {
+      z0: z * 0.36 + 3,
+    });
+  // in alto: barattoli di semi di vetro col tappo
+  for (let i = 0; i < 4; i++) {
+    const jy = y - h * 0.3 + i * (h * 0.2);
+    box(x + 2, jy, 7, 7, 9, 'rgba(200,235,210,0.75)', { z0: z * 0.68 + 3 });
+    box(x + 2, jy, 7, 7, 2, '#2e7d32', { z0: z * 0.68 + 12 });
+  }
+}
+
+/** Pouf rasta: un sacco morbido a strisce verde, giallo e rosso. */
+export function drawBeanbag(it?: GameValue): GameValue {
+  const ctx = game.view.ctx;
+  const s: number = isoScale();
+  const c = isoProject(it.x, it.y, 0);
+  const rx = (it.w / 2) * 1.05 * s,
+    ry = rx * 0.5;
+  const layers: [number, string][] = [
+    [0, '#1e8449'],
+    [5, '#f1c40f'],
+    [9, '#c0392b'],
+  ];
+  // dal basso in alto: largo e schiacciato, ogni striscia un po' più stretta
+  layers.forEach(([lift, color], i) => {
+    const k = 1 - i * 0.1;
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.ellipse(c.x, c.y - lift * s, rx * k, ry * k + 4 * s, 0, 0, 6.3);
+    ctx.fill();
+  });
+  // l'incavo dove ci si siede, un po' indietro, e lo schienale morbido che si alza dietro
+  ctx.fillStyle = '#a93226';
+  ctx.beginPath();
+  ctx.ellipse(c.x + rx * 0.15, c.y - 18 * s, rx * 0.55, ry * 0.55, 0, Math.PI, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = 'rgba(0,0,0,0.2)';
+  ctx.beginPath();
+  ctx.ellipse(c.x, c.y - 11 * s, rx * 0.45, ry * 0.35, 0, 0, 6.3);
+  ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,0.2)';
+  ctx.beginPath();
+  ctx.ellipse(c.x - rx * 0.45, c.y - 7 * s, rx * 0.16, ry * 0.22, -0.5, 0, 6.3);
+  ctx.fill();
+}
+
+/** Tappeto rasta con la foglia al centro. */
+export function drawRastaRug(it?: GameValue): GameValue {
+  const ctx = game.view.ctx;
+  const rug: GameValue = box(it.x, it.y, it.w, it.h, 1, '#1e8449');
+  onFace(rug, 'top', (W: number, H: number): void => {
+    const cols = ['#1e8449', '#f1c40f', '#c0392b'];
+    cols.forEach((col, i) => {
+      ctx.fillStyle = col;
+      ctx.fillRect(0, (i * H) / 3, W, H / 3);
+    });
+    weedLeaf(W / 2, H / 2 + 6, 18, -Math.PI / 2, '#1b1b1b');
+    ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+    ctx.setLineDash([2, 2]);
+    ctx.strokeRect(2, 2, W - 4, H - 4);
+    ctx.setLineDash([]);
+  });
+}

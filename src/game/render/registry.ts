@@ -19,7 +19,10 @@ import {
   drawDessertCartProp,
   drawMedCartProp,
   drawPrinterProp,
+  drawPizzaOvenProp,
   drawWheelchairProp,
+  drawWineBarrelProp,
+  drawWineRackProp,
 } from './workplaces.js';
 import { MOONBASE_DRAW, MOONBASE_INSIDE_DRAW } from './moonbase.js';
 import { drawGoldStatue, drawJukebox } from './limited-props.js';
@@ -85,6 +88,7 @@ import {
   drawTreeProp,
   drawUmbrellaProp,
   drawWaitingChairsProp,
+  drawWallEntranceProp,
   drawWardrobe,
 } from './objects.js';
 import {
@@ -109,7 +113,15 @@ import {
   drawBalloonStandProp,
   drawMannequinProp,
 } from './mall.js';
-import { drawWeedPot, drawWeedJar, drawStrainDisplay } from './weed-props.js';
+import {
+  drawBeanbag,
+  drawGrowShelf,
+  drawGrowTent,
+  drawRastaRug,
+  drawWeedPot,
+  drawWeedJar,
+  drawStrainDisplay,
+} from './weed-props.js';
 import { drawFridge } from './fridge.js';
 import { drawBankCounter, drawBankRail, drawBankVault } from './bank.js';
 import { drawEasel, drawPaintTableProp } from './studio.js';
@@ -282,6 +294,10 @@ export function registerDrawers(): void {
     waitingChairs: drawWaitingChairsProp,
     restCounter: drawRestCounterProp,
     chefStove: drawChefStoveProp,
+    pizzaOven: drawPizzaOvenProp,
+    wineRack: drawWineRackProp,
+    wineBarrel: drawWineBarrelProp,
+    wallEntrance: drawWallEntranceProp,
     dinnerTable: drawDinnerTableProp,
     officeDesk: drawOfficeDeskProp,
     archive: drawArchiveProp,
@@ -300,6 +316,11 @@ export function registerDrawers(): void {
     console: drawConsoleProp,
     bathmat: drawBathmatProp,
     paintTable: drawPaintTableProp,
+    // arredo del grow shop
+    growTent: drawGrowTent,
+    growShelf: drawGrowShelf,
+    beanbag: drawBeanbag,
+    rastaRug: drawRastaRug,
   };
   game.WALL_DECOR = {
     window: (d?: GameValue, ctxInfo?: GameValue): GameValue =>

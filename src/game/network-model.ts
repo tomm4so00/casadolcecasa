@@ -36,6 +36,8 @@ export interface OnlinePlayer extends PresenceInfo {
   /** Dove si trova il cane libero (solo con dog: 2). */
   dogX?: number;
   dogY?: number;
+  /** true per un quarto d'ora dopo una canna: occhi rossi. */
+  stoned?: boolean;
   /** Personalità ottenuta (artist, business, criminal, romantic). */
   pers?: string;
   /** Livello della personalità (1-3). */
