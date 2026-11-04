@@ -12,20 +12,25 @@ import { Lifetime } from '../src/game/lifetime.js';
 import { MemoryStorage } from './helpers.js';
 
 describe('trusted game maintenance', () => {
-  it('preserves legacy Sims that have not been linked to Google yet', async () => {
+  it('anche i Sim di prima di Google, non collegati, muoiono dopo 80 ore di assenza', async () => {
     const database = localDatabase(new Lifetime(), new MemoryStorage());
     const now = 1_800_000_000_000;
-    const room = {
+    await database.ref('sims_rooms_state/0').set({
       id: 1,
       ownerId: 'player_legacy',
       owner: 'Precedente',
       lastSeen: now - 100 * 3600000,
       vaultMoney: 100,
-    };
-    await database.ref('sims_rooms_state/0').set(room);
+    });
     await maintainGame(database, now);
-    expect((await database.ref('sims_rooms_state/0').get()).val()).toEqual(room);
-    expect((await database.ref('sims_saves/player_legacy/dead').get()).exists()).toBe(false);
+    expect((await database.ref('sims_rooms_state/0').get()).val()).toEqual({
+      id: 1,
+      vaultMoney: 0,
+    });
+    expect((await database.ref('sims_saves/player_legacy/dead').get()).val()).toBe(true);
+    expect((await database.ref('sims_graveyard/player_legacy/name').get()).val()).toBe(
+      'Precedente',
+    );
   });
   it('retries private-record updates if a failure happens after releasing the room', async () => {
     const database = localDatabase(new Lifetime(), new MemoryStorage());

@@ -2,7 +2,7 @@
 // fame con le sue barre, cibo e passeggiata col guinzaglio. Le regole sono in pet-rules.ts.
 import type { GameValue } from './context.js';
 import { game } from './context.js';
-import { dom } from './runtime.js';
+import { dom, lifetime } from './runtime.js';
 import { toast } from './missions.js';
 import { sendNotify } from './needs.js';
 import { openDialog } from './interface.js';
@@ -434,6 +434,15 @@ export function startDogWalk(): void {
   toast(
     '🦮 Hai messo il guinzaglio al cane: ti seguirà nell’appartamento, nel cortile e al parco.',
     4000,
+  );
+  // subito dopo, dove si va ad addestrarlo
+  lifetime.setTimeout(
+    () =>
+      toast(
+        '🎓 Esci di casa e vai alla Passeggiata: nell’area cani del parco puoi addestrare il tuo cane!',
+        6000,
+      ),
+    1500,
   );
   publishRoomLayout();
 }

@@ -49,6 +49,18 @@ describe('morte mentre si è via', () => {
     expect(absentDeath({ healthLevel: 0 }, {}, NOW)).toBeNull();
   });
 
+  it('muore anche chi non ha una stanza ma è rimasto a terra, collegato o no', async () => {
+    const db = localDatabase(new Lifetime(), new MemoryStorage());
+    await db.ref('sims_saves/p_senza').set({ ...starving(NOW - 10 * H), nick: 'Gino' });
+    await db
+      .ref('sims_online_players/p_senza')
+      .set({ name: 'Gino', x: 0, y: 0, env: 'CORTILE', offline: true, offAt: NOW - 10 * H });
+    await maintainGame(db, NOW);
+    expect((await db.ref('sims_saves/p_senza/dead').get()).val()).toBe(true);
+    expect((await db.ref('sims_graveyard/p_senza/name').get()).val()).toBe('Gino');
+    expect((await db.ref('sims_online_players/p_senza').get()).exists()).toBe(false);
+  });
+
   it('il server segna la morte nel momento giusto e libera la stanza; chi sta giocando no', async () => {
     const db = localDatabase(new Lifetime(), new MemoryStorage());
     await db.ref('sims_accounts/a').set({ playerId: 'p_via' });
