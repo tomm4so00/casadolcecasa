@@ -470,8 +470,9 @@ export function spawnAtDoor(door: GameValue): void {
     return;
   }
   const step = 45;
+  // davanti alla porta: lungo il lato corto (una porta sul muro di sinistra è stretta in x)
   game.playerPos =
-    Math.abs(door.x) > Math.abs(door.y)
+    door.w < door.h
       ? { x: door.x - Math.sign(door.x) * step, y: door.y }
       : { x: door.x, y: door.y - Math.sign(door.y) * step };
 }

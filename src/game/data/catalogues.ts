@@ -2735,8 +2735,9 @@ export const ENV_PROPS = {
     { kind: 'plant', x: 160, y: 135, w: 26, h: 26, z: 55 },
     { kind: 'officeDesk', x: -90, y: 70, w: 70, h: 46, z: 40 },
     { kind: 'printer', x: 150, y: -55, w: 30, h: 24, z: 38, label: 'Stampante 🖨️' },
-    { kind: 'bookshelf', x: -184, y: -135, w: 14, h: 60, z: 96 },
-    { kind: 'bookshelf', x: -40, y: -168, w: 60, h: 14, z: 96 },
+    // le due librerie contro il muro di sinistra, verso il fondo: il grafico resta libero davanti
+    { kind: 'bookshelf', x: -184, y: -136, w: 14, h: 60, z: 96 },
+    { kind: 'bookshelf', x: -184, y: -85, w: 14, h: 60, z: 96 },
     // angolo riunioni
     { kind: 'roundTable', x: 60, y: 95, w: 40, h: 40, z: 40, label: 'Riunioni 🗂️' },
     { kind: 'stool', x: 28, y: 95, w: 12, h: 12 },
@@ -3434,12 +3435,12 @@ export const ENV_STYLE = {
     decor: {
       back: [
         { t: 'window', u: 100, w: 90, h: 56 },
+        // orologio al centro, tra le due finestre
+        { t: 'clock', u: 200 },
         { t: 'window', u: 300, w: 90, h: 56 },
       ],
-      left: [
-        { t: 'whiteboard', u: 170 },
-        { t: 'clock', u: 300 },
-      ],
+      // grafico tra il distributore dell'acqua e le librerie
+      left: [{ t: 'whiteboard', u: 185 }],
     },
     lights: [
       { x: -80, y: -60, z: 0, r: 220, color: '235,245,255' },

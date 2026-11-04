@@ -11,6 +11,7 @@ import { ellipseShadow } from './render/objects.js';
 import { drawBeamTarget, drawPanelTarget } from './render/construction.js';
 import { openDialog } from './interface.js';
 import { nextPayMessage, shiftsLeftToday } from './job-pay.js';
+import { applyRoomBounds } from './room-size.js';
 export function mgFlash(ok?: GameValue): GameValue {
   if (!game.MG.el) return;
   game.MG.el.classList.remove('mg-flash-ok', 'mg-flash-ko');
@@ -83,6 +84,8 @@ function mgShiftHud(): void {
 }
 
 export function mgSpawnTask(..._args: GameValue[]): GameValue {
+  // il turno parte appena cambiato ambiente: i bordi sono ancora quelli del posto da cui si arriva
+  applyRoomBounds(game.view.activeEnvironment);
   const cfg: GameValue = game.MG.cfg;
   let ti: GameValue;
   do {
