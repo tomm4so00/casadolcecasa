@@ -4,8 +4,8 @@
 // `from` è il numero del turno (1 = primo turno) da cui vale il livello.
 export const JOB_PAY_TIERS = [
   { from: 1, base: 40, perItem: 5 },
-  { from: 31, base: 80, perItem: 5 },
-  { from: 61, base: 120, perItem: 8 },
+  { from: 31, base: 60, perItem: 8 },
+  { from: 61, base: 90, perItem: 12 },
 ] as const;
 
 export function jobPayTier(turn: number) {
