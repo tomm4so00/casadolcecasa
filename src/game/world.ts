@@ -359,7 +359,6 @@ export function getCurrentFurnitureMap(..._args: GameValue[]): SceneMap {
   if (game.view.activeEnvironment === 'base_lunare') return game.moonbaseInsideFurniture;
   if (game.view.activeEnvironment === 'growshop') return game.growshopFurniture;
   if (game.view.activeEnvironment === 'negozio_animali') return game.petshopFurniture;
-  if (game.view.activeEnvironment === 'ingegneria_esterno') return game.engineeringYardFurniture;
   if (game.view.activeEnvironment === 'CIMITERO') return game.graveMap;
   if (game.MG.active && game.view.activeEnvironment === 'lavoro_' + game.MG.job) return game.MG.map;
   if (game.view.activeEnvironment === 'bar') return game.barMap;
@@ -450,14 +449,17 @@ export function checkProximity(..._args: GameValue[]): GameValue {
       btnMain.classList.remove('btn-pop-locked');
       btnSub.classList.add('hidden');
       btnMain.innerText = found.startsWith('easel') ? '🎨 Dipingi un quadro' : '🚪 Torna Fuori';
-    } else if (game.view.activeEnvironment === 'ingegneria') {
+    } else if (
+      game.view.activeEnvironment === 'ingegneria' &&
+      found !== 'launchButton' &&
+      found !== 'rocketPad'
+    ) {
       btnMain.classList.remove('btn-pop-locked');
       btnSub.classList.add('hidden');
       const labels: Record<string, string> = {
         projectBoard: '📌 Guarda i progetti',
         moonScreen: '📺 Guarda la diretta dalla luna',
         workbench: '🔧 Lavora al bancone',
-        doorYard: '🚀 Vai nella zona esterna',
       };
       btnMain.innerText = labels[found] || '🚪 Torna Fuori';
     } else if (game.view.activeEnvironment === 'negozio_animali') {
@@ -516,7 +518,8 @@ export function checkProximity(..._args: GameValue[]): GameValue {
         : found === 'rpsTable'
           ? '✊ Sfida qualcuno a morra cinese'
           : '🚪 Torna Fuori';
-    } else if (game.view.activeEnvironment === 'ingegneria_esterno') {
+    } else if (game.view.activeEnvironment === 'ingegneria') {
+      // zona esterna: la rampa del razzo e il pulsante di lancio
       btnMain.classList.remove('btn-pop-locked');
       btnSub.classList.add('hidden');
       if (found === 'launchButton') {
@@ -537,9 +540,7 @@ export function checkProximity(..._args: GameValue[]): GameValue {
             ? `🌙 Vola sulla luna (${MOON_TRIP_PRICE} €)`
             : '🚀 Il razzo è in viaggio…';
         btnMain.classList.toggle('btn-pop-locked', flight.phase !== 'idle');
-      } else
-        btnMain.innerText =
-          found === 'rocketPad' ? '🚀 Guarda il progetto del razzo' : '🔧 Torna nel laboratorio';
+      } else btnMain.innerText = '🚀 Guarda il progetto del razzo';
     } else if (game.view.activeEnvironment === 'banca') {
       btnMain.classList.remove('btn-pop-locked');
       btnSub.classList.add('hidden');
@@ -1063,11 +1064,11 @@ export async function handleObjectInteract(..._args: GameValue[]): Promise<void>
     if (game.activeTargetProp === 'projectBoard' || game.activeTargetProp === 'moonScreen')
       openProjects(false);
     else if (game.activeTargetProp === 'workbench') workbenchMessage();
-    else if (game.activeTargetProp === 'doorYard') {
-      game.labDoorForceUntil = performance.now() + 900;
-      sfx('door');
-      lifetime.setTimeout(() => goToEngineering(true), 350);
-    } else if (game.activeTargetProp === 'doorExit') backToSaloon();
+    else if (game.activeTargetProp === 'rocketPad') {
+      if (moonOpen()) await travelToMoon();
+      else openProjects(false);
+    } else if (game.activeTargetProp === 'launchButton') await pressLaunchButton();
+    else if (game.activeTargetProp === 'doorExit') backToSaloon();
   } else if (game.view.activeEnvironment === 'negozio_animali') {
     if (item?.pet) await buyPet(item.pet as PetKind);
     else if (game.activeTargetProp === 'petCounter') await giveUpForAdoption();
@@ -1092,12 +1093,6 @@ export async function handleObjectInteract(..._args: GameValue[]): Promise<void>
     if (String(game.activeTargetProp).startsWith('slot')) openSlot();
     else if (game.activeTargetProp === 'rpsTable') openRpsTable();
     else if (game.activeTargetProp === 'doorExit') backToSaloon();
-  } else if (game.view.activeEnvironment === 'ingegneria_esterno') {
-    if (game.activeTargetProp === 'rocketPad') {
-      if (moonOpen()) await travelToMoon();
-      else openProjects(false);
-    } else if (game.activeTargetProp === 'launchButton') await pressLaunchButton();
-    else if (game.activeTargetProp === 'doorLab') goToEngineering(false);
   } else if (game.view.activeEnvironment === 'banca') {
     if (game.activeTargetProp === 'bankCounter') await openBankCounter();
     else if (game.activeTargetProp === 'doorExit') {
@@ -1493,7 +1488,7 @@ export async function doActivity(type?: GameValue): Promise<void> {
     game.view.activeEnvironment = 'ingegneria';
     game.view.currentRoomTitle = 'Laboratorio Ingegneristico 🔧';
     dom('btn-return-home').classList.add('hidden');
-    game.playerPos = { x: 0, y: 110 };
+    game.playerPos = { x: 0, y: 310 };
     return;
   } else if (type === 'bank') {
     game.view.activeEnvironment = 'banca';
@@ -1527,24 +1522,9 @@ export function goToLaunchSite(): void {
   game.view.outsideSubmenu = '';
   dom('pop-interaction').classList.add('hidden');
   dom('btn-return-home').classList.add('hidden');
-  game.view.activeEnvironment = 'ingegneria_esterno';
+  game.view.activeEnvironment = 'ingegneria';
   game.view.currentRoomTitle = 'Zona esterna del laboratorio 🚀';
-  game.playerPos = { x: 20, y: 100 };
-}
-
-/** Passa tra il laboratorio ingegneristico e la sua zona esterna (dove si costruisce il razzo). */
-function goToEngineering(yard: boolean): void {
-  if (yard) {
-    game.view.activeEnvironment = 'ingegneria_esterno';
-    game.view.currentRoomTitle = 'Zona esterna del laboratorio 🚀';
-    spawnAtDoor(game.engineeringYardFurniture.doorLab);
-  } else {
-    game.view.activeEnvironment = 'ingegneria';
-    game.view.currentRoomTitle = 'Laboratorio Ingegneristico 🔧';
-    spawnAtDoor(game.engineeringFurniture.doorYard);
-    // si rientra dalla porta: è aperta e si richiude alle spalle
-    game.labDoorForceUntil = performance.now() + 600;
-  }
+  game.playerPos = { x: 20, y: -100 };
 }
 
 /** Al bancone si vede a che punto sono i lavori del razzo. */

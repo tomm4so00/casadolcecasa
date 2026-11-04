@@ -21,7 +21,6 @@ import { SAFE_CORRIDOR } from '../room-layout.js';
 import { nextUpgrade, tierOf, tierOfPlaced, tiersOf } from '../furniture-tiers.js';
 import { LAMP_LIGHT } from '../furniture-benefits.js';
 import { drawCourtyardDoor } from './facades.js';
-import { drawLabDoor } from './rocket.js';
 import { drawBoutiqueItem } from './mall.js';
 export function resetPlane(..._args: GameValue[]): GameValue {
   game.view.ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -1291,15 +1290,73 @@ function drawFrontDoor(it: GameValue): void {
     for (const left of [true, false]) {
       const hinge = [left ? b.x0 + side : b.x1 - side, b.y1, zLeaf];
       const u = left ? [Math.cos(a), Math.sin(a), 0] : [-Math.cos(a), Math.sin(a), 0];
-      setPlane(hinge, u, [0, 0, -1]);
-      try {
-        paintLeaf(leafW, leafH - 1.5, false); // da aperta la maniglia sta lontano dal cardine
+      doorLeaf(hinge, u, leafW, leafH - 1.5, 4, wood, (LW, LH) => {
+        paintLeaf(LW, LH, false); // da aperta la maniglia sta lontano dal cardine
         ctx.fillStyle = `rgba(0,0,0,${0.25 * open})`;
-        ctx.fillRect(0, 0, leafW, leafH - 1.5);
-      } finally {
-        resetPlane();
-      }
+        ctx.fillRect(0, 0, LW, LH);
+      });
     }
+  }
+}
+
+/**
+ * Anta aperta di una porta, con il suo spessore. `hinge` è lo spigolo in alto sul cardine, `u` la
+ * direzione (orizzontale) in cui si allunga l'anta, larga W e alta H. Disegna retro e bordi del colore
+ * `edge`, poi `paint(W, H)` dipinge la faccia verso chi guarda (origine in alto sul cardine).
+ */
+export function doorLeaf(
+  hinge: number[],
+  u: number[],
+  W: number,
+  H: number,
+  thick: number,
+  edge: string,
+  paint: (W: number, H: number) => void,
+): void {
+  const ctx = game.view.ctx;
+  // lo spessore va verso il fondo della scena: chi guarda sta dalla parte di +x +y
+  let nx = -u[1],
+    ny = u[0];
+  if (nx + ny > 0) {
+    nx = -nx;
+    ny = -ny;
+  }
+  const [hx, hy, hz] = hinge;
+  const ex = hx + u[0] * W,
+    ey = hy + u[1] * W;
+  const bx = nx * thick,
+    by = ny * thick;
+  const P = isoProject;
+  poly(
+    [
+      P(hx + bx, hy + by, hz),
+      P(ex + bx, ey + by, hz),
+      P(ex + bx, ey + by, hz - H),
+      P(hx + bx, hy + by, hz - H),
+    ],
+    game.darken(edge, 0.35),
+  );
+  // bordo dal lato della maniglia e bordo in alto
+  poly(
+    [P(ex, ey, hz), P(ex + bx, ey + by, hz), P(ex + bx, ey + by, hz - H), P(ex, ey, hz - H)],
+    game.darken(edge, 0.2),
+    'rgba(0,0,0,0.25)',
+  );
+  poly(
+    [P(hx, hy, hz), P(ex, ey, hz), P(ex + bx, ey + by, hz), P(hx + bx, hy + by, hz)],
+    game.lighten(edge, 0.15),
+    'rgba(0,0,0,0.25)',
+  );
+  ctx.save();
+  setPlane([hx, hy, hz], [u[0], u[1], 0], [0, 0, -1]);
+  try {
+    ctx.beginPath();
+    ctx.rect(0, 0, W, H);
+    ctx.clip();
+    paint(W, H);
+  } finally {
+    ctx.restore();
+    resetPlane();
   }
 }
 
@@ -1364,19 +1421,17 @@ export function drawSaloonDoor(key?: GameValue, it?: GameValue): GameValue {
   if (open < 0.02) return;
   // anta che gira sui cardini verso chi guarda
   const a = open * 1.45;
-  const zTop = b.z1;
+  // l'anta va da 5 a W-5 e da 7 a H sulla faccia della porta
+  const zTop = b.z1 - 7;
   const hinge = thinX ? [b.x1, b.y1 - 5, zTop] : [b.x0 + 5, b.y1, zTop];
   const u = thinX ? [Math.sin(a), -Math.cos(a), 0] : [Math.cos(a), Math.sin(a), 0];
-  setPlane(hinge, u, [0, 0, -1]);
-  try {
-    ctx.translate(-5, 0);
+  doorLeaf(hinge, u, W - 10, H - 7, 3, doorC, () => {
+    ctx.translate(-5, -7);
     paintLeaf(W, H);
     // più l'anta è aperta, più è in ombra
     ctx.fillStyle = `rgba(0,0,0,${0.25 * open})`;
     ctx.fillRect(5, 7, W - 10, H - 7);
-  } finally {
-    resetPlane();
-  }
+  });
 }
 
 // Apertura delle porte (0 = chiusa, 1 = aperta), che si muove piano verso quella voluta.
@@ -1431,8 +1486,6 @@ export function drawMapItem(
   }
   if (k === 'doorExit' || k === 'exitHouse')
     return drawExitMat(item, k === 'exitHouse' ? 'ESCI DI CASA' : 'USCITA');
-  if (k === 'doorYard') return drawLabDoor(item, t);
-  if (k === 'doorLab') return drawExitMat(item, 'LABORATORIO');
   // Gli oggetti da parete (il quadro) si disegnano sulla parete, non sul pavimento.
   if (item.wallItem) return;
   if (game.view.activeEnvironment === 'CORTILE') return drawCourtyardDoor(k, item);

@@ -157,8 +157,6 @@ export interface GameContext {
   visitFreePets: string[];
   /** Stanza in cui si stava dormendo quando si è chiuso il gioco (null = la propria). */
   sleepRoom: number | null;
-  /** La porta del laboratorio resta aperta fino a questo istante (performance.now) mentre la si attraversa. */
-  labDoorForceUntil: number;
   /** Fino a quando (performance.now) si vede il fumo della canna. */
   smokeUntil: number;
   /** Porte tenute aperte mentre le si attraversa: id → fino a quando (performance.now). */
@@ -171,7 +169,6 @@ export interface GameContext {
   /** Viaggio in corso con il razzo: direzione e ora del decollo. */
   rocketTrip: { dir: 'up' | 'down'; at: number } | null;
   mallFurniture: SceneMap;
-  engineeringYardFurniture: SceneMap;
   /** Fase del razzo del laboratorio ingegneristico: 0 niente, 1 pezzi, 2 completo. */
   rocketStage: number;
   /** Fase della base lunare (0 = non ancora avviata, 3 = completa). */

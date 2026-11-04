@@ -1122,7 +1122,92 @@ export function drawWalls(st?: GameValue, hour?: GameValue): GameValue {
   );
 }
 
+/**
+ * Laboratorio dentro il piazzale (st.lab): pavimento a piastrelle, ombre dei muri e la parete
+ * sinistra alta con le sue decorazioni. Il muro di fondo con la porta è fatto di pezzi che si
+ * disegnano insieme agli oggetti (drawLabWall), così chi sta fuori resta dietro.
+ */
+function drawLabShell(lab: GameValue, hour: GameValue): void {
+  const ctx = game.view.ctx;
+  const y0: number = lab.y + 10; // filo interno del muro di fondo
+  const W: number = game.X1 - game.X0,
+    D: number = game.Y1 - y0;
+  setPlane([game.X0, y0, 0], [1, 0, 0], [0, 1, 0]);
+  try {
+    ctx.fillStyle = lab.floorColor;
+    ctx.fillRect(0, 0, W, D);
+    ctx.strokeStyle = 'rgba(0,0,0,0.08)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    for (let u = 40; u < W; u += 40) {
+      ctx.moveTo(u, 0);
+      ctx.lineTo(u, D);
+    }
+    for (let v = 40; v < D; v += 40) {
+      ctx.moveTo(0, v);
+      ctx.lineTo(W, v);
+    }
+    ctx.stroke();
+    const g1 = ctx.createLinearGradient(0, 0, 0, 30);
+    g1.addColorStop(0, 'rgba(0,0,0,0.3)');
+    g1.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = g1;
+    ctx.fillRect(0, 0, W, 30);
+    const g2 = ctx.createLinearGradient(0, 0, 30, 0);
+    g2.addColorStop(0, 'rgba(0,0,0,0.3)');
+    g2.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = g2;
+    ctx.fillRect(0, 0, 30, D);
+  } finally {
+    resetPlane();
+  }
+  const H: number = lab.wallH,
+    L: number = game.Y1 - lab.y;
+  setPlane([game.X0, game.Y1, H], [0, -1, 0], [0, 0, -1]);
+  try {
+    paintWallSurface(lab, L, H, 'left');
+    for (const d of lab.decor?.left || []) {
+      const f: GameValue = game.WALL_DECOR[d.t];
+      if (f) f(d, { hour, wallH: H });
+    }
+    ctx.fillStyle = 'rgba(0,0,0,0.1)';
+    ctx.fillRect(0, 0, L, H);
+  } finally {
+    resetPlane();
+  }
+  const T = 10;
+  poly(
+    [
+      isoProject(game.X0 - T, game.Y1, H),
+      isoProject(game.X0, game.Y1, H),
+      isoProject(game.X0, lab.y, H),
+      isoProject(game.X0 - T, lab.y, H),
+    ],
+    game.darken(lab.wall, 0.45),
+    'rgba(0,0,0,0.3)',
+  );
+  poly(
+    [
+      isoProject(game.X0 - T, game.Y1, 0),
+      isoProject(game.X0, game.Y1, 0),
+      isoProject(game.X0, game.Y1, H),
+      isoProject(game.X0 - T, game.Y1, H),
+    ],
+    game.darken(lab.wall, 0.2),
+    'rgba(0,0,0,0.3)',
+  );
+}
+
 export function drawDynamicWalls(st?: GameValue, t?: GameValue): GameValue {
+  // decorazioni che si muovono sulla parete del laboratorio (l'orologio)
+  const labLive: GameValue[] = (st.lab?.decor?.left || []).filter(
+    (d: GameValue) => game.WALL_DECOR_DYNAMIC[d.t],
+  );
+  if (labLive.length) {
+    setPlane([game.X0, game.Y1, st.lab.wallH], [0, -1, 0], [0, 0, -1]);
+    labLive.forEach((d: GameValue) => game.WALL_DECOR_DYNAMIC[d.t](d, t));
+    resetPlane();
+  }
   if (st.outdoor && !st.fence) return;
   const H: GameValue = st.wallH || 130;
   ['back', 'left'].forEach((side?: GameValue): GameValue => {
@@ -1168,6 +1253,7 @@ export function drawStaticScene(st?: GameValue, hour?: GameValue): GameValue {
       game.view.ctx.clearRect(0, 0, off.width, off.height);
       drawFloorPattern(st);
       if (!st.outdoor || st.fence) drawWalls(st, hour);
+      if (st.lab) drawLabShell(st.lab, hour);
     } finally {
       game.view.ctx = mainCtx;
       game.viewOverride = mainOverride;

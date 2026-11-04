@@ -19,7 +19,6 @@ export const ENV_MUSIC: Record<string, string> = {
   banca: 'bank',
   laboratorio: 'artlab',
   ingegneria: 'engineering',
-  ingegneria_esterno: 'engineering',
   luna: 'space',
   base_lunare: 'space',
 };

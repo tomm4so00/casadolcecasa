@@ -97,7 +97,7 @@ export async function travelToMoon(): Promise<void> {
     );
     return;
   }
-  board('up', at, game.engineeringYardFurniture.rocketPad);
+  board('up', at, game.engineeringFurniture.rocketPad);
   game.player.stats.moonTrips = (game.player.stats.moonTrips || 0) + 1;
   saveGame(false);
 }
@@ -141,8 +141,8 @@ export function updateRocketTrip(): void {
       game.playerPos = { x: r.x + 70, y: r.y + 90 };
       toast('🌙 Benvenuto sulla luna! Quando vuoi tornare, sali sul razzo.', 5500);
     } else {
-      const r: GameValue = game.engineeringYardFurniture.rocketPad;
-      game.view.activeEnvironment = 'ingegneria_esterno';
+      const r: GameValue = game.engineeringFurniture.rocketPad;
+      game.view.activeEnvironment = 'ingegneria';
       game.view.currentRoomTitle = 'Zona esterna del laboratorio 🚀';
       game.playerPos = { x: r.x + 120, y: r.y + 150 };
       toast('🌍 Bentornato sulla Terra!', 4000);

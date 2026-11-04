@@ -40,7 +40,6 @@ import {
   GROWSHOP_FURNITURE,
   PETSHOP_FURNITURE,
   MOONBASE_INSIDE_FURNITURE,
-  ENGINEERING_YARD_FURNITURE,
   STORE_FLOOR_FURNITURE,
   SALOON_DOORS,
   COURTYARD_DOORS,
@@ -125,6 +124,8 @@ import {
   drawProjectBoard,
   drawWorkbench,
   drawMoonSignProp,
+  drawLabWall,
+  drawLabDoor,
 } from './render/rocket.js';
 import { drawSlotMachine, drawRpsTable } from './render/arcade-props.js';
 import {
@@ -412,10 +413,8 @@ export function initializeGame() {
   game.moonTripAt = 0;
   game.rocketTrip = null;
   game.sleepRoom = null;
-  game.labDoorForceUntil = 0;
   game.smokeUntil = 0;
   game.doorForce = {};
-  game.engineeringYardFurniture = structuredClone(ENGINEERING_YARD_FURNITURE);
   game.rocketStage = 0;
   game.rocketLaunchAt = 0;
   game.launchPressedAt = -10;
@@ -743,6 +742,9 @@ export function initializeGame() {
   game.DISCO_HAPPY = 35;
   game.DISCO_SLEEP = 15;
   game.PROP_DRAW = {
+    // muro di fondo e porta del laboratorio ingegneristico (dietro c'è la zona esterna)
+    labWall: drawLabWall,
+    labDoor: drawLabDoor,
     grave: drawGraveProp,
     memorial: drawMemorialProp,
     tree: drawTreeProp,

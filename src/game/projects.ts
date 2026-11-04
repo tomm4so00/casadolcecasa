@@ -1,6 +1,7 @@
 // Progetti di gruppo del laboratorio ingegneristico: la bacheca, il sito e i versamenti.
 // Primo progetto: il razzo. Dopo il primo lancio si sblocca il secondo: la base spaziale lunare.
 import type { GameValue } from './context.js';
+import { LAB_WALL_Y } from './data/catalogues.js';
 import { game } from './context.js';
 import { dom, lifetime } from './runtime.js';
 import { sendNotify } from './needs.js';
@@ -64,7 +65,7 @@ function setBaseState(s: ProjectState): void {
   if (game.moonBaseStage >= 1)
     game.engineeringFurniture.moonScreen = {
       x: 125,
-      y: -40,
+      y: 160,
       w: 100,
       h: 10,
       z: 118,
@@ -158,7 +159,7 @@ function updateLaunchBanner(): void {
   const show = phase === 'waiting' || phase === 'countdown' || phase === 'launching';
   banner.classList.toggle('hidden', !show || game.player.isDead);
   if (!show) return;
-  const atSite = game.view.activeEnvironment === 'ingegneria_esterno';
+  const atSite = game.view.activeEnvironment === 'ingegneria' && game.playerPos.y < LAB_WALL_Y;
   const text =
     phase === 'waiting'
       ? atSite

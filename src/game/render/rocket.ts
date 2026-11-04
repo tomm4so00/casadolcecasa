@@ -2,7 +2,9 @@
 import { countdownText, launchPhase, rocketFlight } from '../project-rules.js';
 import { type GameValue, game } from '../context.js';
 import { isoProject, isoScale, rnd } from './primitives.js';
-import { box, onFace, woodGrain } from './objects.js';
+import { box, doorLeaf, onFace, woodGrain } from './objects.js';
+import { paintWallSurface } from './scenes.js';
+import { LAB_WALL_Y } from '../data/catalogues.js';
 
 // ---------------------------------------------------------------- RAZZO DEL LABORATORIO
 /** Rampa del laboratorio ingegneristico: il razzo cresce con i soldi versati dai giocatori. */
@@ -462,73 +464,147 @@ function drawRocketWorks(
 let labDoorOpen = 0;
 let labDoorT = 0;
 
+// ---------------------------------------------------------------- MURO DI FONDO DEL LABORATORIO
+let labCut = 0;
+let labCutT = 0;
+
 /**
- * Porta del laboratorio verso la zona esterna: telaio sulla parete di fondo, vista sul fuori
- * e anta che ruota sui cardini quando qualcuno si avvicina (o la sta attraversando).
+ * Quanto è abbassato il muro tra laboratorio e zona esterna (0 alto, 1 abbassato): si abbassa
+ * quando si esce, come in una casa delle bambole, così non copre il piazzale e chi ci sta.
+ */
+function labWallCut(t: number): number {
+  if (t !== labCutT) {
+    const dt = Math.min(0.1, Math.max(0, t - labCutT));
+    labCutT = t;
+    const out = game.playerPos.y < LAB_WALL_Y ? 1 : 0;
+    labCut += (out - labCut) * Math.min(1, dt * 5);
+  }
+  return labCut * labCut * (3 - 2 * labCut);
+}
+
+/** Altezza del muro adesso: piena dentro il laboratorio, uno zoccolo basso da fuori. */
+const labWallHeight = (t: number): number => {
+  const full: number = game.ENV_STYLE.ingegneria.lab.wallH;
+  return full - labWallCut(t) * (full - 24);
+};
+
+// La faccia del muro (intonaco, battiscopa, cartello) si dipinge una volta sola su una tela
+// e ogni pezzo ne mostra la sua striscia.
+const TEX_K = 2;
+let labWallTex: HTMLCanvasElement | null = null;
+function labWallTexture(): HTMLCanvasElement {
+  if (labWallTex) return labWallTex;
+  const lab: GameValue = game.ENV_STYLE.ingegneria.lab;
+  const W = 400,
+    H: number = lab.wallH;
+  const c = document.createElement('canvas');
+  c.width = W * TEX_K;
+  c.height = H * TEX_K;
+  const prev = game.view.ctx;
+  const tctx = c.getContext('2d')!;
+  tctx.scale(TEX_K, TEX_K);
+  game.view.ctx = tctx;
+  try {
+    paintWallSurface(lab, W, H, 'back');
+    for (const d of lab.decor?.back || []) game.WALL_DECOR[d.t]?.(d, { hour: 12, wallH: H });
+  } finally {
+    game.view.ctx = prev;
+  }
+  labWallTex = c;
+  return c;
+}
+
+/**
+ * Faccia del muro tra u e u+W, alta FH dalla cima del muro (alto wallH adesso): abbassato,
+ * il muro mostra la sua parte bassa, con il battiscopa.
+ */
+function paintLabWallStrip(u: number, W: number, FH: number, wallH: number): void {
+  const full: number = game.ENV_STYLE.ingegneria.lab.wallH;
+  const tex = labWallTexture();
+  game.view.ctx.drawImage(
+    tex,
+    u * TEX_K,
+    (full - wallH) * TEX_K,
+    W * TEX_K,
+    FH * TEX_K,
+    0,
+    0,
+    W,
+    FH,
+  );
+}
+
+/** Un pezzo del muro di fondo del laboratorio (vedi labWall nei cataloghi). */
+export function drawLabWall(p?: GameValue, t?: GameValue): GameValue {
+  const lab: GameValue = game.ENV_STYLE.ingegneria.lab;
+  const b: GameValue = box(p.x, p.y, p.w, p.h, labWallHeight(t || 0), lab.wall, {
+    top: game.darken(lab.wall, 0.45),
+    edge: 'rgba(0,0,0,0)',
+  });
+  onFace(b, 'left', (W: number, FH: number): void => paintLabWallStrip(p.u, W, FH, FH));
+}
+
+/**
+ * Porta tra il laboratorio e la zona esterna, nel varco del muro di fondo: telaio, muro sopra la
+ * porta e anta che ruota sui cardini quando qualcuno si avvicina, da dentro o da fuori.
  */
 export function drawLabDoor(it?: GameValue, t?: GameValue): GameValue {
   const ctx = game.view.ctx;
   const now: number = t || 0;
   const dt = Math.min(0.1, Math.max(0, now - labDoorT));
   labDoorT = now;
-  const near =
-    Math.hypot(game.playerPos.x - it.x, game.playerPos.y - it.y) < 80 ||
-    performance.now() < game.labDoorForceUntil;
+  const near = Math.hypot(game.playerPos.x - it.x, game.playerPos.y - it.y) < 70;
   labDoorOpen += ((near ? 1 : 0) - labDoorOpen) * Math.min(1, dt * 6);
   const open = labDoorOpen * labDoorOpen * (3 - 2 * labDoorOpen);
+  const lab: GameValue = game.ENV_STYLE.ingegneria.lab;
+  const wallH = labWallHeight(now);
   const x0 = it.x - it.w / 2,
     x1 = it.x + it.w / 2,
     wy = it.y - it.h / 2 - 2, // filo della parete
-    H = it.z;
-  const P = (x: number, y: number, z: number) => isoProject(x, y, z);
-  const quad = (pts: { x: number; y: number }[], fill: GameValue) => {
-    ctx.fillStyle = fill;
-    ctx.beginPath();
-    pts.forEach((p, i) => (i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y)));
-    ctx.closePath();
-    ctx.fill();
-  };
-  // vista sul fuori: cielo e piazzale di cemento
-  const top = P(x0, wy, H),
-    bottom = P(x0, wy, 0);
-  const sky = ctx.createLinearGradient(0, top.y, 0, bottom.y);
-  sky.addColorStop(0, '#74b9ff');
-  sky.addColorStop(0.6, '#dfe6e9');
-  sky.addColorStop(0.61, '#9aa0a6');
-  sky.addColorStop(1, '#7f8c8d');
-  quad([P(x0, wy, 0), P(x1, wy, 0), P(x1, wy, H), P(x0, wy, H)], sky);
+    H = Math.min(it.z, wallH - 8);
+  // muro sopra la porta (il varco è largo quanto due pezzi e mezzo)
+  if (wallH > H + 8) {
+    const gap = 60;
+    const top: GameValue = box(it.x, LAB_WALL_Y, gap, 10, wallH - H - 8, lab.wall, {
+      z0: H + 8,
+      top: game.darken(lab.wall, 0.45),
+      edge: 'rgba(0,0,0,0)',
+    });
+    onFace(top, 'left', (W: number, FH: number): void =>
+      paintLabWallStrip(it.x - gap / 2 + 200, W, FH, wallH),
+    );
+  }
   // telaio
   box(x0 - 3, wy + 2, 6, 6, H + 6, '#2d3436');
   box(x1 + 3, wy + 2, 6, 6, H + 6, '#2d3436');
   box(it.x, wy + 2, it.w + 12, 6, 8, '#2d3436', { z0: H });
-  // anta: ruota sul cardine di sinistra verso l'interno della stanza
+  // anta: ruota sul cardine di sinistra verso l'interno del laboratorio
   const ang = open * 1.5; // fino a circa 86 gradi
-  const ex = x0 + Math.cos(ang) * it.w,
-    ey = wy + 4 + Math.sin(ang) * it.w;
   const leafColor = open > 0.02 ? game.darken('#0984e3', 0.15 + 0.2 * open) : '#0984e3';
-  quad([P(x0, wy + 4, 0), P(ex, ey, 0), P(ex, ey, H), P(x0, wy + 4, H)], leafColor);
-  // oblò e maniglione antipanico sull'anta
-  const lerp = (k: number, z: number) => P(x0 + (ex - x0) * k, wy + 4 + (ey - wy - 4) * k, z);
-  quad(
-    [lerp(0.25, H * 0.6), lerp(0.75, H * 0.6), lerp(0.75, H * 0.85), lerp(0.25, H * 0.85)],
-    'rgba(200,235,255,0.85)',
-  );
-  ctx.strokeStyle = '#dfe6e9';
-  ctx.lineWidth = 2.5 * isoScale();
-  const h0 = lerp(0.15, H * 0.45),
-    h1 = lerp(0.85, H * 0.45);
-  ctx.beginPath();
-  ctx.moveTo(h0.x, h0.y);
-  ctx.lineTo(h1.x, h1.y);
-  ctx.stroke();
-  // cartello sopra la porta
-  const sign = P(it.x, wy + 6, H + 16);
-  ctx.fillStyle = '#2ed573';
-  ctx.fillRect(sign.x - 22 * isoScale(), sign.y - 6 * isoScale(), 44 * isoScale(), 12 * isoScale());
-  ctx.fillStyle = '#ffffff';
-  ctx.font = `bold ${Math.round(7 * isoScale())}px sans-serif`;
-  ctx.textAlign = 'center';
-  ctx.fillText('🚀 ESTERNO', sign.x, sign.y + 2.5 * isoScale());
+  doorLeaf([x0, wy + 4, H], [Math.cos(ang), Math.sin(ang), 0], it.w, H, 3, '#0984e3', (W, LH) => {
+    ctx.fillStyle = leafColor;
+    ctx.fillRect(0, 0, W, LH);
+    // oblò e maniglione antipanico
+    ctx.fillStyle = 'rgba(200,235,255,0.85)';
+    ctx.fillRect(W * 0.25, LH * 0.15, W * 0.5, LH * 0.25);
+    ctx.strokeStyle = '#dfe6e9';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.moveTo(W * 0.15, LH * 0.55);
+    ctx.lineTo(W * 0.85, LH * 0.55);
+    ctx.stroke();
+  });
+  // cartello sopra la porta (si vede con il muro alzato)
+  if (wallH > 100) {
+    const s = isoScale();
+    const sign = isoProject(it.x, wy + 6, H + 16);
+    ctx.fillStyle = '#2ed573';
+    ctx.fillRect(sign.x - 22 * s, sign.y - 6 * s, 44 * s, 12 * s);
+    ctx.fillStyle = '#ffffff';
+    ctx.font = `bold ${Math.round(7 * s)}px sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.fillText('🚀 ESTERNO', sign.x, sign.y + 2.5 * s);
+  }
 }
 
 /** Bacheca dei progetti: pannello di sughero con i fogli appesi; il primo è il razzo. */

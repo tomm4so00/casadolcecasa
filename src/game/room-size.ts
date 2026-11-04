@@ -13,6 +13,8 @@ const ENV_HALF: Record<string, { x: number; y: number }> = {
   CORTILE: { x: 480, y: 220 },
   centro_commerciale: { x: 300, y: 200 },
   luna: { x: 300, y: 300 },
+  // laboratorio ingegneristico (davanti) e la sua zona esterna (dietro)
+  ingegneria: { x: 200, y: 380 },
 };
 /** Chi sta più vicino di così a una parete (porte, piante d'angolo) resta attaccato alla parete. */
 const WALL_HUG = 45;

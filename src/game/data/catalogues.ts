@@ -1768,12 +1768,16 @@ export const CLOTHES_STORE_FURNITURE = {
   doorExit: { x: 0, y: 160, w: 60, h: 15, z: 110, name: 'Torna Fuori 🚪', moveable: false },
 };
 
-// Laboratorio ingegneristico: la bacheca dei progetti, il bancone da lavoro, la porta per la zona
-// esterna (dove si costruisce il razzo) e l'uscita.
+/** Il muro tra il laboratorio (davanti, y più grande) e la zona esterna del razzo (dietro). */
+export const LAB_WALL_Y = 15;
+
+// Laboratorio ingegneristico e la sua zona esterna in un'unica scena: davanti il laboratorio con la
+// bacheca dei progetti, il bancone e l'uscita; dietro il muro (si passa dalla porta, vedi ENV_DECOR)
+// la rampa del razzo e il pulsante di lancio.
 export const ENGINEERING_FURNITURE = {
   projectBoard: {
     x: -120,
-    y: -150,
+    y: 50,
     w: 120,
     h: 12,
     z: 112,
@@ -1782,23 +1786,17 @@ export const ENGINEERING_FURNITURE = {
   },
   workbench: {
     x: -150,
-    y: 20,
+    y: 220,
     w: 52,
     h: 110,
     z: 46,
     name: 'Bancone da lavoro 🔧',
     moveable: false,
   },
-  // porta sulla parete di fondo (dove c'era la finestra): si apre quando ci si avvicina
-  doorYard: { x: 70, y: -172, w: 56, h: 10, z: 100, name: 'Zona esterna 🚀', moveable: false },
-  doorExit: { x: 60, y: 160, w: 60, h: 15, z: 110, name: 'Torna Fuori 🚪', moveable: false },
-};
-
-// Zona esterna del laboratorio: la rampa del razzo e la porta per rientrare.
-export const ENGINEERING_YARD_FURNITURE = {
+  doorExit: { x: 60, y: 360, w: 60, h: 15, z: 110, name: 'Torna Fuori 🚪', moveable: false },
   rocketPad: {
     x: -100,
-    y: -50,
+    y: -250,
     w: 96,
     h: 96,
     z: 60,
@@ -1808,23 +1806,35 @@ export const ENGINEERING_YARD_FURNITURE = {
   },
   launchButton: {
     x: 60,
-    y: 50,
+    y: -150,
     w: 22,
     h: 22,
     z: 40,
     name: 'Pulsante di lancio 🔴',
     moveable: false,
   },
-  doorLab: {
-    x: 0,
-    y: 160,
-    w: 60,
-    h: 15,
-    z: 110,
-    name: 'Torna nel laboratorio 🔧',
-    moveable: false,
-  },
 };
+
+/**
+ * Pezzi del muro di fondo del laboratorio, lunghi 20, con il varco della porta (x da 40 a 100):
+ * a pezzi, ognuno si ordina per profondità con chi gli sta davanti o dietro. `u` è la posizione lungo
+ * il muro (per il disegno della parete).
+ */
+function labWall(): {
+  kind: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  z: number;
+  u: number;
+}[] {
+  const out = [];
+  for (let x0 = -200; x0 < 200; x0 += 20)
+    if (x0 + 20 <= 40 || x0 >= 100)
+      out.push({ kind: 'labWall', x: x0 + 10, y: LAB_WALL_Y, w: 20, h: 10, z: 130, u: x0 + 200 });
+  return out;
+}
 
 // Centro commerciale (600×400): le vetrine dei cinque negozi lungo la parete di fondo; avvicinandosi
 // si entra. `enter` è l'attività che porta dentro il negozio.
@@ -2823,14 +2833,16 @@ export const ENV_DECOR = {
     { kind: 'stool', x: 70, y: 66, w: 12, h: 12, z: 32 },
   ],
   ingegneria: [
-    { kind: 'cooler', x: 160, y: -150, w: 22, h: 22, z: 70 },
-    { kind: 'plant', x: 168, y: 150, w: 26, h: 26, z: 60 },
-  ],
-  ingegneria_esterno: [
-    { kind: 'moonSign', x: 80, y: 0, w: 70, h: 6, z: 60 },
-    { kind: 'cone', x: -175, y: 85, w: 10, h: 10 },
-    { kind: 'cone', x: -165, y: 40, w: 10, h: 10 },
-    { kind: 'bricks', x: 140, y: 110, w: 40, h: 36, z: 37 },
+    { kind: 'cooler', x: 160, y: 50, w: 22, h: 22, z: 70 },
+    { kind: 'plant', x: 168, y: 350, w: 26, h: 26, z: 60 },
+    // zona esterna, dietro il muro
+    { kind: 'moonSign', x: 80, y: -200, w: 70, h: 6, z: 60 },
+    { kind: 'cone', x: -175, y: -115, w: 10, h: 10 },
+    { kind: 'cone', x: -165, y: -160, w: 10, h: 10 },
+    { kind: 'bricks', x: 140, y: -90, w: 40, h: 36, z: 37 },
+    // il muro tra dentro e fuori e la porta nel suo varco (si apre avvicinandosi)
+    ...labWall(),
+    { kind: 'labDoor', x: 70, y: 28, w: 52, h: 10, z: 100, solid: false },
   ],
   banca: [
     { kind: 'plant', x: -168, y: -160, w: 26, h: 26, z: 60 },
@@ -3072,25 +3084,9 @@ export const ENV_STYLE = {
       { x: 70, y: 30, z: 0, r: 160, color: '120,255,160' },
     ],
   },
+  // un'unica scena: il piazzale recintato della zona esterna con dentro il laboratorio (`lab`:
+  // pavimento, parete sinistra e muro di fondo propri, vedi drawLabShell e drawLabWall)
   ingegneria: {
-    floor: 'concrete',
-    floorColor: '#a4aab0',
-    wall: '#dfe6e9',
-    wallStyle: 'plain',
-    trim: '#0984e3',
-    decor: {
-      back: [{ t: 'poster', u: 380, text: 'SICUREZZA', color: '#f39c12', w: 40 }],
-      left: [
-        { t: 'logo', u: 130, text: 'LABORATORIO', sub: 'ingegneristico', color: '#0984e3' },
-        { t: 'clock', u: 260 },
-      ],
-    },
-    lights: [
-      { x: -80, y: -60, z: 0, r: 230, color: '235,245,255' },
-      { x: 90, y: 20, z: 0, r: 220, color: '235,245,255' },
-    ],
-  },
-  ingegneria_esterno: {
     floor: 'concrete',
     floorColor: '#9aa0a6',
     outdoor: true,
@@ -3101,9 +3097,28 @@ export const ENV_STYLE = {
     trim: '#2d3436',
     decor: {
       back: [{ t: 'poster', u: 200, text: 'ZONA DI LANCIO', color: '#e74c3c' }],
-      left: [{ t: 'poster', u: 180, text: 'PROGETTO CDC-1', color: '#0984e3' }],
+      left: [{ t: 'poster', u: 580, text: 'PROGETTO CDC-1', color: '#0984e3' }],
     },
-    lights: [{ x: -100, y: -50, z: 0, r: 260, color: '255,245,220' }],
+    lab: {
+      y: 10, // retro del muro di fondo
+      floorColor: '#b4bbc2',
+      wall: '#dfe6e9',
+      wallStyle: 'plain',
+      wallH: 130,
+      trim: '#0984e3',
+      decor: {
+        back: [{ t: 'poster', u: 380, text: 'SICUREZZA', color: '#f39c12', w: 40 }],
+        left: [
+          { t: 'logo', u: 130, text: 'LABORATORIO', sub: 'ingegneristico', color: '#0984e3' },
+          { t: 'clock', u: 260 },
+        ],
+      },
+    },
+    lights: [
+      { x: -80, y: 140, z: 0, r: 230, color: '235,245,255' },
+      { x: 90, y: 220, z: 0, r: 220, color: '235,245,255' },
+      { x: -100, y: -250, z: 0, r: 260, color: '255,245,220' },
+    ],
   },
   banca: {
     floor: 'checker',

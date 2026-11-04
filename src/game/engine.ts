@@ -75,6 +75,7 @@ import { updateCamera } from './camera.js';
 import { applyRoomBounds } from './room-size.js';
 import { presenceState } from './presence-rules.js';
 import type { OnlinePlayer } from './network-model.js';
+import { LAB_WALL_Y } from './data/catalogues.js';
 /** I pezzi della base lunare si vedono solo dalla loro fase in poi (gli altri oggetti sempre). */
 const shownPart = (p: GameValue): boolean =>
   p.stage === undefined || partVisible(p, game.moonBaseStage || 0);
@@ -200,6 +201,12 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
     if (stuck || !collidesAt(game.playerPos.x, ny, obstacles)) game.playerPos.y = ny;
     game.isWalking = true;
   }
+  // laboratorio ingegneristico: il titolo dice se si è dentro o nella zona esterna
+  if (game.view.activeEnvironment === 'ingegneria')
+    game.view.currentRoomTitle =
+      game.playerPos.y < LAB_WALL_Y
+        ? 'Zona esterna del laboratorio 🚀'
+        : 'Laboratorio Ingegneristico 🔧';
   game.simulationBots.forEach((bot?: GameValue): GameValue => {
     if (bot.env === game.view.activeEnvironment) {
       bot.x += bot.vx * delta;
@@ -264,7 +271,17 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
           if (
             !p.flat &&
             p.stage === undefined && // i pezzi della base lunare hanno la loro ombra
-            !['tree', 'palm', 'ball', 'cone', 'stool', 'umbrella', 'streetlamp'].includes(p.kind)
+            ![
+              'tree',
+              'palm',
+              'ball',
+              'cone',
+              'stool',
+              'umbrella',
+              'streetlamp',
+              'labWall',
+              'labDoor',
+            ].includes(p.kind)
           )
             softShadow(p.x, p.y, p.w, p.h);
           if (fn) fn(p, animTime, lights);
@@ -291,7 +308,7 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
       }
       if (game.view.activeEnvironment === 'CORTILE' && item.aptIdx !== undefined)
         label = aptLabel(item.aptIdx);
-      const flat: GameValue = k === 'doorExit' || k === 'exitHouse' || k === 'doorLab';
+      const flat: GameValue = k === 'doorExit' || k === 'exitHouse';
       addThing(
         item.x,
         item.y,
