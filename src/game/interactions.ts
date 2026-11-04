@@ -24,7 +24,6 @@ import { SLOT_BET } from './betting-rules.js';
 import { bedtimeThought, notePersonality } from './personality.js';
 import { purchaseItem } from './economy.js';
 import { type GameValue, game } from './context.js';
-import { dom } from './runtime.js';
 import { hasRoom, isMyRoomNow, saveGame } from './saves.js';
 import { openRealtyBoard } from './realty.js';
 import { openGossipBoard } from './gossip.js';
@@ -343,7 +342,7 @@ const CORTILE: Place = {
   prompt(key, item) {
     if (key === 'exitHouse')
       return {
-        text: game.view.isOutsideMenuOpen ? '🚪 Chiudi Menu Uscita' : '🚪 Esci dal Condominio',
+        text: '🚪 Esci dal Condominio',
       };
     if (item.fun === 'bench')
       return { text: game.benchSit ? '🧍 Alzati' : '🪑 Siediti sulla panchina' };
@@ -363,12 +362,9 @@ const CORTILE: Place = {
   },
   async act(key, item) {
     if (key === 'exitHouse') {
-      // l'uscita del condominio apre il menu dei posti dove andare
-      game.view.isOutsideMenuOpen = !game.view.isOutsideMenuOpen;
+      // l'uscita del condominio apre il menu dei posti dove andare; si chiude allontanandosi
+      game.view.isOutsideMenuOpen = true;
       game.view.outsideSubmenu = '';
-      dom('btn-act-main').innerText = game.view.isOutsideMenuOpen
-        ? '🚪 Chiudi Menu Uscita'
-        : '🚪 Esci dal Condominio';
       renderOutsideMenu();
       return;
     }

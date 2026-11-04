@@ -76,6 +76,14 @@ export function canPlaySession() {
   return sessionValid;
 }
 
+/** Esce dall'account: questa scheda smette di salvare e lascia il Sim libero. */
+export async function signOutAccount(): Promise<void> {
+  sessionValid = false;
+  releaseTab?.();
+  releaseTab = null;
+  await googleAuth().signOut();
+}
+
 function googleAuth() {
   const auth = firebaseClient.auth();
   if (

@@ -20,7 +20,7 @@ import { lifetime, dom } from './runtime.js';
 import { getWealth, toast } from './missions.js';
 import { currentBody, lookString, ownsItem, parseBody, resolveLook } from './character.js';
 import { startInbox } from './social.js';
-import { startChat } from './chat.js';
+import { startChat, updateChatBadge } from './chat.js';
 import { bestOwnedByProp } from './furniture-tiers.js';
 import { decodeRomance } from './romance-rules.js';
 import { decodeRelations } from './relations-rules.js';
@@ -150,6 +150,8 @@ export function buildSaveData(..._args: GameValue[]): SaveV8 {
   if (game.player.personality) data.personality = game.player.personality;
   if (game.player.welcome) data.welcome = game.player.welcome;
   if (game.player.workDay) data.workDay = game.player.workDay;
+  // fin dove si è letta la chat: vale su tutti i dispositivi, non solo su questo
+  if (game.chatReadT > 0) data.chatReadT = game.chatReadT;
   if (game.player.daily) data.daily = game.player.daily;
   if (game.player.pets && Object.keys(game.player.pets).length) {
     syncPetHomes();
@@ -221,6 +223,11 @@ export function applySave(value: unknown): void {
   game.player.relations = decodeRelations(s.relations);
   game.player.personality = decodePersonality(s.personality);
   game.player.workDay = decodeWorkDay(s.workDay);
+  const readT = num(s.chatReadT, 0);
+  if (readT > game.chatReadT) {
+    game.chatReadT = readT;
+    updateChatBadge();
+  }
   game.player.daily = decodeDailyUses(s.daily);
   game.player.pets = decodePets(s.pets);
   game.player.weed = decodeWeed(s.weed);
@@ -487,6 +494,9 @@ export function normalizeRooms(val?: GameValue): GameValue {
   return rooms;
 }
 
+/** Soldi nella cassaforte di chi prende una stanza per la prima volta. */
+const START_MONEY = 30;
+
 // Assegna la stanza con una transazione: due giocatori non possono prendere la stessa
 export async function claimRoom(..._args: GameValue[]): Promise<GameValue> {
   let claimed: GameValue = -1;
@@ -513,7 +523,8 @@ export async function claimRoom(..._args: GameValue[]): Promise<GameValue> {
             ? old
             : {
                 id: old.id,
-                vaultMoney: 0,
+                // chi arriva in una stanza nuova trova qualche soldo per cominciare
+                vaultMoney: START_MONEY,
                 ...(old.pendingDeath ? { pendingDeath: old.pendingDeath } : {}),
               };
         rooms[idx] = Object.assign({}, base, {

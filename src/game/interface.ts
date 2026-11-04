@@ -12,7 +12,12 @@ import { startProjects } from './projects.js';
 import { resumeFaintSpot } from './faint.js';
 import type { GameValue } from './context.js';
 import type { DialogOptions, DialogResult } from './models.js';
-import { accountLogins, acquirePlayerSession, linkGoogleAccount } from './accounts.js';
+import {
+  accountLogins,
+  acquirePlayerSession,
+  linkGoogleAccount,
+  signOutAccount,
+} from './accounts.js';
 import { roomLabel } from './realty-rules.js';
 import { personalityStatusText } from './personality-rules.js';
 import { game } from './context.js';
@@ -168,8 +173,12 @@ export async function openProfile(..._args: GameValue[]): Promise<GameValue> {
       { label: '⚰️ Epitaffio', value: 'epitaph', color: '#636e72' },
       ...(game.session.OFFLINE ? [{ label: 'Usa codice', value: 'switch', color: '#e67e22' }] : []),
       ...(canLink ? [{ label: '🔗 Collega Google', value: 'google', color: '#2e86de' }] : []),
+      ...(game.session.OFFLINE
+        ? []
+        : [{ label: "🚪 Esci dall'account", value: 'logout', color: '#c0392b' }]),
     ],
   });
+  if (res.action === 'logout') await logOut();
   if (res.action === 'google') {
     try {
       await linkGoogleAccount();
@@ -181,6 +190,29 @@ export async function openProfile(..._args: GameValue[]): Promise<GameValue> {
   if (res.action === 'look') openCharacterCreator(false);
   if (res.action === 'epitaph') openEpitaph();
   if (res.action === 'switch') switchToCode(res.value);
+}
+
+/** Salva, esce dall'account e torna alla schermata di accesso (dopo una conferma). */
+async function logOut(): Promise<void> {
+  const ok: GameValue = await openDialog({
+    title: "🚪 Esci dall'account",
+    text: 'Il tuo personaggio viene salvato. Per rientrare ti servirà di nuovo il tuo accesso.',
+    buttons: [
+      { label: 'Annulla', value: null, color: '#57606f' },
+      { label: 'Esci', value: 'ok', color: '#c0392b' },
+    ],
+  });
+  if (ok.action !== 'ok') return;
+  try {
+    await saveGame(true);
+  } catch {}
+  try {
+    await signOutAccount();
+  } catch (error) {
+    toast(error instanceof Error ? error.message : String(error), 5000);
+    return;
+  }
+  location.reload();
 }
 
 export function switchToCode(code?: GameValue): GameValue {

@@ -432,9 +432,12 @@ export function checkProximity(..._args: GameValue[]): GameValue {
     } else btnSub.classList.add('hidden');
   } else {
     game.activeTargetProp = null;
-    if (!game.view.isOutsideMenuOpen) {
-      pop.classList.add('hidden');
+    // lontano dall'uscita il menu dei posti si chiude da solo
+    if (game.view.isOutsideMenuOpen) {
+      game.view.isOutsideMenuOpen = false;
+      renderOutsideMenu();
     }
+    pop.classList.add('hidden');
   }
 }
 
