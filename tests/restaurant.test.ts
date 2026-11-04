@@ -3,7 +3,7 @@ import {
   arrivalGap,
   missing,
   moodOf,
-  nextStoveDish,
+  nextCookDish,
   orderFor,
   patienceFor,
   tipFor,
@@ -39,14 +39,17 @@ describe('turno al ristorante', () => {
     expect(missing(['pizza', 'pizza'], ['pizza'])).toEqual(['pizza']);
   });
 
-  it('il fornello prepara per primo il cliente più impaziente', () => {
+  it('ogni cucina prepara per primo il cliente più impaziente', () => {
     const guests = [
       { order: ['pasta' as const], served: [], patience: 10, waiting: true },
-      { order: ['pizza' as const, 'vino' as const], served: [], patience: 3, waiting: true },
+      { order: ['pizza' as const, 'pasta' as const], served: [], patience: 3, waiting: true },
     ];
-    expect(nextStoveDish(guests, [])).toBe('pizza');
-    // la pizza è già sul fuoco: tocca alla pasta
-    expect(nextStoveDish(guests, ['pizza'])).toBe('pasta');
-    expect(nextStoveDish(guests, ['pizza', 'pasta'])).toBeNull();
+    // la pizza va nel forno, la pasta sui fornelli
+    expect(nextCookDish('oven', guests, [])).toBe('pizza');
+    expect(nextCookDish('stove', guests, [])).toBe('pasta');
+    // una pasta è già sul fuoco: tocca a quella dell'altro cliente
+    expect(nextCookDish('stove', guests, ['pasta'])).toBe('pasta');
+    expect(nextCookDish('stove', guests, ['pasta', 'pasta'])).toBeNull();
+    expect(nextCookDish('oven', guests, ['pizza'])).toBeNull();
   });
 });

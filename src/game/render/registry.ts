@@ -19,7 +19,10 @@ import {
   drawDessertCartProp,
   drawMedCartProp,
   drawPrinterProp,
+  drawPizzaOvenProp,
   drawWheelchairProp,
+  drawWineBarrelProp,
+  drawWineRackProp,
 } from './workplaces.js';
 import { MOONBASE_DRAW, MOONBASE_INSIDE_DRAW } from './moonbase.js';
 import { drawGoldStatue, drawJukebox } from './limited-props.js';
@@ -84,6 +87,7 @@ import {
   drawTreeProp,
   drawUmbrellaProp,
   drawWaitingChairsProp,
+  drawWallEntranceProp,
   drawWardrobe,
 } from './objects.js';
 import {
@@ -285,6 +289,10 @@ export function registerDrawers(): void {
     waitingChairs: drawWaitingChairsProp,
     restCounter: drawRestCounterProp,
     chefStove: drawChefStoveProp,
+    pizzaOven: drawPizzaOvenProp,
+    wineRack: drawWineRackProp,
+    wineBarrel: drawWineBarrelProp,
+    wallEntrance: drawWallEntranceProp,
     dinnerTable: drawDinnerTableProp,
     officeDesk: drawOfficeDeskProp,
     archive: drawArchiveProp,

@@ -1,19 +1,21 @@
 // Regole del turno al ristorante: piatti, pazienza dei clienti, mance e ritmo degli arrivi.
 // Niente browser qui: le usa restaurant.ts e le controllano i test.
 
-export type Station = 'stove' | 'cellar' | 'dessert' | 'counter';
+export type Station = 'oven' | 'stove' | 'cellar' | 'dessert' | 'counter';
+/** Le postazioni dove si cucina (le altre danno il piatto subito). */
+export type CookStation = 'oven' | 'stove';
 export type DishId = 'pizza' | 'pasta' | 'vino' | 'dolce' | 'insalata';
 
 export interface Dish {
   e: string;
   label: string;
   station: Station;
-  /** secondi sul fornello (0 = si prende subito) */
+  /** secondi nel forno o sul fornello (0 = si prende subito) */
   cook: number;
 }
 
 export const DISHES: Record<DishId, Dish> = {
-  pizza: { e: '🍕', label: 'Pizza', station: 'stove', cook: 2.5 },
+  pizza: { e: '🍕', label: 'Pizza', station: 'oven', cook: 2.5 },
   pasta: { e: '🍝', label: 'Pasta', station: 'stove', cook: 2 },
   vino: { e: '🍷', label: 'Vino', station: 'cellar', cook: 0 },
   dolce: { e: '🍰', label: 'Tiramisù', station: 'dessert', cook: 0 },
@@ -63,8 +65,9 @@ export function moodOf(patienceLeft: number): 'ok' | 'warn' | 'bad' {
   return patienceLeft > 0.5 ? 'ok' : patienceLeft > 0.2 ? 'warn' : 'bad';
 }
 
-/** Il primo piatto da fornello ancora da preparare, dal cliente con meno pazienza. */
-export function nextStoveDish(
+/** Il primo piatto di questa postazione ancora da preparare, dal cliente con meno pazienza. */
+export function nextCookDish(
+  station: CookStation,
   guests: readonly { order: DishId[]; served: DishId[]; patience: number; waiting: boolean }[],
   busy: readonly DishId[],
 ): DishId | null {
@@ -72,7 +75,7 @@ export function nextStoveDish(
   const sorted = guests.filter((g) => g.waiting).sort((a, b) => a.patience - b.patience);
   for (const g of sorted)
     for (const d of missing(g.order, g.served)) {
-      if (DISHES[d].station !== 'stove') continue;
+      if (DISHES[d].station !== station) continue;
       const i = left.indexOf(d);
       // già sul fuoco, pronto o in mano: vale per questo cliente
       if (i >= 0) left.splice(i, 1);

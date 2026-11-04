@@ -1,6 +1,7 @@
-// Turno al ristorante: i clienti entrano, si siedono e ordinano con un fumetto. Pizza e pasta si
-// cucinano al fornello, vino, dolce e insalata si prendono da cantina, carrello e bancone; poi si
-// portano ai tavoli. Chi aspetta troppo se ne va. Le regole stanno in restaurant-rules.ts.
+// Turno al ristorante: i clienti entrano dal portone, si siedono e ordinano con un fumetto. La pizza
+// si cuoce nel forno a legna e la pasta sui fornelli; vino, dolce e insalata si prendono da
+// cantina, carrello e bancone; poi si portano ai tavoli. Chi aspetta troppo se ne va.
+// Le regole stanno in restaurant-rules.ts.
 import type { GameValue } from './context.js';
 import { game } from './context.js';
 import { sfx } from './audio.js';
@@ -10,6 +11,7 @@ import { drawPlayerAvatar } from './render/avatars.js';
 import { setTableGuestDrawer } from './render/objects.js';
 import { isoProject, isoScale } from './render/primitives.js';
 import {
+  type CookStation,
   DISHES,
   type DishId,
   EAT_SECONDS,
@@ -19,7 +21,7 @@ import {
   arrivalGap,
   missing,
   moodOf,
-  nextStoveDish,
+  nextCookDish,
   orderFor,
   patienceFor,
   tipFor,
@@ -29,17 +31,21 @@ type Pt = { x: number; y: number };
 
 /** Mobili della sala che fanno da postazione. */
 const STATION_OF: Record<string, Station> = {
+  pizzaOven: 'oven',
+  wineRack: 'cellar',
   chefStove: 'stove',
   bottleShelf: 'cellar',
   dessertCart: 'dessert',
   restCounter: 'counter',
 };
-/** Cosa si prende subito da ogni postazione (il fornello invece cucina). */
-const INSTANT: Record<Exclude<Station, 'stove'>, DishId> = {
+/** Cosa si prende subito da ogni postazione (forno e fornelli invece cucinano). */
+type InstantStation = Exclude<Station, CookStation>;
+const INSTANT: Record<InstantStation, DishId> = {
   cellar: 'vino',
   dessert: 'dolce',
   counter: 'insalata',
 };
+const isCook = (st: Station): st is CookStation => st === 'oven' || st === 'stove';
 const NAMES = ['Giulia', 'Marco', 'Sara', 'Luca', 'Elena', 'Paolo', 'Chiara', 'Davide', 'Marta'];
 
 interface Guest {
@@ -67,8 +73,12 @@ interface Service {
   guests: Guest[];
   tables: GameValue[];
   stations: GameValue[];
-  cooking: { dish: DishId; left: number; total: number } | null;
-  ready: DishId | null;
+  /** cosa cuoce in ogni cucina, e il piatto pronto che aspetta di essere preso */
+  cooking: Partial<Record<CookStation, { dish: DishId; left: number; total: number }>>;
+  ready: Partial<Record<CookStation, DishId>>;
+  /** dove entrano ed escono i clienti (davanti al portone) */
+  door: Pt;
+  doorId: string;
   served: number;
   lost: number;
   seq: number;
@@ -81,14 +91,21 @@ export const serviceOn = (): boolean => !!svc;
 
 export function startService(): void {
   const props = (game.ENV_PROPS[game.view.activeEnvironment] || []) as GameValue[];
+  const entrance: GameValue = props.find((p) => p.kind === 'wallEntrance');
   svc = {
     clock: 0,
     nextAt: 1,
     guests: [],
     tables: props.filter((p) => p.kind === 'dinnerTable'),
     stations: props.filter((p) => STATION_OF[p.kind]),
-    cooking: null,
-    ready: null,
+    cooking: {},
+    ready: {},
+    door: entrance
+      ? entrance.side === 'back'
+        ? { x: entrance.x, y: game.Y0 + 24 }
+        : { x: game.X0 + 24, y: entrance.y }
+      : { x: 0, y: game.Y1 - 20 },
+    doorId: entrance?.door || '',
     served: 0,
     lost: 0,
     seq: 0,
@@ -143,14 +160,15 @@ function rebuildMap(): void {
   game.MG.map = map;
 }
 
-/** Un cliente nuovo: entra dalla porta e va alla sedia dietro il tavolo, girando dal lato destro. */
+/** Un cliente nuovo: entra dal portone e va alla sedia dietro il tavolo, passando dal lato destro. */
 function addGuest(table: number): void {
   if (!svc) return;
   const t = svc.tables[table];
-  const door = { x: 0, y: game.Y1 - 20 };
+  const door = svc.door;
   const seat = { x: t.x, y: t.y - t.h / 2 - 2 };
   const side = t.x + t.w / 2 + 22;
-  const path = [door, { x: side, y: t.y + t.h / 2 + 14 }, { x: side, y: seat.y }, seat];
+  const path = [door, { x: side, y: door.y + 30 }, { x: side, y: seat.y }, seat];
+  openEntrance();
   const p = progress();
   const max = patienceFor(p);
   svc.guests.push({
@@ -193,6 +211,11 @@ function walk(g: Guest, delta: number, backwards: boolean): boolean {
   return false;
 }
 
+/** Il portone si spalanca per chi entra o esce. */
+function openEntrance(): void {
+  if (svc?.doorId) game.doorForce[svc.doorId] = performance.now() + 900;
+}
+
 function leave(g: Guest, angry: boolean): void {
   g.state = 'out';
   g.angry = angry;
@@ -214,12 +237,14 @@ export function tickService(delta: number): void {
       addGuest(free[Math.floor(Math.random() * free.length)]);
     s.nextAt = s.clock + arrivalGap(progress(), Math.random());
   }
-  if (s.cooking) {
-    s.cooking.left -= delta;
-    if (s.cooking.left <= 0) {
-      const d = DISHES[s.cooking.dish];
-      s.ready = s.cooking.dish;
-      s.cooking = null;
+  for (const st of ['oven', 'stove'] as CookStation[]) {
+    const c = s.cooking[st];
+    if (!c) continue;
+    c.left -= delta;
+    if (c.left <= 0) {
+      const d = DISHES[c.dish];
+      s.ready[st] = c.dish;
+      delete s.cooking[st];
       sfx('door');
       mgPop(`🔔 ${d.e} ${d.label} pronta`);
     }
@@ -240,7 +265,10 @@ export function tickService(delta: number): void {
     } else if (g.state === 'eat') {
       g.timer -= delta;
       if (g.timer <= 0) leave(g, false);
-    } else if (walk(g, delta, true)) g.gone = true;
+    } else {
+      if (g.step === 0) openEntrance();
+      if (walk(g, delta, true)) g.gone = true;
+    }
   }
   s.guests = s.guests.filter((g) => !g.gone);
   rebuildMap();
@@ -249,21 +277,24 @@ export function tickService(delta: number): void {
 const guestAt = (table: number): Guest | undefined =>
   svc?.guests.find((g) => g.table === table && (g.state === 'wait' || g.state === 'eat'));
 
-/** Piatti da fornello già sul fuoco, pronti o in mano: non vanno cucinati di nuovo. */
-function stoveBusy(): DishId[] {
+/** Piatti di questa cucina già sul fuoco, pronti o in mano: non vanno cucinati di nuovo. */
+function cookBusy(st: CookStation): DishId[] {
   if (!svc) return [];
   const out: DishId[] = [];
-  if (svc.cooking) out.push(svc.cooking.dish);
-  if (svc.ready) out.push(svc.ready);
+  const c = svc.cooking[st],
+    r = svc.ready[st];
+  if (c) out.push(c.dish);
+  if (r) out.push(r);
   if (game.MG.carry) out.push(game.MG.carry.id);
   return out;
 }
 
-function nextForStove(): DishId | null {
+function nextFor(st: CookStation): DishId | null {
   if (!svc) return null;
-  return nextStoveDish(
+  return nextCookDish(
+    st,
     svc.guests.map((g) => ({ ...g, waiting: g.state === 'wait' || g.state === 'in' })),
-    stoveBusy(),
+    cookBusy(st),
   );
 }
 
@@ -276,18 +307,24 @@ export function servicePrompt(item: GameValue): { text: string; locked?: boolean
   if (!s) return { text: '', locked: true };
   if (item.kind === 'station') {
     if (c) return { text: `↩️ Posa ${c.e} ${c.label}` };
-    if (item.station === 'stove') {
-      if (s.ready) return { text: `✋ Prendi ${DISHES[s.ready].e} ${DISHES[s.ready].label}` };
-      if (s.cooking) {
-        const d = DISHES[s.cooking.dish];
+    const st: Station = item.station;
+    if (isCook(st)) {
+      const ready = s.ready[st],
+        cooking = s.cooking[st];
+      if (ready) return { text: `✋ Prendi ${DISHES[ready].e} ${DISHES[ready].label}` };
+      if (cooking) {
+        const d = DISHES[cooking.dish];
         return { text: `⏳ ${d.e} ${d.label} sul fuoco…`, locked: true };
       }
-      const next = nextForStove();
-      return next
-        ? { text: `🍳 Cucina ${DISHES[next].e} ${DISHES[next].label}` }
-        : { text: '🍳 Nessuno aspetta pizza o pasta', locked: true };
+      const next = nextFor(st);
+      const verb = st === 'oven' ? '🔥 Inforna' : '🍳 Cucina';
+      if (next) return { text: `${verb} ${DISHES[next].e} ${DISHES[next].label}` };
+      return {
+        text: st === 'oven' ? '🔥 Nessuno aspetta la pizza' : '🍳 Nessuno aspetta la pasta',
+        locked: true,
+      };
     }
-    const d = DISHES[INSTANT[item.station as Exclude<Station, 'stove'>]];
+    const d = DISHES[INSTANT[st]];
     return { text: `✋ Prendi ${d.e} ${d.label}` };
   }
   const g = guestAt(item.idx);
@@ -307,19 +344,21 @@ export function serviceInteract(item: GameValue): void {
     if (c) {
       game.MG.carry = null;
       mgPop(`↩️ ${c.e} posato`);
-    } else if (item.station === 'stove') {
-      if (s.ready) {
-        game.MG.carry = carryOf(s.ready);
-        s.ready = null;
+    } else if (isCook(item.station)) {
+      const st: CookStation = item.station;
+      const ready = s.ready[st];
+      if (ready) {
+        game.MG.carry = carryOf(ready);
+        delete s.ready[st];
         sfx('door');
-      } else if (!s.cooking) {
-        const next = nextForStove();
+      } else if (!s.cooking[st]) {
+        const next = nextFor(st);
         if (!next) return;
-        s.cooking = { dish: next, left: DISHES[next].cook, total: DISHES[next].cook };
+        s.cooking[st] = { dish: next, left: DISHES[next].cook, total: DISHES[next].cook };
         sfx('door');
       }
     } else {
-      game.MG.carry = carryOf(INSTANT[item.station as Exclude<Station, 'stove'>]);
+      game.MG.carry = carryOf(INSTANT[item.station as InstantStation]);
       sfx('door');
     }
     mgHud();
@@ -380,9 +419,11 @@ export function serviceDrawables(drawables: GameValue[], t: number): void {
       });
     drawables.push({ depth: 1e9 - 1, draw: () => drawGuestBubble(g) });
   }
-  const stove = s.stations.find((p) => p.kind === 'chefStove');
-  if (stove && (s.cooking || s.ready))
-    drawables.push({ depth: 1e9 - 2, draw: () => drawStoveState(stove, t) });
+  for (const p of s.stations) {
+    const st = STATION_OF[p.kind];
+    if (isCook(st) && (s.cooking[st] || s.ready[st]))
+      drawables.push({ depth: 1e9 - 2, draw: () => drawStoveState(p, st, t) });
+  }
 }
 
 /** Il cliente seduto dietro questo tavolo: si disegna tra la sedia e il piano del tavolo. */
@@ -454,22 +495,23 @@ function drawGuestBubble(g: Guest): void {
 }
 
 /** Sopra il fornello: il piatto che cuoce con il cerchio che si riempie, o quello pronto. */
-function drawStoveState(stove: GameValue, t: number): void {
+function drawStoveState(stove: GameValue, st: CookStation, t: number): void {
   const s = svc;
   if (!s) return;
   const ctx = game.view.ctx;
   const sc: number = isoScale();
-  const dish = s.cooking ? s.cooking.dish : s.ready;
+  const cooking = s.cooking[st];
+  const dish = cooking ? cooking.dish : s.ready[st];
   if (!dish) return;
-  const bob = s.ready ? Math.sin(t * 5) * 2 : 0;
+  const bob = cooking ? 0 : Math.sin(t * 5) * 2;
   const p = isoProject(stove.x, stove.y, (stove.z || 55) + 26 + bob);
   ctx.save();
   ctx.fillStyle = 'rgba(255,255,255,0.92)';
   ctx.beginPath();
   ctx.arc(p.x, p.y, 13 * sc, 0, 6.3);
   ctx.fill();
-  if (s.cooking) {
-    const k = 1 - s.cooking.left / s.cooking.total;
+  if (cooking) {
+    const k = 1 - cooking.left / cooking.total;
     ctx.strokeStyle = '#f39c12';
     ctx.lineWidth = 3 * sc;
     ctx.beginPath();

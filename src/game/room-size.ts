@@ -12,7 +12,7 @@ const ENV_GROW: Record<string, number> = {
   KITCHEN: 1.25,
   lavoro_cantiere: 1.3,
   lavoro_ospedale: 1.3,
-  lavoro_ristorante: 1.3,
+  lavoro_ristorante: 1.2,
   lavoro_ufficio: 1.3,
 };
 /** Ambienti con una misura propria e gli oggetti già sistemati a mano (metà larghezza e profondità). */
