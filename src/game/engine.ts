@@ -67,7 +67,7 @@ import {
 } from './character.js';
 import { presenceAlive } from './saves.js';
 import { tickNeeds, updateSocialPanel } from './needs.js';
-import { footprintOf, isoProject } from './render/primitives.js';
+import { footprintOf, isoProject, isoScale } from './render/primitives.js';
 import { overlapsCorridor } from './room-layout.js';
 import { approachKissPartner, drawKissHearts, kissActive } from './romance.js';
 import { faintAmount } from './faint.js';
@@ -75,7 +75,7 @@ import { updateCamera } from './camera.js';
 import { applyRoomBounds } from './room-size.js';
 import { presenceState, shownWhileOffline } from './presence-rules.js';
 import type { OnlinePlayer } from './network-model.js';
-import { LAB_WALL_Y } from './data/catalogues.js';
+import { LAB_WALL_Y, SHOP_CLERK_LINES } from './data/catalogues.js';
 import { facadeFootprint } from './render/facades.js';
 import { checkWalkThrough, doorGapsHere, roomBounds } from './interactions.js';
 import { clampToRoom, doorwayAt } from './door-walk-rules.js';
@@ -446,12 +446,21 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
   petDrawables(animTime, drawables, labels);
   game.simulationBots.forEach((bot?: GameValue): GameValue => {
     if (bot.env === game.view.activeEnvironment) {
+      // frase chiesta da chi gli parla (i commessi al bancone)
+      if (bot.talk) {
+        bot.say = bot.talk;
+        bot.talk = '';
+        bot.sayUntil = animTime + 4;
+        bot.nextSayAt = animTime + 12 + Math.random() * 10;
+      }
       if (!bot.nextSayAt || animTime > bot.nextSayAt) {
-        const L: GameValue = bot.dealer
-          ? game.DEALER_LINES
-          : bot.env === 'discoteca'
-            ? game.DISCO_LINES
-            : game.BOT_LINES;
+        const L: GameValue = bot.clerk
+          ? SHOP_CLERK_LINES[bot.env] || game.BOT_LINES
+          : bot.dealer
+            ? game.DEALER_LINES
+            : bot.env === 'discoteca'
+              ? game.DISCO_LINES
+              : game.BOT_LINES;
         bot.say = L[Math.floor(Math.random() * L.length)];
         bot.sayUntil = animTime + 4;
         bot.nextSayAt = animTime + 10 + Math.random() * 15;
@@ -460,7 +469,10 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
       if (!onScreen(bot.x, bot.y)) return;
       drawables.push({
         depth: bot.x + bot.y,
-        draw: (): GameValue =>
+        draw: (): GameValue => {
+          const ctx = game.view.ctx;
+          ctx.save();
+          if (bot.lift) ctx.translate(0, -bot.lift * isoScale());
           drawPlayerAvatar(
             bot.x,
             bot.y,
@@ -473,7 +485,9 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
               walkDir: { x: bot.vx, y: bot.vy },
               speed: Math.hypot(bot.vx, bot.vy),
             },
-          ),
+          );
+          ctx.restore();
+        },
       });
     }
   });

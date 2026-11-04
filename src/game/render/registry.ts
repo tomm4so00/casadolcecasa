@@ -215,6 +215,9 @@ export function registerDrawers(): void {
     shower: drawShower,
     shopCounter: drawCounter,
     petCounter: drawCounter,
+    growCounter: drawCounter,
+    collectCounter: drawCounter,
+    usedCounter: drawCounter,
   };
   game.PROP_DRAW = {
     // muro di fondo e porta del laboratorio ingegneristico (dietro c'è la zona esterna)

@@ -36,6 +36,7 @@ import {
   wardrobeOffers,
 } from './limited.js';
 import { openArcadeStation } from './arcade.js';
+import { SHOP_CLERK_LINES } from './data/catalogues.js';
 import { buyFromStand, openShelf, shelfPrompt, standPrompt } from './collect.js';
 import { usedAct, usedPrompt } from './used-shop.js';
 import { ARCADE_GAMES, type ArcadeGame, isArcadeGame } from './arcade-rules.js';
@@ -98,6 +99,33 @@ function shop(
     prompt: (key, item) => prompt(key, item) || OUT,
     act: (key, item) => (key === 'doorExit' ? backToSaloon() : act(key, item)),
   };
+}
+
+// ---------------------------------------------------------------- commessi
+
+const CLERK_COUNTERS = new Set(['growCounter', 'collectCounter', 'usedCounter']);
+
+/** Il commesso dell'ambiente in cui si è (se c'è). */
+function clerkHere(): GameValue {
+  return game.simulationBots.find(
+    (b: GameValue) => b.clerk && b.env === game.view.activeEnvironment,
+  );
+}
+
+/** Pulsante del bancone: si parla col commesso. */
+function clerkPrompt(key: string): Prompt | null {
+  if (!CLERK_COUNTERS.has(key)) return null;
+  const clerk = clerkHere();
+  return { text: `💬 Parla con ${clerk ? clerk.name : 'il commesso'}` };
+}
+
+/** Il commesso risponde con una delle sue frasi. */
+function talkToClerk(): void {
+  const clerk = clerkHere();
+  const lines = SHOP_CLERK_LINES[game.view.activeEnvironment];
+  if (!clerk || !lines?.length) return;
+  clerk.talk = lines[Math.floor(Math.random() * lines.length)];
+  sfx('click');
 }
 
 // ---------------------------------------------------------------- casa
@@ -461,28 +489,31 @@ const PET_SHOP = shop(
 );
 
 const COLLECT_SHOP = shop(
-  (_key, item) => (item.stand !== undefined ? standPrompt(item.stand) : null),
-  async (_key, item) => {
+  (key, item) => (item.stand !== undefined ? standPrompt(item.stand) : clerkPrompt(key)),
+  async (key, item) => {
     if (item?.stand !== undefined) await buyFromStand(item.stand);
+    else if (CLERK_COUNTERS.has(key)) talkToClerk();
   },
 );
 
 const USED_SHOP = shop(
-  (_key, item) => (item.stand !== undefined ? usedPrompt(item.stand) : null),
-  async (_key, item) => {
+  (key, item) => (item.stand !== undefined ? usedPrompt(item.stand) : clerkPrompt(key)),
+  async (key, item) => {
     if (item?.stand !== undefined) await usedAct(item.stand);
+    else if (CLERK_COUNTERS.has(key)) talkToClerk();
   },
 );
 
 const GROW_SHOP = shop(
-  (_key, item) =>
+  (key, item) =>
     item.strain
       ? {
           text: `🌱 Compra ${STRAINS[item.strain as StrainId].name} (${STRAINS[item.strain as StrainId].price} €, cresce in ${growTimeText(item.strain as StrainId)})`,
         }
-      : null,
-  async (_key, item) => {
+      : clerkPrompt(key),
+  async (key, item) => {
     if (item?.strain) await buyPlant(item.strain);
+    else if (CLERK_COUNTERS.has(key)) talkToClerk();
   },
 );
 

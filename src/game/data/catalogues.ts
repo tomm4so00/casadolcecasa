@@ -1500,12 +1500,87 @@ export const INTRO_PAGES = [
   },
 ];
 
+/** Cosa dicono i commessi, per negozio. */
+export const SHOP_CLERK_LINES: Record<string, string[]> = {
+  negozio_mobili: [
+    "Benvenuto all'Arredo Casa!",
+    'Il divano in vetrina è un affare.',
+    'Cerchi qualcosa per la tua stanza?',
+    'Prova il lusso: non torni più indietro!',
+  ],
+  negozio_vestiti: [
+    'Benvenuto in boutique!',
+    'Questa felpa va a ruba.',
+    'Il catalogo è qui alla cassa.',
+    'Il nero sta bene con tutto.',
+  ],
+  negozio_animali: [
+    'Ogni animale merita una casa!',
+    'Il cane va portato a spasso, mi raccomando.',
+    'Guarda che bel criceto!',
+    'Ricordati di dargli da mangiare.',
+  ],
+  growshop: [
+    'Semi di qualità, garantiti.',
+    'Annaffia tutti i giorni!',
+    'La Purple è la mia preferita.',
+    'Pianta, aspetta, raccogli.',
+  ],
+  collezionismo: [
+    'Ogni pezzo qui è unico al mondo.',
+    "Questo globo l'ho trovato a un'asta a Vienna.",
+    'Si tocca con gli occhi, prego.',
+    'Quando un pezzo se ne va, ne arriva un altro.',
+  ],
+  usato: [
+    'Qui si vende e si compra tra vicini.',
+    'Metti il prezzo giusto e vendi subito!',
+    'Un pezzo usato ha più storia.',
+    'Gli espositori liberi aspettano te.',
+  ],
+};
+
 export const SIMULATION_BOTS = [
   { name: 'Bot_Anna', env: 'passeggiata', x: -80, y: 50, vx: 30, vy: 15 },
   // clienti che passeggiano nel centro commerciale
   { name: 'Cliente Rita 🛍️', env: 'centro_commerciale', x: -60, y: -125, vx: 26, vy: 0 },
   { name: 'Cliente Gianni 🛍️', env: 'centro_commerciale', x: 80, y: 115, vx: -22, vy: 0 },
   { name: 'Cliente Sofia 🛍️', env: 'centro_commerciale', x: -225, y: -40, vx: 0, vy: 20 },
+  // commessi dei negozi: fermi dietro il bancone, con le loro frasi (vedi SHOP_CLERK_LINES).
+  // `lift`: stanno su una pedana, così sopra il bancone si vedono dalla vita in su
+  {
+    name: 'Commesso Marco 🛋️',
+    env: 'negozio_mobili',
+    x: -28,
+    y: -120,
+    vx: 0,
+    vy: 0,
+    clerk: true,
+    lift: 34,
+  },
+  {
+    name: 'Commessa Giulia 👗',
+    env: 'negozio_vestiti',
+    x: 2,
+    y: -146,
+    vx: 0,
+    vy: 0,
+    clerk: true,
+    lift: 26,
+  },
+  { name: 'Lucia 🐾', env: 'negozio_animali', x: 62, y: 86, vx: 0, vy: 0, clerk: true, lift: 30 },
+  { name: 'Rocco 🌿', env: 'growshop', x: 98, y: 44, vx: 0, vy: 0, clerk: true, lift: 20 },
+  {
+    name: 'Antiquario Ettore 🏺',
+    env: 'collezionismo',
+    x: -152,
+    y: 99,
+    vx: 0,
+    vy: 0,
+    clerk: true,
+    lift: 20,
+  },
+  { name: 'Signora Rosa 🏷️', env: 'usato', x: -152, y: 99, vx: 0, vy: 0, clerk: true, lift: 20 },
   { name: 'Bot_Luca', env: 'passeggiata', x: 60, y: -40, vx: -25, vy: 20 },
   { name: 'Bot_Sara', env: 'bar', x: -50, y: -20, vx: 20, vy: -10 },
   { name: 'Spacciatore 🕴️', env: 'bar', x: 140, y: -35, vx: 0, vy: 0, dealer: true },
@@ -2008,6 +2083,19 @@ export const GROWSHOP_FURNITURE = {
     name: 'Purple Haze 🍇',
     moveable: false,
   },
+  // bancone della cassa: dietro c'è Rocco
+  growCounter: {
+    x: 110,
+    y: 60,
+    w: 64,
+    h: 28,
+    z: 46,
+    // senza etichetta: sopra il bancone si vede il commesso (il pulsante è 'Parla con…')
+    name: '',
+    label: 'CASSA',
+    color: '#2e7d32',
+    moveable: false,
+  },
   doorExit: { x: 0, y: 160, w: 60, h: 15, z: 110, name: 'Torna Fuori 🚪', moveable: false },
 };
 
@@ -2078,6 +2166,19 @@ export const COLLECT_SHOP_FURNITURE = {
   colStand2: stand(2, 120, -105),
   colStand3: stand(3, -85, 40),
   colStand4: stand(4, 85, 40),
+  // bancone della cassa: dietro c'è l'antiquario
+  collectCounter: {
+    x: -140,
+    y: 115,
+    w: 64,
+    h: 28,
+    z: 46,
+    // senza etichetta: sopra il bancone si vede il commesso (il pulsante è 'Parla con…')
+    name: '',
+    label: 'CASSA',
+    color: '#5d4037',
+    moveable: false,
+  },
   doorExit: { x: 0, y: 160, w: 60, h: 15, z: 110, name: 'Torna Fuori 🚪', moveable: false },
 };
 
@@ -2089,6 +2190,19 @@ export const USED_SHOP_FURNITURE = {
   usedStand2: usedStand(2, 120, -105),
   usedStand3: usedStand(3, -85, 40),
   usedStand4: usedStand(4, 85, 40),
+  // bancone della cassa: dietro c'è la signora Rosa
+  usedCounter: {
+    x: -140,
+    y: 115,
+    w: 64,
+    h: 28,
+    z: 46,
+    // senza etichetta: sopra il bancone si vede il commesso (il pulsante è 'Parla con…')
+    name: '',
+    label: 'CASSA',
+    color: '#2e7d5b',
+    moveable: false,
+  },
   doorExit: { x: 0, y: 160, w: 60, h: 15, z: 110, name: 'Torna Fuori 🚪', moveable: false },
 };
 
