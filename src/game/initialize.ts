@@ -137,7 +137,7 @@ export function initializeGame() {
   game.view.fridgeIsOpen = false;
   game.player.sleepGainedSinceLastHealthBoost = 0;
   game.SLEEP_DEPLETION_SEC = 86400;
-  game.SLEEP_RECOVERY_SEC = 28800;
+  game.SLEEP_RECOVERY_SEC = 5400;
   game.HUNGER_AWAKE_DEPLETION_SEC = 86400;
   game.HUNGER_SLEEP_DEPLETION_SEC = 172800;
   game.HYGIENE_DEPLETION_SEC = 86400;

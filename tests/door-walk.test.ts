@@ -4,6 +4,7 @@ import {
   crossedDoor,
   doorwayAt,
   gapFor,
+  nearDoor,
   WALL_MARGIN,
 } from '../src/game/door-walk-rules';
 
@@ -50,5 +51,13 @@ describe('porte da attraversare camminando', () => {
 
   it('una porta chiusa (senza varco) è un muro', () => {
     expect(clampToRoom(-260, 0, B, [])).toEqual({ x: -170, y: 0 });
+  });
+
+  it('chi esce da una porta deve allontanarsene di un passo prima che riscatti', () => {
+    // appena arrivati, a 45 dal muro davanti al portone: ancora vicini
+    expect(nearDoor(0, -155, B, [back], 30)).toBe(true);
+    expect(nearDoor(0, -135, B, [back], 30)).toBe(false);
+    // di lato, oltre lo stipite più il passo
+    expect(nearDoor(60, -180, B, [back], 30)).toBe(false);
   });
 });

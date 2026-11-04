@@ -1492,7 +1492,7 @@ export const INTRO_PAGES = [
   },
   {
     title: '🛠️ Cosa fare ogni giorno',
-    text: "🍽️ Fame: in cucina prendi il cibo dal frigo (5 €), cucinalo sul fornello e mangia (+50%). Circa 2 pasti al giorno.\n\n😴 Sonno: nella tua stanza coricati sul letto. Per riposare bene servono circa 8 ore: puoi lasciarlo a letto di notte. In emergenza la macchina del caffè in cucina dà un po' di sonno, ma costa salute.\n\n🚿 Igiene: fai la doccia in bagno, circa 2 volte al giorno (il lavandino dà solo +20%).\n\n😊 Felicità: guarda la TV, riposa sul divano, fai una passeggiata o vai al bar o balla in discoteca (ma ti toglie sonno).\n\n💻 Dal PC della tua stanza puoi comprare vestiti e mobili online e avviare un business: investi i tuoi soldi e il loro valore sale e scende nel tempo.",
+    text: "🍽️ Fame: in cucina prendi il cibo dal frigo (5 €), cucinalo sul fornello e mangia (+50%). Circa 2 pasti al giorno.\n\n😴 Sonno: nella tua stanza coricati sul letto. Da 0 a 100 basta circa un'ora e mezza di sonno. In emergenza la macchina del caffè in cucina dà un po' di sonno, ma costa salute.\n\n🚿 Igiene: fai la doccia in bagno, circa 2 volte al giorno (il lavandino dà solo +20%).\n\n😊 Felicità: guarda la TV, riposa sul divano, fai una passeggiata o vai al bar o balla in discoteca (ma ti toglie sonno).\n\n💻 Dal PC della tua stanza puoi comprare vestiti e mobili online e avviare un business: investi i tuoi soldi e il loro valore sale e scende nel tempo.",
   },
   {
     title: '💼 Soldi e consigli',

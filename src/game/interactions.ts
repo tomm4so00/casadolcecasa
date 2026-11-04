@@ -41,7 +41,7 @@ import { buyFromStand, openShelf, shelfPrompt, standPrompt } from './collect.js'
 import { usedAct, usedPrompt } from './used-shop.js';
 import { ARCADE_GAMES, type ArcadeGame, isArcadeGame } from './arcade-rules.js';
 import { quotedTitle } from './painting-titles.js';
-import { type DoorGap, type RoomBounds, crossedDoor, gapFor } from './door-walk-rules.js';
+import { type DoorGap, type RoomBounds, crossedDoor, gapFor, nearDoor } from './door-walk-rules.js';
 import { roomPaintings, slotOfKey } from './painting-rules.js';
 import { relaxWith, toast } from './missions.js';
 import { freeRoomsInApt, openClothesShop, openWardrobe } from './character.js';
@@ -697,10 +697,17 @@ export function doorGapsHere(): DoorGap[] {
   return out;
 }
 
-/** Porte che si passano camminando: vicino a queste non serve il pulsante. */
+/**
+ * Porte senza pulsante: quelle che si passano camminando e quelle delle palazzine ancora chiuse
+ * (col nastro), dove non si entra.
+ */
 export function walkThroughKeys(): Set<string> {
   const keys = new Set(doorGapsHere().map((g) => g.key));
   for (const z of walkZones()) if (z.key !== 'exitHouse') keys.add(z.key);
+  if (game.view.activeEnvironment === 'CORTILE')
+    for (const [key, it] of Object.entries(game.courtyardDoors) as [string, GameValue][])
+      if (it.aptIdx !== undefined && freeRoomsInApt(it.aptIdx) === game.ROOMS_PER_APT)
+        keys.add(key);
   return keys;
 }
 
@@ -731,13 +738,16 @@ function walkZones(): WalkZone[] {
 }
 
 let walkEnv = '';
-// Chi arriva passando una porta a piedi si trova davanti a quella da cui è entrato: finché non smette
-// di camminare le porte non scattano, così tenendo premuto non si torna subito indietro.
-let arrivedWalking = false;
-// Appena arrivati si è davanti alla porta da cui si entra: le zone valgono solo dopo essersene
-// allontanati di un passo (WALK_REARM), così non si torna subito indietro.
+// Appena arrivati si è davanti alla porta da cui si entra (nel salone il portone è in fondo come la
+// porta della palazzina, quindi chi va dritto ci finisce contro): le porte valgono solo dopo
+// essersene allontanati di un passo (WALK_REARM), e fino ad allora sono un muro.
 let walkArmed = false;
 const WALK_REARM = 30;
+
+/** Le porte del salone che in questo momento si aprono a chi ci cammina contro. */
+export function openGapsHere(): DoorGap[] {
+  return walkArmed ? doorGapsHere() : [];
+}
 
 /** A ogni fotogramma: chi entra camminando nella zona di una porta la attraversa. */
 export function checkWalkThrough(): void {
@@ -755,18 +765,20 @@ export function checkWalkThrough(): void {
     game.benchSit ||
     game.fainted ||
     game.activeShift;
-  if (!game.isWalking) arrivedWalking = false;
+  const bounds = roomBounds(),
+    gaps = doorGapsHere(),
+    zones = walkZones();
+  if (!zones.some((z) => z.inside(x, y, WALK_REARM)) && !nearDoor(x, y, bounds, gaps, WALK_REARM))
+    walkArmed = true;
   // salone: si passa la porta arrivando sul suo filo
-  const gap = crossedDoor(x, y, roomBounds(), doorGapsHere());
+  const gap = walkArmed ? crossedDoor(x, y, bounds, gaps) : null;
   if (gap) {
-    if (!busy && !arrivedWalking) {
-      arrivedWalking = true;
+    if (!busy) {
+      walkArmed = false;
       void goThroughSaloonDoor(gap.key, game.saloonDoors[gap.key], false);
     }
     return;
   }
-  const zones = walkZones();
-  if (!zones.some((z) => z.inside(x, y, WALK_REARM))) walkArmed = true;
   const zone = zones.find((z) => z.inside(x, y, 0));
   if (!zone) return;
   if (!walkArmed || busy || !game.isWalking) return;
@@ -774,7 +786,6 @@ export function checkWalkThrough(): void {
   // sul tappeto dell'uscita il menu dei posti si apre (non si richiude se è già aperto)
   if (zone.key === 'exitHouse' && game.view.isOutsideMenuOpen) return;
   game.activeTargetProp = zone.key;
-  if (zone.key !== 'exitHouse') arrivedWalking = true;
   void interactWith(zone.key, getCurrentFurnitureMap()[zone.key]);
 }
 

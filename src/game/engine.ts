@@ -78,7 +78,7 @@ import type { OnlinePlayer } from './network-model.js';
 import { LAB_WALL_Y } from './data/catalogues.js';
 import { clerkLines } from './clerks.js';
 import { facadeFootprint } from './render/facades.js';
-import { checkWalkThrough, doorGapsHere, roomBounds } from './interactions.js';
+import { checkWalkThrough, doorGapsHere, openGapsHere, roomBounds } from './interactions.js';
 import { clampToRoom, doorwayAt } from './door-walk-rules.js';
 
 /**
@@ -219,7 +219,7 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
       game.playerPos.x + game.moveRight * speed * delta,
       game.playerPos.y - game.moveForward * speed * delta,
       roomBounds(),
-      doorGapsHere(),
+      openGapsHere(),
     );
     if (stuck || !collidesAt(nx, game.playerPos.y, obstacles)) game.playerPos.x = nx;
     if (stuck || !collidesAt(game.playerPos.x, ny, obstacles)) game.playerPos.y = ny;

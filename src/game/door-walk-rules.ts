@@ -92,6 +92,22 @@ export function crossedDoor(
   return null;
 }
 
+/** Se il personaggio è entro `m` dal vano di una delle porte. */
+export function nearDoor(
+  x: number,
+  y: number,
+  b: RoomBounds,
+  gaps: readonly DoorGap[],
+  m: number,
+): boolean {
+  return gaps.some((g) => {
+    const across = g.axis === 'x' ? y : x;
+    const along = g.axis === 'x' ? x : y;
+    const fromWall = (wallOf(b, g).wall - along) * g.dir;
+    return Math.abs(across - g.center) <= g.half + m && fromWall < WALL_MARGIN + m;
+  });
+}
+
 /** La porta nel cui vano sta il personaggio (oltre il bordo normale della stanza), se c'è. */
 export function doorwayAt(
   x: number,
