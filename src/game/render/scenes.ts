@@ -1229,9 +1229,14 @@ export function drawStaticScene(st?: GameValue, hour?: GameValue): GameValue {
   const r = cameraRange(s);
   const W: number = game.view.canvas.width,
     H: number = game.view.canvas.height;
+  // anche la misura della stanza: uno sfondo disegnato con i bordi di un altro ambiente non resta
   const key: GameValue = [
     game.view.activeEnvironment,
     game.currentRoomIdx,
+    game.X0,
+    game.X1,
+    game.Y0,
+    game.Y1,
     W,
     H,
     s,
@@ -1484,27 +1489,43 @@ export function wallSafe(d?: GameValue, t?: GameValue): GameValue {
     top = 48;
   const room: GameValue = game.roomsState[game.currentRoomIdx ?? -1];
   const level2 = safeLevel(room?.economy?.ownedFurniture) >= 2;
-  // ombra sul muro attorno al blocco
-  ctx.fillStyle = 'rgba(0,0,0,0.3)';
-  ctx.fillRect(u - size / 2 - 4, top - 2, size + 6, size + 8);
+  // ombra sul muro, sotto e dietro il blocco
+  ctx.fillStyle = 'rgba(0,0,0,0.25)';
+  ctx.fillRect(u - size / 2 - 3, top - 1, size + 8, size + 9);
   // dal piano del muro alle coordinate della stanza
   const H: number = game.ENV_STYLE.PLAYER_ROOM?.wallH || 130;
   resetPlane();
-  const depth = 12,
-    z0 = H - top - size,
-    x = game.X0 + depth / 2,
+  const z0 = H - top - size,
     y = SAFE_SPOT.y;
-  const steel = level2 ? '#374151' : '#6b7785';
-  // telaio (dorato per la cassaforte livello 2) e corpo
-  box(x, y, depth - 2, size + 6, size + 6, level2 ? '#c9a227' : '#4b5563', { z0: z0 - 3 });
-  const b: GameValue = box(x + 1, y, depth, size, size, steel, { z0 });
-  onFace(b, 'right', (W: number, FH: number): void => {
+  // corpo che sporge dal muro (con il bordino dorato al livello 2) e porta davanti, un po' più piccola
+  const body: GameValue = box(
+    game.X0 + 5,
+    y,
+    10,
+    size + 6,
+    size + 6,
+    level2 ? '#a07818' : '#3f4854',
+    {
+      z0: z0 - 3,
+    },
+  );
+  onFace(body, 'right', (W: number, FH: number): void => {
+    ctx.fillStyle = level2 ? '#e3b93a' : '#4b5563';
+    ctx.fillRect(0, 0, W, FH);
+    ctx.fillStyle = level2 ? 'rgba(90,60,0,0.35)' : 'rgba(0,0,0,0.35)';
+    ctx.fillRect(2, 2, W - 4, FH - 4);
+  });
+  const door: GameValue = box(game.X0 + 11, y, 2, size, size, level2 ? '#9c7a1c' : '#6b7785', {
+    z0,
+  });
+  onFace(door, 'right', (W: number, FH: number): void => {
     const g = ctx.createLinearGradient(0, 0, W, FH);
-    g.addColorStop(0, level2 ? '#6b7280' : '#9aa5b1');
-    g.addColorStop(1, level2 ? '#1f2937' : '#4b5563');
+    // livello 2: tutta d'oro
+    g.addColorStop(0, level2 ? '#f6dc84' : '#9aa5b1');
+    g.addColorStop(1, level2 ? '#a8801e' : '#4b5563');
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, W, FH);
-    ctx.strokeStyle = 'rgba(0,0,0,0.45)';
+    ctx.strokeStyle = level2 ? 'rgba(90,60,0,0.5)' : 'rgba(0,0,0,0.45)';
     ctx.lineWidth = 1;
     ctx.strokeRect(3, 3, W - 6, FH - 6);
     if (level2) drawSafeKeypad(ctx, 0, 0, size);
@@ -1517,10 +1538,12 @@ export function wallSafe(d?: GameValue, t?: GameValue): GameValue {
     ctx.fill();
   });
   // cerniere dal lato verso il fondo e maniglia che sporge dalla porta
-  const front = game.X0 + depth + 1;
+  const front = game.X0 + 12;
   for (const k of [0.25, 0.75])
-    box(front + 1, y + size / 2 - 1, 2, 3, 7, '#1f2937', { z0: z0 + size * k - 3.5 });
-  box(front + 2, y - size * 0.3, 4, 3, size * 0.4, level2 ? '#e3c565' : '#d1d5db', {
+    box(front + 1, y + size / 2 - 1, 2, 3, 7, level2 ? '#6b4f12' : '#1f2937', {
+      z0: z0 + size * k - 3.5,
+    });
+  box(front + 2, y - size * 0.3, 4, 3, size * 0.4, level2 ? '#fdf3c0' : '#d1d5db', {
     z0: z0 + size * 0.3,
   });
   wallPlane('left', H);
@@ -1576,7 +1599,7 @@ function drawSafeKeypad(
   size: number,
 ): void {
   const kx = left + 6,
-    ky = top + 7,
+    ky = top + 11,
     kw = size * 0.6;
   ctx.fillStyle = '#0f172a';
   ctx.fillRect(kx, ky, kw, 8);
@@ -1588,15 +1611,16 @@ function drawSafeKeypad(
   for (let i = 0; i < 6; i++) {
     const bx = kx + (i % 3) * (kb + 2),
       by = ky + 11 + Math.floor(i / 3) * (kb * 0.8 + 2);
-    ctx.fillStyle = i < 5 ? '#e5e7eb' : '#c9a227';
+    ctx.fillStyle = i < 5 ? '#e5e7eb' : '#22a35a';
     ctx.fillRect(bx, by, kb, kb * 0.8);
-    ctx.fillStyle = '#111827';
+    ctx.fillStyle = i < 5 ? '#111827' : '#ffffff';
     ctx.font = 'bold 5px sans-serif';
     ctx.fillText(i < 5 ? String(i + 1) : 'OK', bx + kb / 2, by + kb * 0.55);
   }
-  ctx.fillStyle = '#c9a227';
+  // in cima, sopra display e tasti: sulla porta d'oro la scritta è color bronzo
+  ctx.fillStyle = '#5b4210';
   ctx.font = 'bold 5px sans-serif';
-  ctx.fillText('LV 2', left + size / 2, top + size - 3);
+  ctx.fillText('LV 2', kx + kw / 2, top + 8);
 }
 
 /** Livello 1: manopola con le tacche. */
