@@ -1,5 +1,15 @@
 // Come si disegna ogni cosa della scena: mobili (per tipo), oggetti di scena (per `kind`) e
 // decorazioni a parete, fisse o che si muovono. Si registrano una volta all'avvio.
+import {
+  drawBarrierTapeProp,
+  drawBricksProp,
+  drawConeProp,
+  drawCraneProp,
+  drawMixerProp,
+  drawSandPileProp,
+  drawScaffoldProp,
+  drawWheelbarrowProp,
+} from './construction.js';
 import { MOONBASE_DRAW, MOONBASE_INSIDE_DRAW } from './moonbase.js';
 import { drawGoldStatue, drawJukebox } from './limited-props.js';
 import {
@@ -23,13 +33,10 @@ import {
   drawBathmatProp,
   drawBed,
   drawBenchProp,
-  drawBricksProp,
   drawChefStoveProp,
-  drawConeProp,
   drawConsoleProp,
   drawCoolerProp,
   drawCounter,
-  drawCraneProp,
   drawDesk,
   drawDinnerTableProp,
   drawDiscoBallProp,
@@ -44,7 +51,6 @@ import {
   drawJukeboxProp,
   drawLamp,
   drawMedCabinetProp,
-  drawMixerProp,
   drawNightstand,
   drawOfficeDeskProp,
   drawPalmProp,
@@ -219,6 +225,10 @@ export function registerDrawers(): void {
     bricks: drawBricksProp,
     mixer: drawMixerProp,
     cone: drawConeProp,
+    barrierTape: drawBarrierTapeProp,
+    scaffold: drawScaffoldProp,
+    wheelbarrow: drawWheelbarrowProp,
+    sandPile: drawSandPileProp,
     hospitalBed: drawHospitalBedProp,
     ivStand: drawIvStandProp,
     heartMonitor: drawHeartMonitorProp,

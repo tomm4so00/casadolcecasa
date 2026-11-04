@@ -7,7 +7,14 @@ import { game } from './context.js';
 const BASE_X = 200;
 const BASE_Y = 180;
 /** Quanto si allarga ogni ambiente rispetto alla misura di base; mobili e decorazioni lo seguono. */
-const ENV_GROW: Record<string, number> = { SALOON: 1.25, KITCHEN: 1.25 };
+const ENV_GROW: Record<string, number> = {
+  SALOON: 1.25,
+  KITCHEN: 1.25,
+  lavoro_cantiere: 1.3,
+  lavoro_ospedale: 1.3,
+  lavoro_ristorante: 1.3,
+  lavoro_ufficio: 1.3,
+};
 /** Ambienti con una misura propria e gli oggetti già sistemati a mano (metà larghezza e profondità). */
 const ENV_HALF: Record<string, { x: number; y: number }> = {
   CORTILE: { x: 480, y: 220 },
@@ -37,6 +44,11 @@ function spreadItems(items: GameValue[], k: number): void {
   for (const it of items) {
     if (typeof it?.x === 'number') it.x = spread(it.x, BASE_X, k);
     if (typeof it?.y === 'number') it.y = spread(it.y, BASE_Y, k);
+    // estremi di ciò che va da un punto a un altro (il nastro tra i coni)
+    if (typeof it?.ax === 'number') it.ax = spread(it.ax, BASE_X, k);
+    if (typeof it?.bx === 'number') it.bx = spread(it.bx, BASE_X, k);
+    if (typeof it?.ay === 'number') it.ay = spread(it.ay, BASE_Y, k);
+    if (typeof it?.by === 'number') it.by = spread(it.by, BASE_Y, k);
   }
 }
 
@@ -50,6 +62,9 @@ export function growSceneData(): void {
   for (const [env, k] of Object.entries(ENV_GROW)) {
     if (maps[env]) spreadItems(Object.values(maps[env]), k);
     spreadItems(game.ENV_DECOR[env] || [], k);
+    spreadItems(game.ENV_PROPS[env] || [], k);
+    // nei lavori anche i punti di consegna
+    if (env.startsWith('lavoro_')) spreadItems(game.WORK_JOBS[env.slice(7)]?.targets || [], k);
     const st: GameValue = game.ENV_STYLE[env];
     if (!st) continue;
     for (const side of Object.keys(st.decor || {})) for (const d of st.decor[side]) d.u *= k;

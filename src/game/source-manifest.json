@@ -1091,27 +1091,27 @@
     },
     {
       "name": "drawCraneProp",
-      "module": "render/objects",
+      "module": "render/construction",
       "line": 4488
     },
     {
       "name": "brickPattern",
-      "module": "render/objects",
+      "module": "render/construction",
       "line": 4509
     },
     {
       "name": "drawBricksProp",
-      "module": "render/objects",
+      "module": "render/construction",
       "line": 4517
     },
     {
       "name": "drawMixerProp",
-      "module": "render/objects",
+      "module": "render/construction",
       "line": 4524
     },
     {
       "name": "drawConeProp",
-      "module": "render/objects",
+      "module": "render/construction",
       "line": 4537
     },
     {

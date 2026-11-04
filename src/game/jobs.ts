@@ -7,7 +7,8 @@ import { collidesAt, getSolidObstacles } from './engine.js';
 import { toast } from './missions.js';
 import { sfx } from './audio.js';
 import { isoProject, isoScale } from './render/primitives.js';
-import { box, ellipseShadow } from './render/objects.js';
+import { ellipseShadow } from './render/objects.js';
+import { drawBeamTarget, drawPanelTarget } from './render/construction.js';
 import { openDialog } from './interface.js';
 import { nextPayMessage } from './job-pay.js';
 export function mgFlash(ok?: GameValue): GameValue {
@@ -81,8 +82,8 @@ export function mgSpawnTask(..._args: GameValue[]): GameValue {
         y: GameValue = 0,
         ok: GameValue = false;
       for (let n: GameValue = 0; n < 300 && !ok; n++) {
-        x = -150 + Math.random() * 300;
-        y = -105 + Math.random() * 230;
+        x = game.X0 + 50 + Math.random() * (game.X1 - game.X0 - 100);
+        y = game.Y0 + 75 + Math.random() * (game.Y1 - game.Y0 - 130);
         ok =
           !collidesAt(x, y, obstacles) &&
           Math.hypot(x - game.playerPos.x, y - game.playerPos.y) > 45 &&
@@ -215,10 +216,8 @@ export function drawWorkItem(o?: GameValue, t?: GameValue): GameValue {
 }
 
 export function drawWorkTarget(tg?: GameValue): GameValue {
-  if (tg.draw === 'beam') {
-    box(tg.x, tg.y, tg.w, tg.h, 12, '#8d5a2b');
-    box(tg.x, tg.y, tg.w - 6, 5, 2, '#a9743a', { z0: 12 });
-  } else if (tg.draw === 'panel') box(tg.x, tg.y, tg.w, tg.h, 38, '#95a5a6', { top: '#bdc3c7' });
+  if (tg.draw === 'beam') drawBeamTarget(tg);
+  else if (tg.draw === 'panel') drawPanelTarget(tg);
 }
 
 export function drawTargetRing(tg?: GameValue, t?: GameValue): GameValue {
