@@ -274,11 +274,10 @@
   >
     ⬅️ Indietro
   </button>
-
-  <button class="btn-pop btn-pop-alt hidden" id="btn-act-move" data-action="startMovingFurniture">
-    🖐️ Sposta Mobile
-  </button>
 </div>
+
+<!-- nella propria stanza: accende la modalità Arreda, in cui vicino ai mobili c'è solo "Sposta" -->
+<button id="btn-arrange" class="hidden" data-action="toggleArrange">🛠️ Arreda</button>
 
 <button
   id="btn-place-furniture"
@@ -814,6 +813,15 @@
       <div class="browser-dot"></div>
       <div class="browser-dot"></div>
       <div class="browser-url">🗨️ Chat di tutti i giocatori</div>
+      <!-- la chiusura sta in alto, lontana da Invia: in basso si premeva per sbaglio -->
+      <button
+        class="browser-close"
+        data-action="closeGlobalChat"
+        title="Chiudi"
+        aria-label="Chiudi"
+      >
+        ✕
+      </button>
     </div>
     <div
       id="gchat-list"
@@ -844,7 +852,6 @@
         style="flex: 1; min-width: 0"
       />
       <button class="btn-buy" style="background: #2e86de" data-action="sendChat">Invia</button>
-      <button class="btn-buy" style="background: #57606f" data-action="closeGlobalChat">✕</button>
     </div>
   </div>
 </div>

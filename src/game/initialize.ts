@@ -192,6 +192,7 @@ export function initializeGame() {
     arrowright: false,
   };
   game.isMovingFurnitureMode = false;
+  game.arrangeMode = false;
   game.isDraggingFurniture = false;
   game.movingPropKey = null;
   game.activeTargetProp = null;

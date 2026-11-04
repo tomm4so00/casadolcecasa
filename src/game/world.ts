@@ -47,7 +47,13 @@ import { buyLimited, limitedLeft, myCopy } from './limited.js';
 import {} from './arcade.js';
 import {} from './painting-titles.js';
 import { toast } from './missions.js';
-import { placeFurniture, rotateFurniture, returnHomeFromActivity } from './character.js';
+import {
+  placeFurniture,
+  rotateFurniture,
+  returnHomeFromActivity,
+  setArrangeMode,
+  startMovingFurniture,
+} from './character.js';
 import { footprintOf, isoProject, isoScale } from './render/primitives.js';
 import { mgStart } from './jobs.js';
 import { promptSetSafePin } from './needs.js';
@@ -66,7 +72,7 @@ import {
   recordShift,
   shiftsLeftToday,
 } from './job-pay.js';
-import { interactWith, promptFor } from './interactions.js';
+import { interactWith, paintingTitleOf, promptFor } from './interactions.js';
 // Il proprietario può cambiare la combinazione della propria cassaforte quando vuole
 export async function changeSafePin(..._args: GameValue[]): Promise<GameValue> {
   if (!hasRoom() || !isMyRoomNow()) return;
@@ -345,7 +351,12 @@ export function getCurrentFurnitureMap(..._args: GameValue[]): SceneMap {
 }
 
 export function checkProximity(..._args: GameValue[]): GameValue {
+  const mine = isMyRoomNow();
+  if (!mine && game.arrangeMode) setArrangeMode(false);
+  dom('btn-arrange').classList.toggle('hidden', !mine || game.isMovingFurnitureMode);
   if (game.isMovingFurnitureMode) return;
+  // in modalità Arreda contano solo i mobili che si possono spostare
+  const arrange: boolean = game.arrangeMode;
   if (game.fainted || game.rocketTrip) {
     // svenuto o a bordo del razzo: niente pulsanti
     dom('pop-interaction').classList.add('hidden');
@@ -356,6 +367,7 @@ export function checkProximity(..._args: GameValue[]): GameValue {
   let bestDist: GameValue = 65;
   Object.keys(map).forEach((key?: GameValue): GameValue => {
     let obj: GameValue = map[key];
+    if (arrange && (!obj.moveable || (key === 'bed' && game.player.isSleeping))) return;
     // gli oggetti molto grandi (il razzo) si raggiungono anche dal bordo: `reach` allunga la portata
     let d: GameValue =
       Math.hypot(game.playerPos.x - obj.x, game.playerPos.y - obj.y) - (obj.reach || 0);
@@ -365,7 +377,7 @@ export function checkProximity(..._args: GameValue[]): GameValue {
     } // l'oggetto più vicino
   });
   // cane e gatto che girano per la propria stanza
-  const pets = petSpots();
+  const pets = arrange ? {} : petSpots();
   for (const key of Object.keys(pets)) {
     const d = Math.hypot(game.playerPos.x - pets[key].x, game.playerPos.y - pets[key].y);
     if (d < Math.min(bestDist, 45)) {
@@ -374,9 +386,9 @@ export function checkProximity(..._args: GameValue[]): GameValue {
     }
   }
   // seduti sul divano il pulsante resta quello per alzarsi
-  if (onSofa() && map.sofa) found = 'sofa';
+  if (onSofa() && map.sofa && !arrange) found = 'sofa';
   // panchine e fontana del cortile, carretto dei gelati (seduti si resta sulla propria panchina)
-  const spots = funSpots();
+  const spots = arrange ? {} : funSpots();
   for (const key of Object.keys(spots)) {
     const sp = spots[key];
     const d = Math.hypot(game.playerPos.x - sp.x, game.playerPos.y - sp.y) - sp.reach;
@@ -386,7 +398,6 @@ export function checkProximity(..._args: GameValue[]): GameValue {
     }
   }
   const pop: GameValue = dom('pop-interaction');
-  const btnMove: GameValue = dom('btn-act-move');
   const btnMain: GameValue = dom('btn-act-main');
   const btnSub: GameValue = dom('btn-act-sub');
   renderOutsideMenu();
@@ -396,22 +407,16 @@ export function checkProximity(..._args: GameValue[]): GameValue {
     let item: GameValue = map[found] || spots[found] || pets[found];
     // vicino a qualcosa che non è l'uscita del condominio il menu per uscire si chiude
     if (found !== 'exitHouse') game.view.isOutsideMenuOpen = false;
-    const p = promptFor(found, item);
+    const name = String(found).startsWith('painting')
+      ? paintingTitleOf(found) || item.name
+      : item.name;
+    const p = arrange ? { text: `🖐️ Sposta ${name}` } : promptFor(found, item);
     btnMain.innerText = p.text;
     btnMain.classList.toggle('btn-pop-locked', !!p.locked);
     if (p.sub) {
       btnSub.innerText = p.sub;
       btnSub.classList.remove('hidden');
     } else btnSub.classList.add('hidden');
-    if (item.moveable && isMyRoomNow()) {
-      if (found === 'bed' && game.player.isSleeping) {
-        btnMove.classList.add('hidden');
-      } else {
-        btnMove.classList.remove('hidden');
-      }
-    } else {
-      btnMove.classList.add('hidden');
-    }
   } else {
     game.activeTargetProp = null;
     if (!game.view.isOutsideMenuOpen) {
@@ -659,6 +664,10 @@ export async function handleObjectInteract(..._args: GameValue[]): Promise<void>
   const key: string | null = game.activeTargetProp;
   if (!key) return;
   if (game.showerAnim || game.bathAnim || game.rocketTrip) return;
+  if (game.arrangeMode && isMyRoomNow()) {
+    startMovingFurniture();
+    return;
+  }
   await interactWith(key, getCurrentFurnitureMap()[key]);
 }
 

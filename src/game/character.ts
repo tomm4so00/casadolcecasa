@@ -497,6 +497,15 @@ export async function handleSubAction(..._args: GameValue[]): Promise<void> {
   }
 }
 
+/** Accende o spegne la modalità Arreda (solo nella propria stanza). */
+export function setArrangeMode(on: boolean): void {
+  game.arrangeMode = on;
+  const b: GameValue = dom('btn-arrange');
+  b.classList.toggle('on', on);
+  b.textContent = on ? '✅ Fatto' : '🛠️ Arreda';
+  if (on) toast('🛠️ Avvicinati a un mobile per spostarlo', 2500);
+}
+
 export function startMovingFurniture(..._args: GameValue[]): GameValue {
   if (!game.activeTargetProp) return;
   game.isMovingFurnitureMode = true;

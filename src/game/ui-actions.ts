@@ -1,3 +1,4 @@
+import { game } from './context.js';
 import { openArtSite, setArtTab } from './art-market.js';
 import { leaveDogHome } from './pets.js';
 import { openProjects } from './projects.js';
@@ -11,6 +12,7 @@ import {
   rotateFurniture,
   returnHomeFromActivity,
   startMovingFurniture,
+  setArrangeMode,
 } from './character.js';
 import { toggleMusic, toggleSound } from './audio.js';
 import { openLeaderboard, openMissions } from './missions.js';
@@ -59,6 +61,7 @@ export const uiActions: Readonly<Record<string, UiAction>> = {
   goToLaunchSite: () => goToLaunchSite(),
   handleJobMenuAction: () => handleJobMenuAction(),
   startMovingFurniture: () => startMovingFurniture(),
+  toggleArrange: () => setArrangeMode(!game.arrangeMode),
   placeFurniture: () => placeFurniture(),
   rotateFurniture: () => rotateFurniture(),
   standUp: () => standUp(),

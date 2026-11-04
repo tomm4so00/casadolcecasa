@@ -242,9 +242,7 @@ const PLAYER_ROOM: Place = {
     if (key === 'wardrobe' && !mine && visitedLimitedClothes())
       return { text: `💎 ${visitedLimitedClothes()}` };
     if (String(key).startsWith('painting')) {
-      const name = quotedTitle(
-        roomPaintings(game.roomsState[game.currentRoomIdx ?? -1])[slotOfKey(key) || 'p1'],
-      );
+      const name = paintingTitleOf(key);
       return { text: mine ? `🖼️ ${name || item.name}` : `🖼️ Ammira ${name || 'il quadro'}` };
     }
     if (key === 'tv') return { text: '📺 Guarda la TV' };
@@ -279,11 +277,7 @@ const PLAYER_ROOM: Place = {
     } else if (isLimitedId(key)) {
       const n = visitedCopy(key);
       if (!isMyRoomNow() && n) await makeOffer(key, n);
-      else
-        toast(
-          `💎 ${item?.name || ''}: edizione limitata. Puoi spostarlo con 🖐️ Sposta Mobile.`,
-          4000,
-        );
+      else toast(`💎 ${item?.name || ''}: edizione limitata. Puoi spostarlo con 🛠️ Arreda.`, 4000);
     } else if (key === 'desk') openComputerShopModal();
     else if (PET_OF_KEY[key] && isMyRoomNow()) await feed(PET_OF_KEY[key]);
     else if (key === 'sofa') toggleSofa(item);
@@ -293,7 +287,7 @@ const PLAYER_ROOM: Place = {
       if (isMyRoomNow()) await managePainting(key);
       else
         toast(
-          `🖼️ ${quotedTitle(roomPaintings(game.roomsState[game.currentRoomIdx ?? -1])[slotOfKey(key) || 'p1']) || 'Un quadro'}, appeso nella stanza di ${game.roomsState[game.currentRoomIdx ?? -1]?.owner || 'chi abita qui'}.`,
+          `🖼️ ${paintingTitleOf(key) || 'Un quadro'}, appeso nella stanza di ${game.roomsState[game.currentRoomIdx ?? -1]?.owner || 'chi abita qui'}.`,
           4000,
         );
     }
@@ -707,4 +701,11 @@ export async function interactWith(key: string, item: GameValue): Promise<void> 
   const place = placeHere();
   if (place) await place.act(key, item);
   else if (key === 'doorExit') backToSaloon();
+}
+
+/** Titolo (tra virgolette) del quadro appeso al posto `key` della stanza in cui si è. */
+export function paintingTitleOf(key: string): string {
+  return quotedTitle(
+    roomPaintings(game.roomsState[game.currentRoomIdx ?? -1])[slotOfKey(key) || 'p1'],
+  );
 }

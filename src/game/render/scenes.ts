@@ -7,6 +7,7 @@ import { cameraPx, cameraRange, cameraScale } from '../camera.js';
 import { isoProject, isoScale, mixColor, poly, rnd, setPlane } from './primitives.js';
 import { resetPlane } from './objects.js';
 import { getMyRoomMap, isMyRoomNow } from '../saves.js';
+import { paintingTitle } from '../painting-titles.js';
 import { SAFE_SPOT } from '../room-layout.js';
 import {
   PAINT_CELLS,
@@ -1507,6 +1508,22 @@ function drawHungPainting(d: GameValue, code: string, spot: GameValue): void {
   ctx.strokeStyle = 'rgba(0,0,0,0.3)';
   ctx.lineWidth = 1;
   ctx.strokeRect(u, top, w, h);
+  // targhetta d'ottone col titolo, sotto la cornice
+  const title = paintingTitle(code);
+  if (!title) return;
+  ctx.font = 'bold 6px sans-serif';
+  const tw = Math.min(w + 6, ctx.measureText(title).width + 8);
+  const py = top + h + 9;
+  ctx.fillStyle = '#c9a227';
+  ctx.fillRect(center - tw / 2, py, tw, 9);
+  ctx.strokeStyle = 'rgba(0,0,0,0.35)';
+  ctx.strokeRect(center - tw / 2, py, tw, 9);
+  ctx.fillStyle = '#3d2b12';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(title, center, py + 4.8, tw - 4);
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'alphabetic';
 }
 
 // Cassaforte incassata nella parete di sinistra.

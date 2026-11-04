@@ -88,6 +88,8 @@ interface GameContext {
   isSprinting: boolean;
   keysPressed: GameValue;
   isMovingFurnitureMode: boolean;
+  /** modalità Arreda: vicino ai mobili il pulsante è solo "Sposta" */
+  arrangeMode: boolean;
   isDraggingFurniture: boolean;
   movingPropKey: string | null;
   activeTargetProp: GameValue;

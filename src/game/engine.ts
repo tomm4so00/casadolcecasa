@@ -317,7 +317,8 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
   if (!game.ENV_PROPS[game.view.activeEnvironment]) {
     Object.keys(map).forEach((k?: GameValue): GameValue => {
       const item: GameValue = map[k];
-      let label: GameValue = item.name;
+      // i quadri hanno il titolo sulla targhetta sotto la cornice
+      let label: GameValue = String(k).startsWith('painting') ? '' : item.name;
       if (game.view.activeEnvironment === 'SALOON' && item.roomIdx !== undefined) {
         const gi: GameValue = game.gRoomIdx(item);
         const room: GameValue = game.roomsState[gi];
