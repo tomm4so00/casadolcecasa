@@ -171,3 +171,14 @@ describe('Antiquariato al posto delle Auto elettriche', () => {
     expect(r.sims_interactions.$pid.$key['.validate']).toContain('|bizRetired');
   });
 });
+
+describe('regole della borsa', () => {
+  it('il database accetta le quotazioni di ogni attività della borsa e la spinta del gioco', () => {
+    const r = JSON.parse(fs.readFileSync('firebase/database.rules.proposed.json', 'utf8')).rules;
+    const asset = r.sims_market.quotes.$asset;
+    for (const b of BUSINESSES) expect(asset['.validate']).toContain(`$asset === '${b.id}'`);
+    expect(asset.act['.validate']).toContain('newData.isNumber()');
+    // gli investimenti nelle stanze accettano ogni attività
+    for (const b of BUSINESSES) expect(r.sims_rooms_state.$room.economy.invest[b.id]).toBeDefined();
+  });
+});

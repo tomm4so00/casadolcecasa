@@ -90,10 +90,18 @@ async function main() {
     );
     reference.off('value', listener);
     await maintainGame(getDatabase(app), scheduledAt);
-    await cleanOldActivity(getDatabase(app), scheduledAt);
-    // attività tolte dalla borsa: le quote ancora in giro diventano soldi in cassaforte
-    const refunds = await retireBusinesses(getDatabase(app), scheduledAt);
-    if (refunds) console.log(`Retired business holdings refunded: ${refunds}`);
+    // pulizia dei contatori e rimborsi delle attività tolte: un errore qui non blocca la borsa
+    try {
+      await cleanOldActivity(getDatabase(app), scheduledAt);
+      // attività tolte dalla borsa: le quote ancora in giro diventano soldi in cassaforte
+      const refunds = await retireBusinesses(getDatabase(app), scheduledAt);
+      if (refunds) console.log(`Retired business holdings refunded: ${refunds}`);
+    } catch (error) {
+      console.log(
+        'Activity cleanup or refunds skipped:',
+        (error as { code?: string }).code || 'unknown error',
+      );
+    }
     // Avvisi sul telefono a chi sta per morire per assenza; un errore qui non blocca il resto.
     try {
       const messaging = getMessaging(app);

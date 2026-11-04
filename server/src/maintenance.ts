@@ -365,10 +365,14 @@ export async function cleanOldActivity(
   return stale.length;
 }
 
+/** Massimo che può stare in una cassaforte (regole del database). */
+const VAULT_MAX = 1_000_000;
+
 /**
  * Attività tolte dalla borsa: chi ci aveva investito riceve in cassaforte il valore delle sue quote
  * all'ultima quotazione (senza commissione; se la quotazione manca, quanto aveva versato) e un
  * avviso. Le quote spariscono dalla stanza, quindi ogni giocatore viene pagato una volta sola.
+ * Si lavora una stanza alla volta: una stanza con dati non validi non blocca le altre.
  */
 export async function retireBusinesses(
   database: MaintenanceDatabase,
@@ -383,51 +387,70 @@ export async function retireBusinesses(
     const p = record(q) ? Number(q.price) : 0;
     return Number.isFinite(p) && p > 0 ? p : 0;
   };
-  const rooms = database.ref('sims_rooms_state');
-  await rooms.get();
-  let paid: { player: string; biz: string; amount: number }[] = [];
-  const result = await rooms.transaction((value) => {
-    paid = [];
-    if (!record(value)) return undefined;
-    const next = structuredClone(value);
-    let changed = false;
-    for (const room of Object.values(next)) {
-      if (!record(room) || !record(room.economy) || !record(room.economy.invest)) continue;
-      const invest = room.economy.invest;
-      for (const biz of retired) {
-        const holding = invest[biz];
-        if (holding === undefined) continue;
-        const units = record(holding) ? Number(holding.units) || 0 : 0;
-        const cost = record(holding) ? Number(holding.cost) || 0 : 0;
-        const price = lastPrice(biz);
-        const amount = Math.max(0, Math.floor(price > 0 ? units * price : cost));
-        delete invest[biz];
-        changed = true;
-        if (amount < 1) continue;
-        const vault = Number(room.vaultMoney);
-        room.vaultMoney = (Number.isSafeInteger(vault) ? vault : 0) + amount;
-        if (typeof room.ownerId === 'string') paid.push({ player: room.ownerId, biz, amount });
+  const all = (await database.ref('sims_rooms_state').get()).val();
+  if (!record(all)) return 0;
+  const holds = (room: unknown): boolean =>
+    record(room) &&
+    record(room.economy) &&
+    record(room.economy.invest) &&
+    retired.some(
+      (biz) => (room.economy as { invest: Record<string, unknown> }).invest[biz] !== undefined,
+    );
+  let refunded = 0;
+  for (const [index, room] of Object.entries(all)) {
+    if (!holds(room)) continue;
+    let paid: { player: string; biz: string; amount: number }[] = [];
+    try {
+      const result = await database.ref('sims_rooms_state/' + index).transaction((value) => {
+        paid = [];
+        if (!holds(value)) return undefined;
+        const next = structuredClone(value) as Record<string, unknown>;
+        const invest = (next.economy as { invest: Record<string, unknown> }).invest;
+        let vault = Number(next.vaultMoney);
+        if (!Number.isSafeInteger(vault)) vault = 0;
+        for (const biz of retired) {
+          const holding = invest[biz];
+          if (holding === undefined) continue;
+          const units = record(holding) ? Number(holding.units) || 0 : 0;
+          const cost = record(holding) ? Number(holding.cost) || 0 : 0;
+          const price = lastPrice(biz);
+          const amount = Math.max(0, Math.floor(price > 0 ? units * price : cost));
+          // la cassaforte è piena: le quote restano dove sono, si riprova al prossimo giro
+          if (vault + amount > VAULT_MAX) continue;
+          delete invest[biz];
+          vault += amount;
+          if (amount >= 1 && typeof next.ownerId === 'string')
+            paid.push({ player: next.ownerId, biz, amount });
+        }
+        next.vaultMoney = vault;
+        return next;
+      });
+      if (!result.committed) continue;
+    } catch (error) {
+      console.log(
+        'Retired business refund skipped for a room:',
+        (error as { code?: string }).code || 'unknown error',
+      );
+      continue;
+    }
+    refunded += paid.length;
+    for (const p of paid) {
+      const key = now.toString(36) + Math.random().toString(36).slice(2, 6);
+      try {
+        await database.ref(`sims_interactions/${p.player}`).update({
+          [key]: {
+            type: 'bizRetired',
+            from: 'borsa',
+            fromName: 'Borsa',
+            t: now,
+            biz: p.biz,
+            amt: Math.min(p.amount, 1_000_000),
+          },
+        });
+      } catch {
+        // i soldi sono già in cassaforte: l'avviso è solo una cortesia
       }
     }
-    return changed ? next : undefined;
-  });
-  if (!result.committed) return 0;
-  for (const p of paid) {
-    const key = now.toString(36) + Math.random().toString(36).slice(2, 6);
-    try {
-      await database.ref(`sims_interactions/${p.player}`).update({
-        [key]: {
-          type: 'bizRetired',
-          from: 'borsa',
-          fromName: 'Borsa',
-          t: now,
-          biz: p.biz,
-          amt: Math.min(p.amount, 1_000_000),
-        },
-      });
-    } catch {
-      // i soldi sono già in cassaforte: l'avviso è solo una cortesia
-    }
   }
-  return paid.length;
+  return refunded;
 }

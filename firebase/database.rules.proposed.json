@@ -15,7 +15,7 @@
       "quotes": {
         ".validate": "newData.hasChildren(['shop','app','crypto'])",
         "$asset": {
-          ".validate": "($asset === 'shop' || $asset === 'app' || $asset === 'crypto' || $asset === 'pizza' || $asset === 'house' || $asset === 'green' || $asset === 'games' || $asset === 'ev' || $asset === 'space') && newData.hasChildren(['price','log','history'])",
+          ".validate": "($asset === 'shop' || $asset === 'app' || $asset === 'crypto' || $asset === 'pizza' || $asset === 'house' || $asset === 'green' || $asset === 'games' || $asset === 'ev' || $asset === 'space' || $asset === 'antiques') && newData.hasChildren(['price','log','history'])",
           "price": {
             ".validate": "newData.isNumber() && newData.val() >= 0.01 && newData.val() <= 1000000000"
           },
@@ -35,6 +35,9 @@
           },
           "flow": {
             ".validate": "newData.isNumber()"
+          },
+          "act": {
+            ".validate": "newData.isNumber() && newData.val() >= -1 && newData.val() <= 1"
           }
         }
       }
