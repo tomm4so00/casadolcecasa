@@ -149,6 +149,7 @@ interface GameContext {
   moonFurniture: SceneMap;
   growshopFurniture: SceneMap;
   petshopFurniture: SceneMap;
+  collectShopFurniture: SceneMap;
   /** Dentro la base spaziale lunare. */
   moonbaseInsideFurniture: SceneMap;
   /** Cane al guinzaglio che segue il giocatore (null se è a casa). */

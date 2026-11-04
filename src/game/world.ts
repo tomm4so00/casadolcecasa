@@ -73,6 +73,7 @@ import {
   shiftsLeftToday,
 } from './job-pay.js';
 import { interactWith, paintingTitleOf, promptFor } from './interactions.js';
+import { COLLECT_ENV, refillStands } from './collect.js';
 // Il proprietario può cambiare la combinazione della propria cassaforte quando vuole
 export async function changeSafePin(..._args: GameValue[]): Promise<GameValue> {
   if (!hasRoom() || !isMyRoomNow()) return;
@@ -318,6 +319,7 @@ const ENV_MAPS: Record<string, string> = {
   base_lunare: 'moonbaseInsideFurniture',
   growshop: 'growshopFurniture',
   negozio_animali: 'petshopFurniture',
+  collezionismo: 'collectShopFurniture',
   CIMITERO: 'graveMap',
   bar: 'barMap',
   discoteca: 'discoMap',
@@ -606,6 +608,7 @@ const MALL_SHOPS: Record<string, { facade: string; activity: string }> = {
   sala_giochi: { facade: 'shopArcade', activity: 'arcade' },
   growshop: { facade: 'shopGrow', activity: 'growshop' },
   negozio_animali: { facade: 'shopPets', activity: 'petshop' },
+  collezionismo: { facade: 'shopCollect', activity: 'collectshop' },
 };
 
 /** Esce da un negozio e torna nel centro commerciale, davanti alla sua vetrina. */
@@ -916,6 +919,13 @@ export async function doActivity(type?: GameValue): Promise<void> {
     game.view.currentRoomTitle = 'Negozio di Animali 🐾';
     dom('btn-return-home').classList.add('hidden');
     game.playerPos = { x: 0, y: 110 };
+    return;
+  } else if (type === 'collectshop') {
+    game.view.activeEnvironment = COLLECT_ENV;
+    game.view.currentRoomTitle = 'Oggetti da Collezione 🏺';
+    dom('btn-return-home').classList.add('hidden');
+    game.playerPos = { x: 0, y: 110 };
+    void refillStands();
     return;
   } else if (type === 'growshop') {
     game.view.activeEnvironment = 'growshop';

@@ -1551,6 +1551,17 @@ export const PLAYER_ROOM_FURNITURE = {
     moveable: true,
     wallItem: true,
   },
+  // Mensola dei collezionabili: fino a tre pezzi unici; scorre lungo le pareti come i quadri.
+  collectShelf: {
+    x: -75,
+    y: -165,
+    w: 84,
+    h: 8,
+    z: 80,
+    name: 'Mensola dei collezionabili 🏺',
+    moveable: true,
+    wallItem: true,
+  },
   // Cassaforte a muro (parete di sinistra): non si sposta e non ingombra.
   safe: {
     x: -182,
@@ -1836,11 +1847,11 @@ function labWall(): {
   return out;
 }
 
-// Centro commerciale (840×400): le vetrine dei cinque negozi lungo la parete di fondo; avvicinandosi
+// Centro commerciale (970×400): le vetrine dei sette negozi lungo la parete di fondo; avvicinandosi
 // si entra. `enter` è l'attività che porta dentro il negozio.
 export const MALL_FURNITURE = {
   shopFurniture: {
-    x: -325,
+    x: -390,
     y: -189,
     w: 92,
     h: 22,
@@ -1851,7 +1862,7 @@ export const MALL_FURNITURE = {
     moveable: false,
   },
   shopClothes: {
-    x: -195,
+    x: -260,
     y: -189,
     w: 92,
     h: 22,
@@ -1862,7 +1873,7 @@ export const MALL_FURNITURE = {
     moveable: false,
   },
   shopPets: {
-    x: -65,
+    x: -130,
     y: -189,
     w: 92,
     h: 22,
@@ -1873,7 +1884,7 @@ export const MALL_FURNITURE = {
     moveable: false,
   },
   shopGrow: {
-    x: 65,
+    x: 0,
     y: -189,
     w: 92,
     h: 22,
@@ -1884,7 +1895,7 @@ export const MALL_FURNITURE = {
     moveable: false,
   },
   shopBetting: {
-    x: 195,
+    x: 130,
     y: -189,
     w: 92,
     h: 22,
@@ -1896,7 +1907,7 @@ export const MALL_FURNITURE = {
   },
   // sala giochi: tre postazioni, una per gioco (Forza 4, Battaglia navale, Riflessi)
   shopArcade: {
-    x: 325,
+    x: 260,
     y: -189,
     w: 92,
     h: 22,
@@ -1904,6 +1915,18 @@ export const MALL_FURNITURE = {
     name: 'Sala Giochi 🕹️',
     shop: 'sala',
     enter: 'arcade',
+    moveable: false,
+  },
+  // oggetti da collezione: cinque espositori con pezzi unici
+  shopCollect: {
+    x: 390,
+    y: -189,
+    w: 92,
+    h: 22,
+    z: 128,
+    name: 'Oggetti da Collezione 🏺',
+    shop: 'collezione',
+    enter: 'collectshop',
     moveable: false,
   },
   doorExit: { x: 0, y: 180, w: 60, h: 15, z: 110, name: 'Uscita 🚪', moveable: false },
@@ -2019,6 +2042,26 @@ export const PETSHOP_FURNITURE = {
     color: '#e67e22',
     moveable: false,
   },
+  doorExit: { x: 0, y: 160, w: 60, h: 15, z: 110, name: 'Torna Fuori 🚪', moveable: false },
+};
+
+// Oggetti da collezione: cinque espositori con un pezzo unico ciascuno (vedi collect.ts) e l'uscita.
+const stand = (i: number, x: number, y: number) => ({
+  x,
+  y,
+  w: 34,
+  h: 34,
+  z: 78,
+  stand: i,
+  name: 'Espositore 🏺',
+  moveable: false,
+});
+export const COLLECT_SHOP_FURNITURE = {
+  colStand0: stand(0, -120, -105),
+  colStand1: stand(1, 0, -120),
+  colStand2: stand(2, 120, -105),
+  colStand3: stand(3, -85, 40),
+  colStand4: stand(4, 85, 40),
   doorExit: { x: 0, y: 160, w: 60, h: 15, z: 110, name: 'Torna Fuori 🚪', moveable: false },
 };
 
@@ -2823,6 +2866,12 @@ export const ENV_DECOR = {
     { kind: 'plant', x: -168, y: 140, w: 26, h: 26, z: 60 },
     { kind: 'plant', x: 168, y: 140, w: 26, h: 26, z: 60 },
   ],
+  collezionismo: [
+    { kind: 'plant', x: -168, y: -160, w: 26, h: 26, z: 60 },
+    { kind: 'plant', x: 168, y: -160, w: 26, h: 26, z: 60 },
+    { kind: 'bookshelf', x: -184, y: 60, w: 22, h: 70, z: 110 },
+    { kind: 'plant', x: 168, y: 140, w: 26, h: 26, z: 60 },
+  ],
   growshop: [
     { kind: 'plant', x: -168, y: -160, w: 26, h: 26, z: 60 },
     { kind: 'plant', x: 168, y: -160, w: 26, h: 26, z: 60 },
@@ -2847,21 +2896,23 @@ export const ENV_DECOR = {
     { kind: 'bench', x: -210, y: 50, w: 50, h: 16 },
     { kind: 'bench', x: 210, y: 50, w: 50, h: 16 },
     // colonne tra le vetrine (con un pezzo di muro in mezzo), con le lampade
-    { kind: 'mallColumn', x: -414, y: -186, w: 12, h: 16, z: 128 },
-    { kind: 'mallColumn', x: -260, y: -186, w: 10, h: 16, z: 128 },
-    { kind: 'mallColumn', x: -130, y: -186, w: 10, h: 16, z: 128 },
-    { kind: 'mallColumn', x: 0, y: -186, w: 10, h: 16, z: 128 },
-    { kind: 'mallColumn', x: 130, y: -186, w: 10, h: 16, z: 128 },
-    { kind: 'mallColumn', x: 260, y: -186, w: 10, h: 16, z: 128 },
-    { kind: 'mallColumn', x: 414, y: -186, w: 12, h: 16, z: 128 },
-    { kind: 'plant', x: -260, y: -152, w: 22, h: 22, z: 55 },
-    { kind: 'plant', x: 260, y: -152, w: 22, h: 22, z: 55 },
-    { kind: 'plant', x: 0, y: -152, w: 22, h: 22, z: 55 },
+    { kind: 'mallColumn', x: -479, y: -186, w: 12, h: 16, z: 128 },
+    { kind: 'mallColumn', x: -325, y: -186, w: 10, h: 16, z: 128 },
+    { kind: 'mallColumn', x: -195, y: -186, w: 10, h: 16, z: 128 },
+    { kind: 'mallColumn', x: -65, y: -186, w: 10, h: 16, z: 128 },
+    { kind: 'mallColumn', x: 65, y: -186, w: 10, h: 16, z: 128 },
+    { kind: 'mallColumn', x: 195, y: -186, w: 10, h: 16, z: 128 },
+    { kind: 'mallColumn', x: 325, y: -186, w: 10, h: 16, z: 128 },
+    { kind: 'mallColumn', x: 479, y: -186, w: 12, h: 16, z: 128 },
+    { kind: 'plant', x: -325, y: -152, w: 22, h: 22, z: 55 },
+    { kind: 'plant', x: 325, y: -152, w: 22, h: 22, z: 55 },
+    { kind: 'plant', x: -65, y: -152, w: 22, h: 22, z: 55 },
+    { kind: 'plant', x: 65, y: -152, w: 22, h: 22, z: 55 },
     // palme nei vasi agli angoli
-    { kind: 'mallPalm', x: -382, y: -95, w: 30, h: 30, z: 110 },
-    { kind: 'mallPalm', x: 382, y: -95, w: 30, h: 30, z: 110 },
-    { kind: 'mallPalm', x: -382, y: 165, w: 30, h: 30, z: 110 },
-    { kind: 'mallPalm', x: 382, y: 165, w: 30, h: 30, z: 110 },
+    { kind: 'mallPalm', x: -447, y: -95, w: 30, h: 30, z: 110 },
+    { kind: 'mallPalm', x: 447, y: -95, w: 30, h: 30, z: 110 },
+    { kind: 'mallPalm', x: -447, y: 165, w: 30, h: 30, z: 110 },
+    { kind: 'mallPalm', x: 447, y: 165, w: 30, h: 30, z: 110 },
     // gelateria e palloncini vicino all'ingresso
     { kind: 'iceCreamCart', x: -140, y: 145, w: 46, h: 24, z: 80, label: 'Gelateria 🍦' },
     { kind: 'balloonStand', x: 140, y: 145, w: 26, h: 26, z: 100, label: 'Palloncini 🎈' },
@@ -2965,12 +3016,14 @@ export const ENV_STYLE = {
     decor: {
       back: [
         { t: 'roomPainting', side: 'back' },
+        { t: 'collectShelf', side: 'back' },
         { t: 'window', u: 200, w: 64, h: 52, curtains: true },
       ],
       left: [
         { t: 'wallSafe', side: 'left' },
         { t: 'rocketPlaque', side: 'left', u: 85 },
         { t: 'roomPainting', side: 'left' },
+        { t: 'collectShelf', side: 'left' },
       ],
     },
     lights: [],
@@ -3017,6 +3070,29 @@ export const ENV_STYLE = {
       { x: -90, y: -100, z: 0, r: 200, color: '210,235,255' },
       { x: 90, y: -60, z: 0, r: 200, color: '210,235,255' },
       { x: 0, y: 90, z: 0, r: 220, color: '235,245,255' },
+    ],
+  },
+  collezionismo: {
+    floor: 'carpet',
+    floorColor: '#5b1a2b',
+    wall: '#22352b',
+    wallStyle: 'plain',
+    trim: '#c9a227',
+    decor: {
+      back: [
+        { t: 'neon', u: 200, text: 'PEZZI UNICI', color: '255,215,120' },
+        { t: 'painting', u: 70, w: 44, h: 34, seed: 31 },
+        { t: 'painting', u: 330, w: 44, h: 34, seed: 32 },
+      ],
+      left: [
+        { t: 'poster', u: 120, text: 'UNA SOLA COPIA', color: '#8e44ad' },
+        { t: 'clock', u: 280 },
+      ],
+    },
+    lights: [
+      { x: -120, y: -100, z: 0, r: 150, color: '255,225,170' },
+      { x: 120, y: -100, z: 0, r: 150, color: '255,225,170' },
+      { x: 0, y: 40, z: 0, r: 220, color: '255,240,210' },
     ],
   },
   negozio_animali: {
@@ -3073,12 +3149,13 @@ export const ENV_STYLE = {
       ],
     },
     lights: [
-      { x: -325, y: -130, z: 0, r: 130, color: '255,190,120' },
-      { x: -195, y: -130, z: 0, r: 130, color: '255,170,215' },
-      { x: -65, y: -130, z: 0, r: 130, color: '255,215,150' },
-      { x: 65, y: -130, z: 0, r: 130, color: '170,255,150' },
-      { x: 195, y: -130, z: 0, r: 130, color: '220,180,255' },
-      { x: 325, y: -130, z: 0, r: 130, color: '90,230,255' },
+      { x: -390, y: -130, z: 0, r: 130, color: '255,190,120' },
+      { x: -260, y: -130, z: 0, r: 130, color: '255,170,215' },
+      { x: -130, y: -130, z: 0, r: 130, color: '255,215,150' },
+      { x: 0, y: -130, z: 0, r: 130, color: '170,255,150' },
+      { x: 130, y: -130, z: 0, r: 130, color: '220,180,255' },
+      { x: 260, y: -130, z: 0, r: 130, color: '90,230,255' },
+      { x: 390, y: -130, z: 0, r: 130, color: '255,225,160' },
       { x: 0, y: 60, z: 0, r: 260, color: '255,245,225' },
       { x: -150, y: 150, z: 0, r: 150, color: '255,235,200' },
       { x: 150, y: 150, z: 0, r: 150, color: '255,235,200' },

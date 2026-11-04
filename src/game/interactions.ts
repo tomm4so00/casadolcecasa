@@ -36,6 +36,7 @@ import {
   wardrobeOffers,
 } from './limited.js';
 import { openArcadeStation } from './arcade.js';
+import { buyFromStand, openShelf, shelfPrompt, standPrompt } from './collect.js';
 import { ARCADE_GAMES, type ArcadeGame, isArcadeGame } from './arcade-rules.js';
 import { quotedTitle } from './painting-titles.js';
 import { roomPaintings, slotOfKey } from './painting-rules.js';
@@ -245,6 +246,7 @@ const PLAYER_ROOM: Place = {
       const name = paintingTitleOf(key);
       return { text: mine ? `🖼️ ${name || item.name}` : `🖼️ Ammira ${name || 'il quadro'}` };
     }
+    if (key === 'collectShelf') return shelfPrompt(mine);
     if (key === 'tv') return { text: '📺 Guarda la TV' };
     if (key === 'sofa') return { text: onSofa() ? '🧍 Alzati' : '🛋️ Siediti sul Divano' };
     return touch(item);
@@ -278,6 +280,9 @@ const PLAYER_ROOM: Place = {
       const n = visitedCopy(key);
       if (!isMyRoomNow() && n) await makeOffer(key, n);
       else toast(`💎 ${item?.name || ''}: edizione limitata. Puoi spostarlo con 🛠️ Arreda.`, 4000);
+    } else if (key === 'collectShelf') {
+      const room: GameValue = game.roomsState[game.currentRoomIdx ?? -1];
+      await openShelf(isMyRoomNow(), room?.ownerId, room?.owner);
     } else if (key === 'desk') openComputerShopModal();
     else if (PET_OF_KEY[key] && isMyRoomNow()) await feed(PET_OF_KEY[key]);
     else if (key === 'sofa') toggleSofa(item);
@@ -445,6 +450,13 @@ const PET_SHOP = shop(
   },
 );
 
+const COLLECT_SHOP = shop(
+  (_key, item) => (item.stand !== undefined ? standPrompt(item.stand) : null),
+  async (_key, item) => {
+    if (item?.stand !== undefined) await buyFromStand(item.stand);
+  },
+);
+
 const GROW_SHOP = shop(
   (_key, item) =>
     item.strain
@@ -596,6 +608,7 @@ const PLACES: Record<string, Place> = {
   negozio_mobili: FURNITURE_SHOP,
   negozio_vestiti: CLOTHES_SHOP,
   negozio_animali: PET_SHOP,
+  collezionismo: COLLECT_SHOP,
   growshop: GROW_SHOP,
   banca: BANK,
   sala_giochi: ARCADE,

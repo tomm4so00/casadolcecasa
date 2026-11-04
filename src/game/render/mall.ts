@@ -52,6 +52,13 @@ const FACADE_STYLE: Record<
     awning: ['#ff2fb3', '#1a1030'],
     title: '🕹️ SALA GIOCHI',
   },
+  collezione: {
+    wall: '#4a3423',
+    sign: '#1c120a',
+    text: '#f5d76e',
+    awning: ['#7d2a3c', '#f5e6c8'],
+    title: '🏺 COLLEZIONI',
+  },
 };
 
 /** Vetrina di un negozio del centro commerciale: insegna, tenda, due vetrine e la porta a vetri. */
@@ -230,6 +237,25 @@ function drawWindowDisplay(shop: string, x: number, y: number, w: number, h: num
       ctx.beginPath();
       ctx.arc(px, base - 34, 2.5, 0, 6.3);
       ctx.fill();
+    }
+  } else if (shop === 'collezione') {
+    // due piedistalli con un pezzo ciascuno, sotto una luce calda
+    const glow = ctx.createRadialGradient(x + w / 2, y + 4, 2, x + w / 2, y + 4, h);
+    glow.addColorStop(0, 'rgba(255,225,150,0.5)');
+    glow.addColorStop(1, 'rgba(255,225,150,0)');
+    ctx.fillStyle = glow;
+    ctx.fillRect(x, y, w, h);
+    const pieces = ['🌍', '⏳'];
+    for (let i = 0; i < 2; i++) {
+      const px = x + (w * (i + 0.5)) / 2;
+      ctx.fillStyle = '#4e342e';
+      ctx.fillRect(px - 6, base - 14, 12, 13);
+      ctx.fillStyle = '#c9a227';
+      ctx.fillRect(px - 7, base - 15, 14, 2);
+      ctx.font = '12px "Segoe UI Emoji","Apple Color Emoji","Noto Color Emoji",sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'alphabetic';
+      ctx.fillText(pieces[i], px, base - 17 + Math.sin(t * 2 + i) * 0.5);
     }
   } else if (shop === 'sala') {
     // cabinati con gli schermi colorati che lampeggiano

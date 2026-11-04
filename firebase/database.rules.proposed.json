@@ -830,6 +830,36 @@
         }
       }
     },
+    "sims_collect": {
+      ".read": "(auth != null && (auth.token.firebase.sign_in_provider === 'google.com' || (auth.token.firebase.sign_in_provider === 'password' && auth.token.email.endsWith('@giocatori.casadolcecasa.app')))) && root.child('sims_accounts').child(auth.uid).child('playerId').isString()",
+      "slots": {
+        "$i": {
+          ".write": "((auth != null && (auth.token.firebase.sign_in_provider === 'google.com' || (auth.token.firebase.sign_in_provider === 'password' && auth.token.email.endsWith('@giocatori.casadolcecasa.app')))) && root.child('sims_accounts').child(auth.uid).child('playerId').isString()) && newData.exists() && !root.child('sims_collect').child('owners').child(newData.val()).exists() && (!data.exists() || root.child('sims_collect').child('owners').child(data.val()).exists() || ($i !== '0' && data.val() === data.parent().child('0').val()) || ($i !== '1' && data.val() === data.parent().child('1').val()) || ($i !== '2' && data.val() === data.parent().child('2').val()) || ($i !== '3' && data.val() === data.parent().child('3').val()) || ($i !== '4' && data.val() === data.parent().child('4').val()))",
+          ".validate": "$i.matches(/^[0-4]$/) && newData.isString() && newData.val().matches(/^col_[a-z]+$/)"
+        }
+      },
+      "owners": {
+        "$item": {
+          ".write": "((auth != null && (auth.token.firebase.sign_in_provider === 'google.com' || (auth.token.firebase.sign_in_provider === 'password' && auth.token.email.endsWith('@giocatori.casadolcecasa.app')))) && root.child('sims_accounts').child(auth.uid).child('playerId').isString()) && ((!data.exists() && newData.child('o').val() === root.child('sims_accounts').child(auth.uid).child('playerId').val()) || (data.child('o').val() === root.child('sims_accounts').child(auth.uid).child('playerId').val() && newData.child('o').val() === root.child('sims_accounts').child(auth.uid).child('playerId').val() && newData.child('t').val() === data.child('t').val()))",
+          ".validate": "$item.matches(/^col_[a-z]+$/) && newData.hasChildren(['o','on','t'])",
+          "o": {
+            ".validate": "newData.isString() && newData.val().length <= 140"
+          },
+          "on": {
+            ".validate": "newData.isString() && newData.val().length <= 20"
+          },
+          "t": {
+            ".validate": "newData.isNumber()"
+          },
+          "s": {
+            ".validate": "newData.isNumber() && (newData.val() === 0 || newData.val() === 1 || newData.val() === 2)"
+          },
+          "$other": {
+            ".validate": false
+          }
+        }
+      }
+    },
     "sims_ltd_offers": {
       "$owner": {
         ".read": "((auth != null && (auth.token.firebase.sign_in_provider === 'google.com' || (auth.token.firebase.sign_in_provider === 'password' && auth.token.email.endsWith('@giocatori.casadolcecasa.app')))) && root.child('sims_accounts').child(auth.uid).child('playerId').isString()) && root.child('sims_accounts').child(auth.uid).child('playerId').val() === $owner",

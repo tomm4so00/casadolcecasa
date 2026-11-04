@@ -10,6 +10,7 @@ import {
   drawScaffoldProp,
   drawWheelbarrowProp,
 } from './construction.js';
+import { drawCollectStand, wallCollectShelf } from './collectibles.js';
 import {
   drawBookshelfProp,
   drawBottleShelfProp,
@@ -193,6 +194,13 @@ export function registerDrawers(): void {
     strainPurple: drawStrainDisplay,
     shopGrow: drawShopFacade,
     shopPets: drawShopFacade,
+    shopCollect: drawShopFacade,
+    // espositori del negozio di oggetti da collezione
+    colStand0: drawCollectStand,
+    colStand1: drawCollectStand,
+    colStand2: drawCollectStand,
+    colStand3: drawCollectStand,
+    colStand4: drawCollectStand,
     launchButton: drawLaunchButton,
     coffee: drawCoffeeMachine,
     toilet: drawToilet,
@@ -296,6 +304,7 @@ export function registerDrawers(): void {
     wallSafe,
     rocketPlaque: wallRocketPlaque,
     adScreen: wallAdScreen,
+    collectShelf: wallCollectShelf,
   };
 }
 

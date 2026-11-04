@@ -1,6 +1,7 @@
 import { startBetting } from './betting.js';
 import { startGossip } from './gossip.js';
 import { startPaintingTitles } from './painting-titles.js';
+import { startCollect } from './collect.js';
 import { onLedgerChange, startLimited } from './limited.js';
 import { applyDailyPerks } from './personality.js';
 import { enablePush } from './push.js';
@@ -316,6 +317,7 @@ export async function startGame(..._args: GameValue[]): Promise<GameValue> {
   });
   startProjects();
   startBetting();
+  startCollect();
   updateSoundButton();
   updateNotifyButton();
   checkMissions();
