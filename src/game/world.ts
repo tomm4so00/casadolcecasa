@@ -59,7 +59,13 @@ import { PROJECTS, projectGoal } from './project-rules.js';
 import { avoidWallSafe, pushOutOfCorridor } from './room-layout.js';
 import { bestOwnedByProp, TIER_LABEL, TIER_RANK, tierOf } from './furniture-tiers.js';
 import { furnitureBenefit } from './furniture-benefits.js';
-import { SHIFTS_PER_DAY, jobPayTier, recordShift, shiftsLeftToday } from './job-pay.js';
+import {
+  JOB_PAY_TIERS,
+  SHIFTS_PER_DAY,
+  jobPayTier,
+  recordShift,
+  shiftsLeftToday,
+} from './job-pay.js';
 import { interactWith, promptFor } from './interactions.js';
 // Il proprietario può cambiare la combinazione della propria cassaforte quando vuole
 export async function changeSafePin(..._args: GameValue[]): Promise<GameValue> {
@@ -1157,7 +1163,7 @@ export async function chooseOrGoToJob(
   if (game.player.activeJobKey && game.player.activeJobKey !== jobKey) {
     const res: GameValue = await openDialog({
       title: '⚠️ Cambiare lavoro?',
-      text: `Hai già un lavoro attivo (${game.player.activeJobKey.toUpperCase()}). Se cambi perdi i turni accumulati e ricominci da 50 € a turno.`,
+      text: `Hai già un lavoro attivo (${game.player.activeJobKey.toUpperCase()}). Se cambi perdi i turni accumulati e ricominci da ${JOB_PAY_TIERS[0].base} € a turno.`,
       buttons: [
         { label: 'No', value: null, color: '#57606f' },
         { label: 'Sì, cambia', value: 'ok', color: '#e74c3c' },

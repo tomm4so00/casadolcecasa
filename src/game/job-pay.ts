@@ -2,7 +2,7 @@
 
 // Livelli di carriera: paga base del turno ed euro extra per ogni oggetto consegnato.
 // `from` è il numero del turno (1 = primo turno) da cui vale il livello.
-const JOB_PAY_TIERS = [
+export const JOB_PAY_TIERS = [
   // un livello ogni 15 turni: gli aumenti crescono man mano che si sale
   { from: 1, base: 40, perItem: 5 },
   { from: 16, base: 45, perItem: 6 },
