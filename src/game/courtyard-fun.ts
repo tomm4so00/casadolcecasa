@@ -9,7 +9,7 @@ import { spendMoney } from './economy.js';
 import { saySocial } from './social.js';
 import { isoProject, isoScale, rotateAround } from './render/primitives.js';
 import { presenceAlive } from './saves.js';
-import { presenceState } from './presence-rules.js';
+import { presenceState, shownWhileOffline } from './presence-rules.js';
 
 export const COIN_PRICE = 5;
 export const ICE_CREAM_PRICE = 5;
@@ -127,6 +127,9 @@ export function othersHere(): [string, GameValue][] {
     );
     // chi è andato via non si vede più; chi è svenuto è a terra, non seduto
     if (state === 'gone' || state === 'fainted') continue;
+    // chi è uscito dal gioco si vede solo nella sua stanza
+    const roomOwner = op.roomIdx != null ? game.roomsState[op.roomIdx]?.ownerId : undefined;
+    if (state !== 'online' && !shownWhileOffline(op.env, roomOwner, id)) continue;
     out.push([id, op]);
   }
   return out;

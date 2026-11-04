@@ -4,6 +4,7 @@ import {
   faintTime,
   faintedWhileAway,
   presenceState,
+  shownWhileOffline,
 } from '../src/game/presence-rules.js';
 
 const DAY = 86400; // secondi per svuotare il sonno da 100 a 0
@@ -50,5 +51,15 @@ describe('giocatori offline', () => {
     expect(faintedWhileAway(false, 0)).toBe(true);
     expect(faintedWhileAway(false, 30)).toBe(false);
     expect(faintedWhileAway(true, 0)).toBe(false);
+  });
+});
+
+describe('chi è uscito dal gioco', () => {
+  it('si vede solo nella propria stanza', () => {
+    expect(shownWhileOffline('PLAYER_ROOM', 'player_a', 'player_a')).toBe(true);
+    expect(shownWhileOffline('PLAYER_ROOM', 'player_b', 'player_a')).toBe(false);
+    expect(shownWhileOffline('PLAYER_ROOM', undefined, 'player_a')).toBe(false);
+    for (const env of ['SALOON', 'KITCHEN', 'CORTILE', 'banca'])
+      expect(shownWhileOffline(env, 'player_a', 'player_a')).toBe(false);
   });
 });

@@ -9,9 +9,9 @@ import {
 } from '../src/game/job-pay.js';
 
 describe('paga dei turni', () => {
-  it('dà 2 € per oggetto nei primi 30 turni, 5 € fino al 60° e 8 € dopo', () => {
-    expect(jobPayTier(1)).toMatchObject({ base: 50, perItem: 2 });
-    expect(jobPayTier(30)).toMatchObject({ base: 50, perItem: 2 });
+  it('dà 40 € + 5 € per oggetto nei primi 30 turni, 80 € + 5 € fino al 60° e 120 € + 8 € dopo', () => {
+    expect(jobPayTier(1)).toMatchObject({ base: 40, perItem: 5 });
+    expect(jobPayTier(30)).toMatchObject({ base: 40, perItem: 5 });
     expect(jobPayTier(31)).toMatchObject({ base: 80, perItem: 5 });
     expect(jobPayTier(60)).toMatchObject({ base: 80, perItem: 5 });
     expect(jobPayTier(61)).toMatchObject({ base: 120, perItem: 8 });

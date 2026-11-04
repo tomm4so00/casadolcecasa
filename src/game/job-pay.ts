@@ -3,7 +3,7 @@
 // Livelli di carriera: paga base del turno ed euro extra per ogni oggetto consegnato.
 // `from` è il numero del turno (1 = primo turno) da cui vale il livello.
 export const JOB_PAY_TIERS = [
-  { from: 1, base: 50, perItem: 2 },
+  { from: 1, base: 40, perItem: 5 },
   { from: 31, base: 80, perItem: 5 },
   { from: 61, base: 120, perItem: 8 },
 ] as const;

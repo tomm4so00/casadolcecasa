@@ -1,4 +1,4 @@
-// Giocatori offline: restano visibili dove si trovavano e, se non dormivano, svengono quando
+// Giocatori offline: restano visibili nella loro stanza e, se non dormivano, svengono quando
 // il sonno arriva a zero (senza dipendenze dal browser, così è testabile).
 
 /** Per quanto tempo un giocatore offline resta visibile (poi muore per l'assenza prolungata). */
@@ -45,6 +45,18 @@ export function presenceState(
   if (typeof op.sleep === 'number' && now >= faintTime(op.sleep, since, sleepDepletionSec))
     return 'fainted';
   return 'offline';
+}
+
+/**
+ * Chi ha lasciato il gioco si vede solo se è nella propria stanza (a letto o dove si era fermato):
+ * in giro per casa, nel cortile o nei negozi non resta in piedi come una statua.
+ */
+export function shownWhileOffline(
+  env: string | undefined,
+  roomOwnerId: string | null | undefined,
+  playerId: string,
+): boolean {
+  return env === 'PLAYER_ROOM' && !!roomOwnerId && roomOwnerId === playerId;
 }
 
 /**
