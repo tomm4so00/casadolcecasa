@@ -2658,6 +2658,15 @@ export const ENV_PROPS = {
     { kind: 'heartMonitor', x: -150, y: -10, w: 22, h: 20, z: 64 },
     { kind: 'medCabinet', x: 120, y: -145, w: 60, h: 28, z: 95, label: 'Armadietto Medicinali 💊' },
     { kind: 'waitingChairs', x: 110, y: 75, w: 80, h: 20, label: "Sala d'attesa", z: 35 },
+    { kind: 'waitingChairs', x: 110, y: 130, w: 80, h: 20, z: 35 },
+    // secondo lettino con la flebo, e il paravento tra i due
+    { kind: 'hospitalBed', x: 15, y: -110, w: 56, h: 96, z: 46 },
+    { kind: 'ivStand', x: 55, y: -140, w: 10, h: 10 },
+    { kind: 'curtainScreen', x: -45, y: -100, w: 8, h: 70, z: 62 },
+    { kind: 'medCart', x: 60, y: -20, w: 30, h: 20, z: 40, label: 'Carrello 💉' },
+    { kind: 'wheelchair', x: -150, y: 110, w: 26, h: 26, z: 38 },
+    { kind: 'cooler', x: 172, y: -70, w: 22, h: 22, z: 70 },
+    { kind: 'plant', x: 175, y: 30, w: 24, h: 24, z: 55 },
   ],
   lavoro_ristorante: [
     { kind: 'restCounter', x: 0, y: -130, w: 140, h: 34, z: 55, label: 'Banco Ristorante 🍽️' },
@@ -2665,6 +2674,12 @@ export const ENV_PROPS = {
     { kind: 'dinnerTable', x: 65, y: 10, w: 48, h: 48, z: 36 },
     { kind: 'dinnerTable', x: 115, y: 115, w: 48, h: 48, z: 36 },
     { kind: 'plant', x: 165, y: -150, w: 24, h: 24, z: 55 },
+    { kind: 'dinnerTable', x: -20, y: 120, w: 48, h: 48, z: 36 },
+    { kind: 'dinnerTable', x: 160, y: -45, w: 48, h: 48, z: 36 },
+    { kind: 'bottleShelf', x: -160, y: -164, w: 50, h: 16, z: 90, label: 'Cantina 🍷' },
+    { kind: 'dessertCart', x: 105, y: -110, w: 30, h: 20, z: 40, label: 'Dolci 🍰' },
+    { kind: 'coatRack', x: -175, y: 140, w: 12, h: 12, z: 72 },
+    { kind: 'plant', x: -175, y: -60, w: 24, h: 24, z: 55 },
   ],
   lavoro_ufficio: [
     { kind: 'officeDesk', x: -100, y: -70, w: 70, h: 46, z: 40, label: 'Scrivania Ufficio 💻' },
@@ -2672,6 +2687,15 @@ export const ENV_PROPS = {
     { kind: 'archive', x: 145, y: 40, w: 36, h: 50, z: 90, label: 'Archivio 📁' },
     { kind: 'cooler', x: -160, y: 80, w: 22, h: 22, z: 70, label: 'Acqua 💧' },
     { kind: 'plant', x: 160, y: 135, w: 26, h: 26, z: 55 },
+    { kind: 'officeDesk', x: -90, y: 70, w: 70, h: 46, z: 40 },
+    { kind: 'printer', x: 150, y: -55, w: 30, h: 24, z: 38, label: 'Stampante 🖨️' },
+    { kind: 'bookshelf', x: -184, y: -135, w: 14, h: 60, z: 96 },
+    { kind: 'bookshelf', x: -40, y: -168, w: 60, h: 14, z: 96 },
+    // angolo riunioni
+    { kind: 'roundTable', x: 60, y: 95, w: 40, h: 40, z: 40, label: 'Riunioni 🗂️' },
+    { kind: 'stool', x: 28, y: 95, w: 12, h: 12 },
+    { kind: 'stool', x: 92, y: 95, w: 12, h: 12 },
+    { kind: 'stool', x: 60, y: 127, w: 12, h: 12 },
   ],
 };
 

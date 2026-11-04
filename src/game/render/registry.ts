@@ -10,6 +10,16 @@ import {
   drawScaffoldProp,
   drawWheelbarrowProp,
 } from './construction.js';
+import {
+  drawBookshelfProp,
+  drawBottleShelfProp,
+  drawCoatRackProp,
+  drawCurtainScreenProp,
+  drawDessertCartProp,
+  drawMedCartProp,
+  drawPrinterProp,
+  drawWheelchairProp,
+} from './workplaces.js';
 import { MOONBASE_DRAW, MOONBASE_INSIDE_DRAW } from './moonbase.js';
 import { drawGoldStatue, drawJukebox } from './limited-props.js';
 import {
@@ -229,6 +239,14 @@ export function registerDrawers(): void {
     scaffold: drawScaffoldProp,
     wheelbarrow: drawWheelbarrowProp,
     sandPile: drawSandPileProp,
+    curtainScreen: drawCurtainScreenProp,
+    medCart: drawMedCartProp,
+    wheelchair: drawWheelchairProp,
+    bottleShelf: drawBottleShelfProp,
+    dessertCart: drawDessertCartProp,
+    coatRack: drawCoatRackProp,
+    printer: drawPrinterProp,
+    bookshelf: drawBookshelfProp,
     hospitalBed: drawHospitalBedProp,
     ivStand: drawIvStandProp,
     heartMonitor: drawHeartMonitorProp,
