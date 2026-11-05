@@ -1781,24 +1781,32 @@ export function drawPlayerAvatar(
   const rub = pose === 'wash' ? Math.sin(animTime * 16) * 1.6 * s : 0;
   const reading = !!(sitting && opts && opts.newspaper);
   const tap = pose === 'wash' ? underTap(neck, s) : null;
-  const handBack: Pt | null = tap
-    ? { x: tap.x + 2.5 * s + rub, y: tap.y - 0.5 * s - Math.abs(rub) * 0.4 }
-    : pose === 'wash'
-      ? { x: neck.x + 3 * s + rub, y: hip.y - 6 * s }
-      : reading
-        ? { x: neck.x + 9 * s, y: neck.y + 11 * s }
-        : sitting
-          ? { x: P(3.5, 11, 20).x + 1 * s, y: P(3.5, 11, 20).y - 1 * s }
-          : null;
-  const handFront: Pt | null = tap
-    ? { x: tap.x - 2.5 * s - rub, y: tap.y + 0.8 * s }
-    : pose === 'wash'
-      ? { x: neck.x - 3 * s - rub, y: hip.y - 5 * s }
-      : reading
-        ? { x: neck.x - 9 * s, y: neck.y + 11 * s }
-        : sitting
-          ? { x: P(-3.5, 11, 20).x - 1 * s, y: P(-3.5, 11, 20).y - 1 * s }
-          : null;
+  // nel panico (in ufficio arriva il capo) le braccia stanno alzate e si agitano
+  const flap = pose === 'panic' ? Math.sin(animTime * 18) * 2.5 * s : 0;
+  const handBack: Pt | null =
+    pose === 'panic'
+      ? { x: neck.x + 9 * s, y: neck.y - 15 * s + flap }
+      : tap
+        ? { x: tap.x + 2.5 * s + rub, y: tap.y - 0.5 * s - Math.abs(rub) * 0.4 }
+        : pose === 'wash'
+          ? { x: neck.x + 3 * s + rub, y: hip.y - 6 * s }
+          : reading
+            ? { x: neck.x + 9 * s, y: neck.y + 11 * s }
+            : sitting
+              ? { x: P(3.5, 11, 20).x + 1 * s, y: P(3.5, 11, 20).y - 1 * s }
+              : null;
+  const handFront: Pt | null =
+    pose === 'panic'
+      ? { x: neck.x - 9 * s, y: neck.y - 15 * s - flap }
+      : tap
+        ? { x: tap.x - 2.5 * s - rub, y: tap.y + 0.8 * s }
+        : pose === 'wash'
+          ? { x: neck.x - 3 * s - rub, y: hip.y - 5 * s }
+          : reading
+            ? { x: neck.x - 9 * s, y: neck.y + 11 * s }
+            : sitting
+              ? { x: P(-3.5, 11, 20).x - 1 * s, y: P(-3.5, 11, 20).y - 1 * s }
+              : null;
   const drawArm = (from: Pt, to: Pt, back: boolean): void => {
     if (reading) {
       // gomito sotto la spalla, un po' in fuori: il braccio sale di nuovo verso il giornale

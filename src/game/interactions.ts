@@ -3,6 +3,7 @@
 import { facadeFootprint } from './render/facades.js';
 import { DOOR_OPEN_RADIUS, resetDoors, setBlockedDoor } from './render/doors.js';
 import { servicePrompt } from './restaurant.js';
+import { officePrompt } from './office.js';
 import { buyPlant, plantLabel, smokeJoint, tendPlant } from './weed.js';
 import { PETS, PET_FOOD_PRICE, type PetKind } from './pet-rules.js';
 import { PET_OF_KEY, buyPet, dogGatePrompt, feed, giveUpForAdoption, useDogGate } from './pets.js';
@@ -645,10 +646,12 @@ const WORK: Place = {
   prompt: (_key, item) =>
     item.kind === 'station' || item.kind === 'table'
       ? servicePrompt(item)
-      : {
-          text: mgButtonText(item),
-          locked: item.kind === 'target' && !game.MG.carry,
-        },
+      : item.office
+        ? officePrompt(item)
+        : {
+            text: mgButtonText(item),
+            locked: item.kind === 'target' && !game.MG.carry,
+          },
   act(key, item) {
     if (item) mgInteract(item, key);
   },

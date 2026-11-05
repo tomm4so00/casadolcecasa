@@ -159,7 +159,8 @@ describe('avvisi per gli animali che stanno per morire', () => {
   };
 
   it('avvisa nelle ultime 6 ore, una volta sola, solo per l’animale in pericolo', async () => {
-    const { database, calls, send } = await setup(44);
+    // la fame dura due giorni e poi resiste un giorno: muore dopo 72 ore, qui ne mancano 4
+    const { database, calls, send } = await setup(68);
     expect(await sendPetWarnings(database, now, send)).toBe(1);
     expect(calls[0].title).toBe('🆘 Il tuo cane 🐶 sta per morire!');
     expect(calls[0].body).toContain('entro 4 ore');
@@ -169,9 +170,9 @@ describe('avvisi per gli animali che stanno per morire', () => {
 
   it('non avvisa se c’è ancora tempo, se è già morto o se si sta giocando', async () => {
     for (const [hours, saved] of [
-      [40, 120],
-      [49, 120],
-      [44, 3],
+      [64, 120],
+      [73, 120],
+      [68, 3],
     ]) {
       const { database, send } = await setup(hours, saved);
       expect(await sendPetWarnings(database, now, send)).toBe(0);

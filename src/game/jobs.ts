@@ -22,6 +22,17 @@ import {
   stopService,
   tickService,
 } from './restaurant.js';
+import {
+  addOfficeMap,
+  officeDrawables,
+  officeHudLine,
+  officeInteract,
+  officeOn,
+  officePrompt,
+  startOffice,
+  stopOffice,
+  tickOffice,
+} from './office.js';
 export function mgFlash(ok?: GameValue): GameValue {
   if (!game.MG.el) return;
   game.MG.el.classList.remove('mg-flash-ok', 'mg-flash-ko');
@@ -81,8 +92,10 @@ export function mgHud(..._args: GameValue[]): GameValue {
       : (game.player.stats.shifts || 0) < 3 && !carry
         ? "Prendi l'oggetto e portalo al cerchio giallo"
         : '';
+  const office = officeHudLine();
   el.innerHTML =
     MG_TOP +
+    (office ? `<div class="mg-sub mg-boss">${office}</div>` : '') +
     `<div class="mg-step"><span class="${held ? 'held' : ''}">${held ? '🤲 ' : ''}${e} ${label}</span> → 🎯 ${target?.label ?? ''}<span class="mg-dots">${dots}</span></div>` +
     (sub ? `<div class="mg-sub">${sub}</div>` : '');
   mgShiftHud();
@@ -163,6 +176,8 @@ export function mgSpawnTask(..._args: GameValue[]): GameValue {
       placed.push(o);
       game.MG.map['it' + i] = o;
     });
+  // in ufficio anche distributore, stampante e capo hanno il loro pulsante
+  addOfficeMap(game.MG.map);
   mgHud();
 }
 
@@ -180,11 +195,16 @@ export function mgStart(jobKey?: GameValue): GameValue {
   dom('btn-return-home').classList.add('compact');
   // il ristorante ha il servizio ai tavoli, gli altri lavori i compiti da portare al cerchio
   if (game.MG.cfg.mode === 'service') startService();
-  else mgSpawnTask();
+  else {
+    // l'ufficio ha in più sete, stampe e la visita del capo
+    if (jobKey === 'ufficio') startOffice();
+    mgSpawnTask();
+  }
 }
 
 export function mgStop(..._args: GameValue[]): GameValue {
   stopService();
+  stopOffice();
   game.MG.active = false;
   game.MG.map = {};
   game.MG.carry = null;
@@ -198,10 +218,12 @@ export function mgStop(..._args: GameValue[]): GameValue {
 
 export function mgTick(delta: number): void {
   tickService(delta);
+  tickOffice(delta);
 }
 
 export function mgButtonText(item?: GameValue): GameValue {
   if (serviceOn()) return servicePrompt(item).text;
+  if (item.office) return officePrompt(item).text;
   if (item.kind === 'pickup')
     return game.MG.carry
       ? `🔁 Scambia con ${item.item.e} ${item.item.label}`
@@ -214,6 +236,12 @@ export function mgButtonText(item?: GameValue): GameValue {
 export function mgInteract(item?: GameValue, key?: GameValue): GameValue {
   if (!game.MG.active) return;
   if (serviceOn()) return serviceInteract(item);
+  if (item.office) return officeInteract(item);
+  // con il foglio o la cartella del capo in mano non si prendono né si consegnano gli oggetti dei compiti
+  if (game.MG.carry?.office) {
+    mgPop(`🤲 Prima consegna ${game.MG.carry.e} ${game.MG.carry.label}`, false);
+    return;
+  }
   if (item.kind === 'pickup') {
     if (game.MG.carry) {
       // scambio: l'oggetto in mano resta a terra
@@ -328,6 +356,7 @@ export function mgAddDrawables(
 ): GameValue {
   if (serviceOn()) serviceDrawables(drawables, t);
   else addTaskDrawables(addThing, drawables, t);
+  if (officeOn()) officeDrawables(drawables, t);
   if (game.MG.carry) {
     const px: GameValue = game.playerPos.x,
       py: GameValue = game.playerPos.y,

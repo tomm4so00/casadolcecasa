@@ -74,8 +74,8 @@ export const PET_HUNGRY = 30;
 export const PET_STARVE_MS = 24 * 3_600_000;
 /** Felicità persa dal giocatore quando gli muore un animale. */
 export const PET_DEATH_SADNESS = 50;
-/** Secondi perché la fame passi da 100 a 0: come la fame del giocatore da sveglio (un giorno). */
-export const PET_HUNGER_DEPLETION_SEC = 86400;
+/** Secondi perché la fame passi da 100 a 0: la metà della velocità del giocatore (due giorni). */
+export const PET_HUNGER_DEPLETION_SEC = 172800;
 /** Quanto prima della morte arriva l'avviso "sta per morire". */
 export const PET_DYING_WARN_MS = 6 * 3_600_000;
 /** Il cane al guinzaglio rende il doppio più felici. */
