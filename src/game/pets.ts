@@ -13,6 +13,7 @@ import { collidesAt, getSolidObstacles } from './engine.js';
 import { pushOutOfCorridor } from './room-layout.js';
 import {
   collarPoint,
+  drawFoodBowl,
   drawLeash,
   drawPetBubble,
   drawQuadruped,
@@ -246,6 +247,7 @@ export function updatePets(t: number): void {
   const here = freePetsHere();
   const roomKey = `${game.view.activeEnvironment}:${game.currentRoomIdx}`;
   for (const kind of [...roamers.keys()]) if (!here.includes(kind)) roamers.delete(kind);
+  if (feeding && !here.includes(feeding.kind)) feeding = null;
   if (!here.length) return;
   const obstacles = getSolidObstacles();
   const mine = isMyRoomNow();
@@ -269,6 +271,10 @@ export function updatePets(t: number): void {
         room: roomKey,
       };
       roamers.set(kind, r);
+    }
+    if (feeding?.kind === kind) {
+      feedStep(r, dt, t);
+      continue;
     }
     const hungry = mine && hungerOf(kind) < PET_HUNGRY;
     if (!r.moving && t >= r.nextAt) {
@@ -328,9 +334,23 @@ export function petDrawables(t: number, drawables: GameValue[], labels: GameValu
     drawables.push({
       depth: r.x + r.y,
       draw: () =>
-        drawQuadruped(kind as 'dog' | 'cat', r.x, r.y, t, { moving: r.moving, dx: r.dx, dy: r.dy }),
+        drawQuadruped(kind as 'dog' | 'cat', r.x, r.y, t, {
+          moving: r.moving,
+          dx: r.dx,
+          dy: r.dy,
+          eat: feeding?.kind === kind && feeding.phase === 'eat' ? 1 : 0,
+        }),
     });
     if (t < r.sayUntil) labels.push(() => drawPetBubble(r.x, r.y, 26, r.say));
+  }
+  const bowl = bowlNow(t);
+  if (bowl && feeding) {
+    const kind = feeding.kind;
+    // per terra si ordina con gli altri; in mano sta davanti al padrone
+    drawables.push({
+      depth: bowl.x + bowl.y + (bowl.z > 0.5 ? 1 : 0),
+      draw: () => drawFoodBowl(bowl.x, bowl.y, bowl.z, bowl.food, kind),
+    });
   }
   const w = game.dogWalk;
   if (w && WALK_ENVS.has(game.view.activeEnvironment)) {
@@ -377,6 +397,10 @@ export async function feed(kind: PetKind): Promise<void> {
     toast(`${PETS[kind].emoji} Il tuo ${PETS[kind].name} è già sazio!`);
     return;
   }
+  if (feeding) {
+    toast('🥣 Sta già mangiando!', 2500);
+    return;
+  }
   if (game.moneyLevel < PET_FOOD_PRICE) {
     toast(`Ti servono ${PET_FOOD_PRICE} € in cassaforte per il cibo.`);
     sfx('error');
@@ -389,13 +413,160 @@ export async function feed(kind: PetKind): Promise<void> {
   book()[kind] = { ...feedPet(st, Date.now(), depletion()), ...pick(st) };
   sfx('coin');
   toast(`${PETS[kind].emoji} Hai dato da mangiare ${toPet(kind)} (Fame +50%)`, 3000);
+  // cane e gatto nella stanza: la ciotola per terra (il fumetto arriva quando hanno finito)
+  if ((kind === 'dog' || kind === 'cat') && roamers.has(kind)) startFeeding(kind);
+  else saySatisfied(kind);
+  saveGame();
+}
+
+/** "Gnam!" sopra l'animale (o la sua casetta) dopo che ha mangiato. */
+function saySatisfied(kind: PetKind): void {
   const r = roamers.get(kind) || (kind === 'dog' ? game.dogWalk : null);
   if (r) {
     r.say = kind === 'dog' ? 'Gnam! 🐶❤️' : kind === 'cat' ? 'Purrr… 🐱❤️' : 'Gnam! ❤️';
     r.sayUntil = game.animClock + 2.5;
     r.nextSayAt = game.animClock + 10;
   } else homeSays.set(kind, { text: 'Gnam! ❤️', until: game.animClock + 2.5 });
-  saveGame();
+}
+
+// ---------------------------------------------------------------- la pappa nella ciotola
+//
+// Il padrone mette la ciotola per terra fra sé e l'animale, l'animale ci va, mangia (il cibo
+// cala) e alla fine il padrone riprende la ciotola vuota. Intanto il padrone resta fermo.
+
+interface Feeding {
+  kind: 'dog' | 'cat';
+  phase: 'place' | 'come' | 'eat' | 'pick';
+  /** Inizio della fase (animClock). */
+  since: number;
+  /** Dove sta la ciotola per terra, e dove stava il padrone quando l'ha messa giù. */
+  bowl: { x: number; y: number };
+  from: { x: number; y: number };
+}
+let feeding: Feeding | null = null;
+const PLACE_S = 0.7;
+const EAT_S = 3.2;
+const PICK_S = 0.6;
+
+function startFeeding(kind: 'dog' | 'cat'): void {
+  const r = roamers.get(kind)!;
+  const px = game.playerPos.x,
+    py = game.playerPos.y;
+  // la ciotola va per terra davanti al padrone, dalla parte dell'animale
+  let dx = r.x - px,
+    dy = r.y - py;
+  const d = Math.hypot(dx, dy);
+  if (d < 1) {
+    dx = 0;
+    dy = 1;
+  } else {
+    dx /= d;
+    dy /= d;
+  }
+  const bx = Math.max(game.X0 + 20, Math.min(game.X1 - 20, px + dx * 26)),
+    by = Math.max(game.Y0 + 20, Math.min(game.Y1 - 20, py + dy * 26));
+  feeding = {
+    kind,
+    phase: 'place',
+    since: game.animClock,
+    bowl: { x: bx, y: by },
+    from: { x: px, y: py },
+  };
+  r.moving = false;
+  game.mySay = kind === 'dog' ? 'Ecco la pappa! 🥣' : 'Ecco i croccantini! 🥣';
+  game.mySayT = Date.now() - 3800; // il fumetto dura 6 s da qui: un paio di secondi
+  sfx('click');
+}
+
+/** Il padrone non si muove finché non ha ripreso la ciotola. */
+export const isFeedingPet = (): boolean => !!feeding;
+
+/** Ogni fotogramma, per l'animale che sta mangiando (al posto del solito girovagare). */
+function feedStep(r: Roamer, dt: number, t: number): void {
+  const f = feeding!;
+  const e = t - f.since;
+  const next = (phase: Feeding['phase']) => {
+    f.phase = phase;
+    f.since = t;
+  };
+  if (f.phase === 'place') {
+    r.moving = false;
+    if (e >= PLACE_S) next('come');
+    return;
+  }
+  if (f.phase === 'come') {
+    // si mette accanto alla ciotola, dalla sua parte, e la guarda
+    let ax = r.x - f.bowl.x,
+      ay = r.y - f.bowl.y;
+    const ad = Math.hypot(ax, ay) || 1;
+    ax /= ad;
+    ay /= ad;
+    const ex = f.bowl.x + ax * 10,
+      ey = f.bowl.y + ay * 10;
+    const ddx = ex - r.x,
+      ddy = ey - r.y;
+    const d = Math.hypot(ddx, ddy);
+    if (d < 1.5 || e > 4) {
+      r.x = ex;
+      r.y = ey;
+      r.moving = false;
+      r.dx = f.bowl.x - r.x;
+      r.dy = f.bowl.y - r.y;
+      next('eat');
+      sfx('munch');
+      r.say = f.kind === 'dog' ? 'Gnam gnam 😋' : 'Gnam… 😋';
+      r.sayUntil = t + EAT_S;
+      return;
+    }
+    const step = Math.min(d, (f.kind === 'dog' ? 75 : 60) * dt);
+    r.x += (ddx / d) * step;
+    r.y += (ddy / d) * step;
+    r.dx = ddx;
+    r.dy = ddy;
+    r.moving = true;
+    return;
+  }
+  if (f.phase === 'eat') {
+    r.moving = false;
+    r.dx = f.bowl.x - r.x;
+    r.dy = f.bowl.y - r.y;
+    if (e >= EAT_S) {
+      next('pick');
+      r.say = f.kind === 'dog' ? 'Bau! 🐶❤️' : 'Purrr… 🐱❤️';
+      r.sayUntil = t + 2.5;
+      r.nextSayAt = t + 10;
+    }
+    return;
+  }
+  // il padrone riprende la ciotola vuota; poi l'animale torna a girare
+  if (e >= PICK_S) {
+    feeding = null;
+    r.nextAt = t + 1.2;
+  }
+}
+
+/** Dove si disegna la ciotola adesso: scende dalla mano, sta per terra, risale. */
+function bowlNow(t: number): { x: number; y: number; z: number; food: number } | null {
+  const f = feeding;
+  if (!f) return null;
+  const e = t - f.since;
+  const ease = (k: number) => {
+    const c = Math.max(0, Math.min(1, k));
+    return c * c * (3 - 2 * c);
+  };
+  // la mano del padrone: un po' davanti a lui, verso la ciotola
+  const hx = f.from.x + (f.bowl.x - f.from.x) * 0.45,
+    hy = f.from.y + (f.bowl.y - f.from.y) * 0.45;
+  const at = (k: number, food: number) => ({
+    x: hx + (f.bowl.x - hx) * k,
+    y: hy + (f.bowl.y - hy) * k,
+    z: 20 * (1 - k),
+    food,
+  });
+  if (f.phase === 'place') return at(ease(e / PLACE_S), 1);
+  if (f.phase === 'come') return at(1, 1);
+  if (f.phase === 'eat') return at(1, 1 - e / EAT_S);
+  return at(1 - ease(e / PICK_S), 0);
 }
 const pick = (st: GameValue) => ({
   ...(st.x !== undefined ? { x: st.x, y: st.y } : {}),
@@ -623,9 +794,9 @@ function passGate(toInside: boolean): void {
   sfx('door');
 }
 
-/** Il cane richiamato sta arrivando (o si va al centro per l'addestramento): il padrone resta fermo. */
-export function dogIsComing(): boolean {
-  return game.dogWalk?.mode === 'called' || trainingHoldsOwner();
+/** Il cane richiamato arriva, si va al centro per l'addestramento o l'animale mangia: il padrone resta fermo. */
+export function petHoldsOwner(): boolean {
+  return game.dogWalk?.mode === 'called' || trainingHoldsOwner() || isFeedingPet();
 }
 
 /** Testo del pulsante del cancello dell'area cani, da fuori e da dentro. */

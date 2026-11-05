@@ -9,7 +9,7 @@ import {
 } from './bathroom.js';
 import { drawClothesPile, drawFluGerms, drawSmokePuffs, undressedLook } from './render/avatars.js';
 import { isSick } from './flu-rules.js';
-import { dogIsComing, petDrawables, updatePets } from './pets.js';
+import { petHoldsOwner, petDrawables, updatePets } from './pets.js';
 import { bounceOffPark } from './dog-park-rules.js';
 import { updateSpaceHelmet } from './space-helmet.js';
 import { collarPoint, drawLeash, drawQuadruped } from './render/pets.js';
@@ -243,7 +243,7 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
     !game.rocketTrip &&
     !game.isMovingFurnitureMode &&
     !kissActive() &&
-    !dogIsComing() &&
+    !petHoldsOwner() &&
     !faintAmount() &&
     (game.moveRight !== 0 || game.moveForward !== 0)
   ) {

@@ -2,7 +2,7 @@
 // l'uccellino, il criceto, il serpente e il pesce. Anche il guinzaglio e il fumetto quando hanno fame.
 import type { GameValue } from '../context.js';
 import { game } from '../context.js';
-import { footprintOf, isoProject, isoScale, poly } from './primitives.js';
+import { footprintOf, isoProject, isoScale, mixColor, poly } from './primitives.js';
 import { box, ellipseShadow, onFace } from './objects.js';
 import { handsOf } from './avatars.js';
 import type { PetKind } from '../pet-rules.js';
@@ -416,6 +416,8 @@ interface QuadOpts {
   paw?: number;
   /** Abbaia: bocca aperta e testa in su. */
   bark?: boolean;
+  /** Mangia dalla ciotola (0-1): testa giù verso terra, che va su e giù a ogni boccone. */
+  eat?: number;
 }
 
 /** Cane o gatto a quattro zampe, visto di lato, che cammina, scodinzola e muove le orecchie. */
@@ -441,6 +443,7 @@ export function drawQuadruped(
   const sitK = typeof o.sit === 'number' ? Math.max(0, Math.min(1, o.sit)) : o.sit ? 1 : 0;
   const sat = sitK > 0.5;
   const paw = Math.max(0, Math.min(1, o.paw || 0));
+  const eat = Math.max(0, Math.min(1, o.eat || 0));
   const by = g.y - legLen - 3 * s * (1 - sitK);
   // zampe (le due dietro più scure)
   ctx.lineCap = 'round';
@@ -476,7 +479,7 @@ export function drawQuadruped(
   ctx.beginPath();
   ctx.moveTo(tailBase.x, tailBase.y);
   if (dog) {
-    const wag = Math.sin(t * (o.moving ? 14 : 9)) * 0.7;
+    const wag = Math.sin(t * (o.moving || eat ? 14 : 9)) * 0.7;
     ctx.lineTo(
       tailBase.x - f * Math.cos(0.9 + wag) * 9 * s,
       tailBase.y - Math.sin(0.9 + wag) * 9 * s,
@@ -525,12 +528,14 @@ export function drawQuadruped(
     }
   }
   // collare e testa
-  const hx = g.x + f * (dog ? 11 : 10) * s,
+  const hx = g.x + f * (dog ? 11 : 10) * s + f * 2.5 * s * eat,
     hy =
       by -
       (6 + 2 * sitK) * s +
       (o.moving ? Math.abs(Math.sin(phase)) * -0.6 * s : 0) -
-      (o.bark ? (1 + Math.abs(Math.sin(t * 18))) * s : 0);
+      (o.bark ? (1 + Math.abs(Math.sin(t * 18))) * s : 0) +
+      // mangiando la testa scende nella ciotola e fa su e giù
+      eat * (6.5 + Math.abs(Math.sin(t * 9)) * 1.4) * s;
   ctx.fillStyle = dog ? '#e53935' : '#3949ab';
   ctx.beginPath();
   ctx.ellipse(hx - f * 2.5 * s, hy + 3.2 * s, 2.2 * s, 3 * s, 0, 0, 6.3);
@@ -623,6 +628,72 @@ export function drawQuadruped(
   else ctx.arc(hx + f * 2 * s, hy - 1.2 * s, 0.9 * s, 0, 6.3);
   ctx.fill();
   ctx.lineCap = 'butt';
+}
+
+/**
+ * Ciotola per terra (o in mano, con z più alto): rossa per il cane, azzurra per il gatto, con le
+ * crocchette o il pesce che calano mentre l'animale mangia (`food` da 1 a 0).
+ */
+export function drawFoodBowl(
+  x: number,
+  y: number,
+  z: number,
+  food: number,
+  kind: 'dog' | 'cat',
+): void {
+  const ctx = game.view.ctx;
+  const s = isoScale();
+  if (z > 0.5) ellipseShadow(x, y, 6, 3, 0.18);
+  const p = P(x, y, z);
+  const color = kind === 'dog' ? '#e74c3c' : '#3498db';
+  const rx = 6.2 * s,
+    ry = 3.1 * s,
+    h = 2.6 * s;
+  // fianco della ciotola, poi il bordo e l'interno
+  ctx.fillStyle = mixColor(color, '#000000', 0.25);
+  ctx.beginPath();
+  ctx.ellipse(p.x, p.y, rx * 0.85, ry * 0.85, 0, 0, Math.PI);
+  ctx.lineTo(p.x - rx, p.y - h);
+  ctx.ellipse(p.x, p.y - h, rx, ry, 0, Math.PI, 0, true);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.ellipse(p.x, p.y - h, rx, ry, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = mixColor(color, '#000000', 0.45);
+  ctx.beginPath();
+  ctx.ellipse(p.x, p.y - h, rx * 0.75, ry * 0.7, 0, 0, Math.PI * 2);
+  ctx.fill();
+  const f = Math.max(0, Math.min(1, food));
+  if (f <= 0.02) return;
+  // il cibo: un mucchietto che si abbassa
+  ctx.fillStyle = kind === 'dog' ? '#8d5524' : '#f39c6b';
+  ctx.beginPath();
+  ctx.ellipse(
+    p.x,
+    p.y - h - 0.6 * s * f,
+    rx * 0.68 * (0.5 + f / 2),
+    ry * 0.6 * (0.5 + f / 2),
+    0,
+    0,
+    Math.PI * 2,
+  );
+  ctx.fill();
+  ctx.fillStyle = kind === 'dog' ? '#a0522d' : '#fab1a0';
+  const n = Math.round(7 * f);
+  for (let i = 0; i < n; i++) {
+    const a = i * 2.4;
+    ctx.beginPath();
+    ctx.arc(
+      p.x + Math.cos(a) * rx * 0.35 * f,
+      p.y - h - 0.9 * s * f + Math.sin(a) * ry * 0.3 * f,
+      0.9 * s,
+      0,
+      Math.PI * 2,
+    );
+    ctx.fill();
+  }
 }
 
 /** Punto del collare (per agganciare il guinzaglio). */

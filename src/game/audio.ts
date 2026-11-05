@@ -88,6 +88,10 @@ export function sfx(type?: GameValue): GameValue {
         tone(90, 0.08, 0.18, 'triangle', 0.18);
       },
       click: (): GameValue => tone(660, 0, 0.06, 'triangle', 0.05),
+      // l'animale mangia dalla ciotola: crocchette sgranocchiate, un boccone dopo l'altro
+      munch: (): void => {
+        for (let i = 0; i < 7; i++) noise(i * 0.42, 0.07, 0.035, 1400 + (i % 3) * 300);
+      },
       // il cane abbaia due volte: un colpo secco che scende, con un po' di fruscio
       bark: (): void => {
         for (const at of [0, 0.32]) {
