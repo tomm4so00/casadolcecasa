@@ -3,6 +3,7 @@ import { type RelationAct, noteRelation } from './relations-rules.js';
 import { saveGame } from './saves.js';
 import { onGameInvite } from './arcade.js';
 import { onUsedSold } from './used-shop.js';
+import { onCollectDeal, onCollectOffer, onCollectOfferRefused } from './collect-offers.js';
 import { RETIRED_BUSINESSES } from '../../shared/market.js';
 import { onLimitedAnswer, onLimitedOffer, onLimitedWithdrawn } from './limited.js';
 import { postGossip } from './gossip.js';
@@ -269,6 +270,13 @@ export async function handleSocial(m?: GameValue): Promise<GameValue> {
     );
   } else if (m.type === 'usedSold') {
     onUsedSold(m, who);
+  } else if (m.type === 'colOffer') {
+    // offerte per i pezzi da collezione sulla mensola (collect-offers.ts)
+    await onCollectOffer(m, who);
+  } else if (m.type === 'colDone') {
+    await onCollectDeal(m, who);
+  } else if (m.type === 'colNo') {
+    onCollectOfferRefused(m, who);
   } else if (m.type === 'gameInvite') {
     await onGameInvite(m, who);
   } else if (m.type === 'theft') {

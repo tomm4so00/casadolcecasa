@@ -39,6 +39,7 @@ import {
 import { openArcadeStation } from './arcade.js';
 import { clerkLines } from './clerks.js';
 import { buyFromStand, openShelf, shelfPrompt, standPrompt } from './collect.js';
+import { openOthersShelf } from './collect-offers.js';
 import { usedAct, usedPrompt } from './used-shop.js';
 import { ARCADE_GAMES, type ArcadeGame, isArcadeGame } from './arcade-rules.js';
 import { quotedTitle } from './painting-titles.js';
@@ -321,7 +322,8 @@ const PLAYER_ROOM: Place = {
       else toast(`💎 ${item?.name || ''}: edizione limitata. Puoi spostarlo con 🛠️ Arreda.`, 4000);
     } else if (key === 'collectShelf') {
       const room: GameValue = game.roomsState[game.currentRoomIdx ?? -1];
-      await openShelf(isMyRoomNow(), room?.ownerId, room?.owner);
+      if (isMyRoomNow()) await openShelf();
+      else await openOthersShelf(room?.ownerId, room?.owner);
     } else if (key === 'desk') openComputerShopModal();
     else if (PET_OF_KEY[key] && isMyRoomNow()) await feed(PET_OF_KEY[key]);
     else if (key === 'sofa') toggleSofa(item);
@@ -345,8 +347,6 @@ const CORTILE: Place = {
       return {
         text: '🚪 Esci dal Condominio',
       };
-    if (item.fun === 'bench')
-      return { text: game.benchSit ? '🧍 Alzati' : '🪑 Siediti sulla panchina' };
     if (item.fun === 'realty') return { text: '🏘️ Bacheca immobiliare: cambia stanza' };
     if (item.fun === 'gossip') return { text: '📰 Leggi i pettegolezzi del condominio' };
     if (item.fun === 'fountain')
@@ -370,8 +370,7 @@ const CORTILE: Place = {
       return;
     }
     const spot = funSpots()[key];
-    if (spot?.fun === 'bench') toggleBench(key);
-    else if (spot?.fun === 'realty') await openRealtyBoard();
+    if (spot?.fun === 'realty') await openRealtyBoard();
     else if (spot?.fun === 'gossip') await openGossipBoard();
     else if (spot?.fun === 'fountain') await tossCoin();
     else if (item && item.aptIdx !== undefined) {
@@ -865,11 +864,18 @@ function placeHere(): Place | undefined {
 
 /** Testo del pulsante per l'oggetto vicino. */
 export function promptFor(key: string, item: GameValue): Prompt {
+  // le panchine funzionano allo stesso modo in tutti gli ambienti
+  if (item?.fun === 'bench')
+    return { text: game.benchSit ? '🧍 Alzati' : '🪑 Siediti sulla panchina' };
   return placeHere()?.prompt(key, item) ?? touch(item);
 }
 
 /** Preme il pulsante dell'oggetto vicino. */
 export async function interactWith(key: string, item: GameValue): Promise<void> {
+  if (funSpots()[key]?.fun === 'bench') {
+    toggleBench(key);
+    return;
+  }
   const place = placeHere();
   if (place) await place.act(key, item);
   else if (key === 'doorExit') backToSaloon();

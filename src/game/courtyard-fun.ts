@@ -47,7 +47,12 @@ interface Spot {
  */
 export function funSpots(): Record<string, Spot> {
   const out: Record<string, Spot> = {};
-  if (game.view.activeEnvironment === 'centro_commerciale') {
+  const env = game.view.activeEnvironment;
+  // ci si siede su tutte le panchine del gioco (cortile, parco, centro commerciale, cimitero…)
+  let benches = 0;
+  for (const p of benchesHere())
+    out['bench' + benches++] = { x: p.x, y: p.y, w: p.w, h: p.h, reach: 0, fun: 'bench' };
+  if (env === 'centro_commerciale') {
     const cart = ((game.ENV_DECOR.centro_commerciale || []) as GameValue[]).find(
       (p) => p.kind === 'iceCreamCart',
     );
@@ -55,12 +60,9 @@ export function funSpots(): Record<string, Spot> {
       out.iceCream = { x: cart.x, y: cart.y, w: cart.w, h: cart.h, reach: 10, fun: 'iceCream' };
     return out;
   }
-  if (game.view.activeEnvironment !== 'CORTILE') return out;
-  let benches = 0;
+  if (env !== 'CORTILE') return out;
   for (const p of (game.ENV_DECOR.CORTILE || []) as GameValue[]) {
-    if (p.kind === 'bench')
-      out['bench' + benches++] = { x: p.x, y: p.y, w: p.w, h: p.h, reach: 0, fun: 'bench' };
-    else if (p.kind === 'fountain')
+    if (p.kind === 'fountain')
       out.fountain = { x: p.x, y: p.y, w: p.w, h: p.h, reach: p.w / 2, fun: 'fountain' };
     else if (p.kind === 'realtyBoard')
       out.realty = { x: p.x, y: p.y, w: p.w, h: p.h, reach: 10, fun: 'realty' };
@@ -68,6 +70,14 @@ export function funSpots(): Record<string, Spot> {
       out.gossip = { x: p.x, y: p.y, w: p.w, h: p.h, reach: 10, fun: 'gossip' };
   }
   return out;
+}
+
+/** Le panchine dell'ambiente in cui si è (oggetti di scena e decorazioni). */
+export function benchesHere(): GameValue[] {
+  const env = game.view.activeEnvironment;
+  return ((game.ENV_PROPS[env] || []) as GameValue[])
+    .concat((game.ENV_DECOR[env] || []) as GameValue[])
+    .filter((p) => p?.kind === 'bench');
 }
 
 /** Posa da mostrare (e da mandare agli altri) mentre si è seduti. */

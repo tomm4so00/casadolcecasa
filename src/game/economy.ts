@@ -121,6 +121,16 @@ export async function transferMoney(targetPlayerId: string, amount: number): Pro
   }
 }
 
+/** Incassa da un altro giocatore (un'offerta accettata): false se non ha più abbastanza soldi. */
+export async function collectMoneyFrom(fromPlayerId: string, amount: number): Promise<boolean> {
+  try {
+    return (await getWallet()?.collect(fromPlayerId, amount)) ?? false;
+  } catch (error) {
+    console.warn('[collect]', error);
+    return false;
+  }
+}
+
 // Sposta soldi dalla cassaforte al conto in banca, nella stessa transazione della stanza.
 export function bankDeposit(amount: number): Promise<boolean> {
   return updateEconomy(depositChange(amount));

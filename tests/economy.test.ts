@@ -51,6 +51,20 @@ describe('confirmed room economy', () => {
     expect(await wallet.transfer('missing_player', 10)).toBe(false);
     expect(await wallet.transfer('player_other', 1000)).toBe(false);
   });
+  it("incassa un'offerta accettata dalla cassaforte di chi l'ha fatta, solo se ci sono i soldi", async () => {
+    const { database, wallet } = await setup();
+    await database
+      .ref('sims_rooms_state/1')
+      .set({ id: 2, ownerId: 'player_other', vaultMoney: 50 });
+    expect(await wallet.collect('player_other', 30)).toBe(true);
+    const rooms = (await database.ref('sims_rooms_state').get()).val();
+    expect(rooms[0].vaultMoney).toBe(130);
+    expect(rooms[1].vaultMoney).toBe(20);
+    // non bastano: niente si muove
+    expect(await wallet.collect('player_other', 21)).toBe(false);
+    expect((await database.ref('sims_rooms_state/1/vaultMoney').get()).val()).toBe(20);
+    expect(await wallet.collect('missing_player', 1)).toBe(false);
+  });
   it('does not grant goods if the database denies the operation or room ownership changed', async () => {
     const { database, wallet } = await setup();
     await database.ref('sims_rooms_state/0/ownerId').set('player_other');

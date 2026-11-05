@@ -96,6 +96,21 @@ let ownSleepScene = '';
 const BENCH_SEAT_DEPTH = 30;
 
 /**
+ * Una panchina è lunga: ordinata dal suo centro, chi le sta davanti verso un'estremità finirebbe
+ * sotto di lei (e chi le passa dietro sopra). Col giocatore vicino si guarda da che parte sta:
+ * davanti, seduto o a destra la panchina va sotto di lui; dietro o a sinistra sopra.
+ */
+function benchDepth(p: GameValue): number {
+  const px = game.playerPos.x,
+    py = game.playerPos.y;
+  const x0 = p.x - p.w / 2,
+    x1 = p.x + p.w / 2;
+  if (Math.abs(px - p.x) > p.w / 2 + 30 || Math.abs(py - p.y) > p.h / 2 + 30) return p.x + p.y;
+  const front = px > x1 ? true : px < x0 ? py > p.y + p.h / 2 : py >= p.y;
+  return px + py + (front ? -1 : 1);
+}
+
+/**
  * Una palazzina è larga: la si ordina dal suo angolo in fondo, così chi le cammina davanti
  * (anche sul lato) è disegnato sopra di lei e non dentro il muro.
  */
@@ -352,7 +367,7 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
           if (fn) fn(p, animTime, lights);
           else box(p.x, p.y, p.w, p.h, p.z || 40, '#888888');
         },
-        p.flat ? -1e5 : 0,
+        p.flat ? -1e5 : p.kind === 'bench' ? benchDepth(p) - (p.x + p.y) : 0,
       );
     });
   if (game.MG.active && game.view.activeEnvironment === 'lavoro_' + game.MG.job)
@@ -431,7 +446,8 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
       (doorwayAt(game.playerPos.x, game.playerPos.y, roomBounds(), doorGapsHere())?.dir === 1
         ? 1e4
         : 0) +
-      (game.benchSit?.kind === 'bench' ? BENCH_SEAT_DEPTH : 0);
+      // solo da seduti: andando a sedersi da dietro si passa ancora dietro la panchina
+      (game.benchSit?.kind === 'bench' && game.benchSit.pose === 'bench' ? BENCH_SEAT_DEPTH : 0);
     const faintK = faintAmount();
     drawables.push({
       depth,

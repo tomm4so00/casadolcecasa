@@ -16,6 +16,7 @@ import { sendSocial } from './social.js';
 import { collectState, onCollectChange } from './collect.js';
 import { recordActivity } from './activity.js';
 import {
+  type Collectible,
   type CollectOwner,
   STANDS,
   collectible,
@@ -94,6 +95,14 @@ async function listItem(i: number): Promise<void> {
   });
   const c = collectible(pick.action);
   if (!c) return;
+  await listPiece(c, i);
+}
+
+/**
+ * Mette in vendita il pezzo `c` nell'espositore `i` dell'usato, al prezzo che si sceglie.
+ * `fromShelf`: lo toglie anche dalla mensola (per far posto a un pezzo nuovo). Dice se c'è riuscito.
+ */
+export async function listPiece(c: Collectible, i: number, fromShelf = false): Promise<boolean> {
   const res = await openDialog({
     title: `${c.emoji} ${c.name}`,
     text: `A quanto lo vendi? Al negozio costava ${euro(c.price)}.\nPuoi ritirarlo dalla vendita quando vuoi, finché nessuno lo compra.`,
@@ -103,16 +112,16 @@ async function listItem(i: number): Promise<void> {
       { label: '🏷️ Metti in vendita', value: 'ok', color: '#27ae60' },
     ],
   });
-  if (res.action !== 'ok') return;
+  if (res.action !== 'ok') return false;
   const price = Number(res.value);
   const error = usedPriceError(price);
   if (error) {
     toast('❌ ' + error, 4000);
-    return;
+    return false;
   }
   if (usedListing(collectState(), i)) {
     toast('🏷️ Qualcuno ha appena occupato questo espositore: provane un altro.', 4000);
-    return;
+    return false;
   }
   // prima l'annuncio sul pezzo, poi il pezzo nell'espositore
   let ok = false;
@@ -121,7 +130,10 @@ async function listItem(i: number): Promise<void> {
       if (cur === null) return null;
       const o = ownerOf(c.id, cur);
       if (!o || o.o !== me() || o.sale) return undefined;
-      return { ...cur, sale: { p: price, t: Date.now(), st: i } };
+      const next = { ...cur, sale: { p: price, t: Date.now(), st: i } };
+      // per far posto a un pezzo nuovo esce anche dalla mensola
+      if (fromShelf) delete next.s;
+      return next;
     });
     ok = !!r?.committed && ownerOf(c.id, r.snapshot?.val())?.sale?.st === i;
     if (ok) {
@@ -140,11 +152,12 @@ async function listItem(i: number): Promise<void> {
   }
   if (!ok) {
     toast('🏷️ Non è stato possibile metterlo in vendita: riprova.', 4000);
-    return;
+    return false;
   }
   recordActivity('antiques');
   sfx('coin');
   toast(`🏷️ ${c.name} è in vendita a ${euro(price)}!`, 4500);
+  return true;
 }
 
 async function withdraw(i: number): Promise<void> {
@@ -197,58 +210,16 @@ async function buy(i: number): Promise<void> {
     ],
   });
   if (res.action !== 'ok') return;
-  const path = 'owners/' + c.id;
-  // 1. prenotazione
-  let reserved = false;
-  try {
-    const r = await ref(path).transaction((cur: GameValue) => {
-      if (cur === null) return null;
-      const o = ownerOf(c.id, cur);
-      if (o?.o !== owner.o) return undefined; // venduto o cambiato nel frattempo
-      const next = reserveSale(o, me(), sale.p, serverNow());
-      return next ? { ...cur, sale: next.sale } : undefined;
-    });
-    reserved = !!r?.committed && ownerOf(c.id, r.snapshot?.val())?.sale?.to === me();
-  } catch (error) {
-    console.warn('[usato]', error);
-  }
-  if (!reserved) {
+  const result = await settleSale(c, owner.o, owner.on, sale.p);
+  if (result === 'gone') {
     toast('🏷️ Non è più disponibile: qualcuno l’ha preso o il venditore l’ha ritirato.', 4500);
     return;
   }
-  // 2. pagamento al venditore
-  if (!(await transferMoney(owner.o, sale.p))) {
-    await ref(path).transaction((cur: GameValue) => {
-      if (cur === null) return null;
-      if (cur?.sale?.to !== me()) return undefined;
-      const sale = { ...cur.sale };
-      delete sale.to;
-      delete sale.rt;
-      return { ...cur, sale };
-    });
+  if (result === 'unpaid') {
     toast('💸 Pagamento non riuscito: il pezzo resta in vendita.', 4500);
     return;
   }
-  // 3. il pezzo diventa mio
-  let done = false;
-  try {
-    const r = await ref(path).transaction((cur: GameValue) => {
-      if (cur === null) return null;
-      return (
-        completeSale(ownerOf(c.id, cur), me(), game.player.myData.nick, Date.now()) || undefined
-      );
-    });
-    done = !!r?.committed && ownerOf(c.id, r.snapshot?.val())?.o === me();
-  } catch (error) {
-    console.warn('[usato]', error);
-  }
-  if (!done) {
-    toast(
-      `⚠️ Hai pagato ma il passaggio del pezzo non è riuscito: chiedi a ${owner.on} di restituirti i soldi.`,
-      7000,
-    );
-    return;
-  }
+  if (result === 'stuck') return;
   await ref('used/' + i)
     .set(null)
     .catch(() => {});
@@ -264,6 +235,65 @@ async function buy(i: number): Promise<void> {
     [owner.o],
   );
   saveGame(true);
+}
+
+/**
+ * Compra un pezzo che il proprietario ha messo in vendita a `price` (all'usato o accettando
+ * un'offerta): 1. prenotazione, così nessun altro lo compra nel frattempo; 2. i soldi vanno al
+ * venditore; 3. il pezzo diventa mio. Se il pagamento non riesce la prenotazione si toglie.
+ */
+export async function settleSale(
+  c: Collectible,
+  sellerId: string,
+  sellerName: string,
+  price: number,
+): Promise<'ok' | 'gone' | 'unpaid' | 'stuck'> {
+  const path = 'owners/' + c.id;
+  let reserved = false;
+  try {
+    const r = await ref(path).transaction((cur: GameValue) => {
+      if (cur === null) return null;
+      const o = ownerOf(c.id, cur);
+      if (o?.o !== sellerId) return undefined; // venduto o cambiato nel frattempo
+      const next = reserveSale(o, me(), price, serverNow());
+      return next ? { ...cur, sale: next.sale } : undefined;
+    });
+    reserved = !!r?.committed && ownerOf(c.id, r.snapshot?.val())?.sale?.to === me();
+  } catch (error) {
+    console.warn('[usato]', error);
+  }
+  if (!reserved) return 'gone';
+  if (!(await transferMoney(sellerId, price))) {
+    await ref(path).transaction((cur: GameValue) => {
+      if (cur === null) return null;
+      if (cur?.sale?.to !== me()) return undefined;
+      const sale = { ...cur.sale };
+      delete sale.to;
+      delete sale.rt;
+      return { ...cur, sale };
+    });
+    return 'unpaid';
+  }
+  let done = false;
+  try {
+    const r = await ref(path).transaction((cur: GameValue) => {
+      if (cur === null) return null;
+      return (
+        completeSale(ownerOf(c.id, cur), me(), game.player.myData.nick, Date.now()) || undefined
+      );
+    });
+    done = !!r?.committed && ownerOf(c.id, r.snapshot?.val())?.o === me();
+  } catch (error) {
+    console.warn('[usato]', error);
+  }
+  if (!done) {
+    toast(
+      `⚠️ Hai pagato ma il passaggio del pezzo non è riuscito: chiedi a ${sellerName} di restituirti i soldi.`,
+      7000,
+    );
+    return 'stuck';
+  }
+  return 'ok';
 }
 
 /** Il venditore scopre che un suo pezzo è stato comprato (i soldi sono già in cassaforte). */

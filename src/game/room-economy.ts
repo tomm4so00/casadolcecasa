@@ -75,37 +75,53 @@ export class RoomEconomy {
   settled(): Promise<unknown> {
     return this.pending;
   }
+  /** Dalla mia cassaforte a quella di un altro giocatore. */
   transfer(targetPlayerId: string, amount: number): Promise<boolean> {
+    return this.move(targetPlayerId, amount, 1);
+  }
+  /**
+   * Dalla cassaforte di un altro giocatore alla mia, se ci sono abbastanza soldi: l'offerta che
+   * ha fatto e che io ho accettato (vedi collect-offers.ts).
+   */
+  collect(fromPlayerId: string, amount: number): Promise<boolean> {
+    return this.move(fromPlayerId, amount, -1);
+  }
+  /** Sposta `amount` fra le due cassaforti nella stessa transazione: 1 = do io, −1 = ricevo io. */
+  private move(otherPlayerId: string, amount: number, way: 1 | -1): Promise<boolean> {
     this.operations++;
     const operation = this.pending.then(async () => {
       if (
         !this.active() ||
         !Number.isSafeInteger(amount) ||
         amount < 1 ||
-        targetPlayerId === this.playerId
+        otherPlayerId === this.playerId
       )
         return false;
       const reference = this.database.ref('sims_rooms_state');
       await reference.get();
       const result = await reference.transaction((rooms: Record<string, RoomState> | null) => {
         if (!this.active() || !rooms) return undefined;
-        const sender = rooms[this.roomIndex];
-        const targetKey = Object.keys(rooms).find((key) => rooms[key]?.ownerId === targetPlayerId);
-        const target = targetKey === undefined ? undefined : rooms[targetKey];
+        const mine = rooms[this.roomIndex];
+        const otherKey = Object.keys(rooms).find((key) => rooms[key]?.ownerId === otherPlayerId);
+        const other = otherKey === undefined ? undefined : rooms[otherKey];
+        const payer = way === 1 ? mine : other;
+        const payee = way === 1 ? other : mine;
         if (
-          !sender ||
-          sender.ownerId !== this.playerId ||
-          !target ||
-          !Number.isSafeInteger(sender.vaultMoney) ||
-          sender.vaultMoney < amount ||
-          !Number.isSafeInteger(target.vaultMoney) ||
-          !Number.isSafeInteger(target.vaultMoney + amount)
+          !mine ||
+          mine.ownerId !== this.playerId ||
+          !other ||
+          !payer ||
+          !payee ||
+          !Number.isSafeInteger(payer.vaultMoney) ||
+          payer.vaultMoney < amount ||
+          !Number.isSafeInteger(payee.vaultMoney) ||
+          !Number.isSafeInteger(payee.vaultMoney + amount)
         )
           return undefined;
         return {
           ...rooms,
-          [this.roomIndex]: { ...sender, vaultMoney: sender.vaultMoney - amount },
-          [targetKey!]: { ...target, vaultMoney: target.vaultMoney + amount },
+          [this.roomIndex]: { ...mine, vaultMoney: mine.vaultMoney - way * amount },
+          [otherKey!]: { ...other, vaultMoney: other.vaultMoney + way * amount },
         };
       });
       if (!result.committed) return false;

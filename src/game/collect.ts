@@ -167,27 +167,14 @@ export async function buyFromStand(i: number): Promise<void> {
 
 /** Testo del pulsante vicino alla mensola. */
 export function shelfPrompt(mine: boolean): { text: string } {
-  return { text: mine ? '🏺 Sistema la mensola' : '🏺 Guarda la mensola' };
+  return { text: mine ? '🏺 Sistema la mensola' : '🏺 Guarda la mensola e fai un’offerta' };
 }
 
-/** La mensola della mia stanza: si scelgono fino a tre pezzi da esporre. */
-export async function openShelf(
-  mine: boolean,
-  ownerId?: string,
-  ownerName?: string,
-): Promise<void> {
-  if (!mine) {
-    const shown = ownerId ? shelfOf(state, ownerId).filter(Boolean) : [];
-    await openDialog({
-      title: '🏺 Mensola dei collezionabili',
-      text: shown.length
-        ? `Pezzi unici di ${ownerName || 'questo giocatore'}:\n\n` +
-          shown.map((c) => `${c!.emoji} ${c!.name}`).join('\n')
-        : 'La mensola è vuota.',
-      buttons: [{ label: 'Chiudi', value: null, color: '#57606f' }],
-    });
-    return;
-  }
+/**
+ * La mensola della mia stanza: si scelgono fino a tre pezzi da esporre. Quella degli altri, con
+ * le offerte, è in collect-offers.ts.
+ */
+export async function openShelf(): Promise<void> {
   for (;;) {
     const owned = collectionOf(state, me());
     const shelf = shelfOf(state, me());

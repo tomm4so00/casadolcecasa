@@ -300,3 +300,67 @@ export function completeSale(
 export function soldOut(state: CollectState): boolean {
   return COLLECTIBLES.every((c) => state.owners[c.id]);
 }
+
+// ---------------------------------------------------------------- offerte sulla mensola
+//
+// Chi visita una stanza può fare un'offerta per un pezzo sulla mensola. L'offerta arriva al
+// proprietario come messaggio (colOffer); se accetta, l'affare si conclude subito, anche se chi
+// ha offerto non è in gioco: i soldi passano dalla sua cassaforte a quella del proprietario e il
+// proprietario gli dà il pezzo (colDone avvisa il compratore). Chi ha già la mensola piena deve
+// poi liberare un posto: mette in vendita all'usato uno dei suoi pezzi, o lo butta se il negozio
+// dell'usato è pieno.
+
+/** Perché non si può offrire questa cifra (null se va bene). */
+export function collectOfferError(
+  amount: number,
+  money: number,
+  owner: CollectOwner | undefined,
+  buyer: string,
+): string | null {
+  if (!owner) return 'Questo pezzo non è più sulla mensola.';
+  if (owner.o === buyer) return 'È già tuo.';
+  const price = usedPriceError(amount);
+  if (price) return price;
+  if (amount > money)
+    return `In cassaforte hai solo ${money.toLocaleString('it-IT')} €: non puoi offrire di più.`;
+  return null;
+}
+
+/** Il pezzo è in vendita al negozio dell'usato (in un espositore). */
+export function inUsedShop(state: CollectState, id: string): boolean {
+  const sale = state.owners[id]?.sale;
+  return !!sale && state.used[sale.st] === id;
+}
+
+/**
+ * Il proprietario dà il pezzo a chi l'ha pagato (offerta accettata): null se non è suo o se è in
+ * vendita all'usato. Esce dalla mensola del proprietario; il compratore lo sistema sulla sua.
+ */
+export function giveTo(
+  owner: CollectOwner | null,
+  ownerId: string,
+  buyer: string,
+  buyerName: string,
+  now: number,
+): CollectOwner | null {
+  if (!owner || owner.o !== ownerId || owner.sale || buyer === ownerId || !PLAYER.test(buyer))
+    return null;
+  return { o: buyer, on: buyerName.slice(0, 20), t: now };
+}
+
+/** La mensola è piena: un pezzo in più non ci sta. */
+export const shelfFull = (state: CollectState, playerId: string): boolean =>
+  freeShelfSpot(state, playerId) === null;
+
+/** Primo espositore libero del negozio dell'usato (null = negozio pieno: si può solo buttare). */
+export function freeUsedStand(state: CollectState): number | null {
+  for (let i = 0; i < STANDS; i++) if (!usedListing(state, i)) return i;
+  return null;
+}
+
+/** Pezzi miei che non stanno sulla mensola e non sono in vendita (arrivati con la mensola piena). */
+export function offShelf(state: CollectState, playerId: string): Collectible[] {
+  return collectionOf(state, playerId).filter(
+    (c) => state.owners[c.id].s === undefined && !state.owners[c.id].sale,
+  );
+}

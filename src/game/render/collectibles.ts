@@ -1,7 +1,7 @@
 // Oggetti da collezione: i pezzi, gli espositori del negozio e la mensola a muro della stanza.
 import { type GameValue, game } from '../context.js';
 import { isoProject, isoScale } from './primitives.js';
-import { box, onFace } from './objects.js';
+import { box, onFace, resetPlane } from './objects.js';
 import { type Collectible, onSale, shelfOf, usedListing } from '../collect-rules.js';
 import { collectState } from '../collect.js';
 import { getMyRoomMap, isMyRoomNow } from '../saves.js';
@@ -107,7 +107,15 @@ function drawGlassCase(x: number, y: number, size: number, z0: number, z1: numbe
 /** Larghezza della mensola sulla parete. */
 export const SHELF_W = 70;
 
-/** Mensola a muro con i (fino a tre) pezzi del proprietario della stanza. */
+/** Quanto sporge la mensola dal muro, e a che altezza sta l'asse (dal pavimento). */
+const SHELF_DEPTH = 13;
+const SHELF_Z = 56;
+
+/**
+ * Mensola a muro con i (fino a tre) pezzi del proprietario della stanza. È in rilievo: un'asse di
+ * legno che sporge dalla parete, con due staffe sotto, e i pezzi in piedi sopra come negli
+ * espositori del negozio (con la loro ombra sull'asse).
+ */
 export function wallCollectShelf(d: GameValue, t: GameValue): void {
   const room: GameValue = game.roomsState[game.currentRoomIdx ?? -1];
   const mine = isMyRoomNow();
@@ -116,28 +124,56 @@ export function wallCollectShelf(d: GameValue, t: GameValue): void {
   if (!spot) return;
   const side = spot.y <= -160 ? 'back' : 'left';
   if (d.side !== side) return;
-  const center = side === 'back' ? spot.x + 200 : 180 - spot.y;
   const ctx: CanvasRenderingContext2D = game.view.ctx;
-  const plank = 74;
-  // staffe
-  ctx.fillStyle = '#2d3436';
-  for (const dx of [-23, 23]) {
-    ctx.beginPath();
-    ctx.moveTo(center + dx - 2, plank + 4);
-    ctx.lineTo(center + dx + 2, plank + 4);
-    ctx.lineTo(center + dx + 2, plank + 14);
-    ctx.fill();
-  }
-  // ombra e asse di legno
-  ctx.fillStyle = 'rgba(0,0,0,0.22)';
-  ctx.fillRect(center - SHELF_W / 2 + 2, plank + 4, SHELF_W, 4);
-  ctx.fillStyle = '#8d6e63';
-  ctx.fillRect(center - SHELF_W / 2, plank, SHELF_W, 5);
-  ctx.fillStyle = '#a1887f';
-  ctx.fillRect(center - SHELF_W / 2, plank, SHELF_W, 1.5);
-  const owner = mine ? game.session.myPlayerId : room?.ownerId;
-  if (!owner) return;
-  shelfOf(collectState(), owner).forEach((c, i) => {
-    if (c) drawCollectible(ctx, c, center + (i - 1) * 22.5, plank, 24, t || 0);
+  const s = isoScale();
+  const back = side === 'back';
+  // punto sull'asse: `along` lungo il muro dal centro della mensola, `out` dal muro verso la stanza
+  const at = (along: number, out: number) =>
+    back ? { x: spot.x + along, y: game.Y0 + out } : { x: game.X0 + out, y: spot.y - along };
+  const mid = at(0, SHELF_DEPTH / 2);
+  ctx.save();
+  // fuori dal piano della parete: qui si disegna nello spazio della stanza
+  resetPlane();
+  // ombra sul muro, staffe e asse di legno
+  const shadow = [
+    at(-SHELF_W / 2 + 3, 0.3),
+    at(SHELF_W / 2 + 3, 0.3),
+    at(SHELF_W / 2 + 3, 0.3),
+    at(-SHELF_W / 2 + 3, 0.3),
+  ];
+  const zs = [SHELF_Z - 2, SHELF_Z - 2, SHELF_Z - 9, SHELF_Z - 9];
+  ctx.fillStyle = 'rgba(0,0,0,0.16)';
+  ctx.beginPath();
+  shadow.forEach((p, i) => {
+    const q = isoProject(p.x, p.y, zs[i]);
+    if (i) ctx.lineTo(q.x, q.y);
+    else ctx.moveTo(q.x, q.y);
   });
+  ctx.fill();
+  for (const a of [-23, 23]) {
+    const b = at(a, 4);
+    box(b.x, b.y, back ? 2 : 8, back ? 8 : 2, 9, '#2d3436', { z0: SHELF_Z - 12 });
+  }
+  box(mid.x, mid.y, back ? SHELF_W : SHELF_DEPTH, back ? SHELF_DEPTH : SHELF_W, 3.2, '#8d6e63', {
+    z0: SHELF_Z - 3.2,
+    top: '#a1887f',
+  });
+  const owner = mine ? game.session.myPlayerId : room?.ownerId;
+  if (owner) {
+    // da dietro in avanti: sulla parete di sinistra il primo posto è il più vicino a chi guarda
+    const pieces = shelfOf(collectState(), owner).map((c, i) => ({ c, i }));
+    if (!back) pieces.reverse();
+    for (const { c, i } of pieces) {
+      if (!c) continue;
+      const p = at((i - 1) * 22.5, SHELF_DEPTH / 2 + 0.5);
+      const g = isoProject(p.x, p.y, SHELF_Z);
+      // ombra del pezzo sull'asse
+      ctx.fillStyle = 'rgba(40,24,12,0.28)';
+      ctx.beginPath();
+      ctx.ellipse(g.x, g.y, 9 * s, 3.2 * s, 0, 0, Math.PI * 2);
+      ctx.fill();
+      drawCollectible(ctx, c, g.x, g.y, 25 * s, t || 0);
+    }
+  }
+  ctx.restore();
 }
