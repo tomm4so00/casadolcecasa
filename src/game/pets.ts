@@ -54,6 +54,7 @@ import {
   petDiesAt,
   petCompanyPerHour,
   PET_DYING_WARN_MS,
+  PET_HUNGER_DEPLETION_SEC,
 } from './pet-rules.js';
 
 /** Ambienti in cui si può portare il cane al guinzaglio (l'appartamento, il cortile e il parco). */
@@ -92,7 +93,8 @@ export const PET_OF_KEY: Record<string, PetKind> = Object.fromEntries(
 ) as Record<string, PetKind>;
 
 const book = (): PetBook => (game.player.pets ??= {});
-const depletion = (): number => game.HUNGER_AWAKE_DEPLETION_SEC;
+// la fame degli animali scende a metà della velocità di quella del giocatore
+const depletion = (): number => PET_HUNGER_DEPLETION_SEC;
 const hungerOf = (kind: PetKind): number => {
   const p = book()[kind];
   return p ? petHunger(p, Date.now(), depletion()) : 100;

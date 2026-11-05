@@ -74,6 +74,7 @@ import { approachKissPartner, drawKissHearts, kissActive } from './romance.js';
 import { faintAmount } from './faint.js';
 import { fadeOnRoomChange, updateCamera } from './camera.js';
 import { isStoned } from './weed.js';
+import { officeSpeed } from './office.js';
 import { applyRoomBounds } from './room-size.js';
 import { presenceState, shownWhileOffline } from './presence-rules.js';
 import type { OnlinePlayer } from './network-model.js';
@@ -184,7 +185,9 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
     game.moveForward = game.moveRight = 0;
     delta = 0;
   }
-  const speed: GameValue = (game.isSprinting ? 220 : 130) * (game.player.sleepLevel < 20 ? 0.6 : 1); // stanco = più lento
+  // stanco = più lento; in ufficio anche disidratati
+  const speed: GameValue =
+    (game.isSprinting ? 220 : 130) * (game.player.sleepLevel < 20 ? 0.6 : 1) * officeSpeed();
   // sulla luna il terreno è convesso
   game.moonCurve = game.view.activeEnvironment === 'luna' ? 1 / 1500 : 0;
   updateRocketTrip();
