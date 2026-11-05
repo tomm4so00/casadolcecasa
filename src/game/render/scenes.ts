@@ -351,11 +351,13 @@ export function drawFloorPattern(st?: GameValue): GameValue {
         ctx.lineTo(W, v);
         ctx.stroke();
       }
-      // passeggiata di pietra davanti alle vetrine
+      // passeggiata di pietra davanti alle vetrine, sul muro di fondo e su quello di sinistra
       ctx.fillStyle = '#d6ccbb';
       ctx.fillRect(0, 0, W, 78);
+      ctx.fillRect(0, 0, 78, H);
       ctx.fillStyle = '#c9a227';
-      ctx.fillRect(0, 76, W, 3);
+      ctx.fillRect(76, 76, W - 76, 3);
+      ctx.fillRect(76, 76, 3, H - 76);
       // tappeto rosso dall'ingresso alla fontana
       const cu = W / 2;
       ctx.fillStyle = '#9b1b30';

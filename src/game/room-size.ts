@@ -20,7 +20,7 @@ const ENV_HALF: Record<string, { x: number; y: number }> = {
   CORTILE: { x: 606, y: 246 },
   // bagno meno profondo delle altre stanze: dalla porta ai sanitari bastano pochi passi
   BATHROOM: { x: 200, y: 120 },
-  centro_commerciale: { x: 420, y: 200 },
+  centro_commerciale: { x: 560, y: 320 },
   luna: { x: 300, y: 300 },
   // laboratorio ingegneristico (davanti) e la sua zona esterna (dietro)
   ingegneria: { x: 200, y: 380 },

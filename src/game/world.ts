@@ -568,8 +568,6 @@ export function backToSaloon(): void {
   game.view.activeEnvironment = 'SALOON';
   game.view.currentRoomTitle = game.saloonTitle();
   spawnAtDoor(door);
-  const doorKey = Object.keys(doors).find((k) => doors[k] === door);
-  if (doorKey) game.doorForce['saloon:' + doorKey] = performance.now() + 500;
 }
 
 /** Rientro da fuori: si ricompare nel cortile, appena dentro l'uscita del condominio. */

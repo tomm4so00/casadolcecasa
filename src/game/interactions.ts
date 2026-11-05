@@ -1,7 +1,7 @@
 // Pulsanti degli oggetti di ogni ambiente: cosa c'è scritto quando ci si avvicina e cosa
 // succede premendolo. Per un posto nuovo basta aggiungere la sua voce in PLACES.
 import { facadeFootprint } from './render/facades.js';
-import { setBlockedDoor } from './render/doors.js';
+import { resetDoors, setBlockedDoor } from './render/doors.js';
 import { servicePrompt } from './restaurant.js';
 import { buyPlant, plantLabel, smokeJoint, tendPlant } from './weed.js';
 import { PETS, PET_FOOD_PRICE, type PetKind } from './pet-rules.js';
@@ -632,7 +632,7 @@ const MOON_BASE: Place = {
 };
 
 // ---------------------------------------------------------------- parco
-// L'unico pulsante della passeggiata è il cancello dell'area cani (vedi pets.ts).
+// Il cancello dell'area cani si passa camminando (walkZones); il suo comportamento è in pets.ts.
 const PARK: Place = {
   prompt: (key, item) => (key === 'dogGate' ? dogGatePrompt() : touch(item)),
   act(key) {
@@ -721,24 +721,56 @@ export function walkThroughKeys(): Set<string> {
   return keys;
 }
 
+/** Con che nome si disegna la porta `key` di questo ambiente (vedi doorOpenAmount). */
+function doorDrawId(env: string, key: string): string {
+  if (env === 'CORTILE') return 'cortile:' + key;
+  if (env === 'centro_commerciale') return 'mall:' + getCurrentFurnitureMap()[key]?.shop;
+  return 'saloon:' + key;
+}
+
+/** Larghezza della porta a vetri dei negozi del centro commerciale (vedi drawShopFacade). */
+const SHOP_DOOR = 30;
+
 /**
- * Zone davanti alle porte del cortile e zerbini dell'uscita (stanze, cucina, bagno, negozi…):
- * basta entrarci camminando, senza pulsante.
+ * Zone che si attraversano camminando, senza pulsante: porte del cortile, zerbini dell'uscita,
+ * cancello dell'area cani e porte dei negozi del centro commerciale.
  */
 function walkZones(): WalkZone[] {
   const env = game.view.activeEnvironment;
   if (env !== 'CORTILE') {
-    const ex: GameValue = env === 'SALOON' ? null : getCurrentFurnitureMap().doorExit;
-    // arredando lo zerbino resta un pulsante: non si esce per sbaglio spostando un mobile
-    if (!ex || game.arrangeMode || game.isMovingFurnitureMode) return [];
+    // arredando niente porte a piedi: non si esce per sbaglio spostando un mobile
+    if (game.arrangeMode || game.isMovingFurnitureMode) return [];
+    const out: WalkZone[] = [];
+    const map: GameValue = getCurrentFurnitureMap();
+    const ex: GameValue = env === 'SALOON' ? null : map.doorExit;
     // lo zerbino sta sul bordo della stanza: vale anche un passo prima
-    return [
-      {
+    if (ex)
+      out.push({
         key: 'doorExit',
         inside: (x, y, m) =>
           Math.abs(x - ex.x) < ex.w / 2 + m && Math.abs(y - ex.y) < ex.h / 2 + 14 + m,
-      },
-    ];
+      });
+    // parco: il cancello dell'area cani si passa camminandoci contro, da fuori o da dentro
+    const gate: GameValue = env === 'passeggiata' ? map.dogGate : null;
+    if (gate)
+      out.push({
+        key: 'dogGate',
+        inside: (x, y, m) =>
+          Math.abs(x - gate.x) < gate.w / 2 - 4 + m && Math.abs(y - gate.y) < 14 + m,
+      });
+    // centro commerciale: si entra nei negozi arrivando alla loro porta a vetri
+    if (env === 'centro_commerciale')
+      for (const [key, it] of Object.entries(map) as [string, GameValue][]) {
+        if (!it.enter) continue;
+        const left = it.side === 'left';
+        out.push({
+          key,
+          inside: left
+            ? (x, y, m) => Math.abs(y - it.y) < SHOP_DOOR / 2 + m && x - (it.x + it.w / 2) < 14 + m
+            : (x, y, m) => Math.abs(x - it.x) < SHOP_DOOR / 2 + m && y - (it.y + it.h / 2) < 14 + m,
+        });
+      }
+    return out;
   }
   const out: WalkZone[] = [];
   for (const [key, it] of Object.entries(game.courtyardDoors) as [string, GameValue][]) {
@@ -805,6 +837,7 @@ export function checkWalkThrough(): void {
     walkEnv = env;
     blockedDoor = null;
     pickBlocked = true;
+    resetDoors();
   }
   const { x, y } = game.playerPos;
   const busy =
@@ -830,7 +863,7 @@ export function checkWalkThrough(): void {
   }
   if (blockedDoor && !near(blockedDoor)) blockedDoor = null;
   // la porta bloccata resta chiusa: si apre di nuovo avvicinandosi solo quando il blocco è tolto
-  setBlockedDoor(blockedDoor ? (env === 'CORTILE' ? 'cortile:' : 'saloon:') + blockedDoor : null);
+  setBlockedDoor(blockedDoor ? doorDrawId(env, blockedDoor) : null);
   // salone: si passa la porta arrivando sul suo filo
   const gap = crossedDoor(
     x,

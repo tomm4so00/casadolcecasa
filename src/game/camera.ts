@@ -76,7 +76,10 @@ export function cameraPx(s: number): { u: number; v: number } {
 /** Limiti (in unità isometriche prima della scala) di pavimento e pareti della stanza. */
 function sceneExtent(): { u0: number; u1: number; v0: number; v1: number } {
   // nel cortile le palazzine (fino a 3 piani, tetto e camino) sono più alte delle pareti
-  const wallH = game.view.activeEnvironment === 'CORTILE' ? 250 : 130;
+  const wallH =
+    game.view.activeEnvironment === 'CORTILE'
+      ? 250
+      : game.ENV_STYLE[game.view.activeEnvironment]?.wallH || 130;
   return {
     u0: (game.X0 - game.Y1) * 0.866 - MARGIN,
     u1: (game.X1 - game.Y0) * 0.866 + MARGIN,

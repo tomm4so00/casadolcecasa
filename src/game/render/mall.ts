@@ -5,6 +5,7 @@ import { parseLook, resolveLook } from '../character.js';
 import { drawGlasses, drawHat, drawPlayerAvatar } from './avatars.js';
 import { resetPlane, box, onFace, drawShirtShape, drawPalmProp } from './objects.js';
 import { drawCollectibleArt } from './collectible-art.js';
+import { doorOpenAmount } from './doors.js';
 
 // ---------------------------------------------------------------- CENTRO COMMERCIALE
 const FACADE_STYLE: Record<
@@ -74,6 +75,8 @@ export function drawShopFacade(it?: GameValue, t?: GameValue): GameValue {
   const ctx = game.view.ctx;
   const st = FACADE_STYLE[it.shop] || FACADE_STYLE.mobili;
   const front: GameValue = box(it.x, it.y, it.w, it.h, it.z, st.wall);
+  // la porta del negozio si apre a chi le arriva vicino
+  const open = it.enter ? doorOpenAmount('mall:' + it.shop, it.x, it.y, true, true) : 0;
   // le vetrine sulla parete di sinistra guardano verso destra: si disegna sull'altra faccia
   onFace(front, it.side === 'left' ? 'right' : 'left', (W: number, H: number): void => {
     // insegna
@@ -135,24 +138,70 @@ export function drawShopFacade(it?: GameValue, t?: GameValue): GameValue {
     };
     win(6, doorX - 12);
     win(doorX + doorW + 6, W - (doorX + doorW + 6) - 6);
-    // porta a vetri
-    ctx.fillStyle = 'rgba(160,210,235,0.85)';
+    // vano della porta: dentro il negozio illuminato (telaio e ante sono in 3D, vedi drawShopDoor)
+    const g = ctx.createLinearGradient(0, top, 0, bottom);
+    g.addColorStop(0, '#fff3d6');
+    g.addColorStop(1, '#e8cf9f');
+    ctx.fillStyle = g;
     ctx.fillRect(doorX, top, doorW, bottom - top);
-    ctx.strokeStyle = '#2d3436';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(doorX, top, doorW, bottom - top);
-    ctx.beginPath();
-    ctx.moveTo(W / 2, top);
-    ctx.lineTo(W / 2, bottom);
-    ctx.stroke();
-    ctx.fillStyle = '#b2bec3';
-    ctx.fillRect(W / 2 - 4, (top + bottom) / 2, 2, 10);
-    ctx.fillRect(W / 2 + 2, (top + bottom) / 2, 2, 10);
-    ctx.fillStyle = st.sign;
-    ctx.font = 'bold 6px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText('APERTO', W / 2, top + 9);
+    ctx.fillStyle = 'rgba(0,0,0,0.12)';
+    ctx.fillRect(doorX, bottom - 8, doorW, 8);
   });
+  if (it.enter) drawShopDoor(it, open);
+}
+
+/** Larghezza e altezza della porta a vetri dei negozi (la stessa per tutti). */
+const SHOP_DOOR_W = 30;
+const SHOP_DOOR_H = 74;
+
+/**
+ * Porta a vetri scorrevole dei negozi, in 3D: telaio in metallo che sporge dalla facciata e due ante
+ * di vetro con il loro spessore, che scorrono verso i lati quando ci si avvicina (`open` da 0 a 1).
+ * Vale per le facciate sul muro di fondo e per quelle sul muro di sinistra (`side: 'left'`).
+ */
+function drawShopDoor(it: GameValue, open: number): void {
+  const left = it.side === 'left';
+  // `a` lungo la facciata (da sinistra verso destra per chi guarda), `out` verso la sala
+  const face = left ? it.x + it.w / 2 : it.y + it.h / 2;
+  const at = (
+    a: number,
+    out: number,
+    wA: number,
+    dOut: number,
+    h: number,
+    color: string,
+    z0: number,
+    o: GameValue = {},
+  ) =>
+    left
+      ? box(face + out, it.y - a, dOut, wA, h, color, { z0, ...o })
+      : box(it.x + a, face + out, wA, dOut, h, color, { z0, ...o });
+  const W = SHOP_DOOR_W,
+    H = SHOP_DOOR_H,
+    metal = '#4b5563',
+    z0 = 4;
+  // soglia, stipiti e architrave
+  at(0, 2, W + 8, 4, 1.5, '#9aa3ab', 0);
+  at(-W / 2 - 1.5, 2, 3, 4, H, metal, z0);
+  at(W / 2 + 1.5, 2, 3, 4, H, metal, z0);
+  at(0, 2.5, W + 6, 5, 5, metal, z0 + H);
+  // binario sopra le ante
+  at(0, 4.5, W + 2, 1.5, 2, '#2d3436', z0 + H - 2);
+  // due ante di vetro che scorrono verso i lati, una un po' davanti all'altra
+  const slide = (W / 2 - 3) * open;
+  const glass = 'rgba(170,215,240,0.55)';
+  const sides = { top: 'rgba(120,150,170,0.9)', left: glass, right: 'rgba(130,180,210,0.6)' };
+  for (const [k, depth] of [
+    [-1, 3],
+    [1, 4.2],
+  ]) {
+    const a = k * (W / 4 + slide);
+    at(a, depth, W / 2 - 1, 1.2, H - 3, glass, z0, sides);
+    // profilo in alluminio intorno al vetro e maniglia verticale verso il centro
+    at(a, depth, W / 2 - 1, 1.4, 2, '#7f8c8d', z0);
+    at(a, depth, W / 2 - 1, 1.4, 2, '#7f8c8d', z0 + H - 5);
+    at(a - k * (W / 4 - 3), depth + 0.8, 1.2, 1.4, 16, '#dfe6e9', z0 + H * 0.35);
+  }
 }
 
 /** Cosa si vede in vetrina: mobili, abiti sui manichini o slot machine. */
@@ -322,23 +371,31 @@ function drawWindowDisplay(shop: string, x: number, y: number, w: number, h: num
 }
 
 /** Colonna bianca con base e capitello dorati, con una lampada che illumina la vetrina. */
+/**
+ * Colonna quadrata tra due vetrine: base e capitello dorati, fusto di marmo scanalato e la
+ * lampada accesa sul lato verso la galleria (`side: 'left'` per quelle sul muro di sinistra).
+ */
 export function drawMallColumnProp(it?: GameValue, t?: GameValue): GameValue {
   const ctx = game.view.ctx;
-  box(it.x, it.y, it.w + 6, it.h + 6, 8, '#c9a227');
-  const shaft: GameValue = box(it.x, it.y, it.w, it.h, it.z - 18, '#f5f0e6', { z0: 8 });
-  onFace(shaft, 'left', (W: number, H: number): void => {
-    ctx.strokeStyle = 'rgba(0,0,0,0.08)';
-    for (let i = 3; i < W; i += 4) {
-      ctx.beginPath();
-      ctx.moveTo(i, 0);
-      ctx.lineTo(i, H);
-      ctx.stroke();
-    }
-  });
-  box(it.x, it.y, it.w + 8, it.h + 8, 10, '#d4ac0d', { z0: it.z - 10 });
-  // lampada da parete accesa
-  const p = isoProject(it.x, it.y + it.h / 2 + 2, it.z - 30);
-  const glow = 0.55 + 0.1 * Math.sin((t || 0) * 2 + it.x);
+  box(it.x, it.y, it.w + 8, it.h + 8, 10, '#c9a227', { top: '#d4ac0d' });
+  const shaft: GameValue = box(it.x, it.y, it.w, it.h, it.z - 24, '#f5f0e6', { z0: 10 });
+  const flutes = (W: number, H: number): void => {
+    ctx.fillStyle = 'rgba(0,0,0,0.06)';
+    for (let i = 3; i < W - 2; i += 5) ctx.fillRect(i, 4, 2, H - 8);
+    ctx.strokeStyle = 'rgba(201,162,39,0.5)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(1, 1, W - 2, H - 2);
+  };
+  onFace(shaft, 'left', flutes);
+  onFace(shaft, 'right', flutes);
+  box(it.x, it.y, it.w + 6, it.h + 6, 4, '#c9a227', { z0: it.z - 14 });
+  box(it.x, it.y, it.w + 10, it.h + 10, 10, '#d4ac0d', { z0: it.z - 10 });
+  // lampada da parete accesa, sul lato che guarda la galleria
+  const p =
+    it.side === 'left'
+      ? isoProject(it.x + it.w / 2 + 2, it.y, it.z - 36)
+      : isoProject(it.x, it.y + it.h / 2 + 2, it.z - 36);
+  const glow = 0.55 + 0.1 * Math.sin((t || 0) * 2 + it.x + it.y);
   const g = ctx.createRadialGradient(p.x, p.y, 1, p.x, p.y, 22 * isoScale());
   g.addColorStop(0, `rgba(255,236,170,${glow})`);
   g.addColorStop(1, 'rgba(255,236,170,0)');

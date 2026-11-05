@@ -155,6 +155,15 @@ const doorOpenState = new Map<string, { k: number; t: number }>();
  * Quanto è aperta una porta: si apre quando il giocatore la sta attraversando (game.doorForce)
  * e, se `byProximity`, anche quando le si avvicina; poi si richiude.
  */
+/**
+ * Cambiando stanza tutte le porte ripartono chiuse: niente porte rimaste aperte dall'ultima visita
+ * né aperture forzate avanzate dalla stanza di prima.
+ */
+export function resetDoors(): void {
+  doorOpenState.clear();
+  game.doorForce = {};
+}
+
 /** La porta da cui si è appena arrivati: finché fa da muro non si apre avvicinandosi. */
 let blockedDoorId: string | null = null;
 export function setBlockedDoor(id: string | null): void {
