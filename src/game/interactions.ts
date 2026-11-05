@@ -1,7 +1,7 @@
 // Pulsanti degli oggetti di ogni ambiente: cosa c'è scritto quando ci si avvicina e cosa
 // succede premendolo. Per un posto nuovo basta aggiungere la sua voce in PLACES.
 import { facadeFootprint } from './render/facades.js';
-import { resetDoors, setBlockedDoor } from './render/doors.js';
+import { DOOR_OPEN_RADIUS, resetDoors, setBlockedDoor } from './render/doors.js';
 import { servicePrompt } from './restaurant.js';
 import { buyPlant, plantLabel, smokeJoint, tendPlant } from './weed.js';
 import { PETS, PET_FOOD_PRICE, type PetKind } from './pet-rules.js';
@@ -832,6 +832,13 @@ function funnelToPortone(): void {
 /** A ogni fotogramma: chi entra camminando nella zona di una porta la attraversa. */
 export function checkWalkThrough(): void {
   funnelToPortone();
+  walkStep();
+  // passando una porta si è cambiato ambiente in questo stesso fotogramma: la porta da cui si
+  // arriva va bloccata (e chiusa) prima di disegnarlo, se no si vede aprirsi per un attimo
+  if (game.view.activeEnvironment !== walkEnv) walkStep();
+}
+
+function walkStep(): void {
   const env = game.view.activeEnvironment;
   if (env !== walkEnv) {
     walkEnv = env;
@@ -861,7 +868,12 @@ export function checkWalkThrough(): void {
     pickBlocked = false;
     blockedDoor = [...gaps.map((g) => g.key), ...zones.map((z) => z.key)].find(near) ?? null;
   }
-  if (blockedDoor && !near(blockedDoor)) blockedDoor = null;
+  // il blocco si toglie lontano dalla zona e oltre la distanza a cui la porta si apre: così,
+  // allontanandosi, la porta non si apre (e richiude) alle spalle
+  if (blockedDoor && !near(blockedDoor)) {
+    const it: GameValue = getCurrentFurnitureMap()[blockedDoor];
+    if (!it || Math.hypot(x - it.x, y - it.y) > DOOR_OPEN_RADIUS + 5) blockedDoor = null;
+  }
   // la porta bloccata resta chiusa: si apre di nuovo avvicinandosi solo quando il blocco è tolto
   setBlockedDoor(blockedDoor ? doorDrawId(env, blockedDoor) : null);
   // salone: si passa la porta arrivando sul suo filo

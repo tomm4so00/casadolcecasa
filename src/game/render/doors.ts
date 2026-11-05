@@ -164,6 +164,9 @@ export function resetDoors(): void {
   game.doorForce = {};
 }
 
+/** Una porta si apre a chi le arriva più vicino di così (dal centro della porta). */
+export const DOOR_OPEN_RADIUS = 75;
+
 /** La porta da cui si è appena arrivati: finché fa da muro non si apre avvicinandosi. */
 let blockedDoorId: string | null = null;
 export function setBlockedDoor(id: string | null): void {
@@ -183,7 +186,7 @@ export function doorOpenAmount(
   const near =
     byProximity &&
     id !== blockedDoorId &&
-    Math.hypot(game.playerPos.x - x, game.playerPos.y - y) < 75;
+    Math.hypot(game.playerPos.x - x, game.playerPos.y - y) < DOOR_OPEN_RADIUS;
   const target = enabled && (near || (game.doorForce[id] || 0) > now) ? 1 : 0;
   st.k += (target - st.k) * Math.min(1, dt * 6);
   st.t = now;

@@ -142,9 +142,8 @@ function renderMine(list: HTMLElement): void {
   }
   for (const slot of slots) {
     const listing = decodeListing(room?.sale?.[slot]);
-    const n = slot.slice(1);
     const code = hung[slot]!;
-    const el = card(code, escapeHtmlSafe(quotedTitle(code)) || `Quadro ${n}`, [
+    const el = card(code, escapeHtmlSafe(quotedTitle(code)) || 'Senza titolo', [
       listing ? `🏷️ In vendita a <b>${euro(listing.price)}</b>` : 'Appeso nella tua stanza',
     ]);
     if (canNamePainting(code))
@@ -335,17 +334,19 @@ async function showBotOffer(slot: PaintingSlot, listing: GameValue): Promise<voi
   const seed = listingSeed(myIdx(), slot, listing.t);
   // l'Artista riceve offerte più alte
   const amount = artistOffer(botOfferAmount(sold(), seed, listing.round), isArtist());
-  const n = slot.slice(1);
+  // il quadro si chiama col suo titolo; senza titolo è semplicemente "il tuo quadro"
+  const title = quotedTitle(roomPaintings(myRoom())[slot]);
+  const what = title ? `il tuo quadro ${title}` : 'il tuo quadro';
   sendNotify(
     '🖼️ Offerta per il tuo quadro',
-    `Un collezionista offre ${euro(amount)} per il tuo quadro ${n}.`,
+    `Un collezionista offre ${euro(amount)} per ${what}.`,
     'art-offer',
   );
   sfx('mission');
   const res: GameValue = await openDialog({
     title: '🎩 Offerta di un collezionista',
     text:
-      `Un collezionista ha visto il tuo quadro ${n} su quadrivendo.it e offre ${euro(amount)}.\n\n` +
+      `Un collezionista ha visto ${what} su quadrivendo.it e offre ${euro(amount)}.\n\n` +
       `Il tuo prezzo di vendita è ${euro(listing.price)}. Se accetti, il quadro lascia la tua stanza; ` +
       `se rifiuti resta in vendita e più avanti potrebbe arrivare un'altra offerta.`,
     buttons: [
