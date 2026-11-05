@@ -3387,8 +3387,8 @@ export const ENV_STYLE = {
     // muri alti: le vetrine dei negozi arrivano a 150
     wallH: 160,
     trim: '#b8860b',
-    // l'orologio in fondo a destra, dove il muro è libero
-    decor: { back: [{ t: 'clock', u: 1010, top: 40 }], left: [] },
+    // pareti libere: le coprono vetrine e colonne
+    decor: { back: [], left: [] },
     lights: [
       { x: -360, y: -250, z: 0, r: 150, color: '255,190,120' },
       { x: -180, y: -250, z: 0, r: 150, color: '255,170,215' },
