@@ -23,6 +23,9 @@ interface Reference {
   transaction(
     update: (value: unknown) => unknown,
   ): Promise<{ committed: boolean; snapshot: Snapshot }>;
+  on?(event: 'value', callback: (snapshot: Snapshot) => void): unknown;
+  off?(event: 'value', callback?: (snapshot: Snapshot) => void): void;
+  once?(event: 'value'): Promise<Snapshot>;
 }
 export interface MaintenanceDatabase {
   ref(path: string): Reference;
@@ -31,14 +34,34 @@ const record = (value: unknown): value is Record<string, unknown> =>
   !!value && typeof value === 'object';
 
 /**
+ * Transazione con i dati veri fin dal primo giro. Se nessuno è in ascolto, Firebase chiama
+ * `update` la prima volta con null (i dati non li ha ancora in memoria): rispondendo "nessuna
+ * modifica", come fa chi trova null, la transazione finisce lì senza aver cambiato niente e senza
+ * errori. Per questo le stanze dei morti non si liberavano. Come per la borsa (index.ts), si resta
+ * in ascolto mentre si scrive.
+ */
+export async function liveTransaction(
+  reference: Reference,
+  update: (value: unknown) => unknown,
+): Promise<{ committed: boolean; snapshot: Snapshot }> {
+  const keep = () => {};
+  reference.on?.('value', keep);
+  try {
+    await (reference.once ? reference.once('value') : reference.get());
+    return await reference.transaction(update);
+  } finally {
+    reference.off?.('value', keep);
+  }
+}
+
+/**
  * Morti per assenza e per salute a zero: se ne occupa il server, non un altro giocatore. Valgono
  * per tutti, anche per i personaggi di prima dell'accesso con Google non ancora collegati.
  */
 export async function maintainGame(database: MaintenanceDatabase, now: number): Promise<void> {
   const rooms = database.ref('sims_rooms_state');
-  await rooms.get();
   let expired: { id: string; name: string; lastSeen: number }[] = [];
-  const result = await rooms.transaction((value) => {
+  const result = await liveTransaction(rooms, (value) => {
     expired = [];
     if (!record(value)) return undefined;
     const next = structuredClone(value);
@@ -82,9 +105,10 @@ export async function maintainGame(database: MaintenanceDatabase, now: number): 
       await database.ref('sims_graveyard/' + player.id).update(grave);
       await database.ref('sims_leaderboard/' + player.id).remove();
       await database.ref('sims_online_players/' + player.id).remove();
-      await database
-        .ref('sims_rooms_state/' + roomIndex + '/pendingDeath')
-        .transaction((value) => (record(value) && value.id === player.id ? null : undefined));
+      await liveTransaction(
+        database.ref('sims_rooms_state/' + roomIndex + '/pendingDeath'),
+        (value) => (record(value) && value.id === player.id ? null : undefined),
+      );
     }
   await markAbsentDeaths(database, now);
   await tidyDeadPlayers(database, now);
@@ -205,11 +229,9 @@ export async function tidyDeadPlayers(database: MaintenanceDatabase, now: number
     await database.ref('sims_leaderboard/' + id).remove();
     await database.ref('sims_online_players/' + id).remove();
     if (ownerName.has(id))
-      await database
-        .ref('sims_rooms_state')
-        .transaction((value) =>
-          record(value) ? (releaseRoomsOf(value, id) ?? undefined) : undefined,
-        );
+      await liveTransaction(database.ref('sims_rooms_state'), (value) =>
+        record(value) ? (releaseRoomsOf(value, id) ?? undefined) : undefined,
+      );
   }
 }
 
@@ -499,7 +521,7 @@ export async function retireBusinesses(
     if (!holds(room)) continue;
     let paid: { player: string; biz: string; amount: number }[] = [];
     try {
-      const result = await database.ref('sims_rooms_state/' + index).transaction((value) => {
+      const result = await liveTransaction(database.ref('sims_rooms_state/' + index), (value) => {
         paid = [];
         if (!holds(value)) return undefined;
         const next = structuredClone(value) as Record<string, unknown>;
