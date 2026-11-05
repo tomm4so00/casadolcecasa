@@ -6,6 +6,7 @@ import { type Collectible, onSale, shelfOf, usedListing } from '../collect-rules
 import { collectState } from '../collect.js';
 import { getMyRoomMap, isMyRoomNow } from '../saves.js';
 import { drawCollectibleArt } from './collectible-art.js';
+import { drawCollectible3d } from './collectible-3d.js';
 
 const EMOJI_FONT = '"Segoe UI Emoji","Apple Color Emoji","Noto Color Emoji",sans-serif';
 
@@ -61,8 +62,11 @@ export function drawCollectStand(it: GameValue, t: GameValue): void {
   // cuscino di velluto
   box(it.x, it.y, 18, 18, 2, it.used ? '#2e7d5b' : '#8e1b3a', { z0: 43 });
   if (c) {
-    const p = isoProject(it.x, it.y, 45);
-    drawCollectible(ctx, c, p.x, p.y, 30 * s, t || 0);
+    // in 3D sul cuscino; i pezzi senza modello col disegno di prima
+    if (!drawCollectible3d(c.id, it.x, it.y, 45, 32, t || 0)) {
+      const p = isoProject(it.x, it.y, 45);
+      drawCollectible(ctx, c, p.x, p.y, 30 * s, t || 0);
+    }
   }
   drawGlassCase(it.x, it.y, 30, 43, 84);
 }
@@ -172,7 +176,9 @@ export function wallCollectShelf(d: GameValue, t: GameValue): void {
       ctx.beginPath();
       ctx.ellipse(g.x, g.y, 9 * s, 3.2 * s, 0, 0, Math.PI * 2);
       ctx.fill();
-      drawCollectible(ctx, c, g.x, g.y, 25 * s, t || 0);
+      // in 3D, girato verso la stanza; i pezzi senza modello col disegno di prima
+      if (!drawCollectible3d(c.id, p.x, p.y, SHELF_Z, 20, t || 0, back ? 0 : 1))
+        drawCollectible(ctx, c, g.x, g.y, 25 * s, t || 0);
     }
   }
   ctx.restore();
