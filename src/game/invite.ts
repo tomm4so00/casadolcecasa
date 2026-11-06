@@ -17,11 +17,25 @@ import {
 } from './invite-rules.js';
 import { openDialog } from './interface.js';
 import { toast } from './missions.js';
-import { browser } from './runtime.js';
+import { browser, lifetime } from './runtime.js';
 import { hasRoom } from './saves.js';
 
 const PENDING_KEY = 'sims_invite_from';
 const CLAIMED_KEY = 'sims_invite_claimed';
+/** Il promemoria arriva dopo gli avvisi dell'ingresso (stanza, modalità prova…). */
+const REMINDER_AFTER_MS = 9000;
+
+/** A ogni ingresso in partita: ricorda che dal profilo si possono invitare gli amici. */
+export function remindInvite(): void {
+  lifetime.setTimeout(
+    () =>
+      toast(
+        `💌 Invita qualcuno a giocare: apri il profilo (🧑) e tocca «Invita amici». Se è la sua prima volta, ricevete ${INVITE_BONUS}€ a testa!`,
+        8000,
+      ),
+    REMINDER_AFTER_MS,
+  );
+}
 
 function storage(key: string): string {
   return game.session.LS_PREFIX + key;

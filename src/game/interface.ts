@@ -5,7 +5,7 @@ import { startCollect } from './collect.js';
 import { onLedgerChange, startLimited } from './limited.js';
 import { applyDailyPerks } from './personality.js';
 import { enablePush } from './push.js';
-import { claimInvite, openInvite, startInviteRewards } from './invite.js';
+import { claimInvite, openInvite, remindInvite, startInviteRewards } from './invite.js';
 import { startPlayersHud } from './players-hud.js';
 import { dayNumber } from './game-clock.js';
 import { renderArtSite, startArtMarket } from './art-market.js';
@@ -364,6 +364,7 @@ export async function startGame(..._args: GameValue[]): Promise<GameValue> {
   startPresence();
   if (game.notifyOn) void enablePush();
   startInviteRewards();
+  remindInvite();
   // premi giornalieri delle personalità (dopo che le finestre d'avvio si sono chiuse)
   lifetime.setTimeout(() => void applyDailyPerks(), 4000);
   lifetime.setInterval(() => void applyDailyPerks(), 60000);
