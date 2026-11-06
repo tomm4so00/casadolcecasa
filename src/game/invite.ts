@@ -177,7 +177,9 @@ async function copyLink(text: string): Promise<void> {
 /** Il pulsante "Invita amici" del profilo. */
 export async function openInvite(): Promise<void> {
   const link = inviteLink(game.session.OFFLINE ? null : game.session.myPlayerId);
-  const message = inviteMessage(game.player.myData.nick || '');
+  const nick = game.player.myData.nick || '';
+  // il messaggio completo, con il link personale dentro il testo
+  const message = inviteMessage(nick, link);
   const count = await invitedCount();
   const canShare = typeof navigator.share === 'function';
   const res = await openDialog({
@@ -187,6 +189,7 @@ export async function openInvite(): Promise<void> {
       `Casa dolce casa a qualcuno di nuovo.\n\n🎁 Se un amico entra per la prima volta dal tuo link, ricevete ${INVITE_BONUS}€ a testa` +
       ` (fino a ${INVITE_MAX_PAID} amici).` +
       (count !== null ? `\n\nAmici arrivati con il tuo invito: ${count}` : '') +
+      `\n\n🔗 Il tuo link personale:\n${link}` +
       (game.session.OFFLINE
         ? '\n\n🧪 Sei in modalità prova: il link non porta il tuo invito e niente bonus.'
         : ''),
@@ -202,18 +205,20 @@ export async function openInvite(): Promise<void> {
   });
   if (res.action === 'share') {
     try {
-      await navigator.share({ title: 'Casa dolce casa', text: message, url: link });
+      // niente `url` a parte: qualche app terrebbe solo uno dei due pezzi e perderebbe l'invito
+      await navigator.share({ title: 'Casa dolce casa', text: message });
     } catch (e) {
       // Chiusa senza scegliere un'app: niente da fare. Altri errori: si copia il link.
-      if ((e as Error)?.name !== 'AbortError') await copyLink(`${message} ${link}`);
+      if ((e as Error)?.name !== 'AbortError') await copyLink(message);
     }
   }
   if (res.action === 'whatsapp')
-    browser.open(`https://wa.me/?text=${encodeURIComponent(`${message} ${link}`)}`, '_blank');
+    browser.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank');
   if (res.action === 'telegram')
+    // Telegram aggiunge da sé il link (url) sotto il testo
     browser.open(
-      `https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent(message)}`,
+      `https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent(inviteMessage(nick))}`,
       '_blank',
     );
-  if (res.action === 'copy') await copyLink(`${message} ${link}`);
+  if (res.action === 'copy') await copyLink(message);
 }

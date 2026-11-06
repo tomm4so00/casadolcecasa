@@ -23,11 +23,16 @@ export function inviteLink(playerId: string | null): string {
   return code ? `${GAME_URL}?${INVITE_PARAM}=${encodeURIComponent(code)}` : GAME_URL;
 }
 
-export function inviteMessage(nick: string): string {
+/**
+ * Il messaggio da mandare. Con `link` il link personale sta dentro il testo: alcune app (WhatsApp
+ * su certi telefoni) tengono solo il testo o solo l'indirizzo, e così l'invito non si perde.
+ */
+export function inviteMessage(nick: string, link?: string): string {
   const who = nick.trim() ? ` Sono «${nick.trim()}».` : '';
   return (
     `Vieni a giocare con me a Casa dolce casa! 🏠${who} ` +
-    `Se è la prima volta che entri, con questo link riceviamo ${INVITE_BONUS}€ a testa:`
+    `Se è la prima volta che entri, con questo link riceviamo ${INVITE_BONUS}€ a testa:` +
+    (link ? '\n' + link : '')
   );
 }
 

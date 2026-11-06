@@ -21,6 +21,10 @@ describe('inviti', () => {
     expect(parseInviteCode('qualcosa')).toBeNull();
     expect(inviteMessage('Anna')).toContain('Sono «Anna»');
     expect(inviteMessage('Anna')).toContain('riceviamo 300€ a testa');
+    // il link personale sta dentro il testo del messaggio
+    const link = inviteLink('player_abc123');
+    expect(inviteMessage('Anna', link).endsWith('\n' + link)).toBe(true);
+    expect(inviteMessage('Anna', link)).toContain('?invito=player_abc123');
   });
 
   it("l'invito ricordato scade dopo una settimana", () => {
