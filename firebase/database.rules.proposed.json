@@ -1140,6 +1140,26 @@
         }
       }
     },
+    "sims_cryo": {
+      "$uid": {
+        ".read": "((auth != null && (auth.token.firebase.sign_in_provider === 'google.com' || (auth.token.firebase.sign_in_provider === 'password' && auth.token.email.endsWith('@giocatori.casadolcecasa.app')))) && auth.uid === $uid) || (auth != null && auth.uid === 'cryo-webhook')",
+        ".write": "auth != null && auth.uid === 'cryo-webhook'",
+        ".validate": "newData.hasChildren(['since','until']) && newData.child('since').isNumber() && newData.child('until').isNumber()"
+      }
+    },
+    "sims_deletions": {
+      "$uid": {
+        ".read": "(auth != null && (auth.token.firebase.sign_in_provider === 'google.com' || (auth.token.firebase.sign_in_provider === 'password' && auth.token.email.endsWith('@giocatori.casadolcecasa.app')))) && auth.uid === $uid",
+        ".write": "(auth != null && (auth.token.firebase.sign_in_provider === 'google.com' || (auth.token.firebase.sign_in_provider === 'password' && auth.token.email.endsWith('@giocatori.casadolcecasa.app')))) && auth.uid === $uid && !data.exists() && newData.exists()",
+        ".validate": "newData.hasChildren(['at']) && newData.child('at').isNumber() && newData.child('at').val() <= now + 60000",
+        "at": {
+          ".validate": "newData.isNumber()"
+        },
+        "$other": {
+          ".validate": false
+        }
+      }
+    },
     "sims_push": {
       "$pid": {
         "tokens": {

@@ -4,6 +4,8 @@ import { getDatabase } from 'firebase-admin/database';
 import { advanceMarket, BUSINESSES, holdingsFromRooms } from '../../shared/market.js';
 import { activityTarget, type ActivityLog } from '../../shared/activity.js';
 import { getMessaging } from 'firebase-admin/messaging';
+import { getAuth } from 'firebase-admin/auth';
+import { processDeletionRequests } from './deletion.js';
 import {
   type PushSender,
   cleanOldActivity,
@@ -90,6 +92,20 @@ async function main() {
     );
     reference.off('value', listener);
     await maintainGame(getDatabase(app), scheduledAt);
+    // Account da cancellare su richiesta del giocatore: dati di gioco e accesso.
+    try {
+      const deleted = await processDeletionRequests(getDatabase(app), async (uid) => {
+        try {
+          await getAuth(app).deleteUser(uid);
+        } catch (error) {
+          // già cancellato: va bene così
+          if ((error as { code?: string }).code !== 'auth/user-not-found') throw error;
+        }
+      });
+      if (deleted) console.log(`Accounts deleted on request: ${deleted}`);
+    } catch (error) {
+      console.log('Account deletions skipped:', (error as { code?: string }).code || String(error));
+    }
     // pulizia dei contatori e rimborsi delle attività tolte: un errore qui non blocca la borsa
     try {
       await cleanOldActivity(getDatabase(app), scheduledAt);

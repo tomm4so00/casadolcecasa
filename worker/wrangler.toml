@@ -1,0 +1,15 @@
+# Worker che riceve da Stripe i pagamenti della criogenesi (vedi docs/criogenesi.md).
+# I segreti non stanno qui: si caricano con "npx wrangler secret put <NOME>".
+name = "casadolcecasa-criogenesi"
+main = "src/index.ts"
+compatibility_date = "2026-11-01"
+workers_dev = true
+
+[vars]
+FIREBASE_DATABASE_URL = "https://casadolcecasa-6d92a-default-rtdb.firebaseio.com"
+# id del Payment Link della criogenesi (plink_…). Ora è quello di PROVA: per i pagamenti veri
+# va messo quello creato nella modalità live di Stripe.
+STRIPE_CRYO_PAYMENT_LINK = "plink_1UYmJ3ED0NNIO3xrYGARvqOI"
+
+[observability]
+enabled = true

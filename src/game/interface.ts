@@ -6,6 +6,8 @@ import { onLedgerChange, startLimited } from './limited.js';
 import { applyDailyPerks } from './personality.js';
 import { enablePush } from './push.js';
 import { claimInvite, openInvite, remindInvite, startInviteRewards } from './invite.js';
+import { openCryo, watchCryo } from './cryo.js';
+import { blockedByDeletion, requestDeletion } from './deletion.js';
 import { startPlayersHud } from './players-hud.js';
 import { dayNumber } from './game-clock.js';
 import { renderArtSite, startArtMarket } from './art-market.js';
@@ -177,16 +179,21 @@ export async function openProfile(..._args: GameValue[]): Promise<GameValue> {
     buttons: [
       { label: 'Chiudi', value: null, color: '#57606f' },
       { label: '💌 Invita amici', value: 'invite', color: '#e84393', wide: true },
+      { label: '🧊 Criogenesi (pausa personaggio)', value: 'cryo', color: '#00a8ff', wide: true },
       { label: '🎨 Aspetto', value: 'look', color: '#8e44ad' },
       { label: '⚰️ Epitaffio', value: 'epitaph', color: '#636e72' },
       ...(game.session.OFFLINE ? [{ label: 'Usa codice', value: 'switch', color: '#e67e22' }] : []),
       ...(canLink ? [{ label: '🔗 Collega Google', value: 'google', color: '#2e86de' }] : []),
       ...(game.session.OFFLINE
         ? []
-        : [{ label: "🚪 Esci dall'account", value: 'logout', color: '#c0392b', wide: true }]),
+        : [
+            { label: "🚪 Esci dall'account", value: 'logout', color: '#c0392b', wide: true },
+            { label: '🗑️ Elimina account e dati', value: 'delete', color: '#57606f', wide: true },
+          ]),
     ],
   });
   if (res.action === 'logout') await logOut();
+  if (res.action === 'delete') await requestDeletion();
   if (res.action === 'google') {
     try {
       await linkGoogleAccount();
@@ -196,6 +203,7 @@ export async function openProfile(..._args: GameValue[]): Promise<GameValue> {
     }
   }
   if (res.action === 'invite') await openInvite();
+  if (res.action === 'cryo') await openCryo();
   if (res.action === 'look') openCharacterCreator(false);
   if (res.action === 'epitaph') openEpitaph();
   if (res.action === 'switch') switchToCode(res.value);
@@ -292,6 +300,8 @@ export async function startGame(..._args: GameValue[]): Promise<GameValue> {
     toast(error instanceof Error ? error.message : String(error), 6000);
     return;
   }
+  // cancellazione dell'account chiesta e non ancora fatta: non si entra
+  if (await blockedByDeletion()) return;
   game.player.myData.nick = (
     localStorage.getItem(game.session.LS_PREFIX + 'sims_player_nick') || 'Ospite'
   ).slice(0, 20);
@@ -364,6 +374,7 @@ export async function startGame(..._args: GameValue[]): Promise<GameValue> {
   startPresence();
   if (game.notifyOn) void enablePush();
   startInviteRewards();
+  watchCryo();
   remindInvite();
   // premi giornalieri delle personalità (dopo che le finestre d'avvio si sono chiuse)
   lifetime.setTimeout(() => void applyDailyPerks(), 4000);

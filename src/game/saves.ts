@@ -8,14 +8,15 @@ import { decodePets } from './pet-rules.js';
 import { freePetsForLayout, petRoomItems, syncPetHomes } from './pets.js';
 import { isStoned, syncWeedPot, weedRoomItems } from './weed.js';
 import { publishVitals } from './players-hud-rules.js';
-import { advanceNeeds } from './simulation.js';
 import { needsRules } from './needs-rules.js';
 import { syncRoomEconomy, creditMoney, flushEconomy } from './economy.js';
 import { canPlaySession } from './accounts.js';
 import type { GameValue } from './context.js';
 import type { SaveV8 } from './save-model.js';
 import { decodeSaveV8 } from './save-model.js';
-import { absentDeath } from './absent-death-rules.js';
+import { absentDeath, advanceAbsence } from './absent-death-rules.js';
+import { type CryoPass, frozenMs } from '../../shared/cryo-rules.js';
+import { loadMyCryo } from './cryo.js';
 import { game } from './context.js';
 import { lifetime, dom } from './runtime.js';
 import { getWealth, toast } from './missions.js';
@@ -373,29 +374,42 @@ export async function saveGame(forceCloud = false): Promise<boolean> {
   return game.lastSavePromise;
 }
 
+/** "3 giorni", "4,5 ore", "12 minuti". */
+function durationText(seconds: number): string {
+  const h = seconds / 3600;
+  return h >= 48
+    ? Math.floor(h / 24) + ' giorni'
+    : h >= 1
+      ? String(Math.round(h * 10) / 10).replace('.', ',') + ' ore'
+      : Math.round(seconds / 60) + ' minuti';
+}
+
 // Il tempo scorre anche a gioco chiuso (nessun limite di ore): ricalcolo i bisogni per il tempo di assenza.
 // Se il gioco era stato chiuso mentre il personaggio dormiva, continua a dormire finché il sonno non arriva a 100%.
-export function catchUpOffline(s?: GameValue): GameValue {
-  const away: GameValue = (Date.now() - (s.savedAt || 0)) / 1000;
+// Con la criogenesi il tempo passato in capsula non conta, né per lui né per i suoi animali.
+export function catchUpOffline(s?: GameValue, cryo: CryoPass | null = null): GameValue {
+  const now = Date.now();
+  const away: GameValue = (now - (s.savedAt || 0)) / 1000;
   if (!s.savedAt || !isFinite(away) || away <= 0) return;
 
-  advanceNeeds(game.player, away, Date.now(), needsRules());
+  advanceAbsence(game.player, s.savedAt, now, needsRules(), cryo);
+  const frozen = frozenMs(cryo, s.savedAt, now);
+  // gli animali: il loro orologio della fame va avanti di quanto è durata la capsula
+  if (frozen > 0)
+    for (const pet of Object.values(game.player.pets ?? {}) as GameValue[])
+      if (pet && typeof pet.at === 'number') pet.at += frozen;
   noteFaintOnReturn(!!s.sleeping);
   if (away < 60) return;
   const fainted = game.player.healthLevel <= 0;
-  const h: GameValue = away / 3600;
-  const txt: GameValue =
-    h >= 48
-      ? Math.floor(h / 24) + ' giorni'
-      : h >= 1
-        ? Math.round(h * 10) / 10 + ' ore'
-        : Math.round(away / 60) + ' minuti';
+  const txt = durationText(away);
   if (!fainted)
     lifetime.setTimeout(
       (): GameValue =>
         toast(
-          `⏳ Sei stato via ${txt}: il tempo è passato anche per il tuo personaggio` +
-            (s.sleeping ? ' (dormiva)' : ''),
+          frozen >= 60000
+            ? `🧊 Sei stato via ${txt}: ${durationText(frozen / 1000)} in criogenesi, senza che il tempo passasse per il tuo personaggio`
+            : `⏳ Sei stato via ${txt}: il tempo è passato anche per il tuo personaggio` +
+                (s.sleeping ? ' (dormiva)' : ''),
           6000,
         ),
       2500,
@@ -419,6 +433,8 @@ export async function loadGame(..._args: GameValue[]): Promise<GameValue> {
   }
   let best: GameValue = local;
   if (cloud && (!best || (cloud.savedAt || 0) > (best.savedAt || 0))) best = cloud;
+  // il pass di criogenesi serve prima di ricalcolare l'assenza
+  const cryo = await loadMyCryo();
   const deadSave: GameValue = [local, cloud].find((x?: GameValue): GameValue => x && x.dead);
   if (deadSave) {
     game.player.isDead = true;
@@ -426,11 +442,12 @@ export async function loadGame(..._args: GameValue[]): Promise<GameValue> {
     applySave(deadSave);
   } else if (best) {
     applySave(best);
-    catchUpOffline(best);
+    catchUpOffline(best, cryo);
     // morto mentre era via: sulla lapide va il momento in cui la salute è arrivata a zero
     if (game.player.healthLevel <= 0)
       game.player.deadAt =
-        absentDeath(best, game.player.ownedFurniture || {}, Date.now())?.deadAt || 0;
+        absentDeath(best, game.player.ownedFurniture || {}, Date.now(), undefined, cryo)?.deadAt ||
+        0;
   }
   if (!game.player.bornAt && !game.player.isDead) game.player.bornAt = Date.now(); // nascita del personaggio (salvataggi vecchi: da ora)
   // Arrivo da un altro dispositivo con il codice: riprendo anche il nome

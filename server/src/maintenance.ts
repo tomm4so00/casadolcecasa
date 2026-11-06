@@ -10,6 +10,7 @@ import {
   petDiesAt,
 } from '../../shared/pet-rules.js';
 import { graveFromSave, releaseRoomsOf } from '../../shared/death-rules.js';
+import { type CryoPass, awakeMs, decodeCryo, realTimeAfterAwake } from '../../shared/cryo-rules.js';
 import { ACTIVE_MARGIN_MS, absentDeath } from '../../src/game/absent-death-rules.js';
 import { dayNumber } from '../../src/game/game-clock.js';
 
@@ -32,6 +33,25 @@ export interface MaintenanceDatabase {
 }
 const record = (value: unknown): value is Record<string, unknown> =>
   !!value && typeof value === 'object';
+
+/**
+ * I pass di criogenesi, per codice del personaggio. Il pass è dell'account (sims_cryo/<uid>):
+ * vale per il personaggio che l'account ha adesso (sims_accounts/<uid>/playerId).
+ */
+export async function cryoByPlayer(database: MaintenanceDatabase): Promise<Map<string, CryoPass>> {
+  const passes = (await database.ref('sims_cryo').get()).val();
+  const result = new Map<string, CryoPass>();
+  if (!record(passes)) return result;
+  const accounts = (await database.ref('sims_accounts').get()).val();
+  if (!record(accounts)) return result;
+  for (const [uid, value] of Object.entries(passes)) {
+    const pass = decodeCryo(value);
+    const account = accounts[uid];
+    if (pass && record(account) && typeof account.playerId === 'string')
+      result.set(account.playerId, pass);
+  }
+  return result;
+}
 
 /**
  * Transazione con i dati veri fin dal primo giro. Se nessuno è in ascolto, Firebase chiama
@@ -59,6 +79,8 @@ export async function liveTransaction(
  * per tutti, anche per i personaggi di prima dell'accesso con Google non ancora collegati.
  */
 export async function maintainGame(database: MaintenanceDatabase, now: number): Promise<void> {
+  // il tempo passato in criogenesi non conta per le 80 ore di assenza
+  const cryo = await cryoByPlayer(database);
   const rooms = database.ref('sims_rooms_state');
   let expired: { id: string; name: string; lastSeen: number }[] = [];
   const result = await liveTransaction(rooms, (value) => {
@@ -71,7 +93,7 @@ export async function maintainGame(database: MaintenanceDatabase, now: number): 
         room.pendingDeath ||
         typeof room.ownerId !== 'string' ||
         typeof room.lastSeen !== 'number' ||
-        now - room.lastSeen <= 80 * 3600000
+        awakeMs(cryo.get(room.ownerId) ?? null, room.lastSeen, now) <= DEATH_AFTER_MS
       )
         continue;
       expired.push({
@@ -93,7 +115,7 @@ export async function maintainGame(database: MaintenanceDatabase, now: number): 
       const reference = database.ref('sims_saves/' + player.id);
       const stored = (await reference.get()).val();
       const save = record(stored) ? stored : { savedAt: now, moneyLevel: 0, gameMinutes: 0 };
-      const deadAt = player.lastSeen + 72 * 3600000;
+      const deadAt = realTimeAfterAwake(cryo.get(player.id) ?? null, player.lastSeen, 72 * 3600000);
       await reference.update({ ...(!record(stored) ? save : {}), dead: true, deadAt });
       const grave: Record<string, unknown> = {
         name: player.name,
@@ -110,7 +132,7 @@ export async function maintainGame(database: MaintenanceDatabase, now: number): 
         (value) => (record(value) && value.id === player.id ? null : undefined),
       );
     }
-  await markAbsentDeaths(database, now);
+  await markAbsentDeaths(database, now, cryo);
   await tidyDeadPlayers(database, now);
   const chat = (await database.ref('sims_chat').get()).val();
   if (record(chat)) {
@@ -145,7 +167,11 @@ export async function maintainGame(database: MaintenanceDatabase, now: number): 
  * visibile agli altri (anche svenuto a terra) o un posto in classifica. Lapide e stanza le
  * sistema poi tidyDeadPlayers.
  */
-export async function markAbsentDeaths(database: MaintenanceDatabase, now: number): Promise<void> {
+export async function markAbsentDeaths(
+  database: MaintenanceDatabase,
+  now: number,
+  cryo: Map<string, CryoPass> = new Map(),
+): Promise<void> {
   const read = async (path: string) => {
     const v = (await database.ref(path).get()).val();
     return record(v) ? v : {};
@@ -178,7 +204,7 @@ export async function markAbsentDeaths(database: MaintenanceDatabase, now: numbe
       : record(save.ownedFurniture)
         ? (save.ownedFurniture as Record<string, boolean>)
         : {};
-    const death = absentDeath(save, furniture, now);
+    const death = absentDeath(save, furniture, now, undefined, cryo.get(id) ?? null);
     if (!death) continue;
     await database.ref('sims_saves/' + id).update({
       dead: true,
@@ -248,9 +274,15 @@ export type PushSender = (
   message: { title: string; body: string; link: string; tag: string },
 ) => Promise<PushResult>;
 
-/** Testo dell'avviso, con le ore che restano prima della morte. */
-export function deathWarningText(name: string, lastSeen: number, now: number) {
-  const hours = Math.max(1, Math.round((lastSeen + DEATH_AFTER_MS - now) / 3600000));
+/** Testo dell'avviso, con le ore che restano prima della morte (la criogenesi le allunga). */
+export function deathWarningText(
+  name: string,
+  lastSeen: number,
+  now: number,
+  cryo: CryoPass | null = null,
+) {
+  const diesAt = realTimeAfterAwake(cryo, lastSeen, DEATH_AFTER_MS);
+  const hours = Math.max(1, Math.round((diesAt - now) / 3600000));
   return {
     title: `⚠️ ${name} sta per morire!`,
     body: `Non entri in Casa dolce casa da più di 3 giorni. Entra entro ${hours} ${hours === 1 ? 'ora' : 'ore'}, altrimenti il tuo personaggio morirà.`,
@@ -280,19 +312,22 @@ export async function sendDeathWarnings(
   );
   const roomList = rooms.val();
   if (!record(roomList)) return 0;
+  const cryo = await cryoByPlayer(database);
   let sent = 0;
   for (const room of Object.values(roomList)) {
     if (!record(room) || room.pendingDeath) continue;
     const { ownerId, lastSeen } = room;
     if (typeof ownerId !== 'string' || !linked.has(ownerId) || typeof lastSeen !== 'number')
       continue;
-    const away = now - lastSeen;
+    const pass = cryo.get(ownerId) ?? null;
+    // in criogenesi il conto alla rovescia è fermo: conta solo il tempo fuori dalla capsula
+    const away = awakeMs(pass, lastSeen, now);
     if (away < DEATH_AFTER_MS - WARN_BEFORE_MS || away >= DEATH_AFTER_MS) continue;
     const pushRef = database.ref('sims_push/' + ownerId);
     const push = (await pushRef.get()).val();
     if (!record(push) || push.warnedFor === lastSeen || !record(push.tokens)) continue;
     const name = typeof room.owner === 'string' ? room.owner : 'Il tuo personaggio';
-    const text = deathWarningText(name, lastSeen, now);
+    const text = deathWarningText(name, lastSeen, now, pass);
     for (const [key, entry] of Object.entries(push.tokens)) {
       if (!record(entry) || typeof entry.token !== 'string') continue;
       const result = await send(entry.token, { ...text, link: GAME_URL, tag: 'sims-death' });
@@ -319,16 +354,28 @@ export async function sendPetWarnings(
 ): Promise<number> {
   const saves = (await database.ref('sims_saves').get()).val();
   if (!record(saves)) return 0;
+  const cryo = await cryoByPlayer(database);
   let sent = 0;
   for (const [playerId, save] of Object.entries(saves)) {
     if (!record(save) || save.dead || !record(save.pets)) continue;
     // chi ha salvato negli ultimi minuti sta giocando: lo avvisa il gioco stesso
     if (typeof save.savedAt === 'number' && now - save.savedAt < 10 * 60000) continue;
     const pets = decodePets(save.pets);
+    // con il padrone in criogenesi l'animale non ha fame: la sua fine si sposta in avanti
+    const pass = cryo.get(playerId) ?? null;
+    const absentFrom = typeof save.savedAt === 'number' ? save.savedAt : now;
+    const diesAtOf = (k: PetKind) => {
+      const p = pets[k]!;
+      return realTimeAfterAwake(
+        pass,
+        p.at,
+        petDiesAt(p, PET_HUNGER_DEPLETION_SEC) - p.at,
+        absentFrom,
+      );
+    };
     const dying = PET_KINDS.filter((k) => {
-      const p = pets[k];
-      if (!p) return false;
-      const left = petDiesAt(p, PET_HUNGER_DEPLETION_SEC) - now;
+      if (!pets[k]) return false;
+      const left = diesAtOf(k) - now;
       return left > 0 && left <= PET_DYING_WARN_MS;
     });
     if (!dying.length) continue;
@@ -337,7 +384,7 @@ export async function sendPetWarnings(
     if (!record(push) || !record(push.tokens)) continue;
     const warned = record(push.petWarned) ? push.petWarned : {};
     for (const kind of dying) {
-      const diesAt = Math.round(petDiesAt(pets[kind]!, PET_HUNGER_DEPLETION_SEC));
+      const diesAt = Math.round(diesAtOf(kind));
       if (warned[kind] === diesAt) continue;
       const text = petWarningText(kind, diesAt, now);
       for (const [key, entry] of Object.entries(push.tokens)) {

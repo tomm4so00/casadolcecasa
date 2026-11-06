@@ -1049,6 +1049,15 @@ input[type='number'] {
   text-decoration: underline;
 }
 
+/* Link alle condizioni e alla privacy, in fondo alla schermata d'ingresso */
+.setup-legal {
+  display: block;
+  margin-top: 18px;
+  text-align: center;
+  font-size: 0.75rem;
+  color: #a4b0be;
+}
+
 #mission-text {
   font-size: 0.6rem;
   color: #feca57;

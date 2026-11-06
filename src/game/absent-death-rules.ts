@@ -6,6 +6,22 @@
 import { type NeedsRules, advanceNeeds } from './simulation.js';
 import type { CharacterState } from './models.js';
 import { decodeFlu } from './flu-rules.js';
+import { type CryoPass, awakeSpans } from '../../shared/cryo-rules.js';
+
+/**
+ * I bisogni durante un'assenza da `from` a `to`, saltando il tempo passato in criogenesi:
+ * si simulano solo i tratti fuori dalla capsula, ognuno alla sua ora (febbre e droghe la usano).
+ */
+export function advanceAbsence(
+  state: CharacterState,
+  from: number,
+  to: number,
+  rules: NeedsRules,
+  cryo: CryoPass | null = null,
+): void {
+  for (const [start, end] of awakeSpans(cryo, from, to))
+    advanceNeeds(state, (end - start) / 1000, end, rules);
+}
 
 /** Velocità dei bisogni (secondi perché una barra passi da 100 a 0, e simili). */
 export const NEEDS_RULES: NeedsRules = {
@@ -66,32 +82,39 @@ export function needsStateFromSave(
 }
 
 /** Salute e minuti di gioco dopo essere stati via fino a `until`. */
-function after(save: Save, furniture: Record<string, boolean>, until: number, rules: NeedsRules) {
+function after(
+  save: Save,
+  furniture: Record<string, boolean>,
+  until: number,
+  rules: NeedsRules,
+  cryo: CryoPass | null,
+) {
   const state = needsStateFromSave(save, furniture);
-  const from = num(save.savedAt, 0);
-  advanceNeeds(state, (until - from) / 1000, until, rules);
+  advanceAbsence(state, num(save.savedAt, 0), until, rules, cryo);
   return state;
 }
 
 /**
  * Se il personaggio è morto mentre era via, il momento (ms) e i minuti di gioco a quel punto;
  * altrimenti null. Il momento si cerca dimezzando l'intervallo: precisione di pochi secondi.
+ * Il tempo passato in criogenesi (`cryo`) non conta.
  */
 export function absentDeath(
   save: Save,
   ownedFurniture: Record<string, boolean>,
   now: number,
   rules: NeedsRules = NEEDS_RULES,
+  cryo: CryoPass | null = null,
 ): { deadAt: number; gameMinutes: number } | null {
   const from = num(save.savedAt, 0);
   if (!from || now <= from || save.dead === true) return null;
-  if (after(save, ownedFurniture, now, rules).healthLevel > 0) return null;
+  if (after(save, ownedFurniture, now, rules, cryo).healthLevel > 0) return null;
   let lo = from,
     hi = now;
   while (hi - lo > 5000) {
     const mid = Math.floor((lo + hi) / 2);
-    if (after(save, ownedFurniture, mid, rules).healthLevel > 0) lo = mid;
+    if (after(save, ownedFurniture, mid, rules, cryo).healthLevel > 0) lo = mid;
     else hi = mid;
   }
-  return { deadAt: hi, gameMinutes: after(save, ownedFurniture, hi, rules).gameMinutes };
+  return { deadAt: hi, gameMinutes: after(save, ownedFurniture, hi, rules, cryo).gameMinutes };
 }
