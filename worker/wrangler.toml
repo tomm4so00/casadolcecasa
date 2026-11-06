@@ -7,9 +7,9 @@ workers_dev = true
 
 [vars]
 FIREBASE_DATABASE_URL = "https://casadolcecasa-6d92a-default-rtdb.firebaseio.com"
-# id del Payment Link della criogenesi (plink_…). Ora è quello di PROVA: per i pagamenti veri
-# va messo quello creato nella modalità live di Stripe.
-STRIPE_CRYO_PAYMENT_LINK = "plink_1UYmJ3ED0NNIO3xrYGARvqOI"
+# id del Payment Link della criogenesi (plink_…), modalità live di Stripe.
+# Quello di prova era plink_1UYmJ3ED0NNIO3xrYGARvqOI (sandbox).
+STRIPE_CRYO_PAYMENT_LINK = "plink_1UYontED0NNIO3xr0zR7q2O4"
 
 [observability]
 enabled = true

@@ -15,10 +15,10 @@ import { toast } from './missions.js';
 import { browser } from './runtime.js';
 
 /**
- * Il Payment Link di Stripe per il pass di 30 giorni (Stripe → Payment Links). Vuoto finché non
- * è pronto: il pulsante del profilo dice che la criogenesi arriva presto.
+ * Il Payment Link di Stripe per il pass di 30 giorni (Stripe → Payment Links, modalità live).
+ * Vuoto, il pulsante del profilo dice che la criogenesi arriva presto.
  */
-export const CRYO_PAYMENT_LINK = '';
+export const CRYO_PAYMENT_LINK = 'https://buy.stripe.com/9B69ATe9m87198k5Wh7N600';
 
 let current: CryoPass | null = null;
 
