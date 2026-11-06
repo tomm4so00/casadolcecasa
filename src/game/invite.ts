@@ -1,5 +1,5 @@
 // Inviti: il pulsante del profilo condivide il link del gioco (WhatsApp, Telegram, Messaggi…).
-// Chi entra per la prima volta da quel link riceve 500€, e altrettanti ne riceve chi l'ha invitato.
+// Chi entra per la prima volta da quel link riceve 300€, e altrettanti ne riceve chi l'ha invitato.
 import { googlePlayerId } from './account-model.js';
 import { creditMoney } from './economy.js';
 import { game } from './context.js';

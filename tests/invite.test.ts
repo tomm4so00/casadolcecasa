@@ -20,6 +20,7 @@ describe('inviti', () => {
     expect(parseInviteCode('player_<script>')).toBeNull();
     expect(parseInviteCode('qualcosa')).toBeNull();
     expect(inviteMessage('Anna')).toContain('Sono «Anna»');
+    expect(inviteMessage('Anna')).toContain('riceviamo 300€ a testa');
   });
 
   it("l'invito ricordato scade dopo una settimana", () => {

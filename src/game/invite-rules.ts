@@ -1,9 +1,9 @@
 // Inviti: un giocatore manda il link del gioco a un amico. Se l'amico crea il suo primo
-// personaggio partendo da quel link, ricevono 500€ a testa. Lo stesso link serve anche a
+// personaggio partendo da quel link, ricevono 300€ a testa. Lo stesso link serve anche a
 // chiamare chi gioca già: in quel caso nessun bonus, solo l'invito.
 
 export const GAME_URL = 'https://tomm4so00.github.io/casadolcecasa/';
-export const INVITE_BONUS = 500;
+export const INVITE_BONUS = 300;
 /** Bonus massimi per chi invita: crearsi account finti non deve diventare un mestiere. */
 export const INVITE_MAX_PAID = 10;
 /** Il link aperto resta valido una settimana: c'è tempo per registrarsi con calma. */
