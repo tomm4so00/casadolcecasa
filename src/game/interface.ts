@@ -5,6 +5,7 @@ import { startCollect } from './collect.js';
 import { onLedgerChange, startLimited } from './limited.js';
 import { applyDailyPerks } from './personality.js';
 import { enablePush } from './push.js';
+import { claimInvite, openInvite, startInviteRewards } from './invite.js';
 import { startPlayersHud } from './players-hud.js';
 import { dayNumber } from './game-clock.js';
 import { renderArtSite, startArtMarket } from './art-market.js';
@@ -175,6 +176,7 @@ export async function openProfile(..._args: GameValue[]): Promise<GameValue> {
       : null,
     buttons: [
       { label: 'Chiudi', value: null, color: '#57606f' },
+      { label: '💌 Invita amici', value: 'invite', color: '#e84393', wide: true },
       { label: '🎨 Aspetto', value: 'look', color: '#8e44ad' },
       { label: '⚰️ Epitaffio', value: 'epitaph', color: '#636e72' },
       ...(game.session.OFFLINE ? [{ label: 'Usa codice', value: 'switch', color: '#e67e22' }] : []),
@@ -193,6 +195,7 @@ export async function openProfile(..._args: GameValue[]): Promise<GameValue> {
       toast(error instanceof Error ? error.message : String(error), 6000);
     }
   }
+  if (res.action === 'invite') await openInvite();
   if (res.action === 'look') openCharacterCreator(false);
   if (res.action === 'epitaph') openEpitaph();
   if (res.action === 'switch') switchToCode(res.value);
@@ -313,8 +316,11 @@ export async function startGame(..._args: GameValue[]): Promise<GameValue> {
     showDeathScreen();
     return;
   }
+  // Il primo personaggio dell'account: solo lui può ricevere il bonus di un invito
+  const firstCharacter = !game.bodyChosen;
   if (!game.bodyChosen) await openCharacterCreator(true);
   await claimRoom();
+  void claimInvite(firstCharacter);
   reapAbsentPlayers();
   game.currentApt = hasRoom() ? game.aptOfRoom(game.myAssignedRoomIdx) : 0;
   game.view.currentRoomTitle = game.saloonTitle();
@@ -357,6 +363,7 @@ export async function startGame(..._args: GameValue[]): Promise<GameValue> {
     .on('value', (snap?: GameValue): GameValue => rebuildGraveyard(snap.val()));
   startPresence();
   if (game.notifyOn) void enablePush();
+  startInviteRewards();
   // premi giornalieri delle personalità (dopo che le finestre d'avvio si sono chiuse)
   lifetime.setTimeout(() => void applyDailyPerks(), 4000);
   lifetime.setInterval(() => void applyDailyPerks(), 60000);

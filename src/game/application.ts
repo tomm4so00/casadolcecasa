@@ -8,6 +8,7 @@ import { importRefactoredSave } from './save-model.js';
 import { mountCloudSetup } from './cloud-setup.js';
 import { OFFLINE_MARK } from './saves.js';
 import { offerInstall } from './install.js';
+import { rememberInviteFromUrl } from './invite.js';
 export function mountLatestGame() {
   resetLifetime();
   const root = document.getElementById('app');
@@ -17,6 +18,8 @@ export function mountLatestGame() {
   if (versionTag) versionTag.textContent = 'v' + version;
   bindUiActions(root);
   initializeGame();
+  // Dopo initializeGame: serve la sessione per sapere dove ricordare l'invito
+  rememberInviteFromUrl();
   importRefactoredSave(localStorage, game.session.LS_PREFIX);
   if (!game.session.OFFLINE) mountCloudSetup(root);
   offerInstall();

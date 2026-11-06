@@ -1111,6 +1111,35 @@
         }
       }
     },
+    "sims_invited": {
+      "$uid": {
+        ".read": "(auth != null && (auth.token.firebase.sign_in_provider === 'google.com' || (auth.token.firebase.sign_in_provider === 'password' && auth.token.email.endsWith('@giocatori.casadolcecasa.app')))) && auth.uid === $uid",
+        ".write": "(auth != null && (auth.token.firebase.sign_in_provider === 'google.com' || (auth.token.firebase.sign_in_provider === 'password' && auth.token.email.endsWith('@giocatori.casadolcecasa.app')))) && root.child('sims_accounts').child(auth.uid).child('playerId').isString() && auth.uid === $uid && !data.exists()",
+        ".validate": "newData.isString() && newData.val().matches(/^player_[A-Za-z0-9_-]{4,128}$/) && newData.val() !== root.child('sims_accounts').child(auth.uid).child('playerId').val() && !newData.val().beginsWith('player_' + auth.uid) && newData.parent().parent().child('sims_invites').child(newData.val()).child($uid).exists()"
+      }
+    },
+    "sims_invites": {
+      "$pid": {
+        ".read": "(auth != null && (auth.token.firebase.sign_in_provider === 'google.com' || (auth.token.firebase.sign_in_provider === 'password' && auth.token.email.endsWith('@giocatori.casadolcecasa.app')))) && root.child('sims_accounts').child(auth.uid).child('playerId').val() === $pid",
+        "$uid": {
+          ".write": "(auth != null && (auth.token.firebase.sign_in_provider === 'google.com' || (auth.token.firebase.sign_in_provider === 'password' && auth.token.email.endsWith('@giocatori.casadolcecasa.app')))) && root.child('sims_accounts').child(auth.uid).child('playerId').isString() && auth.uid === $uid && !data.exists()",
+          ".validate": "newData.hasChildren(['nick','t']) && newData.parent().parent().parent().child('sims_invited').child($uid).val() === $pid",
+          "nick": {
+            ".validate": "newData.isString() && newData.val().length <= 20"
+          },
+          "t": {
+            ".validate": "newData.isNumber() && newData.val() <= now + 60000 && newData.val() >= now - 600000"
+          },
+          "paid": {
+            ".write": "(auth != null && (auth.token.firebase.sign_in_provider === 'google.com' || (auth.token.firebase.sign_in_provider === 'password' && auth.token.email.endsWith('@giocatori.casadolcecasa.app')))) && root.child('sims_accounts').child(auth.uid).child('playerId').val() === $pid && !data.exists()",
+            ".validate": "newData.val() === true"
+          },
+          "$other": {
+            ".validate": false
+          }
+        }
+      }
+    },
     "sims_push": {
       "$pid": {
         "tokens": {
