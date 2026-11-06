@@ -12,6 +12,7 @@ import { drawBeamTarget, drawPanelTarget } from './render/construction.js';
 import { openDialog } from './interface.js';
 import { nextPayMessage, shiftsLeftToday } from './job-pay.js';
 import { applyRoomBounds } from './room-size.js';
+import { type Prop, hiddenBehind } from './work-spawn-rules.js';
 import {
   serviceDrawables,
   serviceHudLine,
@@ -24,8 +25,11 @@ import {
 } from './restaurant.js';
 import {
   addOfficeMap,
+  officeBossActive,
+  officeBossBar,
   officeDrawables,
-  officeHudLine,
+  officeFrozen,
+  officeHud,
   officeInteract,
   officeOn,
   officePrompt,
@@ -73,6 +77,12 @@ export function mgHud(..._args: GameValue[]): GameValue {
     mgShiftHud();
     return;
   }
+  // in ufficio, mentre c'è il capo, nel riquadro c'è solo lui
+  if (officeOn() && officeBossActive()) {
+    el.innerHTML = MG_TOP + officeHud();
+    mgShiftHud();
+    return;
+  }
   const { cfg, task, stepIdx, carry } = game.MG;
   const st: GameValue = task.steps[stepIdx];
   const [e, label] = cfg.pool[st.item];
@@ -92,10 +102,8 @@ export function mgHud(..._args: GameValue[]): GameValue {
       : (game.player.stats.shifts || 0) < 3 && !carry
         ? "Prendi l'oggetto e portalo al cerchio giallo"
         : '';
-  const office = officeHudLine();
   el.innerHTML =
     MG_TOP +
-    (office ? `<div class="mg-sub mg-boss">${office}</div>` : '') +
     `<div class="mg-step"><span class="${held ? 'held' : ''}">${held ? '🤲 ' : ''}${e} ${label}</span> → 🎯 ${target?.label ?? ''}<span class="mg-dots">${dots}</span></div>` +
     (sub ? `<div class="mg-sub">${sub}</div>` : '');
   mgShiftHud();
@@ -110,9 +118,13 @@ function mgShiftHud(): void {
   const time = dom('mg-time');
   if (!s || !time) return;
   time.textContent = `⏱ ${Math.ceil(Math.max(0, s.remaining))}s`;
-  dom('mg-fill').style.width = Math.max(0, (s.remaining / game.SHIFT_SECONDS) * 100) + '%';
+  // con il capo la barra diventa rossa e conta il tempo della sua richiesta
+  const boss = officeOn() ? officeBossBar() : null;
+  const fill = dom('mg-fill');
+  fill.classList.toggle('boss', boss !== null);
+  fill.style.width = Math.max(0, (boss ?? s.remaining / game.SHIFT_SECONDS) * 100) + '%';
   dom('mg-pay').textContent =
-    `💰 ${s.pay + (s.delivered || 0) * (s.perItem || 0) + (s.tips || 0)} €`;
+    `💰 ${Math.max(0, s.pay + (s.delivered || 0) * (s.perItem || 0) + (s.tips || 0) - (s.fine || 0))} €`;
 }
 
 export function mgSpawnTask(..._args: GameValue[]): GameValue {
@@ -133,6 +145,16 @@ export function mgSpawnTask(..._args: GameValue[]): GameValue {
     .sort((): GameValue => Math.random() - 0.5)
     .slice(0, 3);
   const obstacles: GameValue = getSolidObstacles();
+  // i mobili alti che possono nascondere un oggetto messo dietro (le scrivanie col monitor sopra)
+  const tall: Prop[] = ((game.ENV_PROPS[game.view.activeEnvironment] || []) as GameValue[]).map(
+    (p: GameValue) => ({
+      x: p.x,
+      y: p.y,
+      w: p.w,
+      h: p.h,
+      z: p.kind === 'officeDesk' ? (p.z || 40) + 45 : p.z,
+    }),
+  );
   const placed: GameValue = [];
   game.MG.map = {};
   cfg.targets.forEach((t?: GameValue): GameValue => {
@@ -161,7 +183,8 @@ export function mgSpawnTask(..._args: GameValue[]): GameValue {
           !collidesAt(x, y, obstacles) &&
           Math.hypot(x - game.playerPos.x, y - game.playerPos.y) > 45 &&
           placed.every((p?: GameValue): GameValue => Math.hypot(x - p.x, y - p.y) > 55) &&
-          cfg.targets.every((t?: GameValue): GameValue => Math.hypot(x - t.x, y - t.y) > 75);
+          cfg.targets.every((t?: GameValue): GameValue => Math.hypot(x - t.x, y - t.y) > 75) &&
+          !hiddenBehind(x, y, tall);
       }
       const def: GameValue = cfg.pool[id],
         o: GameValue = {
@@ -223,7 +246,9 @@ export function mgTick(delta: number): void {
 
 export function mgButtonText(item?: GameValue): GameValue {
   if (serviceOn()) return servicePrompt(item).text;
+  if (officeOn() && officeFrozen()) return '⏸️ Arriva il capo…';
   if (item.office) return officePrompt(item).text;
+  if (officeOn() && officeBossActive() && item.kind === 'target') return '😡 Prima il capo!';
   if (item.kind === 'pickup')
     return game.MG.carry
       ? `🔁 Scambia con ${item.item.e} ${item.item.label}`
@@ -236,7 +261,13 @@ export function mgButtonText(item?: GameValue): GameValue {
 export function mgInteract(item?: GameValue, key?: GameValue): GameValue {
   if (!game.MG.active) return;
   if (serviceOn()) return serviceInteract(item);
+  // appena arriva il capo tutto si ferma per un attimo
+  if (officeOn() && officeFrozen()) return;
   if (item.office) return officeInteract(item);
+  if (officeOn() && officeBossActive() && item.kind === 'target') {
+    mgPop('😡 Prima il capo!', false);
+    return;
+  }
   // con il foglio o la cartella del capo in mano non si prendono né si consegnano gli oggetti dei compiti
   if (game.MG.carry?.office) {
     mgPop(`🤲 Prima consegna ${game.MG.carry.e} ${game.MG.carry.label}`, false);
@@ -383,15 +414,19 @@ export function mgAddDrawables(
 
 /** Cerchi, frecce e oggetti da raccogliere dei lavori a compiti. */
 function addTaskDrawables(addThing: GameValue, drawables: GameValue, t: GameValue): void {
+  if (!game.MG.task) return;
   const st: GameValue = game.MG.task.steps[game.MG.stepIdx];
-  game.MG.cfg.targets.forEach((tg?: GameValue): GameValue => {
-    if (tg.draw)
-      addThing(tg.x, tg.y, tg.w, tg.h, tg.z || 30, tg.label, (): GameValue => drawWorkTarget(tg));
-    if (st && tg.id === st.target) {
-      drawables.push({ depth: -1e5 + 2, draw: (): GameValue => drawTargetRing(tg, t) });
-      drawables.push({ depth: 1e9, draw: (): GameValue => drawTargetArrow(tg, t) });
-    }
-  });
+  // con il capo in ufficio i cerchi del compito spariscono: gli oggetti a terra li vuole lui
+  const boss = officeOn() && officeBossActive();
+  if (!boss)
+    game.MG.cfg.targets.forEach((tg?: GameValue): GameValue => {
+      if (tg.draw)
+        addThing(tg.x, tg.y, tg.w, tg.h, tg.z || 30, tg.label, (): GameValue => drawWorkTarget(tg));
+      if (st && tg.id === st.target) {
+        drawables.push({ depth: -1e5 + 2, draw: (): GameValue => drawTargetRing(tg, t) });
+        drawables.push({ depth: 1e9, draw: (): GameValue => drawTargetArrow(tg, t) });
+      }
+    });
   Object.keys(game.MG.map).forEach((k?: GameValue): GameValue => {
     const o: GameValue = game.MG.map[k];
     if (o.kind !== 'pickup') return;
@@ -413,7 +448,8 @@ export async function updateShift(delta: number): Promise<void> {
     mgStop();
     return;
   }
-  game.activeShift.remaining -= delta;
+  // mentre il capo esce dalla sua stanza anche il tempo del turno si ferma
+  if (!(officeOn() && officeFrozen())) game.activeShift.remaining -= delta;
   mgTick(delta);
   mgShiftHud();
   if (game.activeShift.remaining <= 0) {
@@ -426,7 +462,9 @@ export async function updateShift(delta: number): Promise<void> {
     const delivered: number = s.delivered || 0;
     const itemsPay: number = delivered * (s.perItem || 0);
     const tips: number = s.tips || 0;
-    s.pay = basePay + itemsPay + tips;
+    // la multa del capo si toglie dalla paga, che però non va mai sotto zero
+    const fine: number = s.fine || 0;
+    s.pay = Math.max(0, basePay + itemsPay + tips - fine);
     s.rating = rating;
     s.mult = mult;
     game.player.jobExperience[s.jobKey] = (game.player.jobExperience[s.jobKey] || 0) + 1;
@@ -446,7 +484,10 @@ export async function updateShift(delta: number): Promise<void> {
     void openDialog({
       title: `✅ +${s.pay} €`,
       text:
-        `${basePay} €${multText} di paga + ${delivered} 📦 × ${s.perItem || 0} €\n\n` +
+        `${basePay} €${multText} di paga + ${delivered} 📦 × ${s.perItem || 0} €` +
+        (tips ? ` + ${tips} € di mance e bonus` : '') +
+        (fine ? ` − ${fine} € di multa del capo` : '') +
+        '\n\n' +
         nextPayMessage(done) +
         `\n\n${left > 0 ? `Oggi puoi lavorare ancora ${left} ${left === 1 ? 'volta' : 'volte'}.` : 'Per oggi hai finito.'}`,
       buttons: [{ label: 'Ok', value: 'ok' }],

@@ -2615,3 +2615,8 @@ canvas.shake {
   color: #ff7675;
   font-weight: bold;
 }
+
+/* con il capo in ufficio la barra del turno diventa rossa e conta il tempo della sua richiesta */
+#minigame #mg-fill.boss {
+  background: #e74c3c;
+}

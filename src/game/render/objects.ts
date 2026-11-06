@@ -1324,7 +1324,8 @@ export function drawWallEntranceProp(it?: GameValue): GameValue {
   const b: GameValue = back
     ? box(it.x, game.Y0 + T / 2, span, T, H, '#ecf0f1')
     : box(game.X0 + T / 2, it.y, T, span, H, '#ecf0f1');
-  const open = doorOpenAmount(it.door || 'entrance', it.x, it.y, true, true);
+  // `locked`: non si apre avvicinandosi, solo quando ci passa qualcuno (la porta del capo)
+  const open = doorOpenAmount(it.door || 'entrance', it.x, it.y, true, !it.locked);
   // fuori è giorno: dal vano entra luce
   onFace(b, back ? 'left' : 'right', (FW: number, FH: number): void => {
     const g = ctx.createLinearGradient(0, 7, 0, FH);

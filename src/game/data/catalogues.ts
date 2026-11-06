@@ -2927,6 +2927,20 @@ export const ENV_PROPS = {
     { kind: 'plant', x: -172, y: 160, w: 24, h: 24, z: 55 },
   ],
   lavoro_ufficio: [
+    // la porta della stanza del capo, in fondo a destra: sempre chiusa, ci passa solo lui
+    {
+      kind: 'wallEntrance',
+      side: 'back',
+      x: 160,
+      y: -180,
+      w: 50,
+      h: 10,
+      solid: false,
+      door: 'office:boss',
+      locked: true,
+      sign: '👔',
+      color: '#5d4037',
+    },
     { kind: 'officeDesk', x: -100, y: -70, w: 70, h: 46, z: 40, label: 'Scrivania Ufficio 💻' },
     { kind: 'officeDesk', x: 60, y: -125, w: 70, h: 46, z: 40 },
     { kind: 'archive', x: 145, y: 40, w: 36, h: 50, z: 90, label: 'Archivio 📁' },
