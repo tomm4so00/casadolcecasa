@@ -11,6 +11,7 @@ import { isoProject, isoScale, rotateAround } from './render/primitives.js';
 import { presenceAlive } from './saves.js';
 import { presenceState, shownWhileOffline } from './presence-rules.js';
 import { recordActivity } from './activity.js';
+import { APERITIVO, DRINK_END, afterAperitivo } from './bar-rules.js';
 
 export const COIN_PRICE = 5;
 export const ICE_CREAM_PRICE = 5;
@@ -37,7 +38,7 @@ interface Spot {
   w: number;
   h: number;
   reach: number;
-  fun: 'bench' | 'fountain' | 'iceCream' | 'realty' | 'gossip';
+  fun: 'bench' | 'stool' | 'fountain' | 'iceCream' | 'realty' | 'gossip';
 }
 
 /**
@@ -58,6 +59,14 @@ export function funSpots(): Record<string, Spot> {
     );
     if (cart)
       out.iceCream = { x: cart.x, y: cart.y, w: cart.w, h: cart.h, reach: 10, fun: 'iceCream' };
+    return out;
+  }
+  // al bar ci si siede sugli sgabelli del bancone per un aperitivo
+  if (env === 'bar') {
+    let stools = 0;
+    for (const p of (game.ENV_PROPS.bar || []) as GameValue[])
+      if (p.kind === 'stool')
+        out['stool' + stools++] = { x: p.x, y: p.y, w: p.w, h: p.h, reach: 4, fun: 'stool' };
     return out;
   }
   if (env !== 'CORTILE') return out;
@@ -81,7 +90,12 @@ export function benchesHere(): GameValue[] {
 }
 
 /** Posa da mostrare (e da mandare agli altri) mentre si è seduti. */
-export const myBenchPose = (): string => (game.benchSit?.pose === 'bench' ? 'bench' : '');
+export const myBenchPose = (): string => (seatedPose(game.benchSit) ? game.benchSit.pose : '');
+
+/** Seduti davvero (non ancora per strada verso il posto): sulla panchina o sullo sgabello. */
+function seatedPose(s: GameValue): boolean {
+  return s?.pose === 'bench' || s?.pose === 'stool';
+}
 
 type Pt = { x: number; y: number };
 
@@ -152,7 +166,11 @@ const SEAT_GAP = 12;
 /** Chi è già seduto su questo posto (anche se è uscito dal gioco seduto lì), o null. */
 function seatTakenBy(seat: Pt): string | null {
   for (const [id, op] of othersHere())
-    if (op.act === 'bench' && Math.hypot(op.x - seat.x, op.y - seat.y) < SEAT_GAP) return id;
+    if (
+      (op.act === 'bench' || op.act === 'stool') &&
+      Math.hypot(op.x - seat.x, op.y - seat.y) < SEAT_GAP
+    )
+      return id;
   return null;
 }
 
@@ -193,7 +211,14 @@ export function toggleBench(key: string): void {
 /** Velocità con cui si va a sedersi (come camminare). */
 const SIT_WALK_SPEED = 130;
 
-function startSit(kind: 'bench' | 'sofa', seat: Pt, front: Pt, path: Pt[], item: GameValue): void {
+function startSit(
+  kind: 'bench' | 'sofa' | 'stool',
+  seat: Pt,
+  front: Pt,
+  path: Pt[],
+  item: GameValue,
+  face?: Pt,
+): void {
   game.benchSit = {
     kind,
     env: game.view.activeEnvironment,
@@ -203,8 +228,8 @@ function startSit(kind: 'bench' | 'sofa', seat: Pt, front: Pt, path: Pt[], item:
     walk: pathLength(path) / SIT_WALK_SPEED,
     front,
     seat,
-    // seduti si guarda in avanti, dal posto verso chi sta davanti
-    face: { x: front.x - seat.x, y: front.y - seat.y },
+    // seduti si guarda in avanti, dal posto verso chi sta davanti (al bar verso il bancone)
+    face: face || { x: front.x - seat.x, y: front.y - seat.y },
     dir: null,
     pose: '',
     relaxAt: game.animClock + RELAX_EVERY,
@@ -246,14 +271,57 @@ export function toggleSofa(item: GameValue): void {
   startSit('sofa', seat, front, [{ x: game.playerPos.x, y: game.playerPos.y }, front], item);
 }
 
+/**
+ * Siediti sullo sgabello del bar e ordina un aperitivo (si paga subito), oppure alzati se sei
+ * già seduto. Lo sgabello deve essere libero e servono i soldi in cassaforte.
+ */
+export async function sitOnStool(key: string): Promise<void> {
+  if (game.benchSit) {
+    standUp();
+    return;
+  }
+  const st = funSpots()[key];
+  if (!st || st.fun !== 'stool' || game.player.isSleeping) return;
+  const seat = { x: st.x, y: st.y };
+  if (seatTakenBy(seat)) {
+    toast('🪑 Lo sgabello è occupato.');
+    sfx('error');
+    return;
+  }
+  if (game.moneyLevel < APERITIVO.price) {
+    toast(`🍹 Un aperitivo costa ${APERITIVO.price} €: non ne hai abbastanza in cassaforte.`);
+    sfx('error');
+    return;
+  }
+  if (!(await spendMoney(APERITIVO.price))) {
+    toast('Pagamento non riuscito, riprova.');
+    return;
+  }
+  const front = { x: st.x, y: st.y + st.h / 2 + 16 };
+  // seduti si guarda il bancone: di spalle a chi guarda
+  startSit('stool', seat, front, [{ x: game.playerPos.x, y: game.playerPos.y }, front], st, {
+    x: 0,
+    y: -1,
+  });
+}
+
+/** Per disegnare la scena al bancone: lo sgabello e da quanto si è seduti (o null). */
+export function myBarSeat(): { x: number; e: number } | null {
+  const s: GameValue = game.benchSit;
+  if (!s || s.kind !== 'stool' || s.seatedAt === undefined || s.env !== 'bar') return null;
+  return { x: s.seat.x, e: game.animClock - s.seatedAt };
+}
+
 /** Seduti sul divano (per il pulsante "Alzati"). */
 export const onSofa = (): boolean => game.benchSit?.kind === 'sofa';
 
 export function standUp(): void {
   const s: GameValue = game.benchSit;
   if (!s || s.upAt !== undefined) return;
+  if (s.kind === 'stool' && s.seatedAt !== undefined && !s.drunk)
+    toast("🍹 Hai lasciato l'aperitivo a metà.", 3000);
   // se si era ancora per strada verso la panchina ci si ferma e basta
-  if (s.pose !== 'bench') {
+  if (!seatedPose(s)) {
     game.benchSit = null;
     game.isWalking = false;
     return;
@@ -270,7 +338,7 @@ function checkSeatConflict(s: GameValue): boolean {
   if (s.upAt !== undefined) return false;
   const other = seatTakenBy(s.seat);
   if (!other) return false;
-  if (s.pose !== 'bench') {
+  if (!seatedPose(s)) {
     game.benchSit = null;
     game.isWalking = false;
     toast('🪑 Qualcuno si è seduto lì prima di te.');
@@ -313,9 +381,28 @@ export function updateBench(now: number): void {
   e -= s.walk;
   // arrivati davanti al posto: ci si gira e ci si lascia andare all'indietro sulla seduta
   s.dir = s.face;
-  s.pose = 'bench';
+  s.pose = s.kind === 'stool' ? 'stool' : 'bench';
   if (e < SIT.down) return slide(s.front, s.seat, e / SIT.down, false);
   slide(s.seat, s.seat, 1, false);
+  if (s.kind === 'stool') {
+    // al bancone: il barista serve (render/bar.ts), si beve e, finito il bicchiere, ci si alza
+    if (s.seatedAt === undefined) {
+      s.seatedAt = now;
+      saySocial('🍹 Un aperitivo, grazie!');
+    } else if (!s.drunk && now - s.seatedAt >= DRINK_END) {
+      s.drunk = true;
+      const p = game.player;
+      const next = afterAperitivo({ hunger: p.hungerLevel, happiness: p.happinessLevel });
+      p.hungerLevel = next.hunger;
+      p.happinessLevel = next.happiness;
+      toast(
+        `✨ Aperitivo finito! Fame +${APERITIVO.hunger}%, Felicità +${APERITIVO.happiness}%`,
+        3500,
+      );
+      standUp();
+    }
+    return;
+  }
   if (s.kind === 'sofa') {
     // appena seduti: tonfo sui cuscini, sospiro e la pausa sul divano (felicità)
     if (!s.seatedAt) {

@@ -1248,6 +1248,7 @@ export function drawActor(
   bedSlot?: number | null,
   walkDir?: { x: number; y: number } | null,
   pose?: string,
+  extra?: GameValue,
 ): GameValue {
   if (sleepProgress > 0.001 && bed)
     return drawAvatarSleeping(x, y, name, animTime, look, say, sleepProgress, bed, bedSlot);
@@ -1255,6 +1256,8 @@ export function drawActor(
     walkDir,
     pose,
     newspaper: pose === 'sit',
+    // al bancone: il sorso e il bicchiere in mano (vedi render/bar.ts)
+    ...(extra || {}),
   });
 }
 
@@ -1358,6 +1361,54 @@ const SHORT_SLEEVES = new Set(['plain', 'print', 'jersey', 'polo', 'hawaii', und
 const LONG_TOPS = new Set(['hoodie', 'puffer', 'sweater', 'suit', 'tuxedo', 'jacket']);
 const BELT_PANTS = new Set(['jeans', 'ripped', 'cargo', 'plaid', 'camo']);
 
+/**
+ * La testa vista da dietro: i capelli coprono la nuca (rasati appena un'ombra), e quelli lunghi,
+ * la coda, il caschetto, lo chignon e l'afro ricadono sopra.
+ */
+function drawHairFromBehind(head: Pt, s: number, style: number, hair: string): void {
+  const ctx = game.view.ctx;
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(head.x, head.y, 9 * s, 0, Math.PI * 2);
+  ctx.clip();
+  ctx.globalAlpha = style === 1 ? 0.55 : 1;
+  ctx.fillStyle = hair;
+  ctx.beginPath();
+  ctx.moveTo(head.x - 10 * s, head.y - 10 * s);
+  ctx.lineTo(head.x + 10 * s, head.y - 10 * s);
+  ctx.lineTo(head.x + 10 * s, head.y + 3 * s);
+  ctx.quadraticCurveTo(head.x, head.y + 7 * s, head.x - 10 * s, head.y + 3 * s);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+  ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.arc(head.x, head.y, 9 * s, 0, Math.PI * 2);
+  ctx.stroke();
+  if ([2, 3, 4, 6, 7].includes(style)) drawHairBack(head, s, style, hair);
+}
+
+/** Bicchiere da aperitivo in mano: arancione come uno spritz, inclinato mentre si beve. */
+function drawHandGlass(hand: Pt, s: number, fill: number, sip: number): void {
+  const ctx = game.view.ctx;
+  ctx.save();
+  ctx.translate(hand.x, hand.y - 2 * s);
+  ctx.rotate(-sip * 0.9);
+  const w = 3.6 * s,
+    h = 7 * s;
+  if (fill > 0) {
+    ctx.fillStyle = 'rgba(255,120,30,0.9)';
+    ctx.fillRect(-w / 2, h * (0.5 - fill * 0.85), w, h * fill * 0.85);
+  }
+  ctx.fillStyle = 'rgba(220,235,245,0.3)';
+  ctx.strokeStyle = 'rgba(255,255,255,0.8)';
+  ctx.lineWidth = 0.7 * s;
+  ctx.fillRect(-w / 2, -h / 2, w, h);
+  ctx.strokeRect(-w / 2, -h / 2, w, h);
+  ctx.restore();
+}
+
 export function drawPlayerAvatar(
   x?: GameValue,
   y?: GameValue,
@@ -1395,7 +1446,12 @@ export function drawPlayerAvatar(
   const phase: GameValue = animTime * stepRate + (hsh % 10);
   const swing: GameValue = moving ? Math.sin(phase) : 0;
   const pose: string = (opts && opts.pose) || '';
-  const sitting = pose === 'sit' || pose === 'bench';
+  // sullo sgabello del bar: seduti più in alto, di spalle, girati verso il bancone
+  const onStool = pose === 'stool';
+  const sitting = pose === 'sit' || pose === 'bench' || onStool;
+  // di spalle: al bancone, o il barista girato verso le mensole
+  const fromBehind = onStool || !!(opts && opts.back);
+  const lift = onStool ? 13 : 0;
   const bob: GameValue = sitting
     ? -4
     : moving
@@ -1414,7 +1470,7 @@ export function drawPlayerAvatar(
     liftBack: number = moving ? Math.max(0, -Math.cos(phase)) * 4 : 0;
   const lean: number = moving ? 1.3 : 0;
   const P: GameValue = (dx?: GameValue, dy?: GameValue, z?: GameValue): GameValue =>
-    isoProject(x + dx, y + dy, z);
+    isoProject(x + dx, y + dy, z + lift);
   const hip: GameValue = P(0, 0, 22 + bob),
     neck: GameValue = P(dX * lean, dY * lean, 46 + bob),
     head: GameValue = P(dX * lean * 1.3, dY * lean * 1.3, 58 + bob);
@@ -1722,7 +1778,14 @@ export function drawPlayerAvatar(
     }
     drawShoe(b, back);
   };
-  if (sitting) {
+  if (onStool) {
+    // le ginocchia vanno sotto il bancone, i piedi sul poggiapiedi dello sgabello
+    for (const [side, back] of [
+      [1, true],
+      [-1, false],
+    ] as const)
+      drawLeg(P(side * 3.5, 0, 22 + bob), P(side * 3.5, -9, -6), back, P(side * 3.5, -11, 17));
+  } else if (sitting) {
     for (const [side, back] of [
       [1, true],
       [-1, false],
@@ -1783,30 +1846,39 @@ export function drawPlayerAvatar(
   const tap = pose === 'wash' ? underTap(neck, s) : null;
   // nel panico (in ufficio arriva il capo) le braccia stanno alzate e si agitano
   const flap = pose === 'panic' ? Math.sin(animTime * 18) * 2.5 * s : 0;
-  const handBack: Pt | null =
-    pose === 'panic'
-      ? { x: neck.x + 9 * s, y: neck.y - 15 * s + flap }
-      : tap
-        ? { x: tap.x + 2.5 * s + rub, y: tap.y - 0.5 * s - Math.abs(rub) * 0.4 }
-        : pose === 'wash'
-          ? { x: neck.x + 3 * s + rub, y: hip.y - 6 * s }
-          : reading
-            ? { x: neck.x + 9 * s, y: neck.y + 11 * s }
-            : sitting
-              ? { x: P(3.5, 11, 20).x + 1 * s, y: P(3.5, 11, 20).y - 1 * s }
-              : null;
-  const handFront: Pt | null =
-    pose === 'panic'
-      ? { x: neck.x - 9 * s, y: neck.y - 15 * s - flap }
-      : tap
-        ? { x: tap.x - 2.5 * s - rub, y: tap.y + 0.8 * s }
-        : pose === 'wash'
-          ? { x: neck.x - 3 * s - rub, y: hip.y - 5 * s }
-          : reading
-            ? { x: neck.x - 9 * s, y: neck.y + 11 * s }
-            : sitting
-              ? { x: P(-3.5, 11, 20).x - 1 * s, y: P(-3.5, 11, 20).y - 1 * s }
-              : null;
+  // al bancone le mani stanno sul piano; per bere una sale col bicchiere fino alla bocca
+  const sip: number = (opts && opts.sip) || 0;
+  const stoolBack: Pt | null = onStool ? lerpPt(P(4, -14, 35), P(5, -5, 56), sip) : null;
+  const handBack: Pt | null = opts?.hands
+    ? opts.hands.back
+    : stoolBack
+      ? stoolBack
+      : pose === 'panic'
+        ? { x: neck.x + 9 * s, y: neck.y - 15 * s + flap }
+        : tap
+          ? { x: tap.x + 2.5 * s + rub, y: tap.y - 0.5 * s - Math.abs(rub) * 0.4 }
+          : pose === 'wash'
+            ? { x: neck.x + 3 * s + rub, y: hip.y - 6 * s }
+            : reading
+              ? { x: neck.x + 9 * s, y: neck.y + 11 * s }
+              : sitting
+                ? { x: P(3.5, 11, 20).x + 1 * s, y: P(3.5, 11, 20).y - 1 * s }
+                : null;
+  const handFront: Pt | null = opts?.hands
+    ? opts.hands.front
+    : onStool
+      ? P(-4, -14, 35)
+      : pose === 'panic'
+        ? { x: neck.x - 9 * s, y: neck.y - 15 * s - flap }
+        : tap
+          ? { x: tap.x - 2.5 * s - rub, y: tap.y + 0.8 * s }
+          : pose === 'wash'
+            ? { x: neck.x - 3 * s - rub, y: hip.y - 5 * s }
+            : reading
+              ? { x: neck.x - 9 * s, y: neck.y + 11 * s }
+              : sitting
+                ? { x: P(-3.5, 11, 20).x - 1 * s, y: P(-3.5, 11, 20).y - 1 * s }
+                : null;
   const drawArm = (from: Pt, to: Pt, back: boolean): void => {
     if (reading) {
       // gomito sotto la spalla, un po' in fuori: il braccio sale di nuovo verso il giornale
@@ -1871,6 +1943,8 @@ export function drawPlayerAvatar(
   if (handsAt.size > 200) handsAt.clear();
   handsAt.set(x + ',' + y, [backTo, frontTo]);
   drawArm({ x: neck.x + tw - 1 * s, y: neck.y + 3 * s }, backTo, true);
+  // di spalle anche l'altro braccio va in avanti, dietro il busto
+  if (fromBehind) drawArm({ x: neck.x - tw + 1 * s, y: neck.y + 3 * s }, frontTo, false);
 
   // ---- cappuccio (dietro al collo)
   if (top.style === 'hoodie') {
@@ -2229,11 +2303,11 @@ export function drawPlayerAvatar(
     }
   }
 
-  // ---- accessori sul davanti del busto
-  if (neckItem) drawNeckFront(neckItem, neck, tyTop, tH, tw, s);
+  // ---- accessori sul davanti del busto (di spalle non si vedono)
+  if (neckItem && !fromBehind) drawNeckFront(neckItem, neck, tyTop, tH, tw, s);
 
   // ---- braccio davanti
-  drawArm({ x: neck.x - tw + 1 * s, y: neck.y + 3 * s }, frontTo, false);
+  if (!fromBehind) drawArm({ x: neck.x - tw + 1 * s, y: neck.y + 3 * s }, frontTo, false);
   // schiuma del sapone tra le mani, sotto il getto
   if (pose === 'wash')
     for (let i = 0; i < 8; i++) {
@@ -2312,11 +2386,12 @@ export function drawPlayerAvatar(
   ctx.strokeStyle = 'rgba(0,0,0,0.3)';
   ctx.lineWidth = 1;
   ctx.stroke();
-  if (!mannequin) {
+  if (fromBehind && !mannequin) drawHairFromBehind(head, s, bd.hairStyle, hair);
+  else if (!mannequin) {
     drawFace(head, s, bd, hair, animTime, hsh, look.stoned ? skin : null);
     drawHairFront(head, s, bd.hairStyle, hair);
   }
-  drawGlasses(head, s, look.glasses);
+  if (!fromBehind) drawGlasses(head, s, look.glasses);
   drawHat(head, s, look.hat);
   // il casco spaziale (comprato al negozio) si disegna sopra tutto, come una bolla di vetro
   if (look.hat && look.hat.style === 'space') {
@@ -2335,6 +2410,8 @@ export function drawPlayerAvatar(
     ctx.fillStyle = '#dfe6e9';
     ctx.fillRect(head.x - 7 * s, head.y + 11.5 * s, 14 * s, 2.5 * s);
   }
+  // al bancone: il bicchiere in mano (si vede di lato alla testa quando si beve)
+  if (opts && opts.glassFill !== undefined) drawHandGlass(backTo, s, opts.glassFill, sip);
   ctx.lineCap = 'butt';
   if (name) {
     ctx.font = 'bold 10px sans-serif';

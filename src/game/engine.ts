@@ -1,5 +1,6 @@
 import { updateRocketTrip } from './moon.js';
 import { partVisible } from './render/moonbase.js';
+import { myBarDrinkOpts } from './render/bar.js';
 import {
   myBathPose,
   myUndressStep,
@@ -285,7 +286,20 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
           : { vx: bot.vx, vy: bot.vy, hit: false };
       bot.vx = b.vx;
       bot.vy = b.vy;
-      if (b.hit) {
+      // un mobile solido (il bancone del bar, un tavolo) non si attraversa: si rimbalza come ai
+      // bordi; chi per caso parte già dentro un mobile può uscirne
+      const into = (px: number, py: number, o: GameValue): boolean =>
+        Math.abs(px - o.x) < o.w / 2 + 6 && Math.abs(py - o.y) < o.h / 2 + 6;
+      const wall = b.hit
+        ? null
+        : getSolidObstacles().find(
+            (o?: GameValue): GameValue => into(nx, ny, o) && !into(bot.x, bot.y, o),
+          );
+      if (wall) {
+        // si rimbalza sul lato che si stava per attraversare
+        if (Math.abs(bot.x - wall.x) >= wall.w / 2 + 6) bot.vx = -bot.vx;
+        else bot.vy = -bot.vy;
+      } else if (b.hit) {
         bot.x += bot.vx * delta;
         bot.y += bot.vy * delta;
       } else {
@@ -370,7 +384,15 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
           if (fn) fn(p, animTime, lights);
           else box(p.x, p.y, p.w, p.h, p.z || 40, '#888888');
         },
-        p.flat ? -1e5 : p.kind === 'bench' ? benchDepth(p) - (p.x + p.y) : 0,
+        p.flat
+          ? -1e5
+          : p.kind === 'bench'
+            ? benchDepth(p) - (p.x + p.y)
+            : // oggetti lunghi chiusi fino alla parete (il bancone del bar): conta l'angolo davanti a
+              // sinistra, così chi sta davanti o ai lati si disegna nell'ordine giusto
+              p.depthCorner === 'frontLeft'
+              ? (p.h - p.w) / 2
+              : 0,
       );
     });
   if (game.MG.active && game.view.activeEnvironment === 'lavoro_' + game.MG.job)
@@ -450,7 +472,10 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
         ? 1e4
         : 0) +
       // solo da seduti: andando a sedersi da dietro si passa ancora dietro la panchina
-      (game.benchSit?.kind === 'bench' && game.benchSit.pose === 'bench' ? BENCH_SEAT_DEPTH : 0);
+      ((game.benchSit?.kind === 'bench' && game.benchSit.pose === 'bench') ||
+      (game.benchSit?.kind === 'stool' && game.benchSit.pose === 'stool')
+        ? BENCH_SEAT_DEPTH
+        : 0);
     const faintK = faintAmount();
     drawables.push({
       depth,
@@ -477,6 +502,7 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
               game.bedSlot,
               benchWalkDir() || { x: game.moveRight, y: -game.moveForward },
               myBathPose() || myBenchPose(),
+              myBarDrinkOpts(),
             ),
     });
     if (game.coinToss) labels.push((): GameValue => drawCoinToss(animTime));
@@ -701,7 +727,8 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
     );
     addPile(s.look, und);
     if (act === 'wash') game.frameSinkRunning = true;
-    const pose: string = act === 'sit' || act === 'wash' || act === 'bench' ? act : '';
+    const pose: string =
+      act === 'sit' || act === 'wash' || act === 'bench' || act === 'stool' ? act : '';
     if (act === 'shower' && inCabin(s.x, s.y)) {
       const rx: GameValue = s.x,
         ry: GameValue = s.y;
@@ -715,7 +742,7 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
       s.y +
       ((map.bed ? map.bed.x + map.bed.y + 0.5 : s.x + s.y) - (s.x + s.y)) *
         (sk * sk * (3 - 2 * sk)) +
-      (act === 'bench' ? BENCH_SEAT_DEPTH : 0);
+      (act === 'bench' || act === 'stool' ? BENCH_SEAT_DEPTH : 0);
     // fuori dall'inquadratura non si disegna (chi dorme è sul letto, sempre in vista)
     if (sk <= 0 && !onScreen(s.x, s.y)) return;
     drawables.push({

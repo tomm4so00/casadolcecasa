@@ -1535,7 +1535,7 @@ export const SHOP_CLERK_LINES: Record<string, string[]> = {
 };
 
 export const SIMULATION_BOTS = [
-  { name: 'Bot_Anna', env: 'passeggiata', x: -80, y: 50, vx: 30, vy: 15 },
+  { name: 'Bot_Anna', env: 'passeggiata', x: -80, y: 30, vx: 30, vy: 15 },
   // clienti che passeggiano nel centro commerciale
   { name: 'Cliente Rita 🛍️', env: 'centro_commerciale', x: -60, y: -125, vx: 26, vy: 0 },
   { name: 'Cliente Gianni 🛍️', env: 'centro_commerciale', x: 80, y: 115, vx: -22, vy: 0 },
@@ -2813,7 +2813,16 @@ export const ENV_PROPS = {
     { kind: 'streetlamp', x: 60, y: 110, w: 8, h: 8 },
   ],
   bar: [
-    { kind: 'barCounter', x: 0, y: -130, w: 150, h: 34, z: 52, label: 'Banco Bar ☕' },
+    // dalla parete (y −180) al fronte (y −112): dietro c'è il mobile del barista, non ci si entra
+    {
+      kind: 'barCounter',
+      x: 0,
+      y: -146,
+      w: 150,
+      h: 68,
+      z: 52,
+      depthCorner: 'frontLeft',
+    },
     { kind: 'stool', x: -50, y: -98, w: 12, h: 12 },
     { kind: 'stool', x: 0, y: -98, w: 12, h: 12 },
     { kind: 'stool', x: 50, y: -98, w: 12, h: 12 },
@@ -3562,11 +3571,8 @@ export const ENV_STYLE = {
     wallStyle: 'bricks',
     trim: '#3e2723',
     decor: {
-      back: [
-        { t: 'bottles', u: 70, w: 100 },
-        { t: 'neon', u: 200, text: 'BAR', color: '255,79,163' },
-        { t: 'bottles', u: 330, w: 90 },
-      ],
+      // a destra del bancone: sopra il bancone c'è il mobile con le bottiglie
+      back: [{ t: 'neon', u: 330, text: 'BAR', color: '255,79,163' }],
       left: [
         { t: 'painting', u: 120, w: 50, h: 36, seed: 11 },
         { t: 'window', u: 250, w: 40, h: 46 },

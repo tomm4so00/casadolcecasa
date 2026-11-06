@@ -404,7 +404,7 @@ export function checkProximity(..._args: GameValue[]): GameValue {
   for (const key of Object.keys(spots)) {
     const sp = spots[key];
     const d = Math.hypot(game.playerPos.x - sp.x, game.playerPos.y - sp.y) - sp.reach;
-    if (d < bestDist || (game.benchSit && sp.fun === 'bench' && d < 40)) {
+    if (d < bestDist || (game.benchSit && (sp.fun === 'bench' || sp.fun === 'stool') && d < 40)) {
       bestDist = d;
       found = key;
     }

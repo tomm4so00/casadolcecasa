@@ -1,6 +1,7 @@
 // Pulsanti degli oggetti di ogni ambiente: cosa c'è scritto quando ci si avvicina e cosa
 // succede premendolo. Per un posto nuovo basta aggiungere la sua voce in PLACES.
 import { facadeFootprint } from './render/facades.js';
+import { APERITIVO } from './bar-rules.js';
 import { DOOR_OPEN_RADIUS, resetDoors, setBlockedDoor } from './render/doors.js';
 import { servicePrompt } from './restaurant.js';
 import { officePrompt } from './office.js';
@@ -14,6 +15,7 @@ import {
   funSpots,
   onSofa,
   toggleBench,
+  sitOnStool,
   toggleSofa,
   tossCoin,
 } from './courtyard-fun.js';
@@ -896,6 +898,11 @@ export function promptFor(key: string, item: GameValue): Prompt {
   // le panchine funzionano allo stesso modo in tutti gli ambienti
   if (item?.fun === 'bench')
     return { text: game.benchSit ? '🧍 Alzati' : '🪑 Siediti sulla panchina' };
+  // al bar: sgabello del bancone e aperitivo
+  if (item?.fun === 'stool')
+    return {
+      text: game.benchSit ? '🧍 Alzati' : `🍹 Siediti per un aperitivo (${APERITIVO.price} €)`,
+    };
   return placeHere()?.prompt(key, item) ?? touch(item);
 }
 
@@ -903,6 +910,10 @@ export function promptFor(key: string, item: GameValue): Prompt {
 export async function interactWith(key: string, item: GameValue): Promise<void> {
   if (funSpots()[key]?.fun === 'bench') {
     toggleBench(key);
+    return;
+  }
+  if (funSpots()[key]?.fun === 'stool') {
+    await sitOnStool(key);
     return;
   }
   const place = placeHere();

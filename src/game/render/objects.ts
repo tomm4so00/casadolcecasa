@@ -1,5 +1,6 @@
 import { PANEL_DOOR, PORTONE, doorOpenAmount } from './doors.js';
 import { clockText } from '../game-clock.js';
+import { drawBar } from './bar.js';
 import { type GameValue, game } from '../context.js';
 import {
   isoProject,
@@ -2363,28 +2364,9 @@ export function drawCoolerProp(it?: GameValue): GameValue {
   });
 }
 
-export function drawBarCounterProp(it?: GameValue): GameValue {
-  const ctx = game.view.ctx;
-  const b: GameValue = box(it.x, it.y, it.w, it.h, it.z - 5, '#4e342e');
-  onFace(b, 'left', (W?: GameValue, H?: GameValue): GameValue => {
-    for (let u: GameValue = 0; u < W; u += 10) {
-      ctx.fillStyle = u % 20 ? '#5d4037' : '#4e342e';
-      ctx.fillRect(u, 0, 10, H);
-    }
-    ctx.fillStyle = '#d4ac0d';
-    ctx.fillRect(0, H - 6, W, 2);
-  });
-  box(it.x, it.y, it.w + 8, it.h + 8, 5, '#212121', { z0: it.z - 5 });
-  [-0.3, -0.1, 0.1].forEach((k?: GameValue): GameValue => {
-    box(it.x + it.w * k, it.y - 4, 3, 3, 16, '#d4ac0d', { z0: it.z });
-    box(it.x + it.w * k + 3, it.y - 4, 6, 2, 2, '#d4ac0d', { z0: it.z + 13 });
-  });
-  box(it.x + it.w * 0.3, it.y + 4, 6, 6, 9, 'rgba(241,196,15,0.85)', {
-    z0: it.z,
-    left: 'rgba(241,196,15,0.8)',
-    right: 'rgba(214,170,10,0.8)',
-    top: '#ffffff',
-  });
+/** Il bancone del bar, con il mobile del barista e le bottiglie: vedi render/bar.ts. */
+export function drawBarCounterProp(it?: GameValue, t?: GameValue): GameValue {
+  drawBar(it, t || 0);
 }
 
 export function drawStoolProp(it?: GameValue): GameValue {
