@@ -453,11 +453,21 @@
       <div class="setup-step" data-step="login">
         <p class="setup-text">Accedi per entrare nel gioco.</p>
         <button class="btn-primary" id="cloud-game-btn" type="button">Accedi con Google</button>
-        <div class="setup-divider"><span>oppure con nome giocatore e password</span></div>
+        <div class="setup-divider"><span>oppure con email e password</span></div>
         <div class="input-group">
-          <label for="setup-username">Nome giocatore</label>
-          <input type="text" id="setup-username" autocomplete="username" maxlength="20" />
+          <label for="setup-username">Email</label>
+          <input
+            type="email"
+            id="setup-username"
+            autocomplete="email"
+            maxlength="254"
+            placeholder="la tua email"
+          />
         </div>
+        <p class="setup-hint">
+          Ti eri registrato con il nome giocatore? Scrivi il nome: ti chiederemo di aggiungere
+          l'email.
+        </p>
         <div class="input-group">
           <label for="setup-password">Password</label>
           <input
@@ -468,8 +478,9 @@
           />
         </div>
         <button class="btn-primary btn-alt" id="setup-password-login" type="button">Entra</button>
+        <button class="btn-link" id="setup-forgot" type="button">Password dimenticata?</button>
         <button class="btn-link" id="setup-register-open" type="button">
-          Prima volta? Scegli nome giocatore e password
+          Prima volta? Registrati con la tua email
         </button>
         <label class="setup-remember">
           <input type="checkbox" id="setup-remember" />
@@ -478,8 +489,9 @@
       </div>
       <div class="setup-step hidden" data-step="register">
         <p class="setup-text">
-          Scegli il nome giocatore e la password con cui entrerai nel gioco. Più avanti, dal profilo
-          (🧑), potrai collegare anche il tuo account Google.
+          Scegli il nome del tuo personaggio, la tua email e una password. Ti mandiamo un link per
+          confermare l'email: ogni email vale un solo account. Più avanti, dal profilo (🧑), potrai
+          collegare anche Google.
         </p>
         <div class="input-group">
           <label for="setup-reg-username">Nome giocatore</label>
@@ -492,9 +504,19 @@
           />
         </div>
         <p class="setup-hint">
-          Da 3 a 20 caratteri: lettere senza accenti, numeri, punto, trattino e trattino basso. È
-          anche il nome del tuo Sim.
+          Da 3 a 20 caratteri: lettere senza accenti, numeri, punto, trattino e trattino basso. È il
+          nome del tuo Sim.
         </p>
+        <div class="input-group">
+          <label for="setup-reg-email">Email</label>
+          <input
+            type="email"
+            id="setup-reg-email"
+            autocomplete="email"
+            maxlength="254"
+            placeholder="la tua email"
+          />
+        </div>
         <div class="input-group">
           <label for="setup-reg-password">Password</label>
           <input
@@ -514,8 +536,40 @@
             maxlength="64"
           />
         </div>
-        <button class="btn-primary" id="setup-register" type="button">Crea account e gioca</button>
+        <button class="btn-primary" id="setup-register" type="button">Crea account</button>
         <button class="btn-link" type="button" data-setup-login>← Indietro</button>
+      </div>
+      <!-- Conferma dell'email: si gioca solo dopo aver aperto il link -->
+      <div class="setup-step hidden" data-step="verify">
+        <p class="setup-text">
+          📧 Ti abbiamo mandato un'email a <b id="setup-verify-address"></b>. Apri il link che
+          contiene per confermarla, poi torna qui.
+        </p>
+        <p class="setup-hint">Non la trovi? Guarda anche nella posta indesiderata (spam).</p>
+        <button class="btn-primary" id="setup-verify-done" type="button">
+          Ho confermato, entra
+        </button>
+        <button class="btn-link" id="setup-verify-resend" type="button">Rimandami l'email</button>
+        <button class="btn-link" id="setup-verify-logout" type="button">← Esci</button>
+      </div>
+      <!-- Account di prima (solo nome e password): ora serve l'email -->
+      <div class="setup-step hidden" data-step="add-email">
+        <p class="setup-text">
+          Da ora in Casa dolce casa si entra con l'email. Aggiungi la tua per continuare a giocare
+          con questo personaggio: ti mandiamo un link per confermarla.
+        </p>
+        <div class="input-group">
+          <label for="setup-add-email">Email</label>
+          <input
+            type="email"
+            id="setup-add-email"
+            autocomplete="email"
+            maxlength="254"
+            placeholder="la tua email"
+          />
+        </div>
+        <button class="btn-primary" id="setup-add-email-send" type="button">Mandami il link</button>
+        <button class="btn-link" id="setup-add-email-logout" type="button">← Esci</button>
       </div>
       <div class="setup-step hidden" data-step="choice">
         <p class="setup-text">

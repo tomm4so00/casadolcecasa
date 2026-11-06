@@ -50,6 +50,8 @@ export interface SaveV8 {
   flu?: unknown;
   daily?: unknown;
   pets?: unknown;
+  /** preferenze del giocatore, uguali su ogni dispositivo (prefs-rules.ts) */
+  prefs?: unknown;
   /** Stanza (indice globale) e cuscino del letto in cui si sta dormendo. */
   sleepRoom?: unknown;
   bedSlot?: unknown;

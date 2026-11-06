@@ -158,6 +158,8 @@ export interface SessionState {
   SAVE_KEY: string;
   myPlayerId: string;
   saveReady: boolean;
+  /** All'ingresso c'era già un personaggio salvato (sul dispositivo o online). */
+  hadSave?: boolean;
   gameStarted: boolean;
   serverOffset: number;
 }

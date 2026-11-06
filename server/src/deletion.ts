@@ -46,6 +46,7 @@ export const DELETION_NODES = [
   'sims_rps',
   'sims_invites',
   'sims_invited',
+  'sims_emails',
 ] as const;
 
 /** I nodi in cui ogni giocatore ha una voce tutta sua, con il codice come chiave. */
@@ -152,6 +153,9 @@ export function deletionPaths(uid: string, data: Partial<Record<string, unknown>
     if (record(invited) && uid in invited) add(`sims_invites/${inviter}/${uid}`);
   for (const [other, inviter] of entries(data.sims_invited))
     if (mine(inviter)) add(`sims_invited/${other}`);
+  // la casella email occupata dall'account: si libera (l'email non resta salvata)
+  for (const [key, owner] of entries(data.sims_emails))
+    if (owner === uid) add(`sims_emails/${key}`);
 
   // Un percorso dentro uno già cancellato è inutile (e Firebase rifiuta i percorsi annidati).
   const sorted = [...paths].sort();

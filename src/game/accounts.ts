@@ -6,7 +6,10 @@ import { lockCharacter } from '../storage/tab-lock.js';
 import {
   authErrorMessage,
   decodeAccountBinding,
+  emailError,
+  emailKey,
   googlePlayerId,
+  isLegacyEmail,
   onlineSaveKey,
   passwordError,
   usernameEmail,
@@ -226,28 +229,61 @@ function friendlyAuthError(error: unknown): Error {
   return new Error(typeof code === 'string' ? authErrorMessage(code) : String(error));
 }
 
-/** Primo accesso: crea l'account con il nome giocatore e la password scelti. */
-export async function registerWithPassword(username: string, password: string) {
-  const problem = usernameError(username) || passwordError(password);
+/** Il link nelle email (conferma, cambio email) riporta al gioco, sulla stessa pagina. */
+function linkSettings() {
+  return { url: window.location.origin + window.location.pathname };
+}
+
+/** Manda un'email di Firebase in italiano; se l'indirizzo di ritorno non è autorizzato, senza. */
+async function sendAuthEmail(send: (settings?: { url: string }) => Promise<void>): Promise<void> {
+  googleAuth().languageCode = 'it';
+  try {
+    await send(linkSettings());
+  } catch (error) {
+    const code = (error as { code?: string })?.code || '';
+    if (code !== 'auth/unauthorized-continue-uri' && code !== 'auth/invalid-continue-uri')
+      throw friendlyAuthError(error);
+    await send().catch((e) => {
+      throw friendlyAuthError(e);
+    });
+  }
+}
+
+/** Si è entrati in questo account con la password (non con Google). */
+export async function signedInWithPassword(user: firebase.User): Promise<boolean> {
+  return (await user.getIdTokenResult()).signInProvider === 'password';
+}
+
+/**
+ * Primo accesso: crea l'account con il nome del personaggio, l'email e la password, e manda il
+ * link per confermare l'email. Finché non è confermata non si gioca.
+ */
+export async function registerWithEmail(name: string, email: string, password: string) {
+  const problem = usernameError(name) || emailError(email) || passwordError(password);
   if (problem) throw new Error(problem);
   let user: firebase.User | null;
   try {
-    user = (await googleAuth().createUserWithEmailAndPassword(usernameEmail(username), password))
-      .user;
+    user = (await googleAuth().createUserWithEmailAndPassword(email.trim(), password)).user;
   } catch (error) {
     throw friendlyAuthError(error);
   }
   if (!user) throw new Error('Registrazione non riuscita.');
-  await user.updateProfile({ displayName: username.trim().slice(0, 20) }).catch(() => {});
+  await user.updateProfile({ displayName: name.trim().slice(0, 20) }).catch(() => {});
+  await sendAuthEmail((settings) => user!.sendEmailVerification(settings));
   return user;
 }
 
-/** Accesso con nome giocatore e password già registrati. */
-export async function signInWithPassword(username: string, password: string) {
-  if (usernameError(username) || !password) throw new Error('Nome giocatore o password sbagliati.');
+/**
+ * Accesso con email e password. Gli account di prima, registrati con il nome giocatore, entrano
+ * ancora col nome (senza "@") solo per aggiungere la loro email.
+ */
+export async function signInWithPassword(id: string, password: string) {
+  const login = id.trim();
+  if (!login || !password) throw new Error('Scrivi la tua email e la password.');
+  const email = login.includes('@') ? login : usernameError(login) ? '' : usernameEmail(login);
+  if (!email) throw new Error('Email o password sbagliate.');
   try {
-    const user = (await googleAuth().signInWithEmailAndPassword(usernameEmail(username), password))
-      .user;
+    const user = (await googleAuth().signInWithEmailAndPassword(email, password)).user;
     if (!user) throw new Error('Accesso annullato.');
     return user;
   } catch (error) {
@@ -255,11 +291,91 @@ export async function signInWithPassword(username: string, password: string) {
   }
 }
 
+/** L'account con la password ha un'email vera e confermata (altrimenti non si gioca). */
+export function emailConfirmed(user: firebase.User): boolean {
+  return user.emailVerified && !isLegacyEmail(user.email);
+}
+
+/** Rimanda il link di conferma all'email dell'account. */
+export async function resendVerification(): Promise<void> {
+  const user = googleAuth().currentUser;
+  if (!user) throw new Error('Accedi di nuovo.');
+  await sendAuthEmail((settings) => user.sendEmailVerification(settings));
+}
+
+/**
+ * Dopo il clic sul link: rilegge l'account da Firebase e rinnova il permesso, così il database
+ * vede l'email confermata. Restituisce l'account aggiornato, o null se non è ancora confermata.
+ */
+export async function reloadConfirmed(): Promise<firebase.User | null> {
+  const user = googleAuth().currentUser;
+  if (!user) throw new Error('Accedi di nuovo con la tua email e la password.');
+  try {
+    await user.reload();
+  } catch (error) {
+    throw friendlyAuthError(error);
+  }
+  const fresh = googleAuth().currentUser;
+  if (!fresh || !emailConfirmed(fresh)) return null;
+  await fresh.getIdToken(true);
+  return fresh;
+}
+
+/**
+ * Account di prima (nome e password, senza email): manda il link alla nuova email; quando il
+ * giocatore lo apre, l'email diventa quella dell'account, già confermata.
+ */
+export async function addEmailToAccount(email: string): Promise<void> {
+  const problem = emailError(email);
+  if (problem) throw new Error(problem);
+  const user = googleAuth().currentUser;
+  if (!user) throw new Error('Accedi di nuovo.');
+  await sendAuthEmail((settings) => user.verifyBeforeUpdateEmail(email.trim(), settings));
+}
+
+/**
+ * Prima di creare il personaggio la casella si segna nel database: ogni casella vale un solo
+ * account, anche scritta con i punti in altri posti (le regole fanno lo stesso calcolo).
+ */
+export async function claimEmail(): Promise<void> {
+  const user = googleAuth().currentUser;
+  if (!user?.email) throw new Error('Accedi di nuovo.');
+  const ref = game.session.db.ref('sims_emails/' + emailKey(user.email));
+  try {
+    if ((await ref.get()).val() === user.uid) return;
+  } catch {
+    // la casella è di un altro account (non si può leggere): lo dice la scrittura qui sotto
+  }
+  try {
+    await ref.set(user.uid);
+  } catch {
+    throw new Error(
+      'Questa email (o una sua variante) è già usata da un altro account: accedi con quello.',
+    );
+  }
+}
+
+/** Password dimenticata: manda il link per sceglierne una nuova. */
+export async function sendPasswordReset(email: string): Promise<void> {
+  const problem = emailError(email);
+  if (problem) throw new Error('Scrivi qui sopra la tua email, poi tocca di nuovo.');
+  await sendAuthEmail((settings) => googleAuth().sendPasswordResetEmail(email.trim(), settings));
+}
+
 /** Come si accede a questo account: nome giocatore (se registrato così) e se Google è collegato. */
-export function accountLogins(): { username: string | null; google: boolean } {
+export function accountLogins(): {
+  username: string | null;
+  email: string | null;
+  google: boolean;
+} {
   const user = googleAuth().currentUser;
   const providers = (user?.providerData || []).map((p) => p?.providerId);
-  return { username: usernameFromEmail(user?.email), google: providers.includes('google.com') };
+  const password = providers.includes('password');
+  return {
+    username: usernameFromEmail(user?.email),
+    email: password && !isLegacyEmail(user?.email) ? user?.email || null : null,
+    google: providers.includes('google.com'),
+  };
 }
 
 /**

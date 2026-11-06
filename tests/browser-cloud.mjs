@@ -106,14 +106,16 @@ try {
     false,
     'a device that lost the session must not save',
   );
-  await other
-    .locator('#dialog-buttons')
-    .getByRole('button', { name: 'Salta', exact: true })
-    .click();
+  // chi ha già un personaggio non rivede la guida iniziale, neanche su un altro dispositivo
   await other.waitForFunction(async () => {
     const { game } = await import('/src/game/context.ts');
     return game.player.ownedItems.item_hoodie && game.moneyLevel === 777;
   });
+  assert.equal(
+    await other.locator('#dialog-modal').isVisible(),
+    false,
+    'an existing Sim must not see the intro again on another device',
+  );
   const firstQuote = await page.evaluate(async () =>
     (await import('/src/game/business.ts')).mktPrice({ id: 'shop' }),
   );

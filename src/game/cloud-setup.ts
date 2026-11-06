@@ -3,7 +3,7 @@ import { startGame } from './interface.js';
 import { toast } from './missions.js';
 import { lifetime } from './runtime.js';
 import type firebase from 'firebase/compat/app';
-import { usernameFromEmail } from './account-model.js';
+import { isLegacyEmail, usernameFromEmail } from './account-model.js';
 import {
   accessFor,
   accountLogins,
@@ -14,14 +14,22 @@ import {
   localLegacySimCode,
   rememberedGoogleUser,
   rememberMe,
-  registerWithPassword,
+  addEmailToAccount,
+  claimEmail,
+  emailConfirmed,
+  registerWithEmail,
+  reloadConfirmed,
+  resendVerification,
+  sendPasswordReset,
   setRememberMe,
+  signedInWithPassword,
   signInWithGoogleAccount,
   signInWithPassword,
+  signOutAccount,
   useGoogleSim,
 } from './accounts.js';
 
-type Step = 'login' | 'register' | 'choice' | 'code' | 'new';
+type Step = 'login' | 'register' | 'verify' | 'add-email' | 'choice' | 'code' | 'new';
 
 // Online setup: Google first, then (only on the first access) existing Sim or new Sim.
 export function mountCloudSetup(root: HTMLElement): void {
@@ -69,9 +77,24 @@ export function mountCloudSetup(root: HTMLElement): void {
   const remember = el<HTMLInputElement>('setup-remember');
   remember.checked = rememberMe();
 
-  // Account con nome giocatore e password: il Sim si crea subito, con il nome giocatore
-  // (niente Sim da recuperare: quelli vecchi si collegano solo con Google).
+  // Account di prima a cui si sta aggiungendo l'email (vedi il passaggio "add-email").
+  let newEmail = '';
+
+  // Account con email e password: si gioca solo con l'email confermata. Il Sim si crea subito,
+  // con il nome scelto (niente Sim da recuperare: quelli vecchi si collegano solo con Google).
   const enterPasswordAccount = async (user: firebase.User, nick?: string) => {
+    if (isLegacyEmail(user.email)) {
+      show('add-email');
+      el('setup-add-email').focus();
+      return;
+    }
+    if (!emailConfirmed(user)) {
+      el('setup-verify-address').textContent = user.email || '';
+      show('verify');
+      return;
+    }
+    // ogni casella vale un solo account
+    await claimEmail();
     access = await accessFor(user);
     await setRememberMe(remember.checked);
     const name = (nick || user.displayName || usernameFromEmail(user.email) || '').slice(0, 20);
@@ -85,7 +108,7 @@ export function mountCloudSetup(root: HTMLElement): void {
   };
 
   const signIn = async (restored?: firebase.User) => {
-    if (restored && usernameFromEmail(restored.email)) {
+    if (restored && (await signedInWithPassword(restored))) {
       await enterPasswordAccount(restored);
       return;
     }
@@ -126,6 +149,7 @@ export function mountCloudSetup(root: HTMLElement): void {
     if ((e as KeyboardEvent).key === 'Enter') passwordLogin.click();
   });
   const regUser = el<HTMLInputElement>('setup-reg-username');
+  const regEmail = el<HTMLInputElement>('setup-reg-email');
   const regPass = el<HTMLInputElement>('setup-reg-password');
   const regPass2 = el<HTMLInputElement>('setup-reg-password2');
   run(el('setup-register-open'), async () => {
@@ -139,8 +163,51 @@ export function mountCloudSetup(root: HTMLElement): void {
       return;
     }
     await setRememberMe(remember.checked);
-    const user = await registerWithPassword(regUser.value, regPass.value);
+    const user = await registerWithEmail(regUser.value, regEmail.value, regPass.value);
     await enterPasswordAccount(user, regUser.value.trim());
+  });
+  run(el('setup-forgot'), async () => {
+    await sendPasswordReset(userInput.value);
+    toast('📧 Ti abbiamo mandato un link per scegliere una nuova password.', 6000);
+  });
+
+  // ---- conferma dell'email
+  const backToLogin = async () => {
+    await signOutAccount().catch(() => {});
+    show('login');
+  };
+  run(el('setup-verify-done'), async () => {
+    let user: firebase.User | null;
+    try {
+      user = await reloadConfirmed();
+    } catch (error) {
+      // cambiando email Firebase chiede di rientrare: si entra con quella nuova
+      if (!newEmail) throw error;
+      await backToLogin();
+      userInput.value = newEmail;
+      passInput.focus();
+      toast('✅ Ora entra con la tua email e la password di sempre.', 6000);
+      return;
+    }
+    if (!user) {
+      toast("Non risulta ancora confermata: apri il link nell'email, poi tocca di nuovo.", 6000);
+      return;
+    }
+    await enterPasswordAccount(user);
+  });
+  run(el('setup-verify-resend'), async () => {
+    if (newEmail) await addEmailToAccount(newEmail);
+    else await resendVerification();
+    toast('📧 Email rimandata.');
+  });
+  run(el('setup-verify-logout'), backToLogin);
+  run(el('setup-add-email-logout'), backToLogin);
+  run(el('setup-add-email-send'), async () => {
+    const input = el<HTMLInputElement>('setup-add-email');
+    await addEmailToAccount(input.value);
+    newEmail = input.value.trim();
+    el('setup-verify-address').textContent = newEmail;
+    show('verify');
   });
   panel.querySelectorAll<HTMLButtonElement>('[data-setup-login]').forEach((button) => {
     lifetime.listen(button, 'click', () => show('login'));

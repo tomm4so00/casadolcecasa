@@ -17,6 +17,7 @@ import { decodeSaveV8 } from './save-model.js';
 import { absentDeath, advanceAbsence } from './absent-death-rules.js';
 import { type CryoPass, frozenMs } from '../../shared/cryo-rules.js';
 import { loadMyCryo } from './cryo.js';
+import { applyPrefs, collectPrefs } from './prefs.js';
 import { game } from './context.js';
 import { lifetime, dom } from './runtime.js';
 import { getWealth, toast } from './missions.js';
@@ -155,6 +156,8 @@ export function buildSaveData(..._args: GameValue[]): SaveV8 {
   if (game.player.workDay) data.workDay = game.player.workDay;
   // fin dove si è letta la chat: vale su tutti i dispositivi, non solo su questo
   if (game.chatReadT > 0) data.chatReadT = game.chatReadT;
+  // suoni, musica, notifiche e il resto: uguali su ogni telefono, browser o app installata
+  data.prefs = collectPrefs();
   if (game.player.daily) data.daily = game.player.daily;
   if (game.player.pets && Object.keys(game.player.pets).length) {
     syncPetHomes();
@@ -235,6 +238,7 @@ export function applySave(value: unknown): void {
   }
   game.player.daily = decodeDailyUses(s.daily);
   game.player.pets = decodePets(s.pets);
+  applyPrefs(s.prefs);
   game.player.weed = decodeWeed(s.weed);
   game.player.flu = decodeFlu(s.flu);
   game.player.coffeeAt = num(s.coffeeAt, 0);
@@ -434,6 +438,8 @@ export async function loadGame(..._args: GameValue[]): Promise<GameValue> {
     console.warn('Salvataggio online non disponibile', e);
   }
   let best: GameValue = local;
+  // un personaggio già esistente: la guida iniziale non serve (vedi showIntro)
+  game.session.hadSave = !!(local || cloud);
   if (cloud && (!best || (cloud.savedAt || 0) > (best.savedAt || 0))) best = cloud;
   // il pass di criogenesi serve prima di ricalcolare l'assenza
   const cryo = await loadMyCryo();

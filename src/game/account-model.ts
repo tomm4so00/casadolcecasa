@@ -75,6 +75,37 @@ export function passwordError(password: string): string | null {
 export const usernameEmail = (name: string): string =>
   `${normalizeUsername(name)}@${USERNAME_DOMAIN}`;
 
+// ---------------------------------------------------------------- email vera
+
+/**
+ * Da novembre 2026 chi non usa Google si registra con un'email vera, da confermare: ogni casella
+ * vale un solo account. Gli account vecchi (indirizzo interno del gioco) devono aggiungerla.
+ */
+const EMAIL_MAX = 254;
+
+/** Spiega cosa non va nell'email, oppure null se va bene. */
+export function emailError(email: string): string | null {
+  const e = email.trim();
+  if (!e) return 'Scrivi la tua email.';
+  if (e.length > EMAIL_MAX || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e))
+    return 'Questa email non è valida.';
+  // mario+1@gmail.com arriva a mario@gmail.com: con il + si potrebbero fare account infiniti
+  if (e.includes('+')) return "Usa l'email senza il segno +.";
+  if (e.toLowerCase().endsWith('@' + USERNAME_DOMAIN)) return 'Usa la tua email vera.';
+  return null;
+}
+
+/**
+ * La casella, per riconoscere i doppioni: minuscole e senza punti, come le regole del database
+ * (`auth.token.email.toLowerCase().replace('.', '')`). Così m.ario@gmail.com e mario@gmail.com,
+ * che Gmail consegna alla stessa persona, contano come una sola email.
+ */
+export const emailKey = (email: string): string => email.trim().toLowerCase().split('.').join('');
+
+/** L'account usa ancora l'indirizzo interno del gioco (registrato con nome e password). */
+export const isLegacyEmail = (email: string | null | undefined): boolean =>
+  !!email && email.toLowerCase().endsWith('@' + USERNAME_DOMAIN);
+
 /** Il nome giocatore di un account con nome e password (null per gli account Google). */
 export function usernameFromEmail(email: string | null | undefined): string | null {
   const suffix = '@' + USERNAME_DOMAIN;
@@ -85,13 +116,17 @@ export function usernameFromEmail(email: string | null | undefined): string | nu
 export function authErrorMessage(code: string): string {
   switch (code) {
     case 'auth/email-already-in-use':
-      return 'Questo nome giocatore è già preso: scegline un altro.';
+      return "Esiste già un account con questa email: accedi, oppure usa un'altra email.";
+    case 'auth/invalid-email':
+      return 'Questa email non è valida.';
     case 'auth/invalid-credential':
     case 'auth/invalid-login-credentials':
     case 'auth/wrong-password':
     case 'auth/user-not-found':
-    case 'auth/invalid-email':
-      return 'Nome giocatore o password sbagliati.';
+      return 'Email o password sbagliate.';
+    case 'auth/requires-recent-login':
+    case 'auth/user-token-expired':
+      return 'Per sicurezza accedi di nuovo con la tua email e la password, poi riprova.';
     case 'auth/weak-password':
       return `La password è troppo debole: usa almeno ${PASSWORD_MIN} caratteri.`;
     case 'auth/too-many-requests':

@@ -3,6 +3,9 @@ import fs from 'node:fs';
 import {
   USERNAME_DOMAIN,
   authErrorMessage,
+  emailError,
+  emailKey,
+  isLegacyEmail,
   normalizeUsername,
   passwordError,
   usernameEmail,
@@ -36,23 +39,59 @@ describe('accesso con nome giocatore e password', () => {
     expect(passwordError('x'.repeat(65))).not.toBeNull();
   });
 
+  it("l'email: valida, senza + e non l'indirizzo interno del gioco", () => {
+    for (const ok of ['mario@gmail.com', ' Anna.B@libero.it ', 'x@y.co'])
+      expect(emailError(ok), ok).toBeNull();
+    for (const bad of [
+      '',
+      'mario',
+      'mario@',
+      'mario@gmail',
+      'a b@c.it',
+      'mario+1@gmail.com',
+      'anna@' + USERNAME_DOMAIN,
+    ])
+      expect(emailError(bad), bad).not.toBeNull();
+  });
+
+  it('le varianti della stessa casella contano come una sola email', () => {
+    expect(emailKey('M.ario@Gmail.com')).toBe(emailKey('mario@gmail.com'));
+    expect(emailKey(' mario@gmail.com ')).toBe('mario@gmailcom');
+    expect(emailKey('anna@libero.it')).not.toBe(emailKey('mario@libero.it'));
+  });
+
+  it('riconosce gli account di prima, senza email vera', () => {
+    expect(isLegacyEmail(usernameEmail('mario'))).toBe(true);
+    expect(isLegacyEmail('mario@gmail.com')).toBe(false);
+    expect(isLegacyEmail(null)).toBe(false);
+  });
+
   it('errori di Firebase spiegati in italiano', () => {
-    expect(authErrorMessage('auth/email-already-in-use')).toContain('già preso');
-    expect(authErrorMessage('auth/invalid-credential')).toContain('sbagliati');
+    expect(authErrorMessage('auth/email-already-in-use')).toContain(
+      'già un account con questa email',
+    );
+    expect(authErrorMessage('auth/invalid-credential')).toContain('sbagliate');
     expect(authErrorMessage('auth/credential-already-in-use')).toContain('Google');
     expect(authErrorMessage('auth/qualcosa')).toContain('auth/qualcosa');
   });
 
-  it('le regole del database accettano Google e, solo per gli indirizzi del gioco, la password', () => {
-    const rules = fs.readFileSync('firebase/database.rules.proposed.json', 'utf8');
-    const google = rules.split("sign_in_provider === 'google.com'").length - 1;
-    const password =
-      rules.split(
-        `sign_in_provider === 'password' && auth.token.email.endsWith('@${USERNAME_DOMAIN}')`,
-      ).length - 1;
+  it("le regole del database accettano Google e la password solo con l'email confermata", () => {
+    const text = fs.readFileSync('firebase/database.rules.proposed.json', 'utf8');
+    const google = text.split("sign_in_provider === 'google.com'").length - 1;
+    const verified =
+      text.split("sign_in_provider === 'password' && auth.token.email_verified === true").length -
+      1;
     expect(google).toBeGreaterThan(0);
-    expect(password).toBe(google);
-    // nessuna password senza il controllo dell'indirizzo
-    expect(rules.split("sign_in_provider === 'password'").length - 1).toBe(password);
+    expect(verified).toBeGreaterThanOrEqual(google);
+    // gli indirizzi interni del gioco non bastano più
+    expect(text).not.toContain(USERNAME_DOMAIN);
+    const rules = JSON.parse(text).rules;
+    // ogni casella vale un solo account, calcolata come emailKey
+    const claim = rules.sims_emails.$key['.write'];
+    expect(claim).toContain("$key === auth.token.email.toLowerCase().replace('.', '')");
+    expect(claim).toContain('!data.exists()');
+    expect(claim).toContain("!auth.token.email.contains('+')");
+    // il personaggio di un account con password nasce solo dopo aver occupato la casella
+    expect(rules.sims_accounts.$uid['.write']).toContain("root.child('sims_emails')");
   });
 });

@@ -121,6 +121,12 @@ export async function showIntro(force: GameValue = false): Promise<GameValue> {
   const KEY: GameValue = game.session.LS_PREFIX + 'sims_intro_v2';
   try {
     if (!force && localStorage.getItem(KEY) === 'seen') return;
+    // Chi ha già un personaggio non è nuovo: se entra da un'app, un browser o un telefono dove la
+    // guida non risulta vista, non deve sembrargli di ricominciare da capo. Resta sul pulsante ❓.
+    if (!force && game.session.hadSave) {
+      localStorage.setItem(KEY, 'seen');
+      return;
+    }
   } catch (e: GameValue) {}
   let i: GameValue = 0;
   while (i < game.INTRO_PAGES.length) {
@@ -146,11 +152,13 @@ export async function showIntro(force: GameValue = false): Promise<GameValue> {
 
 /** Come si accede al Sim (testo del profilo). */
 function loginText(): string {
-  const { username, google } = accountLogins();
-  if (!username)
+  const { username, email, google } = accountLogins();
+  if (!username && !email)
     return 'Il tuo Sim è collegato al tuo account Google. Per ritrovarlo su un altro dispositivo accedi con lo stesso account.';
   return (
-    `Entri con il nome giocatore «${username}» e la tua password.` +
+    (email
+      ? `Entri con l'email «${email}» e la tua password.`
+      : `Entri con il nome giocatore «${username}» e la tua password.`) +
     (google
       ? '\n🔗 Google collegato: puoi entrare anche con il tuo account Google.'
       : '\n🔗 Puoi collegare il tuo account Google per entrare anche con quello.')
@@ -159,7 +167,7 @@ function loginText(): string {
 
 export async function openProfile(..._args: GameValue[]): Promise<GameValue> {
   const logins = game.session.OFFLINE ? null : accountLogins();
-  const canLink = !!logins?.username && !logins.google;
+  const canLink = !!(logins?.username || logins?.email) && !logins?.google;
   const res: GameValue = await openDialog({
     title: `🧑 ${game.player.myData.nick}`,
     text:

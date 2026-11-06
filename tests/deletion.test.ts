@@ -96,6 +96,7 @@ function world() {
     },
     sims_cryo: { [UID]: { since: 1, until: 2, payments: { cs_1: { at: 1, amount: 299 } } } },
     sims_deletions: { [UID]: { at: NOW } },
+    sims_emails: { 'anna@gmailcom': UID, 'bruno@gmailcom': 'uidBrunoxxxxxxxxxxxxxxxx2' },
     sims_rooms_state: {
       0: {
         id: 1,
@@ -161,6 +162,8 @@ describe("cancellazione dell'account su richiesta", () => {
     // inviti: via quello con cui è arrivata Anna e quelli che ha fatto lei
     expect(empty(all.sims_invited)).toBe(true);
     expect(empty(all.sims_invites)).toBe(true);
+    // la sua casella email si libera, quella di Bruno resta
+    expect(all.sims_emails).toEqual({ 'bruno@gmailcom': 'uidBrunoxxxxxxxxxxxxxxxx2' });
     // le ricevute degli acquisti restano (obbligo di legge)
     expect(all.sims_cryo[UID].payments.cs_1.amount).toBe(299);
   });
