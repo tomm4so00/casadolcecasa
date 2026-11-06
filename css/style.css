@@ -934,6 +934,88 @@ input[type='number'] {
 }
 
 #update-banner,
+/* Avviso "aggiungi alla schermata Home" per iPhone e iPad: in basso, sopra al gioco. */
+#install-banner {
+  position: fixed;
+  left: 50%;
+  bottom: calc(12px + env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  z-index: 2500;
+  width: calc(100vw - 24px);
+  max-width: 460px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  background: rgba(20, 20, 32, 0.97);
+  border: 1px solid rgba(254, 202, 87, 0.45);
+  border-radius: 14px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.7);
+  color: #dfe6e9;
+  font-size: 0.82rem;
+  line-height: 1.35;
+  animation: install-in 0.35s ease-out;
+}
+#install-banner img {
+  flex: none;
+  border-radius: 12px;
+}
+#install-banner strong {
+  display: block;
+  color: #feca57;
+  font-size: 0.9rem;
+  margin-bottom: 4px;
+}
+#install-banner ol,
+#install-banner p {
+  margin: 0;
+  padding-left: 18px;
+}
+#install-banner p {
+  padding-left: 0;
+}
+.install-text {
+  flex: 1;
+  min-width: 0;
+}
+.install-share {
+  width: 17px;
+  height: 17px;
+  vertical-align: -3px;
+  fill: none;
+  stroke: #54a0ff;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.install-close {
+  flex: none;
+  align-self: flex-start;
+  background: none;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 8px;
+  color: #dfe6e9;
+  font-size: 0.75rem;
+  padding: 6px 10px;
+}
+@keyframes install-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 20px);
+  }
+}
+/* Telefono in orizzontale: più largo e senza icona, per coprire meno gioco. */
+@media (max-height: 420px) {
+  #install-banner {
+    max-width: 640px;
+    padding: 8px 12px;
+  }
+  #install-banner img {
+    display: none;
+  }
+}
+
 #session-lost-banner {
   position: fixed;
   inset: 0;

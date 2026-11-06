@@ -7,6 +7,7 @@ import { lifetime, resetLifetime } from './runtime.js';
 import { importRefactoredSave } from './save-model.js';
 import { mountCloudSetup } from './cloud-setup.js';
 import { OFFLINE_MARK } from './saves.js';
+import { offerInstall } from './install.js';
 export function mountLatestGame() {
   resetLifetime();
   const root = document.getElementById('app');
@@ -18,6 +19,7 @@ export function mountLatestGame() {
   initializeGame();
   importRefactoredSave(localStorage, game.session.LS_PREFIX);
   if (!game.session.OFFLINE) mountCloudSetup(root);
+  offerInstall();
   return disposeLatestGame;
 }
 

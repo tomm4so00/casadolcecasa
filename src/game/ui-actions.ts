@@ -18,6 +18,7 @@ import {
 import { toggleMusic, toggleSound } from './audio.js';
 import { openLeaderboard, openMissions } from './missions.js';
 import { reloadForUpdate } from './saves.js';
+import { dismissInstall } from './install.js';
 import { openChat, openProfile, restoreFromCode, showIntro } from './interface.js';
 import { toggleNotify } from './needs.js';
 import { bizInvest, bizWithdraw, openBizSite } from './business.js';
@@ -46,6 +47,7 @@ export type UiArgument = string | number | boolean | null;
 type UiAction = (args: readonly UiArgument[]) => unknown;
 export const uiActions: Readonly<Record<string, UiAction>> = {
   openMissions: () => openMissions(),
+  dismissInstall: () => dismissInstall(),
   toggleSound: () => toggleSound(),
   toggleMusic: () => toggleMusic(),
   showIntro: ([arg0]) => showIntro(Boolean(arg0)),

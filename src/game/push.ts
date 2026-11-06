@@ -18,17 +18,11 @@ export async function disablePush(): Promise<void> {
   }
 }
 
-/** iPhone e iPad ricevono le notifiche solo se il gioco è stato aggiunto alla schermata Home. */
-export function needsHomeScreen(): boolean {
-  const ios = /iPhone|iPad|iPod/.test(navigator.userAgent);
-  const standalone =
-    browser.matchMedia?.('(display-mode: standalone)').matches ||
-    (navigator as Navigator & { standalone?: boolean }).standalone === true;
-  return ios && !standalone;
-}
-
-/** Registra il service worker che mostra le notifiche (serve anche ai telefoni Android). */
-async function serviceWorker(): Promise<ServiceWorkerRegistration | null> {
+/**
+ * Registra il service worker che mostra le notifiche (serve anche ai telefoni Android).
+ * Si chiama anche all'avvio: senza service worker il browser non propone di installare il gioco.
+ */
+export async function serviceWorker(): Promise<ServiceWorkerRegistration | null> {
   if (registration) return registration;
   if (!('serviceWorker' in navigator)) return null;
   try {

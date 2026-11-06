@@ -1,5 +1,30 @@
 <canvas id="game-canvas"></canvas>
 <div id="toast-container"></div>
+
+<!-- INSTALLA SU IPHONE/IPAD: Safari non lo propone da sé, quindi spieghiamo i passaggi -->
+<div id="install-banner" class="hidden" role="dialog" aria-labelledby="install-title">
+  <img src="./icons/apple-touch-icon.png" alt="" width="52" height="52" />
+  <div class="install-text">
+    <strong id="install-title"
+      >Installa il gioco sul tuo <span id="install-device">iPhone</span></strong
+    >
+    <ol id="install-steps">
+      <li>
+        Tocca
+        <svg class="install-share" viewBox="0 0 24 24" aria-label="Condividi">
+          <path d="M12 3v12M7.5 7.5 12 3l4.5 4.5" />
+          <path d="M8 10H6a1 1 0 0 0-1 1v9a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-9a1 1 0 0 0-1-1h-2" />
+        </svg>
+        <b>Condividi</b> (se non lo vedi, è nel menu ···)
+      </li>
+      <li>Scegli <b>Aggiungi alla schermata Home</b></li>
+    </ol>
+    <p id="install-open-safari" class="hidden">
+      Apri prima il gioco in <b>Safari</b>: da questa app non si può aggiungere alla schermata Home.
+    </p>
+  </div>
+  <button class="install-close" type="button" data-action="dismissInstall">Più tardi</button>
+</div>
 <!-- Sulla luna senza casco: bordo rosso che pulsa -->
 <div id="no-air-overlay" class="hidden"></div>
 <!-- Crollo / boom della borsa: ticker che scorre in alto -->

@@ -1,4 +1,5 @@
-import { disablePush, enablePush, needsHomeScreen, showPhoneNotification } from './push.js';
+import { disablePush, enablePush, showPhoneNotification } from './push.js';
+import { needsHomeScreen } from './install.js';
 import { postGossip } from './gossip.js';
 import { isValidPin, pinHint } from './safe-pin.js';
 import { startNewLife } from './rebirth.js';
