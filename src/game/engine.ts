@@ -77,7 +77,7 @@ import { fadeOnRoomChange, updateCamera } from './camera.js';
 import { isStoned } from './weed.js';
 import { officeSpeed } from './office.js';
 import { applyRoomBounds } from './room-size.js';
-import { presenceState, shownWhileOffline } from './presence-rules.js';
+import { presenceState } from './presence-rules.js';
 import type { OnlinePlayer } from './network-model.js';
 import { LAB_WALL_Y } from './data/catalogues.js';
 import { clerkLines } from './clerks.js';
@@ -597,11 +597,8 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
       now + (game.session.serverOffset || 0),
       game.SLEEP_DEPLETION_SEC,
     );
-    if (state === 'gone') return;
+    // chi è uscito dal gioco resta dov'era, con la scritta "offline" (sparisce solo da morto)
     const isOffline: boolean = !!op.offline || !alive;
-    // chi è uscito dal gioco resta solo nella sua stanza
-    const roomOwner = op.roomIdx != null ? game.roomsState[op.roomIdx]?.ownerId : undefined;
-    if (isOffline && !shownWhileOffline(op.env, roomOwner, id)) return;
     // Ogni stanza privata è separata: vedi solo chi è nella tua stessa stanza
     if (game.view.activeEnvironment === 'PLAYER_ROOM' && op.roomIdx !== game.currentRoomIdx) return;
     // Salone, cucina e bagno esistono in ogni appartamento: vedi solo chi è nel tuo

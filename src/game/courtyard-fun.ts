@@ -9,7 +9,7 @@ import { spendMoney } from './economy.js';
 import { saySocial } from './social.js';
 import { isoProject, isoScale, rotateAround } from './render/primitives.js';
 import { presenceAlive } from './saves.js';
-import { presenceState, shownWhileOffline } from './presence-rules.js';
+import { presenceState } from './presence-rules.js';
 import { recordActivity } from './activity.js';
 import { APERITIVO, DRINK_END, afterAperitivo } from './bar-rules.js';
 
@@ -150,11 +150,8 @@ export function othersHere(): [string, GameValue][] {
       now + (game.session.serverOffset || 0),
       game.SLEEP_DEPLETION_SEC,
     );
-    // chi è andato via non si vede più; chi è svenuto è a terra, non seduto
-    if (state === 'gone' || state === 'fainted') continue;
-    // chi è uscito dal gioco si vede solo nella sua stanza
-    const roomOwner = op.roomIdx != null ? game.roomsState[op.roomIdx]?.ownerId : undefined;
-    if (state !== 'online' && !shownWhileOffline(op.env, roomOwner, id)) continue;
+    // chi è svenuto è a terra, non seduto; chi è uscito seduto (offline) occupa ancora il posto
+    if (state === 'fainted') continue;
     out.push([id, op]);
   }
   return out;
