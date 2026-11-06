@@ -1,7 +1,7 @@
 <canvas id="game-canvas"></canvas>
 <div id="toast-container"></div>
 
-<!-- INSTALLA SU IPHONE/IPAD: Safari non lo propone da sé, quindi spieghiamo i passaggi -->
+<!-- INSTALLA COME APP: su iPhone, iPad e Safari per Mac i passaggi a mano, altrove il pulsante "Installa" -->
 <div id="install-banner" class="hidden" role="dialog" aria-labelledby="install-title">
   <img src="./icons/apple-touch-icon.png" alt="" width="52" height="52" />
   <div class="install-text">
@@ -19,11 +19,18 @@
       </li>
       <li>Scegli <b>Aggiungi alla schermata Home</b></li>
     </ol>
+    <p id="install-prompt-text" class="hidden"></p>
+    <p id="install-mac" class="hidden">Nel menu <b>Archivio</b> scegli <b>Aggiungi al Dock</b>.</p>
     <p id="install-open-safari" class="hidden">
       Apri prima il gioco in <b>Safari</b>: da questa app non si può aggiungere alla schermata Home.
     </p>
   </div>
-  <button class="install-close" type="button" data-action="dismissInstall">Più tardi</button>
+  <div class="install-buttons">
+    <button id="install-now" class="install-now hidden" type="button" data-action="installApp">
+      Installa
+    </button>
+    <button class="install-close" type="button" data-action="dismissInstall">Più tardi</button>
+  </div>
 </div>
 <!-- Sulla luna senza casco: bordo rosso che pulsa -->
 <div id="no-air-overlay" class="hidden"></div>
