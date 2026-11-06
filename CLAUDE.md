@@ -7,6 +7,7 @@ isometrica disegnata su canvas. Un push su `main` pubblica subito il gioco su Gi
 ## Comandi
 
 ```sh
+npm run check                  # tutto: formattazione, tipi, vitest, prova nel browser (~10 s)
 npx vitest run                 # test unitari (le regole pure stanno nei file *-rules.ts)
 npm run typecheck              # tsc, con noUnusedLocals e noUnusedParameters
 node tests/browser-smoke.mjs   # prova nel browser: 64 stanze, 16 scene, salvataggi
@@ -14,7 +15,7 @@ npm run format                 # prettier (la CI fallisce se non è formattato)
 npm run shot -- <cartella> '<scatti JSON>' ['<opzioni JSON>']   # screenshot, vedi sotto
 ```
 
-Prima di un commit: typecheck, vitest, prova nel browser e `npm run format:check`.
+Prima di un commit basta `npm run check`: si ferma al primo controllo che fallisce.
 Sotto Windows i browser di Playwright usano Edge (`channel: 'msedge'`).
 
 ## Screenshot
