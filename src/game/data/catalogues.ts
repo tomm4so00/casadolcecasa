@@ -1486,19 +1486,11 @@ export const MUSIC_TRACKS = {
 export const INTRO_PAGES = [
   {
     title: '🏠 Benvenuto in Casa dolce casa',
-    text: "Il tuo personaggio vive in tempo reale, come un Tamagotchi: fame, sonno, igiene e felicità calano col passare delle ore, anche quando il gioco è chiuso.\n\nTieni d'occhio le barre in alto a sinistra.",
+    text: 'Il tuo personaggio vive in tempo reale: fame, sonno, igiene e felicità cambiano anche quando il gioco è chiuso. Tieni d’occhio le barre e torna a prendertene cura ogni giorno.\n\nSe Fame, Sonno o Igiene si svuotano, la Salute scende. Anche la Felicità sotto il 10% la fa calare lentamente.\n\nA Salute zero il personaggio muore: puoi ricominciare con un nuovo personaggio, ripartendo da zero.',
   },
   {
-    title: '☠️ Come non morire',
-    text: "Se Fame, Sonno o Igiene arrivano a 0%, la Salute inizia a scendere. Se la Salute arriva a 0% il personaggio muore per sempre e non può più giocare.\n\nSe lo abbandoni del tutto, dopo circa 3 giorni è finita. Prenditene cura ogni giorno!\n\n⚠️ Al bar c'è chi vende droga: crea dipendenza e fa crollare la salute. Meglio starne alla larga.\n\n👥 Vicino a un altro giocatore compaiono i tasti per dialogare, fare complimenti, insultare, picchiare, dare cibo cucinato, soldi o droga.\n\n🗨️ La chat globale (pulsante 🗨️ a destra) è visibile a tutti i giocatori e resta salvata nel tempo.",
-  },
-  {
-    title: '🛠️ Cosa fare ogni giorno',
-    text: "🍽️ Fame: in cucina prendi il cibo dal frigo (5 €), cucinalo sul fornello e mangia (+50%). Circa 2 pasti al giorno.\n\n😴 Sonno: nella tua stanza coricati sul letto. Da 0 a 100 basta circa un'ora e mezza di sonno. In emergenza la macchina del caffè in cucina dà un po' di sonno, ma costa salute.\n\n🚿 Igiene: fai la doccia in bagno, circa 2 volte al giorno (il lavandino dà solo +20%).\n\n😊 Felicità: guarda la TV, riposa sul divano, fai una passeggiata o vai al bar o balla in discoteca (ma ti toglie sonno).\n\n💻 Dal PC della tua stanza puoi comprare vestiti e mobili online e avviare un business: investi i tuoi soldi e il loro valore sale e scende nel tempo.",
-  },
-  {
-    title: '💼 Soldi e consigli',
-    text: 'Per guadagnare vai al lavoro: nel cortile condominiale vai all’uscita del condominio e apri "Lavoro". Porta gli oggetti ai punti giusti: ogni oggetto consegnato vale euro in più. Puoi andare al lavoro al massimo 4 volte al giorno.\n\nI soldi stanno nella cassaforte della tua stanza: proteggila con un PIN.\n\n🔔 Attiva le notifiche (pulsante a destra) per essere avvisato quando il personaggio sta male.\n\n❓ Puoi rileggere questa guida in ogni momento dal pulsante a destra.',
+    title: '📋 I primi passi',
+    text: 'Avvicinati alle porte e agli oggetti: usa i pulsanti che compaiono per interagire.\n\nLe missioni di benvenuto ti guidano a cucinare, lavarti, dormire, lavorare e proteggere i tuoi soldi, con un premio per ogni missione. Trovi il prossimo passo sotto i parametri: tocca 📋 per aprire le missioni, anche se le hai rimandate o disattivate.\n\n😊 Per la felicità puoi iniziare dalla TV o dal divano del salone.\n\n🔔 Dal pulsante delle notifiche puoi attivare gli avvisi quando il personaggio sta male. Con ❓ puoi rileggere questa guida.',
   },
 ];
 
@@ -2809,6 +2801,7 @@ export const ENV_PROPS = {
       w: DOG_GATE.w,
       h: 4,
       z: 30,
+      solid: false,
     },
     { kind: 'tree', x: -20, y: 130, w: 18, h: 18, size: 0.95, z: 80 },
     { kind: 'tree', x: 160, y: 75, w: 16, h: 16, size: 0.8, z: 70 },

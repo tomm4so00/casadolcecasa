@@ -41,24 +41,24 @@ export const WELCOME_MISSIONS: WelcomeMission[] = [
     title: '🍳 Il primo pasto',
     reward: 20,
     intro:
-      'La barra della 🍕 Fame cala col passare delle ore. Se arriva a 0 la salute comincia a scendere, e senza salute il personaggio muore per sempre.\n\nCucina e mangia un pasto: vai in cucina (una delle porte del salone), prendi il cibo dal frigo, cuocilo sul fornello e mangialo.',
+      'Prepara il tuo primo pasto in cucina: il cibo costa 5 € e un pasto recupera il 50% di Fame. Il prossimo passo resta visibile sotto i parametri.',
     counter: 'meals',
     done: (v, base) => v.meals > base,
     hint: (v) =>
       v.env !== 'KITCHEN'
         ? '🍳 Vai in cucina: è una delle porte del salone del tuo appartamento.'
         : !v.hasFood
-          ? '🧊 Avvicinati al frigorifero e prendi il cibo.'
+          ? '🧊 Apri il frigorifero, poi premi «Prendi Cibo» (5 €).'
           : !v.foodCooked
             ? '🔥 Ora porta il cibo al fornello e cuocilo.'
-            : '😋 È pronto! Tocca di nuovo il fornello per mangiarlo.',
+            : '😋 È pronto! Vicino al fornello premi «Mangia» per mangiarlo.',
   },
   {
     id: 'shower',
     title: '🚿 Una bella doccia',
     reward: 20,
     intro:
-      'Anche la barra dell’🧼 Igiene cala col tempo: se si svuota, la salute scende.\n\nFatti una doccia: vai in bagno (una delle porte del salone) e usa la doccia.',
+      'È il momento di recuperare Igiene: vai nel bagno del tuo appartamento e fai una doccia. Aspetta che sia finita per completare la missione.',
     counter: 'showers',
     done: (v, base) => v.showers > base,
     hint: (v) =>
@@ -71,7 +71,7 @@ export const WELCOME_MISSIONS: WelcomeMission[] = [
     title: '😴 Riposati nel tuo letto',
     reward: 20,
     intro:
-      'Il 😴 Sonno si ricarica solo dormendo. Con poco sonno si cammina più piano, e a zero la salute scende.\n\nVai nella tua stanza e mettiti a letto. Quando hai riposato abbastanza, svegliati dallo stesso pulsante.',
+      'Vai nella tua stanza e mettiti a letto: basta coricarti per completare la missione. Continui a riposare anche a gioco chiuso e ti svegli automaticamente al 100% di Sonno. Puoi anche alzarti prima con il pulsante del letto.',
     counter: null,
     done: (v) => v.sleeping,
     hint: (v) =>
@@ -84,7 +84,7 @@ export const WELCOME_MISSIONS: WelcomeMission[] = [
     title: '💼 Il primo stipendio',
     reward: 30,
     intro:
-      'Per comprare il cibo e tutto il resto servono soldi: si guadagnano lavorando.\n\nVai al lavoro e completa un turno: nel cortile usa l’uscita del condominio e scegli «Lavoro».',
+      'Guadagna il tuo primo stipendio completando un turno. Dal cortile raggiungi l’uscita del condominio e scegli «Lavoro»: ogni consegna aumenta la paga.',
     counter: 'shifts',
     done: (v, base) => v.shifts > base,
     hint: (v) =>
@@ -101,7 +101,7 @@ export const WELCOME_MISSIONS: WelcomeMission[] = [
     title: '🔐 Proteggi i tuoi soldi',
     reward: 25,
     intro:
-      'I soldi stanno nella cassaforte della tua stanza. Gli altri giocatori possono provare a indovinarne la combinazione e rubarli!\n\nScegli una combinazione segreta: vai nella tua stanza, avvicinati alla cassaforte sulla parete e imposta la combinazione.',
+      'Proteggi la cassaforte della tua stanza con una combinazione segreta: chi la indovina può rubare i tuoi soldi. Avvicinati alla cassaforte e scegli «Imposta combinazione».',
     counter: null,
     done: (v) => v.pinSet,
     hint: (v) =>

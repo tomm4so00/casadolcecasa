@@ -167,6 +167,7 @@ export function buildSaveData(..._args: GameValue[]): SaveV8 {
   )
     data.weed = game.player.weed;
   if (game.player.coffeeAt) data.coffeeAt = game.player.coffeeAt;
+  if (game.player.toiletAt) data.toiletAt = game.player.toiletAt;
   if (game.player.flu && (game.player.flu.nextAt || game.player.flu.sickAt))
     data.flu = { ...game.player.flu };
   if (Object.keys(game.player.invest).length) {
@@ -237,6 +238,7 @@ export function applySave(value: unknown): void {
   game.player.weed = decodeWeed(s.weed);
   game.player.flu = decodeFlu(s.flu);
   game.player.coffeeAt = num(s.coffeeAt, 0);
+  game.player.toiletAt = Math.max(0, num(s.toiletAt, 0));
   game.player.invest = {};
   game.BIZ.forEach((b?: GameValue): GameValue => {
     const v: GameValue = s.invest && s.invest[b.id];

@@ -123,6 +123,8 @@ export interface CharacterState {
   /** fino a quando si hanno gli occhi rossi dopo una canna (ms, ora del dispositivo) */
   stonedUntil: number;
   coffeeAt: number;
+  /** Ultimo uso del WC, per l’attesa di due ore anche a gioco chiuso. */
+  toiletAt?: number;
   bornAt: number;
   isDead: boolean;
   deadAt: number;

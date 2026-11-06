@@ -31,6 +31,7 @@ export interface SaveV8 {
   drugStock?: number;
   stonedUntil?: number;
   coffeeAt?: number;
+  toiletAt?: number;
   invest?: Record<string, { units: number; cost: number }>;
   drug?: { doses: number; lastDose: number; endAt: number; dAtDose: number; crisisAt: number };
   bornAt?: number;
@@ -105,6 +106,7 @@ export function decodeSaveV8(value: unknown): ValidatedSave | null {
         'drugStock',
         'stonedUntil',
         'coffeeAt',
+        'toiletAt',
         'bornAt',
         'deadAt',
         'sleepGainedSinceLastHealthBoost',

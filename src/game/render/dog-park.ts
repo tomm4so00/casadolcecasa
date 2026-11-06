@@ -4,6 +4,7 @@ import type { GameValue } from '../context.js';
 import { game } from '../context.js';
 import { isoProject, isoScale, poly, rnd } from './primitives.js';
 import { box, onFace } from './objects.js';
+import { doorOpenAmount } from './doors.js';
 
 const P = isoProject;
 const H = 16; // altezza della staccionata
@@ -77,23 +78,25 @@ export function drawDogFence(it: GameValue): void {
 
 /**
  * Il cancello: due pali alti con l'insegna "AREA CANI" e l'anta a sbarre, che si apre verso
- * l'interno per un attimo quando si passa (game.dogGateOpenUntil).
+ * l'interno gradualmente quando il giocatore si avvicina, come la porta del laboratorio.
  */
-export function drawDogGate(it: GameValue, t: number): void {
+export function drawDogGate(it: GameValue, _t: number): void {
   const ctx = game.view.ctx;
   const x0 = it.x - it.w / 2,
     x1 = it.x + it.w / 2;
-  const open = t < (game.dogGateOpenUntil || 0);
+  const open = doorOpenAmount('park:dogGate', it.x, it.y, true, true);
   const leaf = it.w - 5;
-  // anta: chiusa lungo la staccionata, aperta verso l'interno (girata sul palo di sinistra)
-  const lx = open ? x0 + 2.5 : it.x,
-    ly = open ? it.y - leaf / 2 : it.y,
-    lw = open ? 1.6 : leaf,
-    lh = open ? leaf : 1.6;
-  for (const z of [3, H - 2]) box(lx, ly, lw, lh, 2, '#2d6a4f', { z0: z, edge: EDGE });
+  const angle = (open * Math.PI) / 2;
+  const dx = Math.cos(angle),
+    dy = -Math.sin(angle);
+  const hinge = x0 + 2.5;
+  // Le traverse e le sbarre ruotano insieme attorno al cardine.
+  const point = (along: number, z: number) => P(hinge + dx * along, it.y + dy * along, z);
+  for (const z of [3, H - 2])
+    poly([point(0, z), point(leaf, z), point(leaf, z + 2), point(0, z + 2)], '#2d6a4f');
   for (let i = 1; i < 6; i++) {
-    const k = i / 6 - 0.5;
-    box(open ? lx : lx + k * leaf, open ? ly + k * leaf : ly, 1.2, 1.2, H - 4, '#40916c', {
+    const along = (leaf * i) / 6;
+    box(hinge + dx * along, it.y + dy * along, 1.2, 1.2, H - 4, '#40916c', {
       z0: 3,
       edge: null,
     });

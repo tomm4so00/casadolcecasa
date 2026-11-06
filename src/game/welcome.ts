@@ -22,7 +22,6 @@ const FIRST_OFFER_DELAY_MS = 15_000;
 const startedAt = Date.now();
 let offering = false;
 let completing = false;
-let lastHint = '';
 
 const state = (): WelcomeState => (game.player.welcome ??= newWelcome());
 
@@ -65,17 +64,13 @@ export async function tickWelcome(): Promise<void> {
       }
       return;
     }
-    // istruzione del passo in cui si è: compare quando cambia
-    const hint = WELCOME_MISSIONS[s.i].hint(v);
-    if (hint !== lastHint) {
-      lastHint = hint;
-      toast(hint, 6000, false);
-    }
+    // Il prossimo passo è già visibile nel riquadro delle missioni.
     return;
   }
   if (
     shouldOffer(s, Date.now()) &&
     !offering &&
+    !game.player.isSleeping &&
     Date.now() - startedAt > FIRST_OFFER_DELAY_MS &&
     !screenBusy()
   )
@@ -86,7 +81,6 @@ async function finishMission(s: WelcomeState, next: WelcomeState): Promise<void>
   const m = WELCOME_MISSIONS[s.i];
   if (!(await creditMoney(m.reward))) return; // si riprova al prossimo giro
   game.player.welcome = { ...next, snoozeUntil: Date.now() + 4000 };
-  lastHint = '';
   sfx('mission');
   toast(`🏆 Missione completata: ${m.title} (+${m.reward} €)`, 5000, false);
   if (welcomeFinished(game.player.welcome))
@@ -117,7 +111,6 @@ async function offerMission(): Promise<void> {
     if (res.action !== 'yes' && res.action !== 'no' && res.action !== 'later')
       game.player.welcome.snoozeUntil = Date.now() + 60_000;
     saveGame(false);
-    lastHint = '';
     updateWelcomeHud();
     if (answer === 'no')
       toast('Va bene! Se cambi idea, tocca 📋 Missioni sotto i parametri.', 5000);

@@ -7,7 +7,6 @@ import { officePrompt } from './office.js';
 import { buyPlant, plantLabel, smokeJoint, tendPlant } from './weed.js';
 import { PETS, PET_FOOD_PRICE, type PetKind } from './pet-rules.js';
 import { PET_OF_KEY, buyPet, dogGatePrompt, feed, giveUpForAdoption, useDogGate } from './pets.js';
-import { DAILY_LIMITS, recordUse, usesLeftToday } from './daily-limits.js';
 import {
   COIN_PRICE,
   ICE_CREAM_PRICE,
@@ -26,7 +25,7 @@ import { SLOT_BET } from './betting-rules.js';
 import { bedtimeThought, notePersonality } from './personality.js';
 import { purchaseItem } from './economy.js';
 import { type GameValue, game } from './context.js';
-import { hasRoom, isMyRoomNow, saveGame } from './saves.js';
+import { hasRoom, isMyRoomNow } from './saves.js';
 import { openRealtyBoard } from './realty.js';
 import { openGossipBoard } from './gossip.js';
 import {
@@ -227,10 +226,7 @@ const BATHROOM: Place = {
     const busy = !!(game.showerAnim || game.bathAnim);
     const labels: Record<string, [string, string]> = {
       shower: ['🚿 Fai la doccia', '🚿 Doccia in corso…'],
-      toilet: [
-        `🚽 Usa il WC (${usesLeftToday(game.player.daily, 'wc', new Date())}/${DAILY_LIMITS.wc} oggi)`,
-        '🚽 Occupato…',
-      ],
+      toilet: ['🚽 Usa il WC', '🚽 Occupato…'],
       sink: ['🚰 Lavati le mani', '🚰 Ti stai lavando…'],
     };
     return labels[key] ? { text: labels[key][busy ? 1 : 0], locked: busy } : touch(item);
@@ -239,14 +235,7 @@ const BATHROOM: Place = {
     if (key === 'shower') startShower();
     else if (key === 'sink') startWash();
     else if (key === 'toilet') {
-      if (game.showerAnim || game.bathAnim) return;
-      if (usesLeftToday(game.player.daily, 'wc', new Date()) <= 0) {
-        toast(`🚽 Oggi hai già usato il WC ${DAILY_LIMITS.wc} volte: riprova domani.`);
-        return;
-      }
-      game.player.daily = recordUse(game.player.daily, 'wc', new Date());
       startToilet();
-      saveGame();
     } else if (key === 'doorExit') backToSaloon();
   },
 };
@@ -633,7 +622,7 @@ const MOON_BASE: Place = {
 };
 
 // ---------------------------------------------------------------- parco
-// Il cancello dell'area cani si passa camminando (walkZones); il suo comportamento è in pets.ts.
+// Il cancello si attraversa liberamente; il pulsante permette di richiamare il cane.
 const PARK: Place = {
   prompt: (key, item) => (key === 'dogGate' ? dogGatePrompt() : touch(item)),
   act(key) {
@@ -752,14 +741,6 @@ function walkZones(): WalkZone[] {
         key: 'doorExit',
         inside: (x, y, m) =>
           Math.abs(x - ex.x) < ex.w / 2 + m && Math.abs(y - ex.y) < ex.h / 2 + 14 + m,
-      });
-    // parco: il cancello dell'area cani si passa camminandoci contro, da fuori o da dentro
-    const gate: GameValue = env === 'passeggiata' ? map.dogGate : null;
-    if (gate)
-      out.push({
-        key: 'dogGate',
-        inside: (x, y, m) =>
-          Math.abs(x - gate.x) < gate.w / 2 - 4 + m && Math.abs(y - gate.y) < 14 + m,
       });
     // centro commerciale: si entra nei negozi arrivando alla loro porta a vetri
     if (env === 'centro_commerciale')

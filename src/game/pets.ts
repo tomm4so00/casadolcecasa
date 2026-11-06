@@ -27,15 +27,7 @@ import {
   updateTraining,
   updateTrainingHud,
 } from './dog-training.js';
-import {
-  GATE_INSIDE,
-  GATE_OUTSIDE,
-  type DogMode,
-  clampToPark,
-  inDogPark,
-  nextDogMode,
-  parkSpot,
-} from './dog-park-rules.js';
+import { type DogMode, clampToPark, inDogPark, nextDogMode, parkSpot } from './dog-park-rules.js';
 import {
   PETS,
   PET_FOOD_PRICE,
@@ -664,14 +656,10 @@ function updateDogWalk(dt: number): void {
   const before: DogMode = w.mode || 'leash';
   const inPark = env === 'passeggiata' && inDogPark(px, py);
   const atOwner = Math.hypot(px - w.x, py - w.y) < DOG_AT_OWNER;
-  w.mode = nextDogMode(before, inPark, atOwner);
+  if (!inPark) w.leavingPark = false;
+  w.mode = w.leavingPark ? 'leash' : nextDogMode(before, inPark, atOwner);
   if (before === 'leash' && w.mode === 'free') unleashInPark(w);
   else if (before === 'called' && w.mode === 'leash') leashAndLeave(w);
-  else if (before !== 'leash' && w.mode === 'leash') {
-    // il padrone è uscito dal recinto senza fischiare: il cane lo raggiunge
-    w.x = px - 22;
-    w.y = py + 10;
-  }
   // libero: corre per il recinto, a meno che non lo si stia addestrando
   if (w.mode === 'free') {
     if (!updateTraining(w, dt)) roamInPark(w, dt);
@@ -780,20 +768,7 @@ function leashAndLeave(w: GameValue): void {
   w.sayUntil = game.animClock + 2;
   w.moving = false;
   toast('🦮 Il cane è tornato di corsa: gli hai rimesso il guinzaglio.', 3500);
-  passGate(false);
-}
-
-/** Si passa il cancello: il giocatore (e il cane al guinzaglio) dall'altra parte. */
-function passGate(toInside: boolean): void {
-  const to = toInside ? GATE_INSIDE : GATE_OUTSIDE;
-  game.playerPos = { x: to.x, y: to.y };
-  game.dogGateOpenUntil = game.animClock + 0.9;
-  const w = game.dogWalk;
-  if (w) {
-    w.x = to.x - 20;
-    w.y = to.y + (toInside ? -6 : 8);
-  }
-  sfx('door');
+  w.leavingPark = true;
 }
 
 /** Il cane richiamato arriva, si va al centro per l'addestramento o l'animale mangia: il padrone resta fermo. */
@@ -815,7 +790,7 @@ export function dogGatePrompt(): { text: string; locked?: boolean } {
 export function useDogGate(): void {
   const w = game.dogWalk;
   if (!inDogPark(game.playerPos.x, game.playerPos.y)) {
-    passGate(true);
+    toast('Attraversa il cancello camminando per entrare nell’area cani.', 3500);
     if (!w && book().dog)
       toast(
         '🐶 Il tuo cane è a casa: mettigli il guinzaglio nella tua stanza e portalo qui!',
@@ -825,7 +800,7 @@ export function useDogGate(): void {
   }
   if (w?.mode === 'called') return;
   if (w?.mode !== 'free') {
-    passGate(false);
+    toast('Attraversa il cancello camminando per uscire dall’area cani.', 3500);
     return;
   }
   w.mode = 'called';

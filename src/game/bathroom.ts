@@ -3,6 +3,8 @@ import type { GameValue } from './context.js';
 import { game } from './context.js';
 import { toast } from './missions.js';
 import { sfx } from './audio.js';
+import { saveGame } from './saves.js';
+import { toiletReady, toiletReward } from './toilet-rules.js';
 
 const ease = (k: number): number => {
   const c = Math.max(0, Math.min(1, k));
@@ -104,13 +106,18 @@ export const myUndressStep = (): number => (game.showerAnim ? game.showerAnim.un
 
 // ---------------------------------------------------------------- WC e lavandino
 
-/** Felicità data dal WC (si può usare solo DAILY_LIMITS.wc volte al giorno). */
-const WC_HAPPY = 3;
 const TOILET = { approach: 0.6, sit: 0.35, stay: 2.8, stand: 0.4 };
 const WASH = { approach: 0.6, rub: 2.4 };
 
 export function startToilet(): void {
   if (game.showerAnim || game.bathAnim) return;
+  const now = Date.now();
+  if (!toiletReady(game.player.toiletAt, now)) {
+    toast('🚽 Non ti scappa! Riprova più tardi.');
+    return;
+  }
+  game.player.toiletAt = now;
+  saveGame();
   game.bathAnim = {
     kind: 'toilet',
     t0: game.animClock,
@@ -165,8 +172,14 @@ export function updateBathroom(now: number): void {
     }
     game.bathAnim = null;
     game.isWalking = false;
-    game.player.happinessLevel = Math.min(100, game.player.happinessLevel + WC_HAPPY);
-    toast(`Che sollievo! 🚽 (Felicità +${WC_HAPPY}%)`);
+    const reward = toiletReward(Math.random());
+    game.player.happinessLevel = Math.min(100, game.player.happinessLevel + reward);
+    toast(
+      reward === 15
+        ? '🚽 Wow, questa era bella grossa! (Felicità +15%)'
+        : 'Che sollievo! 🚽 (Felicità +5%)',
+    );
+    saveGame();
     return;
   }
   // lavandino
