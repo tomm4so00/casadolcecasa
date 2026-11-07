@@ -153,6 +153,8 @@ interface GameContext {
   petshopFurniture: SceneMap;
   collectShopFurniture: SceneMap;
   usedShopFurniture: SceneMap;
+  /** Galleria d'Arte: i posti dei dieci quadri in mostra e l'uscita verso il laboratorio. */
+  galleryFurniture: SceneMap;
   /** Dentro la base spaziale lunare. */
   moonbaseInsideFurniture: SceneMap;
   /** Cane al guinzaglio che segue il giocatore (null se è a casa). */

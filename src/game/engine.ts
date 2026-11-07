@@ -416,10 +416,11 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
   if (!game.ENV_PROPS[game.view.activeEnvironment]) {
     Object.keys(map).forEach((k?: GameValue): GameValue => {
       const item: GameValue = map[k];
-      // i quadri hanno il titolo sulla targhetta sotto la cornice
+      // i quadri (anche quelli della galleria) hanno il titolo sulla targhetta sotto la cornice
       // nel bagno water, lavandino e doccia si riconoscono da soli: senza nome
       let label: GameValue =
         String(k).startsWith('painting') ||
+        item.gallerySlot !== undefined ||
         (game.view.activeEnvironment === 'BATHROOM' && k !== 'doorExit')
           ? ''
           : item.name;

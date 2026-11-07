@@ -36,6 +36,7 @@ export const DELETION_NODES = [
   'sims_chat',
   'sims_gossip',
   'sims_painting_titles',
+  'sims_auctions',
   'sims_games',
   'sims_limited',
   'sims_collect',
@@ -115,6 +116,17 @@ export function deletionPaths(uid: string, data: Partial<Record<string, unknown>
   }
   for (const [key, t] of entries(data.sims_painting_titles))
     if (record(t) && mine(t.by)) add(`sims_painting_titles/${key}`);
+  // aste: le sue si chiudono; altrove via le sue offerte e i suoi cuoricini
+  for (const [id, a] of entries(data.sims_auctions)) {
+    if (!record(a)) continue;
+    if (mine(a.by)) {
+      add(`sims_auctions/${id}`);
+      continue;
+    }
+    if (record(a.bid) && mine(a.bid.by)) add(`sims_auctions/${id}/bid`);
+    if (record(a.sold) && mine(a.sold.to)) add(`sims_auctions/${id}/sold`);
+    for (const [pid] of entries(a.votes)) if (ids.has(pid)) add(`sims_auctions/${id}/votes/${pid}`);
+  }
   // partite in corso con lui
   for (const [key, g] of entries(data.sims_games))
     if (record(g) && (mine(g.a) || mine(g.b))) add(`sims_games/${key}`);

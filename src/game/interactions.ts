@@ -59,6 +59,14 @@ import { sfx } from './audio.js';
 import { openBankCounter } from './bank.js';
 import { openProjects, pressLaunchButton, rocketLaunch } from './projects.js';
 import { managePainting, openPaintStudio } from './paint-studio.js';
+import {
+  GALLERY_ENV,
+  enterGallery,
+  galleryPrompt,
+  leaveGallery,
+  openCatalog,
+  viewGalleryPiece,
+} from './gallery.js';
 import { nextUpgrade, tierOf } from './furniture-tiers.js';
 import {
   announceFurnitureBenefit,
@@ -541,11 +549,37 @@ const BETTING = shop(
 );
 
 const ART_STUDIO = shop(
-  (key) => (key.startsWith('easel') ? { text: '🎨 Dipingi un quadro' } : null),
-  (key) => {
+  (key) =>
+    key.startsWith('easel')
+      ? { text: '🎨 Dipingi un quadro' }
+      : key === 'galleryDoor'
+        ? { text: "🖼️ Entra nella Galleria d'Arte" }
+        : null,
+  async (key) => {
     if (key.startsWith('easel')) openPaintStudio();
+    else if (key === 'galleryDoor') {
+      await throughDoor('art:gallery');
+      enterGallery();
+    }
   },
 );
+
+// Galleria d'Arte: i quadri si guardano da vicino; l'uscita riporta nel laboratorio.
+const GALLERY: Place = {
+  prompt: (key, item) =>
+    key === 'doorExit'
+      ? { text: '🎨 Torna al Laboratorio' }
+      : key === 'catalog'
+        ? { text: "📖 Sfoglia il catalogo delle opere d'arte" }
+        : item?.gallerySlot !== undefined
+          ? galleryPrompt(item.gallerySlot)
+          : touch(item),
+  act(key, item) {
+    if (key === 'doorExit') leaveGallery();
+    else if (key === 'catalog') openCatalog();
+    else if (item?.gallerySlot !== undefined) viewGalleryPiece(item.gallerySlot);
+  },
+};
 
 const DEALER: Place = {
   prompt: () => ({ text: '🕴️ Parla con lo spacciatore' }),
@@ -671,6 +705,7 @@ const PLACES: Record<string, Place> = {
   sala_giochi: ARCADE,
   scommesse: BETTING,
   laboratorio: ART_STUDIO,
+  [GALLERY_ENV]: GALLERY,
   ingegneria: ENGINEERING,
   luna: MOON,
   base_lunare: MOON_BASE,

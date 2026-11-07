@@ -5,6 +5,7 @@
 import type { GameValue } from './context.js';
 import { game } from './context.js';
 import { toast } from './missions.js';
+import { moveAuctions } from './auctions.js';
 import { START_MONEY, hasRoom, normalizeRooms, saveGame, withTimeout } from './saves.js';
 import {
   LEGACY_WORLD,
@@ -146,6 +147,8 @@ async function moveIntoWorld(code: string, carryFrom: string | null): Promise<'o
       10000,
     );
     void publishFreeRooms(carryFrom, oldFree);
+    // anche i quadri all'asta vengono con te (prima di cambiare mondo: vedi moveAuctions)
+    await moveAuctions(carryFrom, code);
   }
   game.session.worldId = code;
   game.myAssignedRoomIdx = idx;
@@ -200,7 +203,7 @@ function showWorldChoice(mode: Mode): Promise<string | null> {
     `<p class="world-sub">${
       mode === 'first'
         ? `Ogni condominio ha ${WORLD_ROOMS} stanze. Entra dove c'è posto, creane uno tuo o raggiungi un amico con il suo codice.`
-        : `Sei nel condominio <b>${here}</b>. Cambiando, la tua stanza viene con te: cassaforte, mobili e quadri. Soldi e oggetti restano tuoi.`
+        : `Sei nel condominio <b>${here}</b>. Cambiando, la tua stanza viene con te: cassaforte, mobili, quadri e i tuoi quadri all'asta (le offerte dei vicini di adesso si annullano). Soldi e oggetti restano tuoi.`
     }</p>` +
     `<button type="button" class="btn-primary world-btn" data-w="public">🎲 Unisciti a un mondo pubblico</button>` +
     `<button type="button" class="btn-primary world-btn world-create" data-w="create">🏗️ Crea un nuovo mondo</button>` +

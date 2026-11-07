@@ -19,12 +19,15 @@ import {
   isBlankPainting,
   paintLine,
   MAX_ROOM_PAINTINGS,
+  PAINTING_SLOTS,
   type PaintingSlot,
   firstFreeSlot,
   roomPaintings,
   slotOfKey,
 } from './painting-rules.js';
 import { worldNode } from './world-db.js';
+import { paintingImage } from './render/scenes.js';
+import { cancelAuction, startAuction } from './auctions.js';
 
 type Tool = 1 | 3 | 6 | 'fill';
 const studio = {
@@ -182,30 +185,40 @@ async function finishPainting(): Promise<void> {
   const res: GameValue = await openDialog({
     title: '🖼️ Quadro finito!',
     text:
-      'Che capolavoro! Vuoi appenderlo nella tua stanza?' +
+      'Che capolavoro! Cosa ne fai?\n\n' +
+      "🔨 All'asta: lo vedono tutti su quadrivendo.it e nel catalogo della Galleria d'Arte, riceve cuoricini e offerte e tu accetti quella che preferisci.\n" +
+      '🖼️ In casa: lo appendi nella tua stanza ed è tuo per sempre (niente offerte).' +
       (free
         ? `\n\nNella tua stanza puoi appendere fino a ${MAX_ROOM_PAINTINGS} quadri.`
-        : `\n\nHai già ${MAX_ROOM_PAINTINGS} quadri appesi: dovrai sceglierne uno da sostituire.`),
+        : `\n\nHai già ${MAX_ROOM_PAINTINGS} quadri appesi: per appenderlo dovrai sceglierne uno da sostituire.`),
     buttons: [
       { label: 'Torna a dipingere', value: 'back', color: '#57606f' },
       { label: '🗑️ Butta via', value: 'discard', color: '#636e72' },
-      { label: '🖼️ Appendi', value: 'hang', color: '#2ed573' },
+      { label: "🔨 Metti all'asta", value: 'auction', color: '#e17055' },
+      { label: '🖼️ Appendi in casa', value: 'hang', color: '#2ed573' },
     ],
   });
   if (res.action === 'back') {
     dom('paint-modal').classList.remove('hidden');
     return;
   }
+  if (res.action === 'auction') {
+    // se non riesce si torna alla tela: il quadro non va perso
+    if (!(await startAuction(encodePainting(studio.grid))))
+      dom('paint-modal').classList.remove('hidden');
+    return;
+  }
   if (res.action !== 'hang') {
     toast('Il quadro è finito nel cestino.', 2500);
     return;
   }
-  const slot = free ?? (await chooseSlotToReplace());
-  if (!slot) {
+  const code = encodePainting(studio.grid);
+  const spot = await pickWallSlot(code);
+  if (!spot) {
     dom('paint-modal').classList.remove('hidden');
     return;
   }
-  const code = encodePainting(studio.grid);
+  const slot = spot.slot;
   let hung = false;
   try {
     await game.session.db.ref(`${worldNode('rooms_state')}/${game.myAssignedRoomIdx}`).update({
@@ -224,6 +237,7 @@ async function finishPainting(): Promise<void> {
     hung = true;
   } catch (error) {
     console.warn('[painting]', error);
+    await spot.undo();
     toast('Non sono riuscito ad appendere il quadro. Riprova quando sei connesso.', 4000);
   }
   // appena appeso, gli si dà un nome
@@ -236,18 +250,146 @@ const SLOT_PLACE: Record<PaintingSlot, string> = {
   p3: 'quadro 3',
 };
 
-export async function chooseSlotToReplace(): Promise<PaintingSlot | null> {
-  const res: GameValue = await openDialog({
+/** Anteprima di un quadro, con i quadretti netti. */
+function previewOf(code: string, w: number, h: number): HTMLCanvasElement {
+  const cv = document.createElement('canvas');
+  cv.width = w;
+  cv.height = h;
+  const ctx = cv.getContext('2d');
+  const img = paintingImage(code);
+  if (ctx && img) {
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(img, 0, 0, w, h);
+  }
+  return cv;
+}
+
+/** Il posto sulla parete per un quadro, e come rimettere le cose a posto se poi non si appende. */
+export interface WallSpot {
+  slot: PaintingSlot;
+  /** Annulla quello che si è fatto del quadro tolto (lo toglie dall'asta). */
+  undo: () => Promise<void>;
+}
+
+const noUndo = async (): Promise<void> => {};
+
+/**
+ * Dove appendere il quadro `incoming`: il primo posto libero, oppure quello di un quadro da
+ * sostituire. Il quadro che lascia la parete si mette all'asta o si butta via. L'asta si apre
+ * prima di appendere il nuovo: se poi appenderlo non riesce, `undo` la chiude e nulla va perso.
+ */
+export async function pickWallSlot(incoming: string): Promise<WallSpot | null> {
+  const free = firstFreeSlot(game.roomsState[game.myAssignedRoomIdx ?? -1]);
+  if (free) return { slot: free, undo: noUndo };
+  for (;;) {
+    const slot = await chooseSlotToReplace(incoming);
+    if (!slot) return null;
+    const old = roomPaintings(game.roomsState[game.myAssignedRoomIdx ?? -1])[slot];
+    if (!old) return { slot, undo: noUndo };
+    const title = paintingTitle(old);
+    const res: GameValue = await openDialog({
+      title: '🖼️ E il quadro che togli?',
+      text:
+        `${title ? quoted(title) : `Il ${SLOT_PLACE[slot]}`} lascia la parete.\n\n` +
+        "🔨 All'asta: lo vedono tutti su quadrivendo.it e nel catalogo della Galleria d'Arte, e tu accetti l'offerta che preferisci.\n" +
+        '🗑️ Buttandolo via, invece, va perso per sempre.',
+      buttons: [
+        { label: '↩️ Scegli un altro', value: 'back', color: '#57606f' },
+        { label: '🗑️ Butta via', value: 'discard', color: '#636e72' },
+        { label: "🔨 Metti all'asta", value: 'auction', color: '#e17055' },
+      ],
+    });
+    if (res.action === 'discard') return { slot, undo: noUndo };
+    if (res.action === 'back') continue;
+    if (res.action !== 'auction') return null;
+    // se non si riesce a metterlo all'asta si torna alla scelta: il quadro resta appeso
+    if (!(await startAuction(old, { resale: true }))) continue;
+    return { slot, undo: () => cancelAuction(old) };
+  }
+}
+
+/**
+ * Le pareti sono piene: si sceglie quale quadro togliere guardando le anteprime dei tre appesi
+ * (e, sopra, quello che arriva). Che fine fa quello tolto lo decide pickWallSlot.
+ */
+export function chooseSlotToReplace(incoming?: string): Promise<PaintingSlot | null> {
+  return chooseHungPainting({
     title: '🖼️ Quale quadro sostituisci?',
-    text: 'Le pareti sono piene. Avvicinandoti a un quadro nella stanza vedi il suo numero.',
-    buttons: [
-      { label: 'Annulla', value: null, color: '#57606f' },
-      { label: 'Quadro 1', value: 'p1', color: '#e17055' },
-      { label: 'Quadro 2', value: 'p2', color: '#e17055' },
-      { label: 'Quadro 3', value: 'p3', color: '#e17055' },
-    ],
+    sub: "Le pareti sono piene: tocca il quadro da togliere. Dopo scegli se metterlo <b>all'asta</b> o buttarlo via.",
+    action: 'sostituisci',
+    incoming,
   });
-  return (res.action as PaintingSlot) || null;
+}
+
+/**
+ * Le anteprime dei quadri appesi nella propria stanza, da toccare per sceglierne uno: quello da
+ * sostituire, o quello da mettere all'asta. `incoming`: il quadro nuovo, mostrato sopra.
+ */
+export function chooseHungPainting(opt: {
+  title: string;
+  sub: string;
+  action: string;
+  incoming?: string;
+}): Promise<PaintingSlot | null> {
+  const { incoming } = opt;
+  const hung = roomPaintings(game.roomsState[game.myAssignedRoomIdx ?? -1]);
+  let el = document.getElementById('replace-modal');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'replace-modal';
+    el.className = 'fullscreen-modal hidden';
+    document.body.appendChild(el);
+  }
+  const modal = el;
+  modal.innerHTML =
+    `<div class="card replace-card">` +
+    `<h3>${opt.title}</h3>` +
+    (incoming
+      ? `<div class="replace-new"><div class="replace-frame"></div><span>Il quadro nuovo</span></div>`
+      : '') +
+    `<p class="replace-sub">${opt.sub}</p>` +
+    `<div class="replace-grid"></div>` +
+    `<button type="button" class="btn-primary replace-cancel">Annulla</button></div>`;
+  if (incoming)
+    modal.querySelector('.replace-new .replace-frame')!.appendChild(previewOf(incoming, 120, 90));
+  return new Promise((resolve) => {
+    const done = (slot: PaintingSlot | null) => {
+      modal.classList.add('hidden');
+      resolve(slot);
+    };
+    const grid = modal.querySelector('.replace-grid')!;
+    for (const slot of PAINTING_SLOTS) {
+      const code = hung[slot];
+      // si sceglie solo fra i quadri appesi (sostituendo, le pareti sono comunque piene)
+      if (!code) continue;
+      const title = paintingTitle(code);
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'replace-slot';
+      const frame = document.createElement('div');
+      frame.className = 'replace-frame';
+      frame.appendChild(previewOf(code, 120, 90));
+      b.appendChild(frame);
+      const label = document.createElement('div');
+      label.className = 'replace-label';
+      // il titolo, e il numero che si vede avvicinandosi al quadro nella stanza
+      label.textContent = title ? `«${title}»` : `Quadro ${slot.slice(1)}`;
+      b.appendChild(label);
+      const hint = document.createElement('div');
+      hint.className = 'replace-hint';
+      hint.textContent = title
+        ? `Quadro ${slot.slice(1)} · ${opt.action}`
+        : opt.action[0].toUpperCase() + opt.action.slice(1);
+      b.appendChild(hint);
+      b.onclick = () => done(slot);
+      grid.appendChild(b);
+    }
+    modal.querySelector<HTMLButtonElement>('.replace-cancel')!.onclick = () => done(null);
+    modal.onclick = (e) => {
+      if (e.target === modal) done(null);
+    };
+    modal.classList.remove('hidden');
+  });
 }
 
 /** Nella propria stanza: spiegazione e possibilità di staccare il quadro dalla parete. */

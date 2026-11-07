@@ -3,6 +3,7 @@
 // salvato la disposizione dei mobili.
 import type { GameValue } from './context.js';
 import { game } from './context.js';
+import { GALLERY_HALF } from './data/catalogues.js';
 
 const BASE_X = 200;
 const BASE_Y = 180;
@@ -26,6 +27,8 @@ const ENV_HALF: Record<string, { x: number; y: number }> = {
   ingegneria: { x: 200, y: 380 },
   // parco: fontana al centro, area cani a destra, laghetto a sinistra, picnic in fondo
   passeggiata: { x: 440, y: 320 },
+  // galleria d'arte: pareti lunghe per dieci quadri ben distanziati
+  galleria: GALLERY_HALF,
 };
 /** Chi sta più vicino di così a una parete (porte, piante d'angolo) resta attaccato alla parete. */
 const WALL_HUG = 45;

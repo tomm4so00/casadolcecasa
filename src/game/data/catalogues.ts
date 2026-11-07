@@ -2338,7 +2338,68 @@ export const ART_STUDIO_FURNITURE = {
     seed: 3,
     moveable: false,
   },
+  // la porta della Galleria d'Arte, sulla parete di fondo (si disegna con ENV_DECOR)
+  galleryDoor: {
+    x: 140,
+    y: -170,
+    w: 50,
+    h: 8,
+    // il nome sta a metà porta: più in alto coprirebbe la targa accanto
+    z: 66,
+    name: "Galleria d'Arte 🖼️",
+    moveable: false,
+    wallItem: true,
+  },
   doorExit: { x: 0, y: 160, w: 60, h: 15, z: 110, name: 'Torna Fuori 🚪', moveable: false },
+};
+
+// ---------------------------------------------------------------- galleria d'arte
+/** Metà larghezza e profondità della galleria (vedi room-size.ts): pareti lunghe per dieci quadri. */
+export const GALLERY_HALF = { x: 300, y: 210 };
+/** Dove sta ogni quadro della mostra: parete e distanza dall'inizio della parete (u). */
+export const GALLERY_WALL: { side: 'back' | 'left'; u: number }[] = [
+  ...[50, 150, 250, 350, 450, 550].map((u) => ({ side: 'back' as const, u })),
+  // la parete di sinistra comincia davanti (u = 0) e finisce nell'angolo di fondo
+  ...[375, 270, 165, 60].map((u) => ({ side: 'left' as const, u })),
+];
+
+// Ogni quadro è anche un oggetto della mappa, davanti alla parete, per il pulsante "Guarda".
+export const GALLERY_FURNITURE = {
+  ...Object.fromEntries(
+    GALLERY_WALL.map(({ side, u }, i) => [
+      'gallery' + i,
+      {
+        ...(side === 'back'
+          ? { x: -GALLERY_HALF.x + u, y: -GALLERY_HALF.y + 14, w: 64, h: 8 }
+          : { x: -GALLERY_HALF.x + 14, y: GALLERY_HALF.y - u, w: 8, h: 64 }),
+        z: 90,
+        name: 'Quadro in mostra 🖼️',
+        moveable: false,
+        wallItem: true,
+        gallerySlot: i,
+      },
+    ]),
+  ),
+  // il catalogo sul leggio al centro (si disegna con ENV_DECOR: qui c'è il pulsante)
+  catalog: {
+    x: 0,
+    y: 30,
+    w: 34,
+    h: 28,
+    z: 62,
+    name: 'Catalogo delle opere 📖',
+    moveable: false,
+    wallItem: true,
+  },
+  doorExit: {
+    x: 0,
+    y: 188,
+    w: 60,
+    h: 15,
+    z: 110,
+    name: 'Torna al Laboratorio 🎨',
+    moveable: false,
+  },
 };
 
 export const STORE_FLOOR_FURNITURE = {
@@ -3129,6 +3190,31 @@ export const ENV_DECOR = {
     { kind: 'paintTable', x: 125, y: 75, w: 64, h: 36, z: 44, seed: 4 },
     { kind: 'plant', x: -168, y: -160, w: 26, h: 26, z: 60 },
     { kind: 'plant', x: 168, y: 150, w: 26, h: 26, z: 60 },
+    // porta scura e moderna verso la Galleria d'Arte
+    {
+      kind: 'wallEntrance',
+      side: 'back',
+      x: 140,
+      y: -180,
+      w: 50,
+      h: 10,
+      solid: false,
+      door: 'art:gallery',
+      sign: '🖼️',
+      color: '#2d3436',
+    },
+  ],
+  // galleria: panche di pelle al centro, sculture su piedistalli bianchi, banco dell'accoglienza
+  galleria: [
+    { kind: 'bench', style: 'gallery', x: -130, y: 30, w: 70, h: 20 },
+    { kind: 'bench', style: 'gallery', x: 130, y: 30, w: 70, h: 20 },
+    // al centro, fra le panche, il leggio con il grande catalogo delle opere
+    { kind: 'galleryCatalog', x: 0, y: 30, w: 34, h: 28, z: 40 },
+    // sculture classiche di marmo: un busto e una figura panneggiata
+    { kind: 'galleryPlinth', x: 225, y: 120, w: 28, h: 28, z: 40, statue: 'bust' },
+    { kind: 'galleryPlinth', x: -110, y: -95, w: 28, h: 28, z: 30, statue: 'figure' },
+    { kind: 'galleryDesk', x: -215, y: 150, w: 80, h: 30, z: 38, label: 'Accoglienza 🛎️' },
+    { kind: 'plant', x: 272, y: 182, w: 26, h: 26, z: 70 },
   ],
   base_lunare: [
     {
@@ -3356,8 +3442,9 @@ export const ENV_STYLE = {
     decor: {
       back: [
         { t: 'painting', u: 60, w: 50, h: 40, seed: 3 },
-        { t: 'window', u: 200, w: 90, h: 60 },
-        { t: 'painting', u: 330, w: 44, h: 56, seed: 12 },
+        { t: 'window', u: 165, w: 90, h: 60 },
+        // targa accanto alla porta della galleria (sopra la porta la coprirebbe il telaio)
+        { t: 'gallerySign', u: 270 },
       ],
       left: [
         { t: 'logo', u: 110, text: 'LABORATORIO', sub: 'arte per tutti', color: '#e17055' },
@@ -3368,6 +3455,36 @@ export const ENV_STYLE = {
     lights: [
       { x: -80, y: -40, z: 0, r: 220, color: '255,245,225' },
       { x: 90, y: 0, z: 0, r: 220, color: '255,245,225' },
+    ],
+  },
+  // galleria d'arte: pareti bianche alte, cemento lucido, binario di faretti sopra ogni quadro
+  galleria: {
+    floor: 'concrete',
+    floorColor: '#d6d3cd',
+    wall: '#fbfaf6',
+    wallStyle: 'gallery',
+    trim: '#e4e1db',
+    wallH: 150,
+    decor: {
+      back: [
+        { t: 'galleryTrack', side: 'back' },
+        { t: 'galleryLettering', u: 300 },
+        ...GALLERY_WALL.flatMap((w, i) =>
+          w.side === 'back' ? [{ t: 'galleryPainting', u: w.u, i }] : [],
+        ),
+      ],
+      left: [
+        { t: 'galleryTrack', side: 'left' },
+        ...GALLERY_WALL.flatMap((w, i) =>
+          w.side === 'left' ? [{ t: 'galleryPainting', u: w.u, i }] : [],
+        ),
+      ],
+    },
+    lights: [
+      { x: -150, y: -110, z: 0, r: 260, color: '255,250,240' },
+      { x: 150, y: -110, z: 0, r: 260, color: '255,250,240' },
+      { x: -190, y: 90, z: 0, r: 230, color: '255,246,230' },
+      { x: 120, y: 110, z: 0, r: 230, color: '255,246,230' },
     ],
   },
   luna: { floor: 'moon', floorColor: '#bdbdb6', outdoor: true },

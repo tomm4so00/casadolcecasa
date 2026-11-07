@@ -20,6 +20,7 @@ export const ENV_MUSIC: Record<string, string> = {
   sala_giochi: 'arcade',
   banca: 'bank',
   laboratorio: 'artlab',
+  galleria: 'artlab',
   ingegneria: 'engineering',
   luna: 'space',
   base_lunare: 'space',

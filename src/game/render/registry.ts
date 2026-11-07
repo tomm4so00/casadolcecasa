@@ -28,6 +28,15 @@ import {
   drawWineRackProp,
 } from './workplaces.js';
 import { MOONBASE_DRAW, MOONBASE_INSIDE_DRAW } from './moonbase.js';
+import {
+  drawGalleryCatalog,
+  drawGalleryDesk,
+  drawGalleryPlinth,
+  wallGalleryLettering,
+  wallGalleryPainting,
+  wallGallerySign,
+  wallGalleryTrack,
+} from './gallery.js';
 import { drawGoldStatue, drawJukebox } from './limited-props.js';
 import {
   drawBNTable,
@@ -339,6 +348,10 @@ export function registerDrawers(): void {
     console: drawConsoleProp,
     bathmat: drawBathmatProp,
     paintTable: drawPaintTableProp,
+    // galleria d'arte
+    galleryPlinth: drawGalleryPlinth,
+    galleryDesk: drawGalleryDesk,
+    galleryCatalog: drawGalleryCatalog,
     // arredo del grow shop
     growTent: drawGrowTent,
     growShelf: drawGrowShelf,
@@ -359,6 +372,9 @@ export function registerDrawers(): void {
     cross: wallCross,
     menu: wallMenu,
     whiteboard: wallWhiteboard,
+    galleryTrack: wallGalleryTrack,
+    galleryLettering: wallGalleryLettering,
+    gallerySign: wallGallerySign,
   };
   game.WALL_DECOR_DYNAMIC = {
     clock: wallClock,
@@ -373,6 +389,8 @@ export function registerDrawers(): void {
     rocketPlaque: wallRocketPlaque,
     adScreen: wallAdScreen,
     collectShelf: wallCollectShelf,
+    // i quadri della mostra cambiano mentre si guarda: si disegnano a ogni fotogramma
+    galleryPainting: wallGalleryPainting,
   };
 }
 

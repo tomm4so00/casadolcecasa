@@ -2739,3 +2739,306 @@ canvas.shake {
   opacity: 0.55;
   cursor: default;
 }
+
+/* Galleria d'Arte: un quadro da vicino, con la scheda come nei musei */
+.gallery-card {
+  max-width: 380px;
+  background: #fbfaf6;
+  color: #2d3436;
+  text-align: left;
+}
+.gallery-view {
+  background: #1d1d1f;
+  padding: 3px;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35);
+}
+.gallery-view canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  border: 14px solid #fbfbf8;
+  box-sizing: border-box;
+  image-rendering: pixelated;
+}
+.gallery-label {
+  margin: 16px 2px 4px;
+  border-left: 3px solid #2d3436;
+  padding-left: 10px;
+}
+.gallery-title {
+  font-size: 1.15em;
+  font-weight: 700;
+}
+.gallery-artist {
+  color: #636e72;
+  margin-top: 2px;
+}
+.gallery-meta {
+  color: #95a5a6;
+  font-size: 0.8em;
+  margin-top: 6px;
+}
+.gallery-price {
+  color: #b33939;
+  font-size: 0.9em;
+  margin-top: 6px;
+}
+.gallery-buttons {
+  display: flex;
+  gap: 8px;
+  margin-top: 14px;
+}
+.gallery-buttons .btn-primary {
+  flex: 1;
+}
+#gallery-modal {
+  /* la scheda di un quadro si apre anche sopra il catalogo */
+  z-index: 600;
+}
+.gallery-hearts {
+  color: #d63031;
+  font-weight: 700;
+  margin-top: 6px;
+}
+.gallery-buttons .art-heart.voted,
+.catalog-actions .art-heart.voted {
+  background: #d63031;
+}
+.art-heart {
+  background: #e84393;
+}
+.art-heart:disabled {
+  opacity: 0.75;
+  cursor: default;
+}
+.art-offer {
+  background: #2ed573;
+}
+
+/* Catalogo delle opere: un libro d'arte con le pagine color avorio */
+.catalog-book {
+  max-width: 560px;
+  width: 94%;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  background: #fbf6e8;
+  color: #3b2a1a;
+  border: 6px solid #7d1f1f;
+  box-shadow:
+    0 0 0 2px #d4a017 inset,
+    0 18px 40px rgba(0, 0, 0, 0.6);
+  padding: 18px 16px 14px;
+}
+.catalog-head {
+  text-align: center;
+  border-bottom: 1px solid rgba(59, 42, 26, 0.25);
+  padding-bottom: 10px;
+}
+.catalog-kicker {
+  font-size: 0.7rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #8a6d3b;
+}
+.catalog-head h3 {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-style: italic;
+  font-size: 1.45rem;
+  margin: 4px 0;
+  color: #3b2a1a;
+}
+.catalog-sub {
+  font-size: 0.78rem;
+  color: #7a6a55;
+}
+.catalog-pages {
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 12px 2px;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+@media (min-width: 560px) {
+  .catalog-pages {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+.catalog-entry {
+  min-width: 0;
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  background: #fffdf6;
+  border: 1px solid rgba(59, 42, 26, 0.15);
+  border-radius: 6px;
+  padding: 8px;
+}
+.catalog-frame {
+  flex: 0 0 auto;
+  width: 92px;
+  padding: 4px;
+  background: #fff;
+  border: 2px solid #1d1d1f;
+  cursor: zoom-in;
+}
+.catalog-frame canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  image-rendering: pixelated;
+}
+.catalog-info {
+  min-width: 0;
+  flex: 1;
+  text-align: left;
+}
+.catalog-no {
+  font-size: 0.68rem;
+  color: #8a6d3b;
+  letter-spacing: 0.06em;
+}
+.catalog-shown {
+  color: #7d1f1f;
+  font-weight: 700;
+}
+.catalog-title {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-style: italic;
+  font-weight: 700;
+  font-size: 1rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.catalog-artist {
+  font-size: 0.82rem;
+  color: #6b5a45;
+}
+.catalog-hearts {
+  font-weight: 700;
+  color: #d63031;
+  font-size: 0.85rem;
+  margin-top: 2px;
+}
+.catalog-price {
+  font-size: 0.75rem;
+  color: #2d3436;
+}
+.catalog-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+.catalog-actions .btn-primary {
+  padding: 6px 8px;
+  font-size: 0.75rem;
+  margin: 0;
+  width: auto;
+}
+.catalog-empty {
+  grid-column: 1 / -1;
+  text-align: center;
+  color: #7a6a55;
+  font-style: italic;
+}
+.catalog-close {
+  background: #7d1f1f;
+  margin-top: 8px;
+}
+
+/* Scelta del quadro da sostituire: anteprime dei tre appesi e, sopra, quello nuovo */
+#replace-modal {
+  z-index: 1400;
+}
+.replace-card {
+  max-width: 460px;
+}
+.replace-sub {
+  font-size: 0.85rem;
+  color: #c8d6e5;
+  margin: 8px 0 12px;
+}
+.replace-sub b {
+  color: #ff7675;
+}
+.replace-new {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 8px;
+  color: #55efc4;
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+.replace-new .replace-frame {
+  width: 84px;
+}
+.replace-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+.replace-slot {
+  background: rgba(255, 255, 255, 0.06);
+  border: 2px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  padding: 6px;
+  color: #fff;
+  cursor: pointer;
+  min-width: 0;
+}
+.replace-slot:hover,
+.replace-slot:focus-visible {
+  border-color: #e17055;
+  background: rgba(225, 112, 85, 0.18);
+}
+.replace-frame {
+  background: #fff;
+  border: 3px solid #8d5524;
+  padding: 3px;
+  aspect-ratio: 4 / 3;
+}
+.replace-frame canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  image-rendering: pixelated;
+}
+.replace-label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  margin-top: 5px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.replace-hint {
+  font-size: 0.68rem;
+  color: #fab1a0;
+}
+.replace-cancel {
+  background: #57606f;
+  margin-top: 12px;
+}
+
+.catalog-sell {
+  background: #e17055;
+  margin: 10px auto 0;
+  padding: 8px 14px;
+  font-size: 0.82rem;
+  width: auto;
+}
+/* titoli delle sezioni di «I miei quadri» su quadrivendo.it: a tutta larghezza */
+.art-section {
+  grid-column: 1 / -1;
+  color: #fdcb6e;
+  font-weight: 700;
+  font-size: 0.9rem;
+  margin-top: 8px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+}

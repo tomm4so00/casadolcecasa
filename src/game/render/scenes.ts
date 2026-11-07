@@ -324,6 +324,39 @@ export function drawFloorPattern(st?: GameValue): GameValue {
           ctx.fillRect(u + 1.5, v + 1.5, 27, 27);
         }
       break;
+    case 'concrete': {
+      // cemento lucido da galleria: macchie morbide, giunti ogni 120 e un velo di riflesso
+      ctx.fillStyle = base;
+      ctx.fillRect(0, 0, W, H);
+      for (let i: GameValue = 0; i < (W * H) / 2500; i++) {
+        const r: GameValue = 30 + rnd(i * 3.1) * 60;
+        ctx.fillStyle = rnd(i * 7.7) > 0.5 ? 'rgba(255,255,255,0.035)' : 'rgba(0,0,0,0.018)';
+        ctx.beginPath();
+        ctx.ellipse(rnd(i * 1.3) * W, rnd(i * 2.9) * H, r * 1.6, r, 0, 0, 6.3);
+        ctx.fill();
+      }
+      ctx.strokeStyle = 'rgba(0,0,0,0.12)';
+      ctx.lineWidth = 0.8;
+      for (let u: GameValue = 120; u < W; u += 120) {
+        ctx.beginPath();
+        ctx.moveTo(u, 0);
+        ctx.lineTo(u, H);
+        ctx.stroke();
+      }
+      for (let v: GameValue = 120; v < H; v += 120) {
+        ctx.beginPath();
+        ctx.moveTo(0, v);
+        ctx.lineTo(W, v);
+        ctx.stroke();
+      }
+      const sheen = ctx.createLinearGradient(0, 0, W, H);
+      sheen.addColorStop(0, 'rgba(255,255,255,0.10)');
+      sheen.addColorStop(0.5, 'rgba(255,255,255,0)');
+      sheen.addColorStop(1, 'rgba(255,255,255,0.06)');
+      ctx.fillStyle = sheen;
+      ctx.fillRect(0, 0, W, H);
+      break;
+    }
     case 'marble': {
       // marmo lucido a lastre, con le venature e le linee dorate
       for (let u: GameValue = 0, i: GameValue = 0; u < W; u += 50, i++)
@@ -1057,6 +1090,19 @@ export function paintWallSurface(
           ctx.fillStyle = mixColor(c, '#000000', rnd(r * 40 + i) * 0.25);
           ctx.fillRect(u + 1, v + 1, 22, 8);
         }
+      break;
+    case 'gallery':
+      // parete bianca appena calda, più luminosa in alto dove arrivano i faretti
+      {
+        const g = ctx.createLinearGradient(0, 0, 0, H);
+        g.addColorStop(0, game.lighten(c, 0.5));
+        g.addColorStop(1, game.darken(c, 0.04));
+        ctx.fillStyle = g;
+        ctx.fillRect(0, 0, W, H);
+        // fuga d'ombra sopra lo zoccolo, come nelle gallerie moderne
+        ctx.fillStyle = 'rgba(0,0,0,0.35)';
+        ctx.fillRect(0, H - 8, W, 1.2);
+      }
       break;
     case 'bandGreen':
       ctx.fillStyle = '#d1f2eb';

@@ -6,6 +6,7 @@ import { activityTarget, type ActivityLog } from '../../shared/activity.js';
 import { getMessaging } from 'firebase-admin/messaging';
 import { getAuth } from 'firebase-admin/auth';
 import { processDeletionRequests } from './deletion.js';
+import { expireAuctions } from './auctions.js';
 import {
   type PushSender,
   cleanOldActivity,
@@ -155,6 +156,10 @@ async function main() {
       if (pets) console.log(`Pet warnings sent: ${pets}`);
       const offers = await notifyLimitedOffers(getDatabase(app), scheduledAt, send);
       if (offers) console.log(`Offer notifications sent: ${offers}`);
+      // aste dei quadri oltre lo spazio espositivo: timer di 7 giorni, avviso e quadri scaduti
+      const art = await expireAuctions(getDatabase(app), scheduledAt, send);
+      if (art.started || art.removed)
+        console.log(`Auction space: timers started ${art.started}, expired removed ${art.removed}`);
     } catch (error) {
       console.log('Death warnings skipped:', (error as { code?: string }).code || 'unknown error');
     }

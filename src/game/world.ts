@@ -316,6 +316,7 @@ const ENV_MAPS: Record<string, string> = {
   negozio_vestiti: 'clothesStoreFurniture',
   banca: 'bankFurniture',
   laboratorio: 'artStudioFurniture',
+  galleria: 'galleryFurniture',
   ingegneria: 'engineeringFurniture',
   scommesse: 'bettingFurniture',
   sala_giochi: 'arcadeFurniture',

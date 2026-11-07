@@ -8,7 +8,7 @@ import { RETIRED_BUSINESSES } from '../../shared/market.js';
 import { onLimitedAnswer, onLimitedOffer, onLimitedWithdrawn } from './limited.js';
 import { postGossip } from './gossip.js';
 import { myLine, notePersonality } from './personality.js';
-import { onArtSold } from './art-market.js';
+import { onArtAccept, onArtNo, onArtOffer, onArtSold } from './auctions.js';
 import { transferMoney, creditMoney } from './economy.js';
 import type { GameValue } from './context.js';
 import { game } from './context.js';
@@ -286,6 +286,12 @@ export async function handleSocial(m?: GameValue): Promise<GameValue> {
     sfx('robbed');
     toast(`🕵️ ${who} ti ha svuotato la cassaforte! Rubati ${amt} €.`, 6000);
     remember(m, who, 'theft');
+  } else if (m.type === 'artOffer') {
+    await onArtOffer(m, who);
+  } else if (m.type === 'artAccept') {
+    await onArtAccept(m);
+  } else if (m.type === 'artNo') {
+    onArtNo(m, who);
   } else if (m.type === 'artSold') {
     onArtSold(who, Math.max(0, Math.floor(Number(m.amt) || 0)));
   } else if (m.type === 'romance') {

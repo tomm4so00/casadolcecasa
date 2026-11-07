@@ -19,6 +19,7 @@ export const WORLD_NODES = [
   'rps',
   'theft',
   'leaderboard',
+  'auctions',
 ];
 
 /** Ogni giocatore crea al massimo un mondo ogni 10 minuti (come WORLD_CREATE_EVERY_MS). */

@@ -1765,6 +1765,13 @@ export function drawFountainProp(it?: GameValue, t?: GameValue): GameValue {
 
 export function drawBenchProp(it?: GameValue): GameValue {
   const { x, y, w, h }: GameValue = it;
+  if (it.style === 'gallery') {
+    // panca da galleria: cuscino di pelle scura su un telaio d'acciaio sottile
+    for (const sx of [-1, 1]) box(x + sx * (w / 2 - 6), y, 3, h - 2, 10, '#1e1e20');
+    box(x, y, w - 8, 2, 1.5, '#1e1e20', { z0: 4 });
+    box(x, y, w, h, 7, '#3b3a39', { z0: 10, top: '#4a4846', edge: 'rgba(0,0,0,0.45)' });
+    return;
+  }
   box(x, y - h / 2 + 2, w, 3, 18, '#7b4a2e', { z0: 14 });
   box(x - w / 2 + 5, y, 4, h - 4, 12, '#2d3436');
   for (let i: GameValue = 0; i < 3; i++)

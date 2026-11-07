@@ -23,6 +23,7 @@ import {
   CLOTHES_STORE_FURNITURE,
   BANK_FURNITURE,
   ART_STUDIO_FURNITURE,
+  GALLERY_FURNITURE,
   ENGINEERING_FURNITURE,
   BETTING_FURNITURE,
   ARCADE_FURNITURE,
@@ -307,6 +308,7 @@ export function initializeGame() {
   game.petshopFurniture = structuredClone(PETSHOP_FURNITURE);
   game.collectShopFurniture = structuredClone(COLLECT_SHOP_FURNITURE);
   game.usedShopFurniture = structuredClone(USED_SHOP_FURNITURE);
+  game.galleryFurniture = structuredClone(GALLERY_FURNITURE);
   game.moonbaseInsideFurniture = structuredClone(MOONBASE_INSIDE_FURNITURE);
   game.dogWalk = null;
   game.dogLeftAt = null;
