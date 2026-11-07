@@ -843,7 +843,12 @@ export function startLoop(..._args: GameValue[]): GameValue {
         ? getCurrentFurnitureMap().bed
         : null;
     const spot = bed ? bedSpot(bed, game.bedSlot) : null;
-    updateCamera(delta, spot ? { ...spot, k: game.sleepK } : null);
+    // arredando, l'inquadratura segue il mobile che si sposta: così non esce dallo schermo
+    const moving: GameValue =
+      game.isMovingFurnitureMode && game.movingPropKey
+        ? getCurrentFurnitureMap()[game.movingPropKey]
+        : null;
+    updateCamera(delta, spot ? { ...spot, k: game.sleepK } : null, moving);
     renderEnvironment(delta, game.animClock);
   }
   lifetime.requestAnimationFrame(animate);

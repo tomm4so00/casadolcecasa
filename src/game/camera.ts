@@ -49,19 +49,14 @@ export function fadeOnRoomChange(): void {
 }
 
 /**
- * Scala della scena intera: come prima sul computer, ingrandita sul telefono. Mentre si arreda
- * il telefono torna alla vista intera, così si vede tutta la stanza.
+ * Scala della scena intera: come prima sul computer, ingrandita sul telefono. Anche mentre si
+ * arreda resta la stessa: la stanza non si rimpicciolisce, la telecamera segue il mobile.
  */
 export function cameraScale(): number {
   const w = game.view.canvas.width,
     h = game.view.canvas.height;
   const fit = Math.min(w / 450, h / 600, 1.2);
-  if (!isPhone) return fit;
-  if (!game.arrangeMode) return Math.min(fit * PHONE_ZOOM, MAX_SCALE);
-  // arredando: tutta la stanza nello schermo, anche col telefono in verticale, con un po' di
-  // spazio ai lati per i pulsanti
-  const e = sceneExtent();
-  return Math.min(fit, (w * 0.8) / (e.u1 - e.u0), (h - OFFSET_Y * 2) / (e.v1 - e.v0));
+  return isPhone ? Math.min(fit * PHONE_ZOOM, MAX_SCALE) : fit;
 }
 
 /**
@@ -104,16 +99,18 @@ export function cameraRange(s = cameraScale()): { u0: number; u1: number; v0: nu
 /**
  * Muove la telecamera verso il giocatore; al cambio di ambiente salta subito su di lui.
  * `bed`: mentre si corica (k da 0 a 1) l'inquadratura scivola sul letto insieme al personaggio.
+ * `focus`: un altro punto da seguire al posto del giocatore (il mobile che si sta spostando).
  */
 export function updateCamera(
   delta: number,
   bed?: { x: number; y: number; k: number } | null,
+  focus?: { x: number; y: number } | null,
 ): void {
   const cam: CameraState = (game.cam ||= { u: 0, v: 0, env: null });
   const s = cameraScale();
   const w = game.view.canvas.width / s,
     h = game.view.canvas.height / s;
-  let p = game.playerPos || { x: 0, y: 0 };
+  let p = focus || game.playerPos || { x: 0, y: 0 };
   if (bed && bed.k > 0) {
     const e = bed.k * bed.k * (3 - 2 * bed.k); // stessa curva dell'animazione del personaggio
     p = { x: p.x + (bed.x - p.x) * e, y: p.y + (bed.y - p.y) * e };
