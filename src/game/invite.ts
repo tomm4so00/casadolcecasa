@@ -10,6 +10,7 @@ import {
   INVITE_MAX_PAID,
   INVITE_PARAM,
   canClaimInvite,
+  decodeOwedBonuses,
   decodePendingInvite,
   inviteLink,
   inviteMessage,
@@ -44,11 +45,12 @@ function storage(key: string): string {
 
 /**
  * All'apertura della pagina: se il link porta un invito lo ricorda sul dispositivo (la
- * registrazione può passare da Google e ricaricare la pagina) e lo toglie dall'indirizzo.
+ * registrazione può passare da Google e ricaricare la pagina). Il codice resta nell'indirizzo
+ * finché l'invito non è usato: chi apre il link dentro WhatsApp o Instagram, dove Google non
+ * lascia accedere, passa al browser con «Apri nel browser» e l'invito deve venire con lui.
  */
 export function rememberInviteFromUrl(): void {
-  const url = new URL(browser.location.href);
-  const raw = url.searchParams.get(INVITE_PARAM);
+  const raw = new URL(browser.location.href).searchParams.get(INVITE_PARAM);
   if (raw === null) return;
   const by = parseInviteCode(raw);
   try {
@@ -56,8 +58,75 @@ export function rememberInviteFromUrl(): void {
   } catch {
     // Senza memoria del browser l'invito vale solo se ci si registra subito: pazienza.
   }
+}
+
+/** A invito usato (o inutile) il codice si toglie dall'indirizzo. */
+function forgetInviteInUrl(): void {
+  const url = new URL(browser.location.href);
+  if (!url.searchParams.has(INVITE_PARAM)) return;
   url.searchParams.delete(INVITE_PARAM);
   browser.history.replaceState(browser.history.state, '', url.pathname + url.search + url.hash);
+}
+
+// ---------------------------------------------------------------- bonus da versare
+
+/**
+ * Un bonus guadagnato si segna sul dispositivo prima di versarlo: l'invito nel database si
+ * registra una volta sola, e se poi il versamento non riesce (rete, sessione) si riprova al
+ * prossimo ingresso invece di perderlo. Una copia in memoria vale anche senza localStorage.
+ */
+let owedMemo: { key: string; list: string[] } | null = null;
+
+function owedKey(): string {
+  return storage('sims_invite_owed:' + game.session.myPlayerId);
+}
+
+function readOwed(): string[] {
+  const key = owedKey();
+  if (owedMemo?.key !== key) {
+    let list: string[] = [];
+    try {
+      list = decodeOwedBonuses(JSON.parse(localStorage.getItem(key) || 'null'));
+    } catch {
+      // memoria del browser illeggibile: vale la copia in memoria
+    }
+    owedMemo = { key, list };
+  }
+  return owedMemo.list;
+}
+
+function writeOwed(list: string[]): void {
+  const key = owedKey();
+  owedMemo = { key, list };
+  try {
+    if (list.length) localStorage.setItem(key, JSON.stringify(list));
+    else localStorage.removeItem(key);
+  } catch {
+    // resta la copia in memoria: vale fino alla chiusura della pagina
+  }
+}
+
+function owe(message: string): void {
+  writeOwed([...readOwed(), message]);
+}
+
+let crediting: Promise<void> | null = null;
+
+/** Versa in cassaforte i bonus segnati, uno alla volta. Se uno non passa, si riprova poi. */
+function payOwed(): Promise<void> {
+  crediting ??= (async () => {
+    try {
+      while (readOwed().length) {
+        if (!(await creditMoney(INVITE_BONUS))) return;
+        const [message, ...rest] = readOwed();
+        writeOwed(rest);
+        if (message) toast(message, 6000);
+      }
+    } finally {
+      crediting = null;
+    }
+  })();
+  return crediting;
 }
 
 function pendingInvite() {
@@ -76,6 +145,14 @@ function pendingInvite() {
  * database accetta un solo invito per account, quindi una seconda volta la scrittura fallisce.
  */
 export async function claimInvite(firstCharacter: boolean): Promise<void> {
+  try {
+    await registerInvite(firstCharacter);
+  } finally {
+    forgetInviteInUrl();
+  }
+}
+
+async function registerInvite(firstCharacter: boolean): Promise<void> {
   if (game.session.OFFLINE || !game.session.authUid) return;
   const invite = pendingInvite();
   if (!invite) return;
@@ -95,7 +172,11 @@ export async function claimInvite(firstCharacter: boolean): Promise<void> {
   try {
     await game.session.db.ref('/').update({
       [`sims_invited/${uid}`]: invite.by,
-      [`sims_invites/${invite.by}/${uid}`]: { nick: game.player.myData.nick, t: Date.now() },
+      // ora del server: il database rifiuta gli orari avanti più di un minuto
+      [`sims_invites/${invite.by}/${uid}`]: {
+        nick: game.player.myData.nick,
+        t: Date.now() + (game.session.serverOffset || 0),
+      },
     });
   } catch (e) {
     console.warn('[inviti] registrazione', e);
@@ -104,16 +185,15 @@ export async function claimInvite(firstCharacter: boolean): Promise<void> {
   }
   localStorage.removeItem(storage(PENDING_KEY));
   localStorage.setItem(storage(CLAIMED_KEY), '1');
-  if (await creditMoney(INVITE_BONUS))
-    toast(
-      `🎉 Invito di un amico: +${INVITE_BONUS}€ in cassaforte, a te e a chi ti ha invitato!`,
-      6000,
-    );
+  owe(`🎉 Invito di un amico: +${INVITE_BONUS}€ in cassaforte, a te e a chi ti ha invitato!`);
+  await payOwed();
 }
 
 /** Chi invita ritira il bonus per ogni amico arrivato, anche mentre sta giocando. */
 export function startInviteRewards(): void {
   if (game.session.OFFLINE || !hasRoom()) return;
+  // bonus rimasti in sospeso da una sessione precedente
+  void payOwed();
   let paying = false;
   let latest: Record<string, GameValue> | null = null;
   // Ogni amico si prova a pagare una volta per sessione: se non riesce, alla prossima apertura.
@@ -148,11 +228,10 @@ async function payInvites(uids: string[], entries: Record<string, GameValue>): P
       console.warn('[inviti] bonus', e);
       continue;
     }
-    if (await creditMoney(INVITE_BONUS)) {
-      const nick = String(entries[uid]?.nick || 'Un amico');
-      toast(`🎉 Nuovo amico in città: ${nick} ha usato il tuo invito. +${INVITE_BONUS}€!`, 6000);
-    }
+    const nick = String(entries[uid]?.nick || 'Un amico').slice(0, 20);
+    owe(`🎉 Nuovo amico in città: ${nick} ha usato il tuo invito. +${INVITE_BONUS}€!`);
   }
+  await payOwed();
 }
 
 /** Quanti amici sono arrivati con il mio invito (per la finestra del profilo). */

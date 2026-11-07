@@ -4,6 +4,7 @@ import {
   INVITE_MAX_PAID,
   INVITE_TTL_MS,
   canClaimInvite,
+  decodeOwedBonuses,
   decodePendingInvite,
   inviteLink,
   inviteMessage,
@@ -75,5 +76,13 @@ describe('inviti', () => {
     expect(entry.paid['.write']).toContain('!data.exists()');
     expect(entry.paid['.validate']).toBe('newData.val() === true');
     expect(entry.$other['.validate']).toBe(false);
+  });
+
+  it('i bonus da versare ricordati sul dispositivo si leggono con prudenza', () => {
+    expect(decodeOwedBonuses(['a', 'b'])).toEqual(['a', 'b']);
+    expect(decodeOwedBonuses(['a', 3, '', null])).toEqual(['a']);
+    expect(decodeOwedBonuses('a')).toEqual([]);
+    expect(decodeOwedBonuses(null)).toEqual([]);
+    expect(decodeOwedBonuses(Array(50).fill('x'))).toHaveLength(INVITE_MAX_PAID + 1);
   });
 });

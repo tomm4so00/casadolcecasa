@@ -70,6 +70,17 @@ export function canClaimInvite(state: {
   );
 }
 
+/**
+ * I bonus guadagnati e non ancora versati in cassaforte, ricordati sul dispositivo: uno per
+ * messaggio da mostrare al versamento. Più del tetto non se ne possono guadagnare.
+ */
+export function decodeOwedBonuses(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((m): m is string => typeof m === 'string' && m.length > 0 && m.length <= 300)
+    .slice(0, INVITE_MAX_PAID + 1);
+}
+
 /** Gli invitati per cui chi invita non ha ancora ritirato il bonus, entro il tetto. */
 export function invitesToPay(entries: Record<string, { paid?: boolean } | null> | null): string[] {
   const all = Object.entries(entries ?? {}).filter(([, e]) => e && typeof e === 'object');
