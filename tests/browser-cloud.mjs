@@ -271,10 +271,7 @@ try {
   }, legacyId);
   assert.equal(stolen, false);
   await isolated.locator('#cloud-game-btn').click();
-  await isolated
-    .locator('#dialog-buttons')
-    .getByRole('button', { name: 'Salta', exact: true })
-    .click();
+  // chi ritrova un Sim che c'era già non vede la guida iniziale: è solo per i nuovi
   await isolated.waitForFunction(async (id) => {
     const { game } = await import('/src/game/context.ts');
     return game.session.myPlayerId === id && game.player.ownedItems.item_hoodie === true;

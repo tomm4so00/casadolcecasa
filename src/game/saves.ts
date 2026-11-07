@@ -514,7 +514,9 @@ export function publishRoomLayout(..._args: GameValue[]): GameValue {
   const key: GameValue = JSON.stringify(layout);
   if (key === game.lastLayoutKey) return;
   game.lastLayoutKey = key;
-  game.session.db.ref(`sims_rooms_state/${game.myAssignedRoomIdx}/layout`).set(layout);
+  // dal JSON, non dall'oggetto: Firebase rifiuta tutta la scrittura se un campo è undefined (la
+  // mensola dei collezionabili non ha colore), e JSON.stringify quei campi li toglie
+  game.session.db.ref(`sims_rooms_state/${game.myAssignedRoomIdx}/layout`).set(JSON.parse(key));
 }
 
 export function normalizeRooms(val?: GameValue): GameValue {
