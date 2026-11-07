@@ -550,59 +550,66 @@ export const START_MONEY = 30;
 export async function claimRoom(..._args: GameValue[]): Promise<GameValue> {
   let claimed: GameValue = -1;
   let free = -1;
+  let full = false;
   const MONTH: GameValue = 30 * 24 * 3600 * 1000;
-  try {
-    const result = await withTimeout(
-      game.session.db
-        .ref(worldNode('rooms_state'))
-        .transaction((current?: GameValue): GameValue => {
-          let rooms: GameValue = normalizeRooms(current);
-          let idx: GameValue = rooms.findIndex(
-            (r?: GameValue): GameValue => r.ownerId === game.session.myPlayerId,
-          );
-          if (idx === -1)
-            idx = rooms.findIndex((r?: GameValue): GameValue => !r.owner && !r.ownerId);
-          // Stanze abbandonate da più di 30 giorni (e con cassaforte vuota) tornano libere
-          if (idx === -1 && game.session.OFFLINE)
-            idx = rooms.findIndex(
-              (r?: GameValue): GameValue =>
-                r.lastSeen && Date.now() - r.lastSeen > MONTH && !(r.vaultMoney > 0),
+  // Firebase annulla la transazione se nel frattempo si scrive dentro rooms_state (la
+  // disposizione dei mobili salvata appena creato il personaggio): allora si riprova.
+  for (let attempt = 0; attempt < 3 && claimed === -1 && !full; attempt++)
+    try {
+      const result = await withTimeout(
+        game.session.db
+          .ref(worldNode('rooms_state'))
+          .transaction((current?: GameValue): GameValue => {
+            let rooms: GameValue = normalizeRooms(current);
+            let idx: GameValue = rooms.findIndex(
+              (r?: GameValue): GameValue => r.ownerId === game.session.myPlayerId,
             );
-          claimed = idx;
-          if (idx === -1) return rooms;
-          let old: GameValue = rooms[idx];
-          let base: GameValue =
-            old.ownerId === game.session.myPlayerId
-              ? old
-              : {
-                  id: old.id,
-                  // chi arriva in una stanza nuova trova qualche soldo per cominciare
-                  vaultMoney: START_MONEY,
-                  ...(old.pendingDeath ? { pendingDeath: old.pendingDeath } : {}),
-                };
-          rooms[idx] = Object.assign({}, base, {
-            owner: game.player.myData.nick,
-            ownerId: game.session.myPlayerId,
-            lastSeen: Date.now(),
-          });
-          free = countFree(rooms);
-          return rooms;
-        }),
-      8000,
-    );
-    if (!result?.committed) claimed = -1;
-    // l'elenco dei mondi sa quanti posti restano (per chi cerca un mondo pubblico)
-    else if (free >= 0) void publishFreeRooms(game.session.worldId, free);
-  } catch (e: GameValue) {
-    claimed = -1;
-    console.warn('Assegnazione stanza fallita', e);
-  }
+            if (idx === -1)
+              idx = rooms.findIndex((r?: GameValue): GameValue => !r.owner && !r.ownerId);
+            // Stanze abbandonate da più di 30 giorni (e con cassaforte vuota) tornano libere
+            if (idx === -1 && game.session.OFFLINE)
+              idx = rooms.findIndex(
+                (r?: GameValue): GameValue =>
+                  r.lastSeen && Date.now() - r.lastSeen > MONTH && !(r.vaultMoney > 0),
+              );
+            claimed = idx;
+            if (idx === -1) return rooms;
+            let old: GameValue = rooms[idx];
+            let base: GameValue =
+              old.ownerId === game.session.myPlayerId
+                ? old
+                : {
+                    id: old.id,
+                    // chi arriva in una stanza nuova trova qualche soldo per cominciare
+                    vaultMoney: START_MONEY,
+                    ...(old.pendingDeath ? { pendingDeath: old.pendingDeath } : {}),
+                  };
+            rooms[idx] = Object.assign({}, base, {
+              owner: game.player.myData.nick,
+              ownerId: game.session.myPlayerId,
+              lastSeen: Date.now(),
+            });
+            free = countFree(rooms);
+            return rooms;
+          }),
+        8000,
+      );
+      if (!result?.committed) claimed = -1;
+      else if (claimed === -1) full = true;
+      // l'elenco dei mondi sa quanti posti restano (per chi cerca un mondo pubblico)
+      else if (free >= 0) void publishFreeRooms(game.session.worldId, free);
+    } catch (e: GameValue) {
+      claimed = -1;
+      console.warn('Assegnazione stanza fallita', e);
+    }
   game.myAssignedRoomIdx = claimed;
-  if (claimed === -1)
+  if (full)
     toast(
       `🏠 Il condominio è pieno (${game.TOTAL_ROOMS} stanze): per ora giochi come ospite senza stanza.`,
       5000,
     );
+  else if (claimed === -1)
+    toast('🏠 La tua stanza non risponde: ricarica la pagina quando sei connesso.', 6000);
   else toast(`🏠 Abiti in: ${roomLabel(claimed, game.ROOMS_PER_APT)}`);
 }
 

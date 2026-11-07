@@ -112,20 +112,30 @@ function owe(message: string): void {
 
 let crediting: Promise<void> | null = null;
 
-/** Versa in cassaforte i bonus segnati, uno alla volta. Se uno non passa, si riprova poi. */
+/** Versa in cassaforte i bonus segnati, uno alla volta. Vero se non ne resta nessuno. */
+async function drainOwed(): Promise<boolean> {
+  while (readOwed().length) {
+    if (!(await creditMoney(INVITE_BONUS))) return false;
+    const [message, ...rest] = readOwed();
+    writeOwed(rest);
+    if (message) toast(message, 6000);
+  }
+  return true;
+}
+
+/**
+ * Un versamento alla volta. Il `finally` va dopo l'assegnazione: con la lista vuota il corpo
+ * finirebbe subito e `crediting` resterebbe una promessa già chiusa, che non paga più niente.
+ * Un bonus segnato mentre si chiudeva il giro si versa con un giro nuovo; se uno non passa, si
+ * riprova al prossimo ingresso.
+ */
 function payOwed(): Promise<void> {
-  crediting ??= (async () => {
-    try {
-      while (readOwed().length) {
-        if (!(await creditMoney(INVITE_BONUS))) return;
-        const [message, ...rest] = readOwed();
-        writeOwed(rest);
-        if (message) toast(message, 6000);
-      }
-    } finally {
+  crediting ??= drainOwed()
+    .catch(() => false)
+    .then((ok) => {
       crediting = null;
-    }
-  })();
+      if (ok && readOwed().length) return payOwed();
+    });
   return crediting;
 }
 

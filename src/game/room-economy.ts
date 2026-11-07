@@ -45,7 +45,12 @@ export class RoomEconomy {
       await reference.get();
       const seed = structuredClone(this.seed());
       const result = await reference.transaction((current: RoomState | null) => {
-        if (!this.active() || !current || current.ownerId !== this.playerId) return undefined;
+        if (!this.active()) return undefined;
+        // Senza nessuno in ascolto sulle stanze (appena entrati) la get() non resta in cache e il
+        // primo giro vede null: restituendo null il server risponde con la stanza vera e si
+        // rifà il conto. Con undefined la transazione finirebbe qui, senza versare niente.
+        if (current === null) return null;
+        if (current.ownerId !== this.playerId) return undefined;
         const balance = current.vaultMoney;
         if (!Number.isSafeInteger(balance) || balance < 0) return undefined;
         // Realtime Database omits empty objects; missing maps mean empty, not the old seed.
@@ -62,8 +67,10 @@ export class RoomEconomy {
           return undefined;
         return { ...current, vaultMoney: balance + delta, economy: draft };
       });
-      if (!result.committed) return false;
-      if (this.active()) this.confirmed(result.snapshot.val() as RoomState);
+      // stanza davvero vuota sul server: si è scritto null su null, niente soldi mossi
+      const room = result.snapshot.val() as RoomState | null;
+      if (!result.committed || room?.ownerId !== this.playerId) return false;
+      if (this.active()) this.confirmed(room);
       return true;
     });
     const settled = operation.finally(() => {
