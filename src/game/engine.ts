@@ -102,6 +102,31 @@ let ownSleepScene = '';
 const BENCH_SEAT_DEPTH = 30;
 
 /**
+ * Chi è seduto sul divano (x, y) si disegna subito dopo il divano se questo guarda verso chi
+ * osserva (rotazione 0 o 1: lo schienale gli sta dietro), subito prima se guarda dall'altra
+ * parte (2 o 3: lo schienale lo copre e se ne vede la testa). La profondità del posto (x + y)
+ * non basta: sul cuscino più lontano finirebbe dietro tutto il divano. null se non è sul divano.
+ */
+function sofaSeatDepth(sofa: GameValue, x: number, y: number): number | null {
+  const k = sofaTurn(sofa, x, y);
+  return k === null ? null : sofa.x + sofa.y + (k < 2 ? 0.5 : -0.5);
+}
+
+/** Rotazione (0-3) del divano su cui sta (x, y), o null se il punto non è sul divano. */
+function sofaTurn(sofa: GameValue, x: number, y: number): number | null {
+  if (!sofa) return null;
+  const r = Math.max(sofa.w, sofa.h) / 2;
+  if (Math.abs(x - sofa.x) > r || Math.abs(y - sofa.y) > r) return null;
+  return (((sofa.rot || 0) % 4) + 4) % 4;
+}
+
+/** Seduti su un divano che guarda dall'altra parte (rotazione 2 o 3) si vede la schiena. */
+function sofaBackOpts(sofa: GameValue, x: number, y: number): GameValue {
+  const k = sofaTurn(sofa, x, y);
+  return k !== null && k >= 2 ? { back: true } : null;
+}
+
+/**
  * Una panchina è lunga: ordinata dal suo centro, chi le sta davanti verso un'estremità finirebbe
  * sotto di lei (e chi le passa dietro sopra). Col giocatore vicino si guarda da che parte sta:
  * davanti, seduto o a destra la panchina va sotto di lui; dietro o a sinistra sopra.
@@ -194,7 +219,8 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
   const speed: GameValue =
     (game.isSprinting ? 220 : 130) * (game.player.sleepLevel < 20 ? 0.6 : 1) * officeSpeed();
   // sulla luna il terreno è convesso
-  game.moonCurve = game.view.activeEnvironment === 'luna' ? 1 / 1500 : 0;
+  // luna: sfera di raggio 800 (abbastanza grande che l'angolo in fondo non finisca oltre l'orizzonte)
+  game.moonCurve = game.view.activeEnvironment === 'luna' ? 1 / 1600 : 0;
   updateRocketTrip();
   let map = getCurrentFurnitureMap();
   // In modalità "Sposta Mobile" WASD/frecce/joystick muovono il mobile invece del personaggio
@@ -393,6 +419,17 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
               'labDoor',
               'dogFence',
               'dogGate',
+              // sulla luna massi e bandiera hanno la loro ombra, lunga dalla parte opposta al Sole
+              'moonRock',
+              'moonFlag',
+              'moonBeacon',
+              // base lunare: oggetti tondi, che si muovono o con la loro ombra
+              'mbRobot',
+              'mbHolo',
+              'mbTable',
+              'mbSuit',
+              'mbPot',
+              'mbTanks',
             ].includes(p.kind)
           )
             softShadow(p.x, p.y, p.w, p.h);
@@ -479,21 +516,28 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
     labels.push((): GameValue => drawNameTagWorld(px, py, 92, game.player.myData.nick));
   } else {
     const ease: GameValue = game.sleepK * game.sleepK * (3 - 2 * game.sleepK);
+    // sul divano (anche mentre ci si siede o ci si alza) conta da che parte guarda il divano
+    const sit: GameValue = game.benchSit;
+    const onSofaNow =
+      sit?.kind === 'sofa' && (sit.pose === 'bench' || sit.upAt !== undefined)
+        ? sofaSeatDepth(sit.item, game.playerPos.x, game.playerPos.y)
+        : null;
     const depth: GameValue =
+      onSofaNow ??
       game.playerPos.x +
-      game.playerPos.y +
-      ((map.bed ? map.bed.x + map.bed.y + 0.5 : game.playerPos.x + game.playerPos.y) -
-        (game.playerPos.x + game.playerPos.y)) *
-        ease +
-      // nel vano di una porta del lato vicino si passa davanti al suo stipite
-      (doorwayAt(game.playerPos.x, game.playerPos.y, roomBounds(), doorGapsHere())?.dir === 1
-        ? 1e4
-        : 0) +
-      // solo da seduti: andando a sedersi da dietro si passa ancora dietro la panchina
-      ((game.benchSit?.kind === 'bench' && game.benchSit.pose === 'bench') ||
-      (game.benchSit?.kind === 'stool' && game.benchSit.pose === 'stool')
-        ? BENCH_SEAT_DEPTH
-        : 0);
+        game.playerPos.y +
+        ((map.bed ? map.bed.x + map.bed.y + 0.5 : game.playerPos.x + game.playerPos.y) -
+          (game.playerPos.x + game.playerPos.y)) *
+          ease +
+        // nel vano di una porta del lato vicino si passa davanti al suo stipite
+        (doorwayAt(game.playerPos.x, game.playerPos.y, roomBounds(), doorGapsHere())?.dir === 1
+          ? 1e4
+          : 0) +
+        // solo da seduti: andando a sedersi da dietro si passa ancora dietro la panchina
+        ((game.benchSit?.kind === 'bench' && game.benchSit.pose === 'bench') ||
+        (game.benchSit?.kind === 'stool' && game.benchSit.pose === 'stool')
+          ? BENCH_SEAT_DEPTH
+          : 0);
     const faintK = faintAmount();
     // sulla sedia (anche sedendosi o alzandosi) lo disegna la sedia, tra seduta e schienale
     const chairSeat = faintK > 0 ? null : myChairSeat();
@@ -523,7 +567,10 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
               game.bedSlot,
               benchWalkDir() || { x: game.moveRight, y: -game.moveForward },
               myBathPose() || myBenchPose(),
-              myBarDrinkOpts(),
+              myBarDrinkOpts() ||
+                (sit?.kind === 'sofa' && sit.pose === 'bench'
+                  ? sofaBackOpts(sit.item, game.playerPos.x, game.playerPos.y)
+                  : null),
             ),
     });
     if (game.coinToss) labels.push((): GameValue => drawCoinToss(animTime));
@@ -762,11 +809,12 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
     }
     const sk: GameValue = s.sleepK;
     const rd: GameValue =
+      (act === 'bench' ? sofaSeatDepth(map.sofa, s.x, s.y) : null) ??
       s.x +
-      s.y +
-      ((map.bed ? map.bed.x + map.bed.y + 0.5 : s.x + s.y) - (s.x + s.y)) *
-        (sk * sk * (3 - 2 * sk)) +
-      (act === 'bench' || act === 'stool' ? BENCH_SEAT_DEPTH : 0);
+        s.y +
+        ((map.bed ? map.bed.x + map.bed.y + 0.5 : s.x + s.y) - (s.x + s.y)) *
+          (sk * sk * (3 - 2 * sk)) +
+        (act === 'bench' || act === 'stool' ? BENCH_SEAT_DEPTH : 0);
     // fuori dall'inquadratura non si disegna (chi dorme è sul letto, sempre in vista)
     if (sk <= 0 && !onScreen(s.x, s.y)) return;
     (othersChair ? game.frameChairSitters : drawables).push({
@@ -788,6 +836,7 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
               typeof op.bed === 'number' ? op.bed : null,
               s.dir || null,
               pose,
+              act === 'bench' ? sofaBackOpts(map.sofa, s.x, s.y) : null,
             ),
     });
   });

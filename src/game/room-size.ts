@@ -23,6 +23,8 @@ const ENV_HALF: Record<string, { x: number; y: number }> = {
   BATHROOM: { x: 200, y: 120 },
   centro_commerciale: { x: 560, y: 320 },
   luna: { x: 300, y: 300 },
+  // base lunare: plancia, ologramma, serra, alloggi, officina e camera stagna
+  base_lunare: { x: 360, y: 280 },
   // laboratorio ingegneristico (davanti) e la sua zona esterna (dietro)
   ingegneria: { x: 200, y: 380 },
   // parco: fontana al centro, area cani a destra, laghetto a sinistra, picnic in fondo

@@ -21,12 +21,15 @@ let isPhone = !!phoneQuery?.matches;
 phoneQuery?.addEventListener?.('change', (e) => (isPhone = e.matches));
 
 /**
- * Superficie convessa (la luna): più ci si allontana dal centro, più il terreno scende, come su
- * una sfera. È 0 negli altri ambienti.
+ * Superficie sferica (la luna): più ci si allontana dal centro, più il terreno scende, come su
+ * una sfera di raggio 1 / (2 · moonCurve). Oltre il raggio si resta all'equatore. È 0 negli
+ * altri ambienti.
  */
 export function surfaceDrop(x: number, y: number): number {
   const k = game.moonCurve || 0;
-  return k ? k * (x * x + y * y) : 0;
+  if (!k) return 0;
+  const R = 1 / (2 * k);
+  return R - Math.sqrt(Math.max(0, R * R - x * x - y * y));
 }
 
 /** Cambiando stanza la scena riparte dal nero e si schiarisce (dopo che è comparsa all'avvio). */

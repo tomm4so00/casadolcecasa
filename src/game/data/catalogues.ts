@@ -2029,6 +2029,21 @@ export const MALL_FURNITURE = {
   doorExit: { x: 0, y: 300, w: 60, h: 15, z: 110, name: 'Uscita 🚪', moveable: false },
 };
 
+/** Paletti del confine lunare: ogni 100 lungo i quattro lati della zona di 600×600. */
+function moonBeacons(): Record<string, unknown>[] {
+  const out: Record<string, unknown>[] = [];
+  for (let v = -300; v <= 300; v += 100)
+    for (const [x, y] of [
+      [v, -300],
+      [v, 300],
+      [-300, v],
+      [300, v],
+    ])
+      if (!out.some((b) => b.x === x && b.y === y))
+        out.push({ kind: 'moonBeacon', x, y, w: 4, h: 4, z: 22, solid: false });
+  return out;
+}
+
 // Luna: il razzo atterrato (per tornare sulla Terra). Il terreno è convesso (vedi surfaceDrop).
 export const MOON_FURNITURE = {
   moonRocket: {
@@ -2046,15 +2061,15 @@ export const MOON_FURNITURE = {
 // Dentro la base spaziale lunare (si entra quando è completa): pannello di controllo e portellone.
 export const MOONBASE_INSIDE_FURNITURE = {
   baseConsole: {
-    x: 60,
-    y: -140,
-    w: 96,
-    h: 26,
-    z: 50,
+    x: 0,
+    y: -232,
+    w: 190,
+    h: 34,
+    z: 64,
     name: 'Pannello di controllo 🖥️',
     moveable: false,
   },
-  doorExit: { x: 0, y: 160, w: 60, h: 15, z: 110, name: 'Portellone 🚀', moveable: false },
+  doorExit: { x: 0, y: 266, w: 60, h: 15, z: 110, name: 'Portellone 🚀', moveable: false },
 };
 
 // Grow shop: le tre varietà in esposizione (ognuna con la sua lampada) e l'uscita.
@@ -3217,20 +3232,51 @@ export const ENV_DECOR = {
     { kind: 'plant', x: 272, y: 182, w: 26, h: 26, z: 70 },
   ],
   base_lunare: [
+    // plancia: la poltrona del comandante davanti al pannello di controllo
+    { kind: 'mbChair', x: 0, y: -168, w: 26, h: 26, z: 50 },
+    { kind: 'mbHolo', x: 0, y: -20, w: 60, h: 60, z: 70, label: 'Ologramma della Luna 🌕' },
+    // serra (angolo dietro a sinistra)
+    { kind: 'mbHydro', x: -300, y: -258, w: 96, h: 26, z: 92, label: 'Serra idroponica 🌱' },
+    { kind: 'mbHydro', x: -190, y: -258, w: 96, h: 26, z: 92 },
     {
-      kind: 'mbWindow',
-      x: -30,
-      y: -176,
-      w: 100,
-      h: 6,
-      z: 100,
-      solid: false,
-      label: 'Oblò sulla Terra 🌍',
+      kind: 'mbPlanter',
+      x: -292,
+      y: -170,
+      w: 56,
+      h: 56,
+      z: 70,
+      label: 'Il primo albero della luna 🍋',
     },
-    { kind: 'mbBunk', x: -160, y: 30, w: 38, h: 72, z: 60, label: 'Cuccette 🛏️' },
-    { kind: 'mbHydro', x: 165, y: 30, w: 30, h: 72, z: 80, label: 'Serra idroponica 🌱' },
-    { kind: 'mbLockers', x: 168, y: -120, w: 28, h: 50, z: 76 },
-    { kind: 'mbTable', x: -30, y: 50, w: 40, h: 40, z: 27 },
+    // alloggi lungo la parete sinistra
+    { kind: 'mbLockers', x: -346, y: -88, w: 26, h: 76, z: 92, label: 'Armadietti 🧑‍🚀' },
+    { kind: 'mbBunk', x: -316, y: 14, w: 44, h: 86, z: 70, label: 'Cuccette 🛏️' },
+    {
+      kind: 'mbBunk',
+      x: -316,
+      y: 128,
+      w: 44,
+      h: 86,
+      z: 70,
+      color: '#c23616',
+      color2: '#0097e6',
+    },
+    { kind: 'mbGalley', x: -340, y: 232, w: 36, h: 86, z: 98, label: 'Cambusa ☕' },
+    // zona relax
+    { kind: 'mbTable', x: -150, y: 170, w: 70, h: 70, z: 27, r: 30 },
+    { kind: 'mbTreadmill', x: -180, y: 30, w: 30, h: 60, z: 54, label: 'Tapis roulant 🏃' },
+    { kind: 'mbPot', x: -228, y: 250, w: 18, h: 18, z: 40 },
+    { kind: 'mbPot', x: 214, y: -258, w: 18, h: 18, z: 40 },
+    // officina (a destra)
+    { kind: 'mbServer', x: 338, y: -210, w: 26, h: 34, z: 124, label: 'Server della base 💾' },
+    { kind: 'mbServer', x: 338, y: -174, w: 26, h: 34, z: 124 },
+    { kind: 'mbBench', x: 316, y: -66, w: 44, h: 100, z: 60, label: 'Banco da lavoro 🔧' },
+    { kind: 'mbTanks', x: 336, y: 54, w: 22, h: 66, z: 68 },
+    { kind: 'mbCrates', x: 296, y: 160, w: 60, h: 50, z: 38 },
+    // camera stagna
+    { kind: 'mbSuit', x: 150, y: 236, w: 28, h: 28, z: 82, label: 'Tuta spaziale 👨‍🚀' },
+    { kind: 'mbCrewBench', x: -150, y: 262, w: 70, h: 18, z: 18 },
+    // il robottino delle pulizie gira per la stanza: non blocca nessuno
+    { kind: 'mbRobot', x: 150, y: 60, w: 20, h: 20, z: 8, rx: 80, ry: 70, solid: false },
   ],
   negozio_animali: [
     { kind: 'plant', x: -175, y: -168, w: 24, h: 24, z: 60 },
@@ -3286,6 +3332,8 @@ export const ENV_DECOR = {
     { kind: 'moonRock', x: 30, y: 200, w: 18, h: 16, z: 12 },
     { kind: 'moonRock', x: -250, y: -60, w: 24, h: 20, z: 16 },
     { kind: 'moonFlag', x: 110, y: -140, w: 8, h: 8, z: 80, label: 'Bandiera CDC-1 🚩' },
+    // paletti con la luce rossa sul confine della zona in cui si cammina
+    ...moonBeacons(),
   ],
   centro_commerciale: [
     { kind: 'bench', x: -260, y: 80, w: 50, h: 16 },
@@ -3489,22 +3537,33 @@ export const ENV_STYLE = {
   },
   luna: { floor: 'moon', floorColor: '#bdbdb6', outdoor: true },
   base_lunare: {
-    floor: 'tiles',
-    floorColor: '#cfd8dc',
+    floor: 'station',
+    floorColor: '#5c6674',
     wall: '#eceff1',
-    wallStyle: 'plain',
+    wallStyle: 'station',
+    wallH: 170,
     trim: '#00a8ff',
     decor: {
-      back: [{ t: 'neon', u: 300, text: 'BASE CDC', color: '0,210,255' }],
+      // parete di fondo: u = x + 360 · parete sinistra: u = 280 - y
+      back: [
+        { t: 'mbStatus', u: 110, top: 18, w: 96, h: 56 },
+        { t: 'mbPanorama', u: 330, top: 20, w: 270, h: 98 },
+        { t: 'mbSign', u: 590, top: 34, w: 156, h: 40 },
+      ],
       left: [
-        { t: 'poster', u: 110, text: 'MISSIONE COMPIUTA', color: '#0984e3' },
-        { t: 'clock', u: 260 },
+        { t: 'mbMap', u: 468, top: 22, w: 104, h: 58 },
+        { t: 'poster', u: 300, text: 'MISSIONE COMPIUTA', color: '#0984e3', w: 90, top: 30 },
+        { t: 'clock', u: 196, top: 40 },
+        { t: 'mbPorthole', u: 60, top: 18, r: 20 },
       ],
     },
     lights: [
-      { x: -90, y: -100, z: 0, r: 200, color: '210,235,255' },
-      { x: 90, y: -60, z: 0, r: 200, color: '210,235,255' },
-      { x: 0, y: 90, z: 0, r: 220, color: '235,245,255' },
+      { x: -200, y: -170, z: 0, r: 240, color: '220,235,255' },
+      { x: 0, y: -170, z: 0, r: 240, color: '220,235,255' },
+      { x: 220, y: -170, z: 0, r: 240, color: '220,235,255' },
+      { x: -200, y: 120, z: 0, r: 240, color: '235,245,255' },
+      { x: 0, y: 140, z: 0, r: 240, color: '235,245,255' },
+      { x: 220, y: 120, z: 0, r: 240, color: '235,245,255' },
     ],
   },
   usato: {

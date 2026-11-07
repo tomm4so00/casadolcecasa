@@ -1391,6 +1391,194 @@ function drawHairFromBehind(head: Pt, s: number, style: number, hair: string): v
   if ([2, 3, 4, 6, 7].includes(style)) drawHairBack(head, s, style, hair);
 }
 
+/**
+ * Vista di tre quarti da dietro: chi si allontana verso destra mostra l'orecchio e un filo di
+ * guancia sul lato destro della testa (side = 1), verso sinistra sul lato sinistro.
+ */
+function drawThreeQuarterSide(head: Pt, s: number, skin: string, side: number): void {
+  const ctx = game.view.ctx;
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(head.x, head.y, 9 * s, 0, Math.PI * 2);
+  ctx.clip();
+  ctx.fillStyle = skin;
+  ctx.beginPath();
+  ctx.ellipse(head.x + side * 7.4 * s, head.y + 3.6 * s, 3 * s, 4.4 * s, side * 0.3, 0, 6.3);
+  ctx.fill();
+  ctx.restore();
+  ctx.fillStyle = skin;
+  ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+  ctx.lineWidth = 0.7 * s;
+  ctx.beginPath();
+  ctx.ellipse(head.x + side * 8.4 * s, head.y + 1.4 * s, 1.8 * s, 2.8 * s, 0, 0, 6.3);
+  ctx.fill();
+  ctx.stroke();
+  ctx.strokeStyle = game.darken(skin, 0.25);
+  ctx.beginPath();
+  ctx.arc(head.x + side * 8.4 * s, head.y + 1.4 * s, 1 * s, Math.PI * 0.6, Math.PI * 1.6);
+  ctx.stroke();
+}
+
+/**
+ * Il busto visto di spalle (nel ritaglio del busto): i motivi che girano tutto intorno restano,
+ * quello che sta solo sul davanti (bottoni, risvolti, cerniere, stampe) no. Al suo posto il
+ * colletto, la cucitura in mezzo alla schiena, il numero sulla maglia, le scapole.
+ */
+function drawTorsoBack(
+  top: GameValue,
+  skin: string,
+  neck: Pt,
+  tyTop: number,
+  tyBot: number,
+  tH: number,
+  tx: number,
+  tW: number,
+  s: number,
+): void {
+  const ctx = game.view.ctx;
+  const c2: string = top.color2 || '#ffffff';
+  const collar = (color: string, h = 1.6) => {
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.ellipse(neck.x, tyTop, 4.6 * s, h * s, 0, 0, Math.PI);
+    ctx.fill();
+  };
+  const seam = (to = 1) =>
+    seg(
+      { x: neck.x, y: tyTop + 1.5 * s },
+      { x: neck.x, y: tyTop + tH * to },
+      'rgba(0,0,0,0.18)',
+      0.6 * s,
+    );
+  switch (top.style) {
+    case 'stripes':
+      ctx.fillStyle = c2;
+      for (let v = tyTop + 2 * s; v < tyBot; v += 4 * s) ctx.fillRect(tx, v, tW, 2 * s);
+      collar(game.darken(c2, 0.2), 1.1);
+      break;
+    case 'hawaii':
+      for (let i = 0; i < 9; i++) {
+        const px = tx + rnd(i + 3) * tW,
+          py = tyTop + rnd(i + 11) * tH;
+        for (let p = 0; p < 5; p++)
+          dot(
+            px + Math.cos(p * 1.256) * 1.5 * s,
+            py + Math.sin(p * 1.256) * 1.5 * s,
+            1.1 * s,
+            i % 2 ? c2 : '#ffffff',
+          );
+        dot(px, py, 0.8 * s, '#feca57');
+      }
+      collar(game.lighten(top.color, 0.2), 2.2);
+      break;
+    case 'sport':
+      ctx.fillStyle = c2;
+      ctx.fillRect(tx + 2 * s, tyTop, 1.6 * s, tH);
+      ctx.fillRect(tx + tW - 3.6 * s, tyTop, 1.6 * s, tH);
+      collar(game.darken(top.color, 0.2), 1.2);
+      break;
+    case 'xmas':
+      ctx.fillStyle = c2;
+      ctx.fillRect(tx, tyTop + tH * 0.3, tW, 1.3 * s);
+      ctx.fillRect(tx, tyTop + tH * 0.7, tW, 1.3 * s);
+      for (let u = 2 * s; u < tW; u += 5 * s) dot(tx + u, tyTop + tH * 0.5, 0.8 * s, '#ffffff');
+      break;
+    case 'plaid':
+      for (let u = 0; u < tW; u += 4 * s) {
+        ctx.fillStyle = c2 + '99';
+        ctx.fillRect(tx + u, tyTop, 1.6 * s, tH);
+      }
+      for (let v = tyTop; v < tyBot; v += 4 * s) {
+        ctx.fillStyle = c2 + '77';
+        ctx.fillRect(tx, v, tW, 1.6 * s);
+      }
+      collar(game.darken(top.color, 0.15), 2);
+      break;
+    case 'sweater':
+      for (let u = 1 * s; u < tW; u += 2 * s)
+        seg({ x: tx + u, y: tyTop }, { x: tx + u, y: tyBot }, 'rgba(0,0,0,0.1)', 0.5 * s);
+      ctx.fillStyle = game.darken(top.color, 0.15);
+      ctx.fillRect(tx, tyBot - 3 * s, tW, 3 * s);
+      break;
+    case 'jersey':
+      // il numero grande sulla schiena
+      ctx.fillStyle = c2;
+      ctx.fillRect(tx, tyTop, 2.4 * s, tH);
+      ctx.fillRect(tx + tW - 2.4 * s, tyTop, 2.4 * s, tH);
+      collar(c2, 1.2);
+      ctx.font = 'bold ' + 10 * s + 'px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('10', neck.x, tyTop + tH * 0.55);
+      ctx.textBaseline = 'alphabetic';
+      break;
+    case 'puffer':
+      for (let v = tyTop + 3 * s; v < tyBot; v += 3.4 * s) {
+        seg({ x: tx, y: v }, { x: tx + tW, y: v }, game.darken(top.color, 0.2), 0.6 * s);
+        seg(
+          { x: tx, y: v - 1.6 * s },
+          { x: tx + tW, y: v - 1.6 * s },
+          'rgba(255,255,255,0.18)',
+          0.9 * s,
+        );
+      }
+      break;
+    case 'tank':
+      // spalle scoperte, niente scollo davanti
+      ctx.fillStyle = skin;
+      ctx.fillRect(tx, tyTop - 1 * s, tW, 3 * s);
+      ctx.fillStyle = top.color;
+      ctx.fillRect(neck.x - 5.6 * s, tyTop - 1 * s, 1.8 * s, 3.4 * s);
+      ctx.fillRect(neck.x + 3.8 * s, tyTop - 1 * s, 1.8 * s, 3.4 * s);
+      break;
+    case 'bare':
+      // spina dorsale e scapole
+      seg(
+        { x: neck.x, y: tyTop + 1 * s },
+        { x: neck.x, y: tyBot - 1 * s },
+        game.darken(skin, 0.15),
+        0.6 * s,
+      );
+      for (const sd of [-1, 1])
+        seg(
+          { x: neck.x + sd * 2 * s, y: tyTop + tH * 0.22 },
+          { x: neck.x + sd * 5 * s, y: tyTop + tH * 0.42 },
+          game.darken(skin, 0.15),
+          0.6 * s,
+        );
+      break;
+    case 'suit':
+    case 'tuxedo':
+    case 'jacket':
+      // giacca: colletto rialzato e cucitura con lo spacco in fondo
+      collar(game.darken(top.color, 0.18), 2.4);
+      seam(0.85);
+      seg(
+        { x: neck.x, y: tyTop + tH * 0.85 },
+        { x: neck.x, y: tyBot },
+        'rgba(0,0,0,0.35)',
+        0.8 * s,
+      );
+      break;
+    case 'polo':
+      collar(c2, 2.2);
+      break;
+    case 'vest':
+      // il dietro del gilet è di raso, con la fibbietta
+      ctx.fillStyle = game.lighten(top.color, 0.1);
+      ctx.fillRect(neck.x - 6 * s, tyTop + tH * 0.15, 12 * s, tH * 0.8);
+      ctx.fillStyle = '#b2bec3';
+      ctx.fillRect(neck.x - 1.5 * s, tyTop + tH * 0.6, 3 * s, 1.2 * s);
+      break;
+    case 'hoodie':
+      // il cappuccio si disegna sopra il busto, dopo
+      break;
+    default:
+      collar(game.darken(top.color, 0.22), 1.1);
+      seam(0.9);
+  }
+}
+
 /** Bicchiere da aperitivo in mano: arancione come uno spritz, inclinato mentre si beve. */
 function drawHandGlass(hand: Pt, s: number, fill: number, sip: number): void {
   const ctx = game.view.ctx;
@@ -1455,8 +1643,21 @@ export function drawPlayerAvatar(
   const onChair = pose === 'chair' || pose === 'chairSide';
   const chairSide = pose === 'chairSide';
   const sitting = pose === 'sit' || pose === 'bench' || onStool || onChair;
-  // di spalle: al bancone, o il barista girato verso le mensole
-  const fromBehind = onStool || !!(opts && opts.back);
+  // Direzione di marcia (a terra): il passo va avanti e indietro lungo questa.
+  // Senza direzione resta il passo in diagonale di prima.
+  const wd = opts && opts.walkDir;
+  const wl = wd ? Math.hypot(wd.x, wd.y) : 0;
+  const dX: number = wl > 0.01 ? wd.x / wl : Math.SQRT1_2,
+    dY: number = wl > 0.01 ? wd.y / wl : -Math.SQRT1_2;
+  // Camminando verso il fondo (sullo schermo verso l'alto: x + y che cala) si va di spalle,
+  // altrimenti sembrerebbe di camminare all'indietro guardando chi osserva.
+  const walkingAway = !!moving && !sitting && wl > 0.01 && dX + dY < -0.3;
+  // di spalle: al bancone, il barista girato verso le mensole, o chi si allontana
+  const fromBehind = onStool || !!(opts && opts.back) || walkingAway;
+  // da che parte dello schermo si va (1 = destra): lì punta la scarpa e, di spalle, si vede
+  // l'orecchio (vista di tre quarti)
+  const screenSide: number = dX - dY;
+  const toe: number = moving && wl > 0.01 && Math.abs(screenSide) > 0.2 ? Math.sign(screenSide) : 1;
   // la seduta della sedia è più alta di quella della panchina
   const lift = onStool ? 13 : onChair ? 2 : 0;
   const bob: GameValue = sitting
@@ -1466,12 +1667,6 @@ export function drawPlayerAvatar(
       : mannequin
         ? 0
         : Math.sin(animTime * 2 + hsh) * 0.5;
-  // Direzione di marcia (a terra): il passo va avanti e indietro lungo questa.
-  // Senza direzione resta il passo in diagonale di prima.
-  const wd = opts && opts.walkDir;
-  const wl = wd ? Math.hypot(wd.x, wd.y) : 0;
-  const dX: number = wl > 0.01 ? wd.x / wl : Math.SQRT1_2,
-    dY: number = wl > 0.01 ? wd.y / wl : -Math.SQRT1_2;
   // si alza il piede che sta andando avanti
   const liftFront: number = moving ? Math.max(0, Math.cos(phase)) * 4 : 0,
     liftBack: number = moving ? Math.max(0, -Math.cos(phase)) * 4 : 0;
@@ -1507,7 +1702,7 @@ export function drawPlayerAvatar(
   const drawShoe = (b: Pt, back: boolean): void => {
     const sc = back ? game.darken(shoes.color, 0.2) : shoes.color;
     const sc2 = shoes.color2 || '#ffffff';
-    const fx = b.x + 1.5 * s,
+    const fx = b.x + toe * 1.5 * s,
       fy = b.y;
     const outline = 'rgba(0,0,0,0.35)';
     const body = (rx: number, ry: number, oy = 0) => {
@@ -2013,264 +2208,276 @@ export function drawPlayerAvatar(
     for (let i = 0; i < n; i++)
       dot(neck.x, tyTop + tH * (from + ((to - from) * i) / Math.max(1, n - 1)), 0.7 * s, color);
   };
-  switch (top.style) {
-    case 'stripes':
-      ctx.fillStyle = c2;
-      for (let v = tyTop + 2 * s; v < tyBot; v += 4 * s) ctx.fillRect(tx, v, tW, 2 * s);
-      crewNeck(game.darken(c2, 0.2));
-      break;
-    case 'hawaii':
-      for (let i = 0; i < 9; i++) {
-        const px = tx + rnd(i) * tW,
-          py = tyTop + rnd(i + 5) * tH;
-        for (let p = 0; p < 5; p++)
-          dot(
-            px + Math.cos(p * 1.256) * 1.5 * s,
-            py + Math.sin(p * 1.256) * 1.5 * s,
-            1.1 * s,
-            i % 2 ? c2 : '#ffffff',
-          );
-        dot(px, py, 0.8 * s, '#feca57');
-      }
-      vNeck(0.3, game.lighten(top.color, 0.2), 4.2);
-      buttons(0.4, 0.9, 3);
-      break;
-    case 'sport':
-      ctx.fillStyle = c2;
-      ctx.fillRect(tx + 2 * s, tyTop, 1.6 * s, tH);
-      ctx.fillRect(tx + tW - 3.6 * s, tyTop, 1.6 * s, tH);
-      ctx.fillStyle = 'rgba(255,255,255,0.75)';
-      ctx.fillRect(neck.x - 0.4 * s, tyTop, 0.8 * s, tH);
-      break;
-    case 'xmas': {
-      ctx.fillStyle = c2;
-      ctx.fillRect(tx, tyTop + tH * 0.3, tW, 1.3 * s);
-      ctx.fillRect(tx, tyTop + tH * 0.7, tW, 1.3 * s);
-      ctx.strokeStyle = '#27ae60';
-      ctx.lineWidth = 1.4 * s;
-      ctx.beginPath();
-      for (let u = 0, i = 0; u <= tW; u += 2.5 * s, i++) {
-        const vv = tyTop + tH * 0.5 + (i % 2 ? -1.6 : 1.6) * s;
-        if (i === 0) ctx.moveTo(tx + u, vv);
-        else ctx.lineTo(tx + u, vv);
-      }
-      ctx.stroke();
-      for (let u = 2 * s; u < tW; u += 5 * s) dot(tx + u, tyTop + tH * 0.15, 0.8 * s, '#ffffff');
-      break;
-    }
-    case 'suit':
-    case 'tuxedo': {
-      vNeck(0.58, '#ffffff');
-      ctx.strokeStyle = 'rgba(0,0,0,0.4)';
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.moveTo(neck.x - 4 * s, tyTop);
-      ctx.lineTo(neck.x - 1 * s, tyTop + tH * 0.6);
-      ctx.moveTo(neck.x + 4 * s, tyTop);
-      ctx.lineTo(neck.x + 1 * s, tyTop + tH * 0.6);
-      ctx.stroke();
-      // risvolti
-      ctx.fillStyle = top.style === 'tuxedo' ? '#2f3542' : game.lighten(top.color, 0.12);
-      for (const side of [-1, 1]) {
-        ctx.beginPath();
-        ctx.moveTo(neck.x + side * 4 * s, tyTop);
-        ctx.lineTo(neck.x + side * 6.5 * s, tyTop + tH * 0.2);
-        ctx.lineTo(neck.x + side * 1.2 * s, tyTop + tH * 0.6);
-        ctx.closePath();
-        ctx.fill();
-      }
-      if (top.style === 'suit') {
+  if (fromBehind) drawTorsoBack(top, skin, neck, tyTop, tyBot, tH, tx, tW, s);
+  else
+    switch (top.style) {
+      case 'stripes':
         ctx.fillStyle = c2;
+        for (let v = tyTop + 2 * s; v < tyBot; v += 4 * s) ctx.fillRect(tx, v, tW, 2 * s);
+        crewNeck(game.darken(c2, 0.2));
+        break;
+      case 'hawaii':
+        for (let i = 0; i < 9; i++) {
+          const px = tx + rnd(i) * tW,
+            py = tyTop + rnd(i + 5) * tH;
+          for (let p = 0; p < 5; p++)
+            dot(
+              px + Math.cos(p * 1.256) * 1.5 * s,
+              py + Math.sin(p * 1.256) * 1.5 * s,
+              1.1 * s,
+              i % 2 ? c2 : '#ffffff',
+            );
+          dot(px, py, 0.8 * s, '#feca57');
+        }
+        vNeck(0.3, game.lighten(top.color, 0.2), 4.2);
+        buttons(0.4, 0.9, 3);
+        break;
+      case 'sport':
+        ctx.fillStyle = c2;
+        ctx.fillRect(tx + 2 * s, tyTop, 1.6 * s, tH);
+        ctx.fillRect(tx + tW - 3.6 * s, tyTop, 1.6 * s, tH);
+        ctx.fillStyle = 'rgba(255,255,255,0.75)';
+        ctx.fillRect(neck.x - 0.4 * s, tyTop, 0.8 * s, tH);
+        break;
+      case 'xmas': {
+        ctx.fillStyle = c2;
+        ctx.fillRect(tx, tyTop + tH * 0.3, tW, 1.3 * s);
+        ctx.fillRect(tx, tyTop + tH * 0.7, tW, 1.3 * s);
+        ctx.strokeStyle = '#27ae60';
+        ctx.lineWidth = 1.4 * s;
         ctx.beginPath();
-        ctx.moveTo(neck.x - 1.1 * s, tyTop + 0.8 * s);
-        ctx.lineTo(neck.x + 1.1 * s, tyTop + 0.8 * s);
-        ctx.lineTo(neck.x + 1.7 * s, tyTop + tH * 0.48);
-        ctx.lineTo(neck.x, tyTop + tH * 0.6);
-        ctx.lineTo(neck.x - 1.7 * s, tyTop + tH * 0.48);
-        ctx.closePath();
-        ctx.fill();
-      } else {
-        buttons(0.25, 0.48, 3, '#2d3436');
-        ctx.fillStyle = '#111111';
+        for (let u = 0, i = 0; u <= tW; u += 2.5 * s, i++) {
+          const vv = tyTop + tH * 0.5 + (i % 2 ? -1.6 : 1.6) * s;
+          if (i === 0) ctx.moveTo(tx + u, vv);
+          else ctx.lineTo(tx + u, vv);
+        }
+        ctx.stroke();
+        for (let u = 2 * s; u < tW; u += 5 * s) dot(tx + u, tyTop + tH * 0.15, 0.8 * s, '#ffffff');
+        break;
+      }
+      case 'suit':
+      case 'tuxedo': {
+        vNeck(0.58, '#ffffff');
+        ctx.strokeStyle = 'rgba(0,0,0,0.4)';
+        ctx.lineWidth = 1;
         ctx.beginPath();
-        ctx.moveTo(neck.x, tyTop + 1.6 * s);
-        ctx.lineTo(neck.x - 2.8 * s, tyTop + 0.4 * s);
-        ctx.lineTo(neck.x - 2.8 * s, tyTop + 2.8 * s);
-        ctx.closePath();
-        ctx.moveTo(neck.x, tyTop + 1.6 * s);
-        ctx.lineTo(neck.x + 2.8 * s, tyTop + 0.4 * s);
-        ctx.lineTo(neck.x + 2.8 * s, tyTop + 2.8 * s);
-        ctx.closePath();
-        ctx.fill();
-        // fazzoletto nel taschino
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(neck.x - 6.8 * s, tyTop + tH * 0.32, 2.4 * s, 1 * s);
+        ctx.moveTo(neck.x - 4 * s, tyTop);
+        ctx.lineTo(neck.x - 1 * s, tyTop + tH * 0.6);
+        ctx.moveTo(neck.x + 4 * s, tyTop);
+        ctx.lineTo(neck.x + 1 * s, tyTop + tH * 0.6);
+        ctx.stroke();
+        // risvolti
+        ctx.fillStyle = top.style === 'tuxedo' ? '#2f3542' : game.lighten(top.color, 0.12);
+        for (const side of [-1, 1]) {
+          ctx.beginPath();
+          ctx.moveTo(neck.x + side * 4 * s, tyTop);
+          ctx.lineTo(neck.x + side * 6.5 * s, tyTop + tH * 0.2);
+          ctx.lineTo(neck.x + side * 1.2 * s, tyTop + tH * 0.6);
+          ctx.closePath();
+          ctx.fill();
+        }
+        if (top.style === 'suit') {
+          ctx.fillStyle = c2;
+          ctx.beginPath();
+          ctx.moveTo(neck.x - 1.1 * s, tyTop + 0.8 * s);
+          ctx.lineTo(neck.x + 1.1 * s, tyTop + 0.8 * s);
+          ctx.lineTo(neck.x + 1.7 * s, tyTop + tH * 0.48);
+          ctx.lineTo(neck.x, tyTop + tH * 0.6);
+          ctx.lineTo(neck.x - 1.7 * s, tyTop + tH * 0.48);
+          ctx.closePath();
+          ctx.fill();
+        } else {
+          buttons(0.25, 0.48, 3, '#2d3436');
+          ctx.fillStyle = '#111111';
+          ctx.beginPath();
+          ctx.moveTo(neck.x, tyTop + 1.6 * s);
+          ctx.lineTo(neck.x - 2.8 * s, tyTop + 0.4 * s);
+          ctx.lineTo(neck.x - 2.8 * s, tyTop + 2.8 * s);
+          ctx.closePath();
+          ctx.moveTo(neck.x, tyTop + 1.6 * s);
+          ctx.lineTo(neck.x + 2.8 * s, tyTop + 0.4 * s);
+          ctx.lineTo(neck.x + 2.8 * s, tyTop + 2.8 * s);
+          ctx.closePath();
+          ctx.fill();
+          // fazzoletto nel taschino
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(neck.x - 6.8 * s, tyTop + tH * 0.32, 2.4 * s, 1 * s);
+        }
+        buttons(0.72, 0.86, 2, 'rgba(0,0,0,0.5)');
+        break;
       }
-      buttons(0.72, 0.86, 2, 'rgba(0,0,0,0.5)');
-      break;
-    }
-    case 'jacket':
-      ctx.fillStyle = c2;
-      ctx.fillRect(neck.x - 2.6 * s, tyTop, 5.2 * s, tH);
-      ctx.strokeStyle = 'rgba(0,0,0,0.4)';
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.moveTo(neck.x - 2.6 * s, tyTop);
-      ctx.lineTo(neck.x - 2.6 * s, tyBot);
-      ctx.moveTo(neck.x + 2.6 * s, tyTop);
-      ctx.lineTo(neck.x + 2.6 * s, tyBot);
-      ctx.stroke();
-      ctx.fillStyle = game.lighten(top.color, 0.15);
-      for (const side of [-1, 1]) {
+      case 'jacket':
+        ctx.fillStyle = c2;
+        ctx.fillRect(neck.x - 2.6 * s, tyTop, 5.2 * s, tH);
+        ctx.strokeStyle = 'rgba(0,0,0,0.4)';
+        ctx.lineWidth = 1;
         ctx.beginPath();
-        ctx.moveTo(neck.x + side * 2.6 * s, tyTop);
-        ctx.lineTo(neck.x + side * 6.5 * s, tyTop);
-        ctx.lineTo(neck.x + side * 2.6 * s, tyTop + 5 * s);
-        ctx.fill();
-      }
-      // taschini
-      ctx.strokeStyle = 'rgba(0,0,0,0.3)';
-      ctx.lineWidth = 0.6 * s;
-      ctx.strokeRect(neck.x - 7 * s, tyTop + tH * 0.3, 3 * s, 2.6 * s);
-      ctx.strokeRect(neck.x + 4 * s, tyTop + tH * 0.3, 3 * s, 2.6 * s);
-      break;
-    case 'hoodie':
-      ctx.fillStyle = game.darken(top.color, 0.18);
-      ctx.fillRect(neck.x - 5 * s, tyTop + tH * 0.6, 10 * s, tH * 0.27);
-      ctx.strokeStyle = c2;
-      ctx.lineWidth = 0.9 * s;
-      ctx.beginPath();
-      ctx.moveTo(neck.x - 1.6 * s, tyTop);
-      ctx.lineTo(neck.x - 1.6 * s, tyTop + 6 * s);
-      ctx.moveTo(neck.x + 1.6 * s, tyTop);
-      ctx.lineTo(neck.x + 1.6 * s, tyTop + 6 * s);
-      ctx.stroke();
-      dot(neck.x - 1.6 * s, tyTop + 6.3 * s, 0.6 * s, c2);
-      dot(neck.x + 1.6 * s, tyTop + 6.3 * s, 0.6 * s, c2);
-      break;
-    case 'print':
-      crewNeck(game.lighten(top.color, 0.25));
-      starPath(neck.x, tyTop + tH * 0.48, 4 * s);
-      ctx.fillStyle = c2;
-      ctx.fill();
-      ctx.strokeStyle = game.darken(c2, 0.35);
-      ctx.lineWidth = 0.5 * s;
-      ctx.stroke();
-      break;
-    case 'bare':
-      dot(neck.x, tyTop + tH * 0.78, 0.6 * s, game.darken(skin, 0.3));
-      seg(
-        { x: neck.x - 4 * s, y: tyTop + tH * 0.3 },
-        { x: neck.x - 1 * s, y: tyTop + tH * 0.34 },
-        game.darken(skin, 0.15),
-        0.5 * s,
-      );
-      seg(
-        { x: neck.x + 4 * s, y: tyTop + tH * 0.3 },
-        { x: neck.x + 1 * s, y: tyTop + tH * 0.34 },
-        game.darken(skin, 0.15),
-        0.5 * s,
-      );
-      break;
-    case 'tank':
-      // spalle e scollo scoperti
-      ctx.fillStyle = skin;
-      ctx.fillRect(tx, tyTop - 1 * s, tW, 3.2 * s);
-      ctx.beginPath();
-      ctx.arc(neck.x, tyTop + 1.5 * s, 3.4 * s, 0, Math.PI);
-      ctx.fill();
-      ctx.fillStyle = top.color;
-      ctx.fillRect(neck.x - 5.6 * s, tyTop - 1 * s, 1.8 * s, 3.4 * s);
-      ctx.fillRect(neck.x + 3.8 * s, tyTop - 1 * s, 1.8 * s, 3.4 * s);
-      seg({ x: tx, y: tyTop + 2.6 * s }, { x: neck.x - 5.6 * s, y: tyTop + 2.6 * s }, c2, 0.6 * s);
-      seg(
-        { x: neck.x + 5.6 * s, y: tyTop + 2.6 * s },
-        { x: tx + tW, y: tyTop + 2.6 * s },
-        c2,
-        0.6 * s,
-      );
-      break;
-    case 'polo':
-      ctx.fillStyle = game.lighten(top.color, 0.12);
-      ctx.fillRect(neck.x - 1.2 * s, tyTop, 2.4 * s, tH * 0.35);
-      buttons(0.12, 0.3, 2, '#ffffff');
-      ctx.fillStyle = c2;
-      for (const side of [-1, 1]) {
+        ctx.moveTo(neck.x - 2.6 * s, tyTop);
+        ctx.lineTo(neck.x - 2.6 * s, tyBot);
+        ctx.moveTo(neck.x + 2.6 * s, tyTop);
+        ctx.lineTo(neck.x + 2.6 * s, tyBot);
+        ctx.stroke();
+        ctx.fillStyle = game.lighten(top.color, 0.15);
+        for (const side of [-1, 1]) {
+          ctx.beginPath();
+          ctx.moveTo(neck.x + side * 2.6 * s, tyTop);
+          ctx.lineTo(neck.x + side * 6.5 * s, tyTop);
+          ctx.lineTo(neck.x + side * 2.6 * s, tyTop + 5 * s);
+          ctx.fill();
+        }
+        // taschini
+        ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+        ctx.lineWidth = 0.6 * s;
+        ctx.strokeRect(neck.x - 7 * s, tyTop + tH * 0.3, 3 * s, 2.6 * s);
+        ctx.strokeRect(neck.x + 4 * s, tyTop + tH * 0.3, 3 * s, 2.6 * s);
+        break;
+      case 'hoodie':
+        ctx.fillStyle = game.darken(top.color, 0.18);
+        ctx.fillRect(neck.x - 5 * s, tyTop + tH * 0.6, 10 * s, tH * 0.27);
+        ctx.strokeStyle = c2;
+        ctx.lineWidth = 0.9 * s;
         ctx.beginPath();
-        ctx.moveTo(neck.x, tyTop + 0.6 * s);
-        ctx.lineTo(neck.x + side * 4.6 * s, tyTop - 0.6 * s);
-        ctx.lineTo(neck.x + side * 3.4 * s, tyTop + 2.6 * s);
-        ctx.closePath();
+        ctx.moveTo(neck.x - 1.6 * s, tyTop);
+        ctx.lineTo(neck.x - 1.6 * s, tyTop + 6 * s);
+        ctx.moveTo(neck.x + 1.6 * s, tyTop);
+        ctx.lineTo(neck.x + 1.6 * s, tyTop + 6 * s);
+        ctx.stroke();
+        dot(neck.x - 1.6 * s, tyTop + 6.3 * s, 0.6 * s, c2);
+        dot(neck.x + 1.6 * s, tyTop + 6.3 * s, 0.6 * s, c2);
+        break;
+      case 'print':
+        crewNeck(game.lighten(top.color, 0.25));
+        starPath(neck.x, tyTop + tH * 0.48, 4 * s);
+        ctx.fillStyle = c2;
         ctx.fill();
-      }
-      break;
-    case 'plaid':
-      for (let u = 0; u < tW; u += 4 * s) {
-        ctx.fillStyle = c2 + '99';
-        ctx.fillRect(tx + u, tyTop, 1.6 * s, tH);
-      }
-      for (let v = tyTop; v < tyBot; v += 4 * s) {
-        ctx.fillStyle = c2 + '77';
-        ctx.fillRect(tx, v, tW, 1.6 * s);
-      }
-      for (let u = 2.4 * s; u < tW; u += 4 * s) {
-        ctx.fillStyle = 'rgba(255,255,255,0.25)';
-        ctx.fillRect(tx + u, tyTop, 0.4 * s, tH);
-      }
-      vNeck(0.22, game.darken(top.color, 0.15), 3.6);
-      buttons(0.3, 0.92, 4, '#f5f6fa');
-      break;
-    case 'sweater':
-      for (let u = 1 * s; u < tW; u += 2 * s)
-        seg({ x: tx + u, y: tyTop }, { x: tx + u, y: tyBot }, 'rgba(0,0,0,0.1)', 0.5 * s);
-      ctx.fillStyle = game.darken(top.color, 0.15);
-      ctx.fillRect(tx, tyBot - 3 * s, tW, 3 * s);
-      break;
-    case 'jersey':
-      vNeck(0.18, c2, 3.4);
-      ctx.fillStyle = c2;
-      ctx.fillRect(tx, tyTop, 2.4 * s, tH);
-      ctx.fillRect(tx + tW - 2.4 * s, tyTop, 2.4 * s, tH);
-      ctx.font = `bold ${7 * s}px sans-serif`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText('10', neck.x, tyTop + tH * 0.55);
-      ctx.textBaseline = 'alphabetic';
-      break;
-    case 'vest':
-      vNeck(0.2, game.darken(top.color, 0.08), 3);
-      ctx.fillStyle = c2;
-      for (const side of [-1, 1]) {
-        ctx.beginPath();
-        ctx.moveTo(neck.x + side * 4.6 * s, tyTop - 1 * s);
-        ctx.lineTo(neck.x + side * tw * 1.2, tyTop - 1 * s);
-        ctx.lineTo(neck.x + side * tw * 1.2, tyBot);
-        ctx.lineTo(neck.x + side * 0.5 * s, tyBot);
-        ctx.lineTo(neck.x + side * 0.5 * s, tyTop + tH * 0.5);
-        ctx.closePath();
-        ctx.fill();
-      }
-      buttons(0.58, 0.92, 3, '#dfe6e9');
-      ctx.fillStyle = 'rgba(0,0,0,0.25)';
-      ctx.fillRect(neck.x - 6.4 * s, tyTop + tH * 0.62, 2.6 * s, 0.6 * s);
-      ctx.fillRect(neck.x + 3.8 * s, tyTop + tH * 0.62, 2.6 * s, 0.6 * s);
-      break;
-    case 'puffer':
-      for (let v = tyTop + 3 * s; v < tyBot; v += 3.4 * s) {
-        seg({ x: tx, y: v }, { x: tx + tW, y: v }, game.darken(top.color, 0.2), 0.6 * s);
+        ctx.strokeStyle = game.darken(c2, 0.35);
+        ctx.lineWidth = 0.5 * s;
+        ctx.stroke();
+        break;
+      case 'bare':
+        dot(neck.x, tyTop + tH * 0.78, 0.6 * s, game.darken(skin, 0.3));
         seg(
-          { x: tx, y: v - 1.6 * s },
-          { x: tx + tW, y: v - 1.6 * s },
-          'rgba(255,255,255,0.18)',
-          0.9 * s,
+          { x: neck.x - 4 * s, y: tyTop + tH * 0.3 },
+          { x: neck.x - 1 * s, y: tyTop + tH * 0.34 },
+          game.darken(skin, 0.15),
+          0.5 * s,
         );
-      }
-      seg({ x: neck.x, y: tyTop }, { x: neck.x, y: tyBot }, game.darken(top.color, 0.35), 0.7 * s);
-      dot(neck.x, tyTop + 2.5 * s, 0.8 * s, '#dfe6e9');
-      break;
-    default:
-      crewNeck(game.darken(top.color, 0.22));
-  }
+        seg(
+          { x: neck.x + 4 * s, y: tyTop + tH * 0.3 },
+          { x: neck.x + 1 * s, y: tyTop + tH * 0.34 },
+          game.darken(skin, 0.15),
+          0.5 * s,
+        );
+        break;
+      case 'tank':
+        // spalle e scollo scoperti
+        ctx.fillStyle = skin;
+        ctx.fillRect(tx, tyTop - 1 * s, tW, 3.2 * s);
+        ctx.beginPath();
+        ctx.arc(neck.x, tyTop + 1.5 * s, 3.4 * s, 0, Math.PI);
+        ctx.fill();
+        ctx.fillStyle = top.color;
+        ctx.fillRect(neck.x - 5.6 * s, tyTop - 1 * s, 1.8 * s, 3.4 * s);
+        ctx.fillRect(neck.x + 3.8 * s, tyTop - 1 * s, 1.8 * s, 3.4 * s);
+        seg(
+          { x: tx, y: tyTop + 2.6 * s },
+          { x: neck.x - 5.6 * s, y: tyTop + 2.6 * s },
+          c2,
+          0.6 * s,
+        );
+        seg(
+          { x: neck.x + 5.6 * s, y: tyTop + 2.6 * s },
+          { x: tx + tW, y: tyTop + 2.6 * s },
+          c2,
+          0.6 * s,
+        );
+        break;
+      case 'polo':
+        ctx.fillStyle = game.lighten(top.color, 0.12);
+        ctx.fillRect(neck.x - 1.2 * s, tyTop, 2.4 * s, tH * 0.35);
+        buttons(0.12, 0.3, 2, '#ffffff');
+        ctx.fillStyle = c2;
+        for (const side of [-1, 1]) {
+          ctx.beginPath();
+          ctx.moveTo(neck.x, tyTop + 0.6 * s);
+          ctx.lineTo(neck.x + side * 4.6 * s, tyTop - 0.6 * s);
+          ctx.lineTo(neck.x + side * 3.4 * s, tyTop + 2.6 * s);
+          ctx.closePath();
+          ctx.fill();
+        }
+        break;
+      case 'plaid':
+        for (let u = 0; u < tW; u += 4 * s) {
+          ctx.fillStyle = c2 + '99';
+          ctx.fillRect(tx + u, tyTop, 1.6 * s, tH);
+        }
+        for (let v = tyTop; v < tyBot; v += 4 * s) {
+          ctx.fillStyle = c2 + '77';
+          ctx.fillRect(tx, v, tW, 1.6 * s);
+        }
+        for (let u = 2.4 * s; u < tW; u += 4 * s) {
+          ctx.fillStyle = 'rgba(255,255,255,0.25)';
+          ctx.fillRect(tx + u, tyTop, 0.4 * s, tH);
+        }
+        vNeck(0.22, game.darken(top.color, 0.15), 3.6);
+        buttons(0.3, 0.92, 4, '#f5f6fa');
+        break;
+      case 'sweater':
+        for (let u = 1 * s; u < tW; u += 2 * s)
+          seg({ x: tx + u, y: tyTop }, { x: tx + u, y: tyBot }, 'rgba(0,0,0,0.1)', 0.5 * s);
+        ctx.fillStyle = game.darken(top.color, 0.15);
+        ctx.fillRect(tx, tyBot - 3 * s, tW, 3 * s);
+        break;
+      case 'jersey':
+        vNeck(0.18, c2, 3.4);
+        ctx.fillStyle = c2;
+        ctx.fillRect(tx, tyTop, 2.4 * s, tH);
+        ctx.fillRect(tx + tW - 2.4 * s, tyTop, 2.4 * s, tH);
+        ctx.font = `bold ${7 * s}px sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('10', neck.x, tyTop + tH * 0.55);
+        ctx.textBaseline = 'alphabetic';
+        break;
+      case 'vest':
+        vNeck(0.2, game.darken(top.color, 0.08), 3);
+        ctx.fillStyle = c2;
+        for (const side of [-1, 1]) {
+          ctx.beginPath();
+          ctx.moveTo(neck.x + side * 4.6 * s, tyTop - 1 * s);
+          ctx.lineTo(neck.x + side * tw * 1.2, tyTop - 1 * s);
+          ctx.lineTo(neck.x + side * tw * 1.2, tyBot);
+          ctx.lineTo(neck.x + side * 0.5 * s, tyBot);
+          ctx.lineTo(neck.x + side * 0.5 * s, tyTop + tH * 0.5);
+          ctx.closePath();
+          ctx.fill();
+        }
+        buttons(0.58, 0.92, 3, '#dfe6e9');
+        ctx.fillStyle = 'rgba(0,0,0,0.25)';
+        ctx.fillRect(neck.x - 6.4 * s, tyTop + tH * 0.62, 2.6 * s, 0.6 * s);
+        ctx.fillRect(neck.x + 3.8 * s, tyTop + tH * 0.62, 2.6 * s, 0.6 * s);
+        break;
+      case 'puffer':
+        for (let v = tyTop + 3 * s; v < tyBot; v += 3.4 * s) {
+          seg({ x: tx, y: v }, { x: tx + tW, y: v }, game.darken(top.color, 0.2), 0.6 * s);
+          seg(
+            { x: tx, y: v - 1.6 * s },
+            { x: tx + tW, y: v - 1.6 * s },
+            'rgba(255,255,255,0.18)',
+            0.9 * s,
+          );
+        }
+        seg(
+          { x: neck.x, y: tyTop },
+          { x: neck.x, y: tyBot },
+          game.darken(top.color, 0.35),
+          0.7 * s,
+        );
+        dot(neck.x, tyTop + 2.5 * s, 0.8 * s, '#dfe6e9');
+        break;
+      default:
+        crewNeck(game.darken(top.color, 0.22));
+    }
   // pieghe e ombra verso il basso
   const fold = ctx.createLinearGradient(0, tyTop, 0, tyBot);
   fold.addColorStop(0, 'rgba(255,255,255,0.08)');
@@ -2282,6 +2489,18 @@ export function drawPlayerAvatar(
   ctx.strokeStyle = 'rgba(0,0,0,0.3)';
   ctx.lineWidth = 1;
   ctx.stroke();
+  if (fromBehind && top.style === 'hoodie') {
+    ctx.fillStyle = game.darken(top.color, 0.15);
+    ctx.beginPath();
+    ctx.moveTo(neck.x - 6 * s, tyTop - 1 * s);
+    ctx.quadraticCurveTo(neck.x - 6.5 * s, tyTop + tH * 0.42, neck.x, tyTop + tH * 0.5);
+    ctx.quadraticCurveTo(neck.x + 6.5 * s, tyTop + tH * 0.42, neck.x + 6 * s, tyTop - 1 * s);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(0,0,0,0.25)';
+    ctx.lineWidth = 0.7 * s;
+    ctx.stroke();
+  }
   if (top.style === 'puffer') {
     ctx.fillStyle = game.darken(top.color, 0.1);
     ctx.beginPath();
@@ -2404,8 +2623,11 @@ export function drawPlayerAvatar(
   ctx.strokeStyle = 'rgba(0,0,0,0.3)';
   ctx.lineWidth = 1;
   ctx.stroke();
-  if (fromBehind && !mannequin) drawHairFromBehind(head, s, bd.hairStyle, hair);
-  else if (!mannequin) {
+  if (fromBehind && !mannequin) {
+    drawHairFromBehind(head, s, bd.hairStyle, hair);
+    if (walkingAway && Math.abs(screenSide) > 0.3)
+      drawThreeQuarterSide(head, s, skin, Math.sign(screenSide));
+  } else if (!mannequin) {
     drawFace(head, s, bd, hair, animTime, hsh, look.stoned ? skin : null);
     drawHairFront(head, s, bd.hairStyle, hair);
   }

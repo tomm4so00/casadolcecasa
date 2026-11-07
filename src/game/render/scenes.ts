@@ -6,6 +6,8 @@ import { game } from '../context.js';
 import { cameraPx, cameraRange, cameraScale } from '../camera.js';
 import { isoProject, isoScale, mixColor, poly, rnd, setPlane } from './primitives.js';
 import { box, onFace, resetPlane } from './objects.js';
+import { drawMoonFloor, drawSpaceSky } from './moon-surface.js';
+import { drawStationFloor, paintStationWall } from './moonbase-inside.js';
 import { getMyRoomMap, isMyRoomNow } from '../saves.js';
 import { paintingTitle } from '../painting-titles.js';
 import { SAFE_SPOT } from '../room-layout.js';
@@ -115,127 +117,10 @@ export function drawSky(hour?: GameValue, t?: GameValue): GameValue {
   }
 }
 
-/** Cielo dello spazio: nero, pieno di stelle, con la Terra che si vede da lontano. */
-function drawSpaceSky(t: number): void {
-  const ctx = game.view.ctx;
-  const W: number = game.view.canvas.width,
-    H: number = game.view.canvas.height;
-  const g = ctx.createLinearGradient(0, 0, 0, H);
-  g.addColorStop(0, '#02030a');
-  g.addColorStop(1, '#0b1026');
-  ctx.fillStyle = g;
-  ctx.fillRect(0, 0, W, H);
-  for (let i = 0; i < 160; i++) {
-    const tw = 0.55 + 0.45 * Math.sin(t * 1.5 + i * 1.7);
-    ctx.fillStyle = `rgba(255,255,255,${(0.35 + 0.65 * rnd(i + 7)) * tw})`;
-    const r = rnd(i + 300) > 0.9 ? 1.6 : 0.9;
-    ctx.fillRect(rnd(i) * W, rnd(i + 99) * H, r, r);
-  }
-  // la Terra, in alto a destra
-  const ex = W * 0.8,
-    ey = H * 0.16,
-    er = Math.min(W, H) * 0.07;
-  const halo = ctx.createRadialGradient(ex, ey, er * 0.9, ex, ey, er * 1.5);
-  halo.addColorStop(0, 'rgba(120,180,255,0.35)');
-  halo.addColorStop(1, 'rgba(120,180,255,0)');
-  ctx.fillStyle = halo;
-  ctx.beginPath();
-  ctx.arc(ex, ey, er * 1.5, 0, 6.3);
-  ctx.fill();
-  const sea = ctx.createRadialGradient(ex - er * 0.4, ey - er * 0.4, er * 0.1, ex, ey, er);
-  sea.addColorStop(0, '#5dade2');
-  sea.addColorStop(1, '#1a4f8a');
-  ctx.fillStyle = sea;
-  ctx.beginPath();
-  ctx.arc(ex, ey, er, 0, 6.3);
-  ctx.fill();
-  ctx.save();
-  ctx.beginPath();
-  ctx.arc(ex, ey, er, 0, 6.3);
-  ctx.clip();
-  ctx.fillStyle = '#58a85b';
-  for (const [dx, dy, rx, ry] of [
-    [-0.3, -0.2, 0.35, 0.25],
-    [0.25, 0.25, 0.3, 0.2],
-    [0.1, -0.45, 0.2, 0.12],
-  ]) {
-    ctx.beginPath();
-    ctx.ellipse(ex + dx * er, ey + dy * er, rx * er, ry * er, 0.5, 0, 6.3);
-    ctx.fill();
-  }
-  ctx.fillStyle = 'rgba(255,255,255,0.7)';
-  for (let i = 0; i < 4; i++) {
-    const cy = ey + (i - 1.5) * er * 0.45;
-    const off = ((t * 0.02 + i * 0.3) % 1) * er * 2 - er;
-    ctx.beginPath();
-    ctx.ellipse(ex + off, cy, er * 0.35, er * 0.07, 0, 0, 6.3);
-    ctx.fill();
-  }
-  // lato in ombra
-  ctx.fillStyle = 'rgba(0,0,20,0.45)';
-  ctx.beginPath();
-  ctx.arc(ex + er * 0.45, ey + er * 0.2, er, 0, 6.3);
-  ctx.fill();
-  ctx.restore();
-}
-
-/**
- * Suolo lunare convesso: una griglia di riquadri proiettati uno per uno (isoProject abbassa i
- * punti lontani dal centro), più chiari in cima e più scuri verso l'orizzonte, con il bordo.
- */
-function drawMoonFloor(st: GameValue): void {
-  const ctx = game.view.ctx;
-  const step = 30;
-  const maxR = Math.hypot(game.X1, game.Y1);
-  for (let x = game.X0; x < game.X1; x += step)
-    for (let y = game.Y0; y < game.Y1; y += step) {
-      const a = isoProject(x, y, 0),
-        b = isoProject(x + step, y, 0),
-        c = isoProject(x + step, y + step, 0),
-        d = isoProject(x, y + step, 0);
-      const r = Math.hypot(x + step / 2, y + step / 2) / maxR;
-      const noise = (rnd(x * 0.13 + y * 0.71) - 0.5) * 0.12;
-      ctx.fillStyle = game.darken(st.floorColor, Math.max(0, Math.min(0.6, r * 0.42 + noise)));
-      ctx.beginPath();
-      ctx.moveTo(a.x, a.y);
-      ctx.lineTo(b.x, b.y);
-      ctx.lineTo(c.x, c.y);
-      ctx.lineTo(d.x, d.y);
-      ctx.closePath();
-      ctx.fill();
-      ctx.strokeStyle = ctx.fillStyle;
-      ctx.lineWidth = 1;
-      ctx.stroke();
-      // sassolini sparsi
-      if (rnd(x * 1.7 + y * 0.3) > 0.7) {
-        const p = isoProject(x + rnd(x + y) * step, y + rnd(y - x) * step, 0);
-        ctx.fillStyle = 'rgba(80,80,75,0.5)';
-        ctx.beginPath();
-        ctx.ellipse(p.x, p.y, 1.6 * isoScale(), 0.9 * isoScale(), 0, 0, 6.3);
-        ctx.fill();
-      }
-    }
-  // bordo della superficie, verso chi guarda
-  const T = 18;
-  for (let x = game.X0; x < game.X1; x += step) {
-    const a = isoProject(x, game.Y1, 0),
-      b = isoProject(x + step, game.Y1, 0),
-      c = isoProject(x + step, game.Y1, -T),
-      d = isoProject(x, game.Y1, -T);
-    poly([a, b, c, d], '#6f6f69');
-  }
-  for (let y = game.Y0; y < game.Y1; y += step) {
-    const a = isoProject(game.X1, y, 0),
-      b = isoProject(game.X1, y + step, 0),
-      c = isoProject(game.X1, y + step, -T),
-      d = isoProject(game.X1, y, -T);
-    poly([a, b, c, d], '#55554f');
-  }
-}
-
 export function drawFloorPattern(st?: GameValue): GameValue {
   const ctx = game.view.ctx;
   if (st.floor === 'moon') return drawMoonFloor(st);
+  if (st.floor === 'station') return drawStationFloor();
   const W: GameValue = game.X1 - game.X0,
     H: GameValue = game.Y1 - game.Y0,
     base: GameValue = st.floorColor;
@@ -1038,6 +923,9 @@ export function paintWallSurface(
   ctx.fillStyle = c;
   ctx.fillRect(0, 0, W, H);
   switch (st.wallStyle) {
+    case 'station':
+      paintStationWall(W, H, side);
+      break;
     case 'stripes':
       ctx.fillStyle = game.lighten(c, 0.12);
       for (let u: GameValue = 0; u < W; u += 24) ctx.fillRect(u, 0, 10, H);

@@ -27,7 +27,22 @@ import {
   drawWineBarrelProp,
   drawWineRackProp,
 } from './workplaces.js';
-import { MOONBASE_DRAW, MOONBASE_INSIDE_DRAW } from './moonbase.js';
+import { MOONBASE_DRAW } from './moonbase.js';
+import {
+  MOONBASE_INSIDE_DRAW,
+  drawBaseConsole,
+  wallBaseSign,
+  wallMoonMap,
+  wallPanorama,
+  wallPorthole,
+  wallStatusScreen,
+} from './moonbase-inside.js';
+import {
+  drawCraterProp,
+  drawMoonBeacon,
+  drawMoonFlagProp,
+  drawMoonRockProp,
+} from './moon-surface.js';
 import {
   drawGalleryCatalog,
   drawGalleryDesk,
@@ -45,7 +60,7 @@ import {
   drawSlotMachine,
   drawRpsTable,
 } from './arcade-props.js';
-import { drawBaseConsole, drawBaseDoor, drawMoonScreen } from './moonbase.js';
+import { drawBaseDoor, drawMoonScreen } from './moonbase.js';
 import { drawPetBubble, drawPetHome, drawPetShelf, drawShopPet } from './pets.js';
 import { drawDogFence, drawDogGate, drawDogParkGround } from './dog-park.js';
 import {
@@ -116,9 +131,6 @@ import {
   drawRocketProp,
   drawRocketPad,
   drawMoonRocket,
-  drawCraterProp,
-  drawMoonRockProp,
-  drawMoonFlagProp,
   drawLaunchButton,
   drawProjectBoard,
   drawWorkbench,
@@ -287,6 +299,7 @@ export function registerDrawers(): void {
     crater: drawCraterProp,
     moonRock: drawMoonRockProp,
     moonFlag: drawMoonFlagProp,
+    moonBeacon: drawMoonBeacon,
     ...MOONBASE_DRAW,
     ...MOONBASE_INSIDE_DRAW,
     petShelf: drawPetShelf,
@@ -391,6 +404,12 @@ export function registerDrawers(): void {
     collectShelf: wallCollectShelf,
     // i quadri della mostra cambiano mentre si guarda: si disegnano a ogni fotogramma
     galleryPainting: wallGalleryPainting,
+    // base lunare: vetrata, schermi e oblò si muovono
+    mbPanorama: wallPanorama,
+    mbStatus: wallStatusScreen,
+    mbMap: wallMoonMap,
+    mbPorthole: wallPorthole,
+    mbSign: wallBaseSign,
   };
 }
 

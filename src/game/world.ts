@@ -605,7 +605,7 @@ export function enterMoonBase(): void {
   sfx('door');
   game.view.activeEnvironment = 'base_lunare';
   game.view.currentRoomTitle = 'Base spaziale lunare 🌙';
-  game.playerPos = { x: 0, y: 120 };
+  game.playerPos = { x: 0, y: 200 };
   toast('🌙 Benvenuto nella base spaziale lunare! Qui puoi toglierti il casco.', 4500);
 }
 

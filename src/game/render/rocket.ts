@@ -101,64 +101,6 @@ export function drawMoonRocket(it?: GameValue, t?: GameValue): GameValue {
   drawFlight({ ...it, noTower: true, moonPad: true }, rocketFlight(game.moonTripAt || 0, now), t);
 }
 
-/** Cratere: bordo rialzato chiaro e fondo più scuro, che segue la curva della luna. */
-export function drawCraterProp(it?: GameValue): GameValue {
-  const ctx = game.view.ctx;
-  const ring = (r: number, z: number) => {
-    ctx.beginPath();
-    for (let i = 0; i <= 24; i++) {
-      const a = (i / 24) * Math.PI * 2;
-      const p = isoProject(it.x + Math.cos(a) * r, it.y + Math.sin(a) * r, z);
-      if (i) ctx.lineTo(p.x, p.y);
-      else ctx.moveTo(p.x, p.y);
-    }
-    ctx.closePath();
-  };
-  ring(it.r * 1.15, 0.5);
-  ctx.fillStyle = 'rgba(225,225,218,0.9)';
-  ctx.fill();
-  ring(it.r, 0.5);
-  ctx.fillStyle = '#8f8f88';
-  ctx.fill();
-  ring(it.r * 0.7, 0.5);
-  ctx.fillStyle = '#7d7d76';
-  ctx.fill();
-}
-
-/** Sasso lunare grigio, fatto di due blocchi. */
-export function drawMoonRockProp(it?: GameValue): GameValue {
-  box(it.x, it.y, it.w, it.h, it.z * 0.6, '#9a9a93');
-  box(it.x - it.w * 0.15, it.y + it.h * 0.1, it.w * 0.6, it.h * 0.6, it.z * 0.4, '#a8a8a0', {
-    z0: it.z * 0.6,
-  });
-}
-
-/** Bandiera della missione piantata nel suolo lunare. */
-export function drawMoonFlagProp(it?: GameValue): GameValue {
-  const ctx = game.view.ctx;
-  box(it.x, it.y, 2.5, 2.5, it.z, '#dfe6e9');
-  const a = isoProject(it.x, it.y, it.z - 2),
-    b = isoProject(it.x + 34, it.y, it.z - 2),
-    c = isoProject(it.x + 34, it.y, it.z - 24),
-    d = isoProject(it.x, it.y, it.z - 24);
-  ctx.fillStyle = '#ffffff';
-  ctx.beginPath();
-  ctx.moveTo(a.x, a.y);
-  ctx.lineTo(b.x, b.y);
-  ctx.lineTo(c.x, c.y);
-  ctx.lineTo(d.x, d.y);
-  ctx.closePath();
-  ctx.fill();
-  ctx.strokeStyle = '#b2bec3';
-  ctx.stroke();
-  // razzo rosso e scritta della missione
-  const m = isoProject(it.x + 17, it.y, it.z - 13);
-  ctx.fillStyle = '#e74c3c';
-  ctx.font = `bold ${Math.round(7 * isoScale())}px sans-serif`;
-  ctx.textAlign = 'center';
-  ctx.fillText('CDC-1', m.x, m.y + 2 * isoScale());
-}
-
 /** Cartellone luminoso con il conto alla rovescia sopra la rampa. */
 function drawCountdownSign(it: GameValue, text: string, last: boolean): void {
   const ctx = game.view.ctx;
