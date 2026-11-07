@@ -1,4 +1,6 @@
 import { decodeWeed } from './weed-rules.js';
+import { LEGACY_WORLD, countFree, isWorldCode } from '../../shared/worlds.js';
+import { publishFreeRooms } from './world-select.js';
 import { hashPin, pinHint, pinTooHighForLevel, safeLevel } from './safe-pin.js';
 import { roomLabel } from './realty-rules.js';
 import { decodeFlu, isSick } from './flu-rules.js';
@@ -37,6 +39,7 @@ import { PAINTING_SLOTS, paintingKey, roomPaintings } from './painting-rules.js'
 import { kissActive } from './romance.js';
 import { noteFaintOnReturn } from './faint.js';
 import { promptSetSafePin } from './needs.js';
+import { worldNode } from './world-db.js';
 
 /** Segna la presenza come offline, con l'ora del server in cui il giocatore è uscito. */
 export const OFFLINE_MARK = { offline: true, offAt: { '.sv': 'timestamp' } };
@@ -158,6 +161,7 @@ export function buildSaveData(..._args: GameValue[]): SaveV8 {
   if (game.chatReadT > 0) data.chatReadT = game.chatReadT;
   // suoni, musica, notifiche e il resto: uguali su ogni telefono, browser o app installata
   data.prefs = collectPrefs();
+  data.worldId = game.session.worldId;
   if (game.player.daily) data.daily = game.player.daily;
   if (game.player.pets && Object.keys(game.player.pets).length) {
     syncPetHomes();
@@ -239,6 +243,9 @@ export function applySave(value: unknown): void {
   game.player.daily = decodeDailyUses(s.daily);
   game.player.pets = decodePets(s.pets);
   applyPrefs(s.prefs);
+  // chi giocava prima dei mondi abita nel condominio di sempre
+  game.session.worldId =
+    typeof s.worldId === 'string' && isWorldCode(s.worldId) ? s.worldId : LEGACY_WORLD;
   game.player.weed = decodeWeed(s.weed);
   game.player.flu = decodeFlu(s.flu);
   game.player.coffeeAt = num(s.coffeeAt, 0);
@@ -353,15 +360,21 @@ export async function saveGame(forceCloud = false): Promise<boolean> {
   if (forceCloud || game.moneyLevel !== game.lastCloudMoney || now - game.lastCloudSaveAt > 15000) {
     game.lastCloudSaveAt = now;
     game.lastCloudMoney = game.moneyLevel;
+    const rank = {
+      name: game.player.myData.nick,
+      wealth: getWealth(),
+      shifts: game.player.stats.shifts || 0,
+      t: now,
+      bornAt: game.player.bornAt || null,
+    };
+    // la classifica di tutti i mondi: se non riesce, il salvataggio vale lo stesso
+    void game.session.db
+      .ref('sims_leaderboard_global/' + game.session.myPlayerId)
+      .set({ ...rank, world: game.session.worldId })
+      .catch((e: unknown) => console.warn('[classifica globale]', e));
     game.lastSavePromise = Promise.all([
       game.session.db.ref('sims_saves/' + game.session.myPlayerId).set(data),
-      game.session.db.ref('sims_leaderboard/' + game.session.myPlayerId).set({
-        name: game.player.myData.nick,
-        wealth: getWealth(),
-        shifts: game.player.stats.shifts || 0,
-        t: now,
-        bornAt: game.player.bornAt || null,
-      }),
+      game.session.db.ref(worldNode('leaderboard') + '/' + game.session.myPlayerId).set(rank),
     ])
       .then(() => {
         if (scope.active) game.lastCloudSaveContent = content;
@@ -516,7 +529,9 @@ export function publishRoomLayout(..._args: GameValue[]): GameValue {
   game.lastLayoutKey = key;
   // dal JSON, non dall'oggetto: Firebase rifiuta tutta la scrittura se un campo è undefined (la
   // mensola dei collezionabili non ha colore), e JSON.stringify quei campi li toglie
-  game.session.db.ref(`sims_rooms_state/${game.myAssignedRoomIdx}/layout`).set(JSON.parse(key));
+  game.session.db
+    .ref(`${worldNode('rooms_state')}/${game.myAssignedRoomIdx}/layout`)
+    .set(JSON.parse(key));
 }
 
 export function normalizeRooms(val?: GameValue): GameValue {
@@ -529,48 +544,55 @@ export function normalizeRooms(val?: GameValue): GameValue {
 }
 
 /** Soldi nella cassaforte di chi prende una stanza per la prima volta. */
-const START_MONEY = 30;
+export const START_MONEY = 30;
 
 // Assegna la stanza con una transazione: due giocatori non possono prendere la stessa
 export async function claimRoom(..._args: GameValue[]): Promise<GameValue> {
   let claimed: GameValue = -1;
+  let free = -1;
   const MONTH: GameValue = 30 * 24 * 3600 * 1000;
   try {
     const result = await withTimeout(
-      game.session.db.ref('sims_rooms_state').transaction((current?: GameValue): GameValue => {
-        let rooms: GameValue = normalizeRooms(current);
-        let idx: GameValue = rooms.findIndex(
-          (r?: GameValue): GameValue => r.ownerId === game.session.myPlayerId,
-        );
-        if (idx === -1) idx = rooms.findIndex((r?: GameValue): GameValue => !r.owner && !r.ownerId);
-        // Stanze abbandonate da più di 30 giorni (e con cassaforte vuota) tornano libere
-        if (idx === -1 && game.session.OFFLINE)
-          idx = rooms.findIndex(
-            (r?: GameValue): GameValue =>
-              r.lastSeen && Date.now() - r.lastSeen > MONTH && !(r.vaultMoney > 0),
+      game.session.db
+        .ref(worldNode('rooms_state'))
+        .transaction((current?: GameValue): GameValue => {
+          let rooms: GameValue = normalizeRooms(current);
+          let idx: GameValue = rooms.findIndex(
+            (r?: GameValue): GameValue => r.ownerId === game.session.myPlayerId,
           );
-        claimed = idx;
-        if (idx === -1) return rooms;
-        let old: GameValue = rooms[idx];
-        let base: GameValue =
-          old.ownerId === game.session.myPlayerId
-            ? old
-            : {
-                id: old.id,
-                // chi arriva in una stanza nuova trova qualche soldo per cominciare
-                vaultMoney: START_MONEY,
-                ...(old.pendingDeath ? { pendingDeath: old.pendingDeath } : {}),
-              };
-        rooms[idx] = Object.assign({}, base, {
-          owner: game.player.myData.nick,
-          ownerId: game.session.myPlayerId,
-          lastSeen: Date.now(),
-        });
-        return rooms;
-      }),
+          if (idx === -1)
+            idx = rooms.findIndex((r?: GameValue): GameValue => !r.owner && !r.ownerId);
+          // Stanze abbandonate da più di 30 giorni (e con cassaforte vuota) tornano libere
+          if (idx === -1 && game.session.OFFLINE)
+            idx = rooms.findIndex(
+              (r?: GameValue): GameValue =>
+                r.lastSeen && Date.now() - r.lastSeen > MONTH && !(r.vaultMoney > 0),
+            );
+          claimed = idx;
+          if (idx === -1) return rooms;
+          let old: GameValue = rooms[idx];
+          let base: GameValue =
+            old.ownerId === game.session.myPlayerId
+              ? old
+              : {
+                  id: old.id,
+                  // chi arriva in una stanza nuova trova qualche soldo per cominciare
+                  vaultMoney: START_MONEY,
+                  ...(old.pendingDeath ? { pendingDeath: old.pendingDeath } : {}),
+                };
+          rooms[idx] = Object.assign({}, base, {
+            owner: game.player.myData.nick,
+            ownerId: game.session.myPlayerId,
+            lastSeen: Date.now(),
+          });
+          free = countFree(rooms);
+          return rooms;
+        }),
       8000,
     );
     if (!result?.committed) claimed = -1;
+    // l'elenco dei mondi sa quanti posti restano (per chi cerca un mondo pubblico)
+    else if (free >= 0) void publishFreeRooms(game.session.worldId, free);
   } catch (e: GameValue) {
     claimed = -1;
     console.warn('Assegnazione stanza fallita', e);
@@ -591,7 +613,7 @@ export function syncMyPinFromRoom(..._args: GameValue[]): GameValue {
   // Migra i vecchi PIN salvati in chiaro
   if (!String(room.pin).startsWith('h')) {
     game.session.db
-      .ref(`sims_rooms_state/${game.myAssignedRoomIdx}/pin`)
+      .ref(`${worldNode('rooms_state')}/${game.myAssignedRoomIdx}/pin`)
       .set(hashPin(room.pin, room.id));
   }
   game.hasSetSafePin = true;
@@ -644,7 +666,7 @@ export function startPresence(..._args: GameValue[]): GameValue {
     });
   } catch (e: GameValue) {}
   const playerRef: GameValue = game.session.db.ref(
-    'sims_online_players/' + game.session.myPlayerId,
+    worldNode('online_players') + '/' + game.session.myPlayerId,
   );
   // Quando chiude la pagina il giocatore resta visibile agli altri, segnato come offline
   playerRef.onDisconnect().update(OFFLINE_MARK);
@@ -734,9 +756,11 @@ export function startPresence(..._args: GameValue[]): GameValue {
       lastSentAt = now;
     }
   }, 100);
-  game.session.db.ref('sims_online_players').on('value', (snapshot?: GameValue): GameValue => {
-    game.onlinePlayers = snapshot.val() || {};
-  });
+  game.session.db
+    .ref(worldNode('online_players'))
+    .on('value', (snapshot?: GameValue): GameValue => {
+      game.onlinePlayers = snapshot.val() || {};
+    });
   startInbox();
   startChat();
 }

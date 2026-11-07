@@ -9,6 +9,7 @@ import { mountCloudSetup } from './cloud-setup.js';
 import { OFFLINE_MARK } from './saves.js';
 import { offerInstall } from './install.js';
 import { rememberInviteFromUrl } from './invite.js';
+import { worldNode } from './world-db.js';
 export function mountLatestGame() {
   resetLifetime();
   const root = document.getElementById('app');
@@ -30,7 +31,7 @@ async function disposeLatestGame() {
   if (!lifetime.active) return;
   const reference =
     game.session.db && game.session.myPlayerId && (game.session.OFFLINE || game.session.authUid)
-      ? game.session.db.ref('sims_online_players/' + game.session.myPlayerId)
+      ? game.session.db.ref(worldNode('online_players') + '/' + game.session.myPlayerId)
       : null;
   for (const key of ['audioCtx', 'musicCtx']) {
     const context = game[key as keyof typeof game];

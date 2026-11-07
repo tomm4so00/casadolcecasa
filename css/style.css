@@ -2669,3 +2669,73 @@ canvas.shake {
 #minigame #mg-fill.boss {
   background: #e74c3c;
 }
+
+/* Classifica: il pulsante sopra l'elenco passa dal proprio condominio a tutti i mondi */
+.lb-scope {
+  width: 100%;
+  margin-bottom: 8px;
+  padding: 8px;
+  border: 1px solid rgba(22, 160, 133, 0.6);
+  border-radius: 8px;
+  background: rgba(22, 160, 133, 0.18);
+  color: #dfe6e9;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+/* Scelta del condominio: mondo pubblico, mondo nuovo, codice di un amico */
+.world-card {
+  max-width: 420px;
+  text-align: center;
+}
+.world-sub {
+  font-size: 0.85rem;
+  color: #c8d6e5;
+  line-height: 1.4;
+  margin: 6px 0 12px;
+}
+.world-create {
+  background: #16a085;
+  box-shadow: 0 4px 15px rgba(22, 160, 133, 0.35);
+}
+.world-code-label {
+  margin-top: 14px;
+  font-size: 0.8rem;
+  color: #c8d6e5;
+  text-align: left;
+}
+.world-code {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+.world-code input {
+  flex: 1;
+  min-width: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.world-code .world-go {
+  width: auto;
+  margin-top: 0;
+  padding: 10px 18px;
+  background: #2e86de;
+  box-shadow: none;
+}
+.world-cancel {
+  background: #57606f;
+  box-shadow: none;
+}
+.world-status {
+  min-height: 1.3em;
+  margin-top: 10px;
+  font-size: 0.85rem;
+  color: #c8d6e5;
+}
+.world-status.bad {
+  color: #ff6b6b;
+}
+.world-btn:disabled {
+  opacity: 0.55;
+  cursor: default;
+}

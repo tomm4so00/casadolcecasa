@@ -29,12 +29,13 @@ import { sfx } from './audio.js';
 import { updateFlu } from './flu.js';
 import { updatePetHud } from './pets.js';
 import { welcomeTeachesPin } from './welcome.js';
+import { worldNode } from './world-db.js';
 export async function reapAbsentPlayers(..._args: GameValue[]): Promise<GameValue> {
   if (!game.session.OFFLINE) return; // The trusted scheduled process handles other characters.
   let reaped: GameValue = [];
   try {
     await withTimeout(
-      game.session.db.ref('sims_rooms_state').transaction((cur?: GameValue): GameValue => {
+      game.session.db.ref(worldNode('rooms_state')).transaction((cur?: GameValue): GameValue => {
         const rooms: GameValue = normalizeRooms(cur),
           now: GameValue = Date.now();
         reaped = [];
@@ -72,9 +73,9 @@ export async function reapAbsentPlayers(..._args: GameValue[]): Promise<GameValu
       };
       if (sv.bornAt) grave.lived = Math.max(0, deadAt - sv.bornAt);
       if (sv.epitaph) grave.epitaph = String(sv.epitaph).slice(0, 60);
-      await game.session.db.ref('sims_graveyard/' + g.id).update(grave);
-      await game.session.db.ref('sims_leaderboard/' + g.id).remove();
-      await game.session.db.ref('sims_online_players/' + g.id).remove();
+      await game.session.db.ref(worldNode('graveyard') + '/' + g.id).update(grave);
+      await game.session.db.ref(worldNode('leaderboard') + '/' + g.id).remove();
+      await game.session.db.ref(worldNode('online_players') + '/' + g.id).remove();
     } catch (e: GameValue) {
       console.warn('Registrazione morte fallita', g.id, e);
     }
@@ -122,17 +123,20 @@ export async function recordDeath(): Promise<boolean> {
   // prima il segno di morte: senza, le regole non lasciano ricominciare con un nuovo personaggio
   await attempt('salvataggio', () => db.ref('sims_saves/' + me).set(buildSaveData()));
   await attempt('lapide', () => writeGrave());
-  await attempt('classifica', () => db.ref('sims_leaderboard/' + me).remove());
+  await attempt('classifica', () => db.ref(worldNode('leaderboard') + '/' + me).remove());
+  await attempt('classifica di tutti i mondi', () =>
+    db.ref('sims_leaderboard_global/' + me).remove(),
+  );
   await attempt('presenza', async () => {
     // chiudendo la pagina non deve ricomparire come "offline"
     await db
-      .ref('sims_online_players/' + me)
+      .ref(worldNode('online_players') + '/' + me)
       .onDisconnect()
       .cancel();
-    await db.ref('sims_online_players/' + me).remove();
+    await db.ref(worldNode('online_players') + '/' + me).remove();
   });
   await attempt('stanza', () =>
-    db.ref('sims_rooms_state').transaction((cur?: GameValue): GameValue => {
+    db.ref(worldNode('rooms_state')).transaction((cur?: GameValue): GameValue => {
       const rooms = normalizeRooms(cur);
       // il primo giro può arrivare senza dati (non ancora letti): si propone l'elenco così
       // com'è, il database risponde con quello vero e si rifà il giro
@@ -624,7 +628,9 @@ export async function promptSetSafePin(intro?: string): Promise<GameValue> {
     let room: GameValue = game.roomsState[game.myAssignedRoomIdx ?? -1];
     game.safePinCode = hashPin(res.value, room.id);
     game.hasSetSafePin = true;
-    game.session.db.ref(`sims_rooms_state/${game.myAssignedRoomIdx}/pin`).set(game.safePinCode);
+    game.session.db
+      .ref(`${worldNode('rooms_state')}/${game.myAssignedRoomIdx}/pin`)
+      .set(game.safePinCode);
     toast('✅ Cassaforte protetta con successo!');
   } else {
     toast(

@@ -2,6 +2,7 @@ import type { GameDatabase } from './database.js';
 import type { EconomyState, RoomState } from './models.js';
 import { decodeSaveV8, isRecord } from './save-model.js';
 import { bankBalanceOf } from './bank-rules.js';
+import { worldNode } from './world-db.js';
 
 export function decodeEconomy(value: unknown): EconomyState | null {
   if (!isRecord(value) || value.version !== 1) return null;
@@ -40,7 +41,7 @@ export class RoomEconomy {
     const operation = this.pending.then(async () => {
       if (!this.active()) return false;
       // Read before a transaction: Firebase may first call its updater with an empty local cache.
-      const reference = this.database.ref(`sims_rooms_state/${this.roomIndex}`);
+      const reference = this.database.ref(`${worldNode('rooms_state')}/${this.roomIndex}`);
       await reference.get();
       const seed = structuredClone(this.seed());
       const result = await reference.transaction((current: RoomState | null) => {
@@ -97,7 +98,7 @@ export class RoomEconomy {
         otherPlayerId === this.playerId
       )
         return false;
-      const reference = this.database.ref('sims_rooms_state');
+      const reference = this.database.ref(worldNode('rooms_state'));
       await reference.get();
       const result = await reference.transaction((rooms: Record<string, RoomState> | null) => {
         if (!this.active() || !rooms) return undefined;

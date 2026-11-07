@@ -76,6 +76,7 @@ import { interactWith, paintingTitleOf, promptFor, walkThroughKeys } from './int
 import { COLLECT_ENV, refillStands } from './collect.js';
 import { USED_ENV } from './used-shop.js';
 import { recordActivity } from './activity.js';
+import { worldNode } from './world-db.js';
 // Il proprietario può cambiare la combinazione della propria cassaforte quando vuole
 export async function changeSafePin(..._args: GameValue[]): Promise<GameValue> {
   if (!hasRoom() || !isMyRoomNow()) return;
@@ -97,7 +98,9 @@ export async function changeSafePin(..._args: GameValue[]): Promise<GameValue> {
   }
   game.safePinCode = hashPin(res.value, room.id);
   game.hasSetSafePin = true;
-  game.session.db.ref(`sims_rooms_state/${game.myAssignedRoomIdx}/pin`).set(game.safePinCode);
+  game.session.db
+    .ref(`${worldNode('rooms_state')}/${game.myAssignedRoomIdx}/pin`)
+    .set(game.safePinCode);
   toast('✅ Nuova combinazione salvata!');
 }
 
@@ -497,7 +500,9 @@ export async function resumeLastSpot(): Promise<boolean> {
   let op: GameValue = null;
   try {
     const snap: GameValue = await withTimeout(
-      game.session.db.ref('sims_online_players/' + game.session.myPlayerId).once('value'),
+      game.session.db
+        .ref(worldNode('online_players') + '/' + game.session.myPlayerId)
+        .once('value'),
       4000,
     );
     op = snap && snap.val();
@@ -699,7 +704,7 @@ export async function handleSafeInteraction(..._args: GameValue[]): Promise<Game
   const room: GameValue = game.roomsState[game.currentRoomIdx ?? -1];
   if (!room) return;
   const vaultRef: GameValue = game.session.db.ref(
-    `sims_rooms_state/${game.currentRoomIdx}/vaultMoney`,
+    `${worldNode('rooms_state')}/${game.currentRoomIdx}/vaultMoney`,
   );
   if (isMyRoomNow()) {
     const buttons: GameValue = [{ label: 'Chiudi', value: null, color: '#57606f' }];
@@ -732,7 +737,9 @@ export async function handleSafeInteraction(..._args: GameValue[]): Promise<Game
     return;
   }
   // I tentativi sono salvati online: ricaricare la pagina non li azzera.
-  const theftRef = game.session.db.ref(`sims_theft/${game.session.myPlayerId}/${room.id}`);
+  const theftRef = game.session.db.ref(
+    `${worldNode('theft')}/${game.session.myPlayerId}/${room.id}`,
+  );
   // ora del server, con un piccolo margine perché il database non accetta orari nel futuro
   const serverNow = (): number => Date.now() + (game.session.serverOffset || 0) - 2000;
   let record: TheftRecord | null = null;

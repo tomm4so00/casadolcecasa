@@ -52,6 +52,8 @@ export interface SaveV8 {
   pets?: unknown;
   /** preferenze del giocatore, uguali su ogni dispositivo (prefs-rules.ts) */
   prefs?: unknown;
+  /** il mondo (condominio) in cui abita; manca nei salvataggi di prima: è il mondo di sempre */
+  worldId?: unknown;
   /** Stanza (indice globale) e cuscino del letto in cui si sta dormendo. */
   sleepRoom?: unknown;
   bedSlot?: unknown;

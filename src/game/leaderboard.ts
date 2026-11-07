@@ -17,13 +17,20 @@ const esc = (s: string) =>
     (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!,
   );
 
-/** Mostra la classifica. `format` scrive il valore; `onTab` carica l'altra classifica. */
+/** Classifica del proprio condominio o di tutti i mondi. */
+export type LeaderboardScope = 'world' | 'all';
+
+/**
+ * Mostra la classifica. `format` scrive il valore; `onTab` carica l'altra classifica; `where`
+ * dice se è quella del condominio o di tutti i mondi, con il pulsante per passare all'altra.
+ */
 export function showLeaderboard(
   mode: LeaderboardMode,
   rows: LeaderboardRow[],
   myId: string,
   format: (row: LeaderboardRow) => string,
   onTab: (mode: LeaderboardMode) => void,
+  where?: { scope: LeaderboardScope; world: string; onScope: (scope: LeaderboardScope) => void },
 ): void {
   let el = document.getElementById('leaderboard-modal');
   if (!el) {
@@ -46,11 +53,18 @@ export function showLeaderboard(
     : '<li class="lb-empty">Ancora nessun giocatore in classifica.</li>';
   el.innerHTML =
     `<div class="card lb-card">` +
+    (where
+      ? `<button type="button" class="lb-scope">${
+          where.scope === 'all'
+            ? `🏠 Classifica del condominio ${esc(where.world)}`
+            : '🌍 Classifica di tutti i mondi'
+        }</button>`
+      : '') +
     `<div class="lb-tabs">` +
     `<button type="button" class="lb-tab${mode === 'wealth' ? ' sel' : ''}" data-mode="wealth">💰 Più ricchi</button>` +
     `<button type="button" class="lb-tab${mode === 'lived' ? ' sel' : ''}" data-mode="lived">⏳ Più longevi</button>` +
     `</div>` +
-    `<h3>${TITLES[mode]}</h3>` +
+    `<h3>${TITLES[mode]}${where?.scope === 'all' ? ' · tutti i mondi' : ''}</h3>` +
     `<div class="lb-count">${rows.length} ${rows.length === 1 ? 'giocatore' : 'giocatori'}` +
     (myPos >= 0 ? ` · sei ${myPos + 1}°` : '') +
     `</div>` +
@@ -66,6 +80,9 @@ export function showLeaderboard(
     }),
   );
   el.querySelector('.lb-close')?.addEventListener('click', () => el!.classList.add('hidden'));
+  el.querySelector('.lb-scope')?.addEventListener('click', () =>
+    where?.onScope(where.scope === 'all' ? 'world' : 'all'),
+  );
   // la propria riga è subito in vista, al centro dell'elenco
   const me = el.querySelector<HTMLElement>('.lb-me');
   const box = el.querySelector<HTMLElement>('.lb-list');

@@ -1,4 +1,5 @@
 import { startBetting } from './betting.js';
+import { chooseFirstWorld, currentWorldCode, openWorldSwitch } from './world-select.js';
 import { startGossip } from './gossip.js';
 import { startPaintingTitles } from './painting-titles.js';
 import { startCollect } from './collect.js';
@@ -51,6 +52,7 @@ import {
   updateNotifyButton,
 } from './needs.js';
 import { updateSoundButton } from './audio.js';
+import { worldNode } from './world-db.js';
 // ---------- Finestre di dialogo in-game ----------
 export function openDialog({
   title,
@@ -174,8 +176,9 @@ export async function openProfile(..._args: GameValue[]): Promise<GameValue> {
       (game.session.OFFLINE
         ? `Il tuo codice personaggio è:\n${game.session.myPlayerId}`
         : loginText()) +
+      `\n\n🌍 Condominio: ${currentWorldCode()} (dai il codice agli amici per giocare insieme)` +
       (hasRoom()
-        ? `\n\nLa tua stanza: ${roomLabel(game.myAssignedRoomIdx ?? 0, game.ROOMS_PER_APT)}`
+        ? `\nLa tua stanza: ${roomLabel(game.myAssignedRoomIdx ?? 0, game.ROOMS_PER_APT)}`
         : '') +
       `\n\n${personalityStatusText(game.player.personality)}` +
       (game.session.OFFLINE
@@ -187,6 +190,7 @@ export async function openProfile(..._args: GameValue[]): Promise<GameValue> {
     buttons: [
       { label: 'Chiudi', value: null, color: '#57606f' },
       { label: '💌 Invita amici', value: 'invite', color: '#e84393', wide: true },
+      { label: '🌍 Cambia condominio', value: 'world', color: '#16a085', wide: true },
       { label: '🧊 Criogenesi (pausa personaggio)', value: 'cryo', color: '#00a8ff', wide: true },
       { label: '🎨 Aspetto', value: 'look', color: '#8e44ad' },
       { label: '⚰️ Epitaffio', value: 'epitaph', color: '#636e72' },
@@ -211,6 +215,7 @@ export async function openProfile(..._args: GameValue[]): Promise<GameValue> {
     }
   }
   if (res.action === 'invite') await openInvite();
+  if (res.action === 'world') await openWorldSwitch();
   if (res.action === 'cryo') await openCryo();
   if (res.action === 'look') openCharacterCreator(false);
   if (res.action === 'epitaph') openEpitaph();
@@ -334,6 +339,8 @@ export async function startGame(..._args: GameValue[]): Promise<GameValue> {
     showDeathScreen();
     return;
   }
+  // chi entra per la prima volta sceglie il condominio (pubblico, nuovo o quello di un amico)
+  if (!game.session.hadSave) await chooseFirstWorld();
   // Il primo personaggio dell'account: solo lui può ricevere il bonus di un invito
   const firstCharacter = !game.bodyChosen;
   if (!game.bodyChosen) await openCharacterCreator(true);
@@ -351,7 +358,10 @@ export async function startGame(..._args: GameValue[]): Promise<GameValue> {
     if (game.sleepRoom !== null && game.sleepRoom !== game.myAssignedRoomIdx)
       try {
         other = (
-          await withTimeout(game.session.db.ref('sims_rooms_state/' + game.sleepRoom).get(), 5000)
+          await withTimeout(
+            game.session.db.ref(worldNode('rooms_state') + '/' + game.sleepRoom).get(),
+            5000,
+          )
         ).val();
       } catch {
         other = null;
@@ -370,14 +380,14 @@ export async function startGame(..._args: GameValue[]): Promise<GameValue> {
   }
   if (game.fainted) await resumeFaintSpot();
   revealScene();
-  game.session.db.ref('sims_rooms_state').on('value', (snapshot?: GameValue): GameValue => {
+  game.session.db.ref(worldNode('rooms_state')).on('value', (snapshot?: GameValue): GameValue => {
     game.roomsState = normalizeRooms(snapshot.val());
     syncVaultFromServer();
     syncMyPinFromRoom();
     renderArtSite();
   });
   game.session.db
-    .ref('sims_graveyard')
+    .ref(worldNode('graveyard'))
     .on('value', (snap?: GameValue): GameValue => rebuildGraveyard(snap.val()));
   startPresence();
   if (game.notifyOn) void enablePush();
@@ -408,7 +418,9 @@ export async function startGame(..._args: GameValue[]): Promise<GameValue> {
   lifetime.setInterval((): GameValue => saveGame(false), 3000);
   lifetime.setInterval((): GameValue => {
     if (hasRoom())
-      game.session.db.ref(`sims_rooms_state/${game.myAssignedRoomIdx}/lastSeen`).set(Date.now());
+      game.session.db
+        .ref(`${worldNode('rooms_state')}/${game.myAssignedRoomIdx}/lastSeen`)
+        .set(Date.now());
   }, 60000);
   lifetime.listen(browser, 'beforeunload', (): GameValue => saveGame(true));
   lifetime.listen(document, 'visibilitychange', (): GameValue => {
@@ -425,5 +437,5 @@ export function writeGrave(..._args: GameValue[]): GameValue {
   if (game.player.bornAt) g.lived = Math.max(0, g.deadAt - game.player.bornAt);
   if (game.player.epitaph) g.epitaph = game.player.epitaph;
   // update: conserva i fiori già lasciati; chi muore aspetta la risposta (vedi recordDeath)
-  return game.session.db.ref('sims_graveyard/' + game.session.myPlayerId).update(g);
+  return game.session.db.ref(worldNode('graveyard') + '/' + game.session.myPlayerId).update(g);
 }

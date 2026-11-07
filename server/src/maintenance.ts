@@ -13,6 +13,15 @@ import { graveFromSave, releaseRoomsOf } from '../../shared/death-rules.js';
 import { type CryoPass, awakeMs, decodeCryo, realTimeAfterAwake } from '../../shared/cryo-rules.js';
 import { ACTIVE_MARGIN_MS, absentDeath } from '../../src/game/absent-death-rules.js';
 import { dayNumber } from '../../src/game/game-clock.js';
+import {
+  LEGACY_WORLD,
+  type WorldNode,
+  countFree,
+  isWorldCode,
+  releaseExtraRooms,
+  worldIsEmpty,
+  worldNodePath,
+} from '../../shared/worlds.js';
 
 interface Snapshot {
   val(): unknown;
@@ -74,14 +83,47 @@ export async function liveTransaction(
   }
 }
 
+/** Tutti i mondi: quello di sempre e quelli dell'elenco (sims_worlds). */
+export async function worldIds(database: MaintenanceDatabase): Promise<string[]> {
+  const index = (await database.ref('sims_worlds').get()).val();
+  const ids = new Set([LEGACY_WORLD]);
+  if (record(index)) for (const code of Object.keys(index)) if (isWorldCode(code)) ids.add(code);
+  return [...ids];
+}
+
 /**
- * Morti per assenza e per salute a zero: se ne occupa il server, non un altro giocatore. Valgono
- * per tutti, anche per i personaggi di prima dell'accesso con Google non ancora collegati.
+ * Morti per assenza e per salute a zero, in ogni mondo: se ne occupa il server, non un altro
+ * giocatore. Valgono per tutti, anche per i personaggi di prima dell'accesso con Google non
+ * ancora collegati. Alla fine si cancellano i mondi rimasti senza nessuno.
  */
 export async function maintainGame(database: MaintenanceDatabase, now: number): Promise<void> {
   // il tempo passato in criogenesi non conta per le 80 ore di assenza
   const cryo = await cryoByPlayer(database);
-  const rooms = database.ref('sims_rooms_state');
+  for (const world of await worldIds(database)) {
+    if (world === LEGACY_WORLD) {
+      await maintainWorld(database, now, world, cryo);
+      continue;
+    }
+    // un mondo con dati strani non blocca gli altri
+    try {
+      await maintainWorld(database, now, world, cryo);
+    } catch (error) {
+      console.log(`World ${world} skipped:`, (error as { code?: string }).code || String(error));
+    }
+  }
+  const removed = await removeEmptyWorlds(database, now);
+  if (removed.length) console.log(`Empty worlds removed: ${removed.join(', ')}`);
+}
+
+/** Morti, lapidi, stanze liberate e pulizie di un mondo. */
+export async function maintainWorld(
+  database: MaintenanceDatabase,
+  now: number,
+  world: string = LEGACY_WORLD,
+  cryo: Map<string, CryoPass> = new Map(),
+): Promise<void> {
+  const p = (node: WorldNode) => worldNodePath(world, node);
+  const rooms = database.ref(p('rooms_state'));
   let expired: { id: string; name: string; lastSeen: number }[] = [];
   const result = await liveTransaction(rooms, (value) => {
     expired = [];
@@ -124,40 +166,87 @@ export async function maintainGame(database: MaintenanceDatabase, now: number): 
       };
       if (typeof save.bornAt === 'number') grave.lived = Math.max(0, deadAt - save.bornAt);
       if (typeof save.epitaph === 'string') grave.epitaph = save.epitaph.slice(0, 60);
-      await database.ref('sims_graveyard/' + player.id).update(grave);
-      await database.ref('sims_leaderboard/' + player.id).remove();
-      await database.ref('sims_online_players/' + player.id).remove();
+      await database.ref(p('graveyard') + '/' + player.id).update(grave);
+      await removeFromBoards(database, world, player.id);
+      await database.ref(p('online_players') + '/' + player.id).remove();
       await liveTransaction(
-        database.ref('sims_rooms_state/' + roomIndex + '/pendingDeath'),
+        database.ref(p('rooms_state') + '/' + roomIndex + '/pendingDeath'),
         (value) => (record(value) && value.id === player.id ? null : undefined),
       );
     }
-  await markAbsentDeaths(database, now, cryo);
-  await tidyDeadPlayers(database, now);
-  const chat = (await database.ref('sims_chat').get()).val();
+  await markAbsentDeaths(database, now, cryo, world);
+  await tidyDeadPlayers(database, now, world);
+  // una stanza per giocatore: quelle in più tornano libere (le regole non possono contarle)
+  let freed = 0;
+  const fixed = await liveTransaction(rooms, (value) => {
+    const r = releaseExtraRooms(value);
+    freed = r ? r.freed : 0;
+    return r ? r.rooms : undefined;
+  });
+  if (freed) console.log(`World ${world}: extra rooms released: ${freed}`);
+  // i posti liberi nell'elenco li scrive il gioco: qui si rimettono quelli veri
+  const index = database.ref('sims_worlds/' + world);
+  const entry = (await index.get()).val();
+  if (record(entry) || world === LEGACY_WORLD)
+    await index.update({
+      free: countFree(fixed.snapshot.val() as Record<string, never> | null),
+      ...(record(entry) ? {} : { createdAt: 0 }),
+    });
+  const chat = (await database.ref(p('chat')).get()).val();
   if (record(chat)) {
     const oldKeys = Object.keys(chat).sort().slice(0, -500);
     if (oldKeys.length)
-      await database.ref('sims_chat').update(Object.fromEntries(oldKeys.map((key) => [key, null])));
+      await database.ref(p('chat')).update(Object.fromEntries(oldKeys.map((key) => [key, null])));
   }
   // sala giochi: le partite più vecchie di un giorno si cancellano
-  const games = (await database.ref('sims_games').get()).val();
+  const games = (await database.ref(p('games')).get()).val();
   if (record(games)) {
     const old = Object.entries(games)
       .filter(([, g]) => !record(g) || !(typeof g.t === 'number' && now - g.t < 24 * 3600000))
       .map(([key]) => key);
     if (old.length)
-      await database.ref('sims_games').update(Object.fromEntries(old.map((key) => [key, null])));
+      await database.ref(p('games')).update(Object.fromEntries(old.map((key) => [key, null])));
   }
   // bacheca dei pettegolezzi: si tengono solo i fatti più recenti
-  const gossip = (await database.ref('sims_gossip').get()).val();
+  const gossip = (await database.ref(p('gossip')).get()).val();
   if (record(gossip)) {
     const oldKeys = Object.keys(gossip).sort().slice(0, -200);
     if (oldKeys.length)
-      await database
-        .ref('sims_gossip')
-        .update(Object.fromEntries(oldKeys.map((key) => [key, null])));
+      await database.ref(p('gossip')).update(Object.fromEntries(oldKeys.map((key) => [key, null])));
   }
+}
+
+/** Chi muore esce dalla classifica del suo mondo e da quella di tutti i mondi. */
+async function removeFromBoards(database: MaintenanceDatabase, world: string, id: string) {
+  await database.ref(worldNodePath(world, 'leaderboard') + '/' + id).remove();
+  await database.ref('sims_leaderboard_global/' + id).remove();
+}
+
+/** Dopo quanto tempo un mondo appena creato e rimasto vuoto si può cancellare. */
+export const EMPTY_WORLD_GRACE_MS = 3600000;
+
+/**
+ * Mondi senza più nessuno (tutti morti, andati altrove o account cancellati): si cancellano
+ * interi, stanze, chat, cimitero e la voce nell'elenco. Il mondo di sempre resta.
+ * Restituisce i codici dei mondi cancellati.
+ */
+export async function removeEmptyWorlds(
+  database: MaintenanceDatabase,
+  now: number,
+): Promise<string[]> {
+  const index = (await database.ref('sims_worlds').get()).val();
+  if (!record(index)) return [];
+  const removed: string[] = [];
+  for (const [code, entry] of Object.entries(index)) {
+    if (code === LEGACY_WORLD || !isWorldCode(code)) continue;
+    const createdAt = record(entry) ? Number(entry.createdAt) || 0 : 0;
+    const rooms = (await database.ref(worldNodePath(code, 'rooms_state')).get()).val();
+    if (!worldIsEmpty(rooms, createdAt, now, EMPTY_WORLD_GRACE_MS)) continue;
+    await database.ref('worlds/' + code).remove();
+    await database.ref('sims_worlds/' + code).remove();
+    removed.push(code);
+  }
+  return removed;
 }
 
 /**
@@ -171,14 +260,16 @@ export async function markAbsentDeaths(
   database: MaintenanceDatabase,
   now: number,
   cryo: Map<string, CryoPass> = new Map(),
+  world: string = LEGACY_WORLD,
 ): Promise<void> {
   const read = async (path: string) => {
     const v = (await database.ref(path).get()).val();
     return record(v) ? v : {};
   };
-  const rooms = await read('sims_rooms_state');
-  const online = await read('sims_online_players');
-  const board = await read('sims_leaderboard');
+  const p = (node: WorldNode) => worldNodePath(world, node);
+  const rooms = await read(p('rooms_state'));
+  const online = await read(p('online_players'));
+  const board = await read(p('leaderboard'));
   const roomOf = new Map<string, Record<string, unknown>>();
   for (const room of Object.values(rooms))
     if (record(room) && typeof room.ownerId === 'string' && !room.pendingDeath)
@@ -214,7 +305,7 @@ export async function markAbsentDeaths(
     });
     const shown = record(here) && typeof here.name === 'string' ? here.name : '';
     // la lapide con il giorno come lo conta il gioco
-    await database.ref('sims_graveyard/' + id).update({
+    await database.ref(p('graveyard') + '/' + id).update({
       ...graveFromSave(
         { ...save, deadAt: death.deadAt },
         room && typeof room.owner === 'string' ? room.owner : shown,
@@ -230,14 +321,19 @@ export async function markAbsentDeaths(
  * visibile agli altri o un posto in classifica, oppure non ha la lapide: si sistema qui. Succede se
  * il telefono ha perso la rete proprio mentre il personaggio moriva.
  */
-export async function tidyDeadPlayers(database: MaintenanceDatabase, now: number): Promise<void> {
+export async function tidyDeadPlayers(
+  database: MaintenanceDatabase,
+  now: number,
+  world: string = LEGACY_WORLD,
+): Promise<void> {
   const keysOf = async (path: string) => {
     const v = (await database.ref(path).get()).val();
     return record(v) ? v : {};
   };
-  const rooms = await keysOf('sims_rooms_state');
-  const online = await keysOf('sims_online_players');
-  const board = await keysOf('sims_leaderboard');
+  const p = (node: WorldNode) => worldNodePath(world, node);
+  const rooms = await keysOf(p('rooms_state'));
+  const online = await keysOf(p('online_players'));
+  const board = await keysOf(p('leaderboard'));
   const ownerName = new Map<string, string>();
   for (const room of Object.values(rooms))
     if (record(room) && typeof room.ownerId === 'string')
@@ -247,15 +343,15 @@ export async function tidyDeadPlayers(database: MaintenanceDatabase, now: number
     // si legge solo il segno di morte: i salvataggi interi sono grandi
     if ((await database.ref('sims_saves/' + id + '/dead').get()).val() !== true) continue;
     const save = (await database.ref('sims_saves/' + id).get()).val();
-    const grave = (await database.ref('sims_graveyard/' + id).get()).val();
+    const grave = (await database.ref(p('graveyard') + '/' + id).get()).val();
     if (!record(grave) || typeof grave.name !== 'string')
       await database
-        .ref('sims_graveyard/' + id)
+        .ref(p('graveyard') + '/' + id)
         .update({ ...graveFromSave(record(save) ? save : {}, ownerName.get(id) || '', now) });
-    await database.ref('sims_leaderboard/' + id).remove();
-    await database.ref('sims_online_players/' + id).remove();
+    await removeFromBoards(database, world, id);
+    await database.ref(p('online_players') + '/' + id).remove();
     if (ownerName.has(id))
-      await liveTransaction(database.ref('sims_rooms_state'), (value) =>
+      await liveTransaction(database.ref(p('rooms_state')), (value) =>
         record(value) ? (releaseRoomsOf(value, id) ?? undefined) : undefined,
       );
   }
@@ -299,10 +395,7 @@ export async function sendDeathWarnings(
   now: number,
   send: PushSender,
 ): Promise<number> {
-  const [rooms, accounts] = await Promise.all([
-    database.ref('sims_rooms_state').get(),
-    database.ref('sims_accounts').get(),
-  ]);
+  const accounts = await database.ref('sims_accounts').get();
   const linked = new Set(
     record(accounts.val())
       ? Object.values(accounts.val() as Record<string, unknown>).flatMap((a) =>
@@ -310,11 +403,16 @@ export async function sendDeathWarnings(
         )
       : [],
   );
-  const roomList = rooms.val();
-  if (!record(roomList)) return 0;
+  // le stanze di tutti i mondi
+  const roomList: unknown[] = [];
+  for (const world of await worldIds(database)) {
+    const rooms = (await database.ref(worldNodePath(world, 'rooms_state')).get()).val();
+    if (record(rooms)) roomList.push(...Object.values(rooms));
+  }
+  if (!roomList.length) return 0;
   const cryo = await cryoByPlayer(database);
   let sent = 0;
-  for (const room of Object.values(roomList)) {
+  for (const room of roomList) {
     if (!record(room) || room.pendingDeath) continue;
     const { ownerId, lastSeen } = room;
     if (typeof ownerId !== 'string' || !linked.has(ownerId) || typeof lastSeen !== 'number')
@@ -420,21 +518,37 @@ export const ROCKET_GOAL = 15000;
 export const ROCKET_NOTIFY_AT = 14000;
 
 /**
- * Quando i giocatori arrivano a 14.000 € avvisa tutti sul telefono: manca poco e, a 15.000 €,
- * qualcuno potrà premere il pulsante rosso per lanciare il razzo. Succede una volta sola.
- * Restituisce quanti avvisi sono partiti (-1 se non era il momento di avvisare).
+ * Quando i giocatori di un condominio arrivano a 14.000 € per il loro razzo, avvisa sul telefono
+ * chi abita lì: manca poco e, a 15.000 €, qualcuno potrà premere il pulsante rosso per lanciarlo.
+ * Succede una volta sola per razzo. Restituisce quanti avvisi sono partiti in tutti i mondi (-1
+ * se in nessun mondo era il momento di avvisare).
  */
 export async function notifyRocketAlmostReady(
   database: MaintenanceDatabase,
   now: number,
   send: PushSender,
 ): Promise<number> {
-  const current = (await database.ref('sims_projects/rocket').get()).val();
+  let total = -1;
+  for (const world of await worldIds(database)) {
+    const n = await notifyRocketInWorld(database, now, send, world);
+    if (n >= 0) total = Math.max(0, total) + n;
+  }
+  return total;
+}
+
+async function notifyRocketInWorld(
+  database: MaintenanceDatabase,
+  now: number,
+  send: PushSender,
+  world: string,
+): Promise<number> {
+  const rocket = worldNodePath(world, 'projects') + '/rocket';
+  const current = (await database.ref(rocket).get()).val();
   if (!record(current) || current.notified || current.launchAt) return -1;
   const funded = Number(current.funded) || 0;
   if (funded < ROCKET_NOTIFY_AT) return -1;
   const result = await database
-    .ref('sims_projects/rocket/notified')
+    .ref(rocket + '/notified')
     .transaction((value) => (value ? undefined : now));
   if (!result.committed) return -1;
   const left = ROCKET_GOAL - funded;
@@ -448,10 +562,15 @@ export async function notifyRocketAlmostReady(
           title: '🚀 Il razzo è pronto!',
           body: 'Il razzo è completo: entra in Casa dolce casa, vai nella zona esterna del laboratorio ingegneristico e premi il pulsante rosso per lanciarlo!',
         };
-  const everyone = (await database.ref('sims_push').get()).val();
-  if (!record(everyone)) return 0;
+  // chi abita in questo condominio
+  const rooms = (await database.ref(worldNodePath(world, 'rooms_state')).get()).val();
+  const residents = new Set<string>();
+  if (record(rooms))
+    for (const room of Object.values(rooms))
+      if (record(room) && typeof room.ownerId === 'string') residents.add(room.ownerId);
   let sent = 0;
-  for (const [pid, push] of Object.entries(everyone)) {
+  for (const pid of residents) {
+    const push = (await database.ref('sims_push/' + pid).get()).val();
     if (!record(push) || !record(push.tokens)) continue;
     for (const [key, entry] of Object.entries(push.tokens)) {
       if (!record(entry) || typeof entry.token !== 'string') continue;
@@ -554,8 +673,6 @@ export async function retireBusinesses(
     const p = record(q) ? Number(q.price) : 0;
     return Number.isFinite(p) && p > 0 ? p : 0;
   };
-  const all = (await database.ref('sims_rooms_state').get()).val();
-  if (!record(all)) return 0;
   const holds = (room: unknown): boolean =>
     record(room) &&
     record(room.economy) &&
@@ -564,58 +681,64 @@ export async function retireBusinesses(
       (biz) => (room.economy as { invest: Record<string, unknown> }).invest[biz] !== undefined,
     );
   let refunded = 0;
-  for (const [index, room] of Object.entries(all)) {
-    if (!holds(room)) continue;
-    let paid: { player: string; biz: string; amount: number }[] = [];
-    try {
-      const result = await liveTransaction(database.ref('sims_rooms_state/' + index), (value) => {
-        paid = [];
-        if (!holds(value)) return undefined;
-        const next = structuredClone(value) as Record<string, unknown>;
-        const invest = (next.economy as { invest: Record<string, unknown> }).invest;
-        let vault = Number(next.vaultMoney);
-        if (!Number.isSafeInteger(vault)) vault = 0;
-        for (const biz of retired) {
-          const holding = invest[biz];
-          if (holding === undefined) continue;
-          const units = record(holding) ? Number(holding.units) || 0 : 0;
-          const cost = record(holding) ? Number(holding.cost) || 0 : 0;
-          const price = lastPrice(biz);
-          const amount = Math.max(0, Math.floor(price > 0 ? units * price : cost));
-          // la cassaforte è piena: le quote restano dove sono, si riprova al prossimo giro
-          if (vault + amount > VAULT_MAX) continue;
-          delete invest[biz];
-          vault += amount;
-          if (amount >= 1 && typeof next.ownerId === 'string')
-            paid.push({ player: next.ownerId, biz, amount });
-        }
-        next.vaultMoney = vault;
-        return next;
-      });
-      if (!result.committed) continue;
-    } catch (error) {
-      console.log(
-        'Retired business refund skipped for a room:',
-        (error as { code?: string }).code || 'unknown error',
-      );
-      continue;
-    }
-    refunded += paid.length;
-    for (const p of paid) {
-      const key = now.toString(36) + Math.random().toString(36).slice(2, 6);
+  // le stanze di ogni mondo, una alla volta
+  for (const world of await worldIds(database)) {
+    const roomsPath = worldNodePath(world, 'rooms_state');
+    const all = (await database.ref(roomsPath).get()).val();
+    if (!record(all)) continue;
+    for (const [index, room] of Object.entries(all)) {
+      if (!holds(room)) continue;
+      let paid: { player: string; biz: string; amount: number }[] = [];
       try {
-        await database.ref(`sims_interactions/${p.player}`).update({
-          [key]: {
-            type: 'bizRetired',
-            from: 'borsa',
-            fromName: 'Borsa',
-            t: now,
-            biz: p.biz,
-            amt: Math.min(p.amount, 1_000_000),
-          },
+        const result = await liveTransaction(database.ref(roomsPath + '/' + index), (value) => {
+          paid = [];
+          if (!holds(value)) return undefined;
+          const next = structuredClone(value) as Record<string, unknown>;
+          const invest = (next.economy as { invest: Record<string, unknown> }).invest;
+          let vault = Number(next.vaultMoney);
+          if (!Number.isSafeInteger(vault)) vault = 0;
+          for (const biz of retired) {
+            const holding = invest[biz];
+            if (holding === undefined) continue;
+            const units = record(holding) ? Number(holding.units) || 0 : 0;
+            const cost = record(holding) ? Number(holding.cost) || 0 : 0;
+            const price = lastPrice(biz);
+            const amount = Math.max(0, Math.floor(price > 0 ? units * price : cost));
+            // la cassaforte è piena: le quote restano dove sono, si riprova al prossimo giro
+            if (vault + amount > VAULT_MAX) continue;
+            delete invest[biz];
+            vault += amount;
+            if (amount >= 1 && typeof next.ownerId === 'string')
+              paid.push({ player: next.ownerId, biz, amount });
+          }
+          next.vaultMoney = vault;
+          return next;
         });
-      } catch {
-        // i soldi sono già in cassaforte: l'avviso è solo una cortesia
+        if (!result.committed) continue;
+      } catch (error) {
+        console.log(
+          'Retired business refund skipped for a room:',
+          (error as { code?: string }).code || 'unknown error',
+        );
+        continue;
+      }
+      refunded += paid.length;
+      for (const p of paid) {
+        const key = now.toString(36) + Math.random().toString(36).slice(2, 6);
+        try {
+          await database.ref(`${worldNodePath(world, 'interactions')}/${p.player}`).update({
+            [key]: {
+              type: 'bizRetired',
+              from: 'borsa',
+              fromName: 'Borsa',
+              t: now,
+              biz: p.biz,
+              amt: Math.min(p.amount, 1_000_000),
+            },
+          });
+        } catch {
+          // i soldi sono già in cassaforte: l'avviso è solo una cortesia
+        }
       }
     }
   }

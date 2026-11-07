@@ -24,6 +24,7 @@ import {
   roomPaintings,
   slotOfKey,
 } from './painting-rules.js';
+import { worldNode } from './world-db.js';
 
 type Tool = 1 | 3 | 6 | 'fill';
 const studio = {
@@ -207,7 +208,7 @@ async function finishPainting(): Promise<void> {
   const code = encodePainting(studio.grid);
   let hung = false;
   try {
-    await game.session.db.ref(`sims_rooms_state/${game.myAssignedRoomIdx}`).update({
+    await game.session.db.ref(`${worldNode('rooms_state')}/${game.myAssignedRoomIdx}`).update({
       [`paintings/${slot}`]: code,
       [`sale/${slot}`]: null,
     });
@@ -272,7 +273,7 @@ export async function managePainting(key: string): Promise<void> {
   }
   if (res.action !== 'remove') return;
   try {
-    await game.session.db.ref(`sims_rooms_state/${game.myAssignedRoomIdx}`).update({
+    await game.session.db.ref(`${worldNode('rooms_state')}/${game.myAssignedRoomIdx}`).update({
       [`paintings/${slot}`]: null,
       [`sale/${slot}`]: null,
     });

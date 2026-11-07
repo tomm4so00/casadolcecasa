@@ -101,11 +101,20 @@ describe('lancio del razzo', () => {
     expect(countdownText(-5)).toBe('00:00');
   });
 
-  it('a 14.000 € il server avvisa tutti, una volta sola', async () => {
+  it('a 14.000 € il server avvisa tutti quelli del condominio, una volta sola', async () => {
     const database = localDatabase(new Lifetime(), new MemoryStorage());
     await database.ref('sims_projects/rocket').set({ funded: 14200 });
+    await database.ref('sims_rooms_state').set([
+      { id: 1, owner: 'A', ownerId: 'a' },
+      { id: 2, owner: 'B', ownerId: 'b' },
+    ]);
     await database.ref('sims_push/a/tokens/k1').set({ token: 'tok-a', t: t0 });
     await database.ref('sims_push/b/tokens/k2').set({ token: 'tok-b', t: t0 });
+    // c abita in un altro condominio, dove il razzo è ancora lontano: non riceve niente
+    await database.ref('sims_worlds/CASA-2222').set({ free: 63, createdAt: t0 });
+    await database.ref('worlds/CASA-2222/rooms_state').set([{ id: 1, owner: 'C', ownerId: 'c' }]);
+    await database.ref('worlds/CASA-2222/projects/rocket').set({ funded: 100 });
+    await database.ref('sims_push/c/tokens/k3').set({ token: 'tok-c', t: t0 });
     const sent: string[] = [];
     const send: PushSender = async (token, m) => {
       sent.push(token + ':' + m.title + ':' + m.body);
@@ -126,6 +135,7 @@ describe('lancio del razzo', () => {
     expect(await notifyRocketAlmostReady(low, t0, async () => 'sent')).toBe(-1);
     const full = localDatabase(new Lifetime(), new MemoryStorage());
     await full.ref('sims_projects/rocket').set({ funded: 15000 });
+    await full.ref('sims_rooms_state').set([{ id: 1, owner: 'A', ownerId: 'a' }]);
     await full.ref('sims_push/a/tokens/k1').set({ token: 'tok-a', t: t0 });
     const titles: string[] = [];
     await notifyRocketAlmostReady(full, t0, async (_t, m) => {

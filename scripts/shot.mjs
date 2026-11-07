@@ -45,6 +45,8 @@ try {
   await page.goto(server.resolvedUrls.local[0] + '?offline=1');
   await page.locator('#nickname').fill('Prova');
   await page.locator('#start-game-btn').click();
+  // giocatore nuovo: si entra nel condominio di sempre
+  await page.locator('#world-modal [data-w="public"]').click();
   await page
     .locator('#creator-modal')
     .getByRole('button', { name: /Conferma/ })

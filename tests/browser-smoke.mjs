@@ -14,6 +14,8 @@ try {
   await page.goto(server.resolvedUrls.local[0] + '?offline=1');
   await page.locator('#nickname').fill('Verifica v8');
   await page.locator('#start-game-btn').click();
+  // giocatore nuovo: prima sceglie il condominio (in prova c'è solo quello di sempre, CASA-0001)
+  await page.locator('#world-modal [data-w="public"]').click();
   await page.locator('#creator-modal').waitFor({ state: 'visible' });
   await page
     .locator('#creator-modal')
@@ -185,6 +187,45 @@ try {
     );
   });
   console.log('PASS: two hours of offline sleep with luxury bed, health bonus and bedroom resume.');
+  // trasloco in un condominio nuovo: la stanza (cassaforte compresa) viene con il giocatore
+  const beforeMove = await page.evaluate(async () => {
+    const { game } = await import('/src/game/context.ts');
+    const room = game.roomsState[game.myAssignedRoomIdx];
+    return { world: game.session.worldId, idx: game.myAssignedRoomIdx, vault: room.vaultMoney };
+  });
+  assert.equal(beforeMove.world, 'CASA-0001');
+  await page.evaluate(() => {
+    void import('/src/game/interface.ts').then((m) => m.openProfile());
+  });
+  await page
+    .locator('#dialog-buttons')
+    .getByRole('button', { name: /Cambia condominio/ })
+    .click();
+  await page.locator('#world-modal [data-w="create"]').click();
+  await page.locator('#ui-setup-screen').waitFor({ state: 'visible' });
+  await page.locator('#start-game-btn').click();
+  await page.waitForFunction(async () => {
+    const { game } = await import('/src/game/context.ts');
+    return (
+      /^CASA-/.test(game.session.worldId) &&
+      game.session.worldId !== 'CASA-0001' &&
+      game.roomsState[game.myAssignedRoomIdx]?.ownerId === game.session.myPlayerId
+    );
+  });
+  const moved = await page.evaluate(async () => {
+    const { game } = await import('/src/game/context.ts');
+    const old = (await game.session.db.ref('sims_rooms_state').get()).val() || [];
+    const index = (await game.session.db.ref('sims_worlds/' + game.session.worldId).get()).val();
+    return {
+      vault: game.roomsState[game.myAssignedRoomIdx].vaultMoney,
+      stillInOld: Object.values(old).some((r) => r && r.ownerId === game.session.myPlayerId),
+      free: index?.free,
+    };
+  });
+  assert.equal(moved.vault, beforeMove.vault);
+  assert.equal(moved.stillInOld, false);
+  assert.equal(moved.free, 63);
+  console.log('PASS: new world, room and vault moved, old room freed, 63 free rooms left.');
   console.log('CATALOG', catalog);
   console.log('ERRORS', errors);
   assert.deepEqual(errors, []);

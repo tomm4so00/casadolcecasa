@@ -1,5 +1,6 @@
 // Inviti: il pulsante del profilo condivide il link del gioco (WhatsApp, Telegram, Messaggi…).
 // Chi entra per la prima volta da quel link riceve 300€, e altrettanti ne riceve chi l'ha invitato.
+import { currentWorldCode } from './world-select.js';
 import { googlePlayerId } from './account-model.js';
 import { creditMoney } from './economy.js';
 import { game } from './context.js';
@@ -178,8 +179,10 @@ async function copyLink(text: string): Promise<void> {
 export async function openInvite(): Promise<void> {
   const link = inviteLink(game.session.OFFLINE ? null : game.session.myPlayerId);
   const nick = game.player.myData.nick || '';
+  // il codice del condominio: chi arriva lo scrive alla prima schermata e abita vicino a te
+  const world = `\n🌍 Il mio condominio: ${currentWorldCode()}`;
   // il messaggio completo, con il link personale dentro il testo
-  const message = inviteMessage(nick, link);
+  const message = inviteMessage(nick, link) + world;
   const count = await invitedCount();
   const canShare = typeof navigator.share === 'function';
   const res = await openDialog({
@@ -190,6 +193,7 @@ export async function openInvite(): Promise<void> {
       ` (fino a ${INVITE_MAX_PAID} amici).` +
       (count !== null ? `\n\nAmici arrivati con il tuo invito: ${count}` : '') +
       `\n\n🔗 Il tuo link personale:\n${link}` +
+      `\n\n🌍 Per abitare nel tuo stesso condominio scrivono il codice ${currentWorldCode()}.` +
       (game.session.OFFLINE
         ? '\n\n🧪 Sei in modalità prova: il link non porta il tuo invito e niente bonus.'
         : ''),
@@ -217,7 +221,7 @@ export async function openInvite(): Promise<void> {
   if (res.action === 'telegram')
     // Telegram aggiunge da sé il link (url) sotto il testo
     browser.open(
-      `https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent(inviteMessage(nick))}`,
+      `https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent(inviteMessage(nick) + world)}`,
       '_blank',
     );
   if (res.action === 'copy') await copyLink(message);

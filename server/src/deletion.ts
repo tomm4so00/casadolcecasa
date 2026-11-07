@@ -4,6 +4,7 @@
 // recuperati con il codice), in ogni nodo del database, e infine l'account di accesso.
 // Restano solo le ricevute degli acquisti (sims_cryo/<uid>): la legge chiede di tenerle 10 anni.
 import { releaseRoomsOf } from '../../shared/death-rules.js';
+import { LEGACY_WORLD, WORLD_NODES, isWorldCode, worldNodePath } from '../../shared/worlds.js';
 
 interface Snapshot {
   val(): unknown;
@@ -63,6 +64,7 @@ const PER_PLAYER = [
   'sims_ltd_sent',
   'sims_rps',
   'sims_invites',
+  'sims_leaderboard_global',
 ];
 
 /**
@@ -164,6 +166,42 @@ export function deletionPaths(uid: string, data: Partial<Record<string, unknown>
   );
 }
 
+/** I nodi di un mondo con il nome del mondo di sempre (sims_chat…): così vale lo stesso calcolo. */
+const WORLD_PREFIX = new RegExp(`^sims_(${WORLD_NODES.join('|')})(?=/|$)`);
+
+/**
+ * I mondi (oltre a quello di sempre) in cui abitano i personaggi dell'account, letti dai loro
+ * salvataggi.
+ */
+export function accountWorlds(ids: Iterable<string>, saves: unknown): string[] {
+  const worlds = new Set<string>();
+  for (const id of ids) {
+    const save = record(saves) ? saves[id] : null;
+    const world = record(save) ? save.worldId : null;
+    if (typeof world === 'string' && world !== LEGACY_WORLD && isWorldCode(world))
+      worlds.add(world);
+  }
+  return [...worlds];
+}
+
+/**
+ * I percorsi da cancellare dentro un mondo: `data` ha i nodi di quel mondo con il nome di sempre
+ * (sims_chat…); qui si tengono solo quelli del mondo, spostati sotto /worlds/{codice}.
+ */
+export function worldDeletionPaths(
+  uid: string,
+  data: Partial<Record<string, unknown>>,
+  world: string,
+): string[] {
+  return deletionPaths(uid, data)
+    .filter((path) => WORLD_PREFIX.test(path))
+    .map((path) =>
+      path.replace(WORLD_PREFIX, (_m, node) =>
+        worldNodePath(world, node as (typeof WORLD_NODES)[number]),
+      ),
+    );
+}
+
 /** Libera le stanze dei suoi personaggi e toglie i promemoria di morte che li riguardano. */
 function releaseRooms(rooms: unknown, ids: Set<string>): unknown {
   if (!record(rooms) && !Array.isArray(rooms)) return undefined;
@@ -198,17 +236,27 @@ export async function deleteAccount(
   const data: Record<string, unknown> = {};
   for (const node of DELETION_NODES) data[node] = (await database.ref(node).get()).val();
   const ids = new Set(accountPlayerIds(uid, data));
-  const rooms = database.ref('sims_rooms_state');
-  // in ascolto mentre si scrive: vedi liveTransaction in maintenance.ts
-  const keep = () => {};
-  rooms.on?.('value', keep);
-  try {
-    await rooms.get();
-    await rooms.transaction((value) => releaseRooms(value, ids));
-  } finally {
-    rooms.off?.('value', keep);
+  const worlds = accountWorlds(ids, data.sims_saves);
+  for (const world of [LEGACY_WORLD, ...worlds]) {
+    const rooms = database.ref(worldNodePath(world, 'rooms_state'));
+    // in ascolto mentre si scrive: vedi liveTransaction in maintenance.ts
+    const keep = () => {};
+    rooms.on?.('value', keep);
+    try {
+      await rooms.get();
+      await rooms.transaction((value) => releaseRooms(value, ids));
+    } finally {
+      rooms.off?.('value', keep);
+    }
   }
   const paths = deletionPaths(uid, data);
+  // e quello che ha lasciato nei condomini nuovi in cui abitava
+  for (const world of worlds) {
+    const inWorld: Record<string, unknown> = { ...data };
+    for (const node of WORLD_NODES)
+      inWorld['sims_' + node] = (await database.ref(worldNodePath(world, node)).get()).val();
+    paths.push(...worldDeletionPaths(uid, inWorld, world));
+  }
   if (paths.length) await database.ref('/').update(Object.fromEntries(paths.map((p) => [p, null])));
   await deleteLogin(uid);
   await database.ref('/').update({ [`sims_deletions/${uid}`]: null });

@@ -26,6 +26,7 @@ import {
   symbolEmoji,
 } from './betting-rules.js';
 import { recordActivity } from './activity.js';
+import { worldNode } from './world-db.js';
 
 const euro = (n: number) => `${n.toLocaleString('it-IT')} €`;
 const serverNow = (): number => Date.now() + (game.session.serverOffset || 0);
@@ -132,7 +133,7 @@ let lastRound = -1;
 let myPick: RpsChoice | null = null;
 let busy = false;
 
-const rpsRef = (target: string) => game.session.db.ref('sims_rps/' + target);
+const rpsRef = (target: string) => game.session.db.ref(worldNode('rps') + '/' + target);
 
 async function sha256(text: string): Promise<string> {
   const bytes = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));

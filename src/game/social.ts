@@ -25,12 +25,13 @@ import {
   tryKiss,
 } from './romance.js';
 import { recordActivity } from './activity.js';
+import { worldNode } from './world-db.js';
 export function sendSocial(tid?: GameValue, msg?: GameValue): GameValue {
   const key: GameValue = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
   msg.from = game.session.myPlayerId;
   msg.fromName = game.player.myData.nick;
   msg.t = Date.now();
-  return game.session.db.ref(`sims_interactions/${tid}/${key}`).set(msg);
+  return game.session.db.ref(`${worldNode('interactions')}/${tid}/${key}`).set(msg);
 }
 
 export function saySocial(txt?: GameValue): GameValue {
@@ -142,7 +143,7 @@ export function drainInbox(v?: GameValue): GameValue {
     if (game.socDone[k]) return;
     game.socDone[k] = 1;
     try {
-      game.session.db.ref(`sims_interactions/${game.session.myPlayerId}/${k}`).remove();
+      game.session.db.ref(`${worldNode('interactions')}/${game.session.myPlayerId}/${k}`).remove();
     } catch (e: GameValue) {}
     try {
       handleSocial(v[k]);
@@ -155,12 +156,12 @@ export function drainInbox(v?: GameValue): GameValue {
 
 export function startInbox(..._args: GameValue[]): GameValue {
   game.session.db
-    .ref('sims_interactions/' + game.session.myPlayerId)
+    .ref(worldNode('interactions') + '/' + game.session.myPlayerId)
     .on('value', (s?: GameValue): GameValue => drainInbox(s.val()));
   lifetime.setInterval((): GameValue => {
     if (game.socPending)
       game.session.db
-        .ref('sims_interactions/' + game.session.myPlayerId)
+        .ref(worldNode('interactions') + '/' + game.session.myPlayerId)
         .once('value', (s?: GameValue): GameValue => drainInbox(s.val()));
   }, 3000);
 }

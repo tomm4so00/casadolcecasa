@@ -16,6 +16,7 @@ import {
   rocketFlight,
 } from './project-rules.js';
 import { recordActivity } from './activity.js';
+import { worldNode } from './world-db.js';
 
 const serverNow = (): number => Date.now() + (game.session.serverOffset || 0);
 
@@ -38,7 +39,7 @@ async function book(path: 'trip' | 'moonTrip'): Promise<number | null> {
   const at = serverNow() + 1000;
   try {
     const res = await game.session.db
-      .ref('sims_projects/rocket/' + path)
+      .ref(worldNode('projects') + '/rocket/' + path)
       .transaction((cur: GameValue) =>
         cur && typeof cur.at === 'number' && serverNow() - cur.at < FLIGHT_TOTAL_MS
           ? undefined

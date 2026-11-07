@@ -7,6 +7,7 @@ import { nameHash } from './scenes.js';
 import { fmtDuration, toast } from '../missions.js';
 import { openDialog } from '../interface.js';
 import { box, onFace } from './objects.js';
+import { worldNode } from '../world-db.js';
 
 // ---- Cimitero: lapidi dei giocatori deceduti
 export function drawGraveProp(it?: GameValue): GameValue {
@@ -156,7 +157,7 @@ export async function showGraveInfo(item?: GameValue): Promise<GameValue> {
     if (!(await spendMoney(5))) return;
     try {
       game.session.db
-        .ref(`sims_graveyard/${item.id}/visitors/${game.session.myPlayerId}`)
+        .ref(`${worldNode('graveyard')}/${item.id}/visitors/${game.session.myPlayerId}`)
         .set(game.player.myData.nick);
     } catch (e: GameValue) {}
     toast(`💐 Hai lasciato dei fiori per ${item.who}`);

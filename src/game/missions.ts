@@ -1,4 +1,5 @@
 import { creditMoney } from './economy.js';
+import type { LeaderboardScope } from './leaderboard.js';
 import type { GameValue } from './context.js';
 import { game } from './context.js';
 import { lifetime, dom } from './runtime.js';
@@ -10,6 +11,7 @@ import { tierOfPlaced } from './furniture-tiers.js';
 import { openWelcomeList, tickWelcome, updateWelcomeHud } from './welcome.js';
 import { livedRows, wealthRows } from './leaderboard-rules.js';
 import { showLeaderboard } from './leaderboard.js';
+import { worldNode } from './world-db.js';
 // ---------- Divano e TV ----------
 /** Pausa su divano o TV. Con `quiet` non avvisa se è troppo presto. Restituisce true se è andata. */
 export function relaxWith(kind?: GameValue, item?: GameValue, quiet = false): boolean {
@@ -104,7 +106,14 @@ export function fmtDuration(ms?: GameValue): GameValue {
   return `${m} min`;
 }
 
-export async function openLeaderboard(mode: GameValue = 'wealth'): Promise<GameValue> {
+/**
+ * La classifica del proprio condominio o, col pulsante sopra l'elenco, quella di tutti i mondi
+ * (lì i più longevi sono solo quelli vivi: le lapidi sono di ogni condominio).
+ */
+export async function openLeaderboard(
+  mode: GameValue = 'wealth',
+  scope: LeaderboardScope = 'world',
+): Promise<GameValue> {
   saveGame(true);
   const read = async (path: string): Promise<GameValue> => {
     try {
@@ -114,16 +123,20 @@ export async function openLeaderboard(mode: GameValue = 'wealth'): Promise<GameV
       return {};
     }
   };
-  const lb: GameValue = await read('sims_leaderboard');
+  const all = scope === 'all';
+  const lb: GameValue = await read(all ? 'sims_leaderboard_global' : worldNode('leaderboard'));
   const lived = mode === 'lived';
   // tutti i giocatori, in un elenco che si scorre (vedi leaderboard.ts)
-  const rows = lived ? livedRows(lb, await read('sims_graveyard'), Date.now()) : wealthRows(lb);
+  const rows = lived
+    ? livedRows(lb, all ? {} : await read(worldNode('graveyard')), Date.now())
+    : wealthRows(lb);
   showLeaderboard(
     lived ? 'lived' : 'wealth',
     rows,
     game.session.myPlayerId,
     (r) => (lived ? fmtDuration(r.value) : `${r.value.toLocaleString('it-IT')} €`),
-    (m) => void openLeaderboard(m),
+    (m) => void openLeaderboard(m, scope),
+    { scope, world: game.session.worldId, onScope: (sc) => void openLeaderboard(mode, sc) },
   );
 }
 

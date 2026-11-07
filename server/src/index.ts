@@ -15,7 +15,9 @@ import {
   sendDeathWarnings,
   notifyLimitedOffers,
   sendPetWarnings,
+  worldIds,
 } from './maintenance.js';
+import { worldNodePath } from '../../shared/worlds.js';
 
 async function main() {
   const projectId = process.env.FIREBASE_PROJECT_ID;
@@ -67,10 +69,14 @@ async function main() {
     // Crollo o boom della borsa: si decide qui, una volta, e vale per tutti i giocatori.
     const uniform01 = () => (randomBytes(4).readUInt32BE() + 0.5) / 4294967296;
     const eventRolls = { roll: uniform01(), kind: uniform01() };
-    // Domanda e offerta: quanto hanno investito in tutto i giocatori, attività per attività.
-    const holdings = holdingsFromRooms(
-      (await getDatabase(app).ref('sims_rooms_state').get()).val(),
-    );
+    // Domanda e offerta: quanto hanno investito in tutto i giocatori di tutti i mondi (la borsa
+    // è una sola), attività per attività.
+    const allRooms: unknown[] = [];
+    for (const world of await worldIds(getDatabase(app))) {
+      const rooms = (await getDatabase(app).ref(worldNodePath(world, 'rooms_state')).get()).val();
+      if (rooms && typeof rooms === 'object') allRooms.push(...Object.values(rooms));
+    }
+    const holdings = holdingsFromRooms(allRooms);
     // Attività dei giocatori nel gioco: quanto spinge ogni quotazione (shared/activity.ts).
     const log = ((await getDatabase(app).ref('sims_activity').get()).val() || {}) as ActivityLog;
     const activity = Object.fromEntries(

@@ -1246,6 +1246,825 @@
           ".validate": false
         }
       }
+    },
+    "sims_worlds": {
+      ".read": "(auth != null && (auth.token.firebase.sign_in_provider === 'google.com' || (auth.token.firebase.sign_in_provider === 'password' && auth.token.email_verified === true))) && root.child('sims_accounts').child(auth.uid).child('playerId').isString()",
+      "$code": {
+        ".write": "(auth != null && (auth.token.firebase.sign_in_provider === 'google.com' || (auth.token.firebase.sign_in_provider === 'password' && auth.token.email_verified === true))) && root.child('sims_accounts').child(auth.uid).child('playerId').isString() && newData.exists() && ($code === 'CASA-0001' || $code.matches(/^CASA-[23456789ABCDEFGHJKMNPQRSTUVWXYZ]{4}$/)) && (data.exists() || $code === 'CASA-0001' || (newData.child('by').val() === root.child('sims_accounts').child(auth.uid).child('playerId').val() && newData.parent().parent().child('sims_world_creators').child(root.child('sims_accounts').child(auth.uid).child('playerId').val()).val() === newData.child('createdAt').val()))",
+        ".validate": "newData.hasChildren(['free'])",
+        "free": {
+          ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 64"
+        },
+        "createdAt": {
+          ".validate": "newData.isNumber() && (!data.exists() || newData.val() === data.val())"
+        },
+        "by": {
+          ".validate": "newData.isString() && (!data.exists() || newData.val() === data.val())"
+        },
+        "$other": {
+          ".validate": false
+        }
+      }
+    },
+    "sims_leaderboard_global": {
+      ".read": "(auth != null && (auth.token.firebase.sign_in_provider === 'google.com' || (auth.token.firebase.sign_in_provider === 'password' && auth.token.email_verified === true))) && root.child('sims_accounts').child(auth.uid).child('playerId').isString()",
+      "$pid": {
+        ".write": "(auth != null && (auth.token.firebase.sign_in_provider === 'google.com' || (auth.token.firebase.sign_in_provider === 'password' && auth.token.email_verified === true))) && root.child('sims_accounts').child(auth.uid).child('playerId').val() === $pid",
+        ".validate": "newData.hasChildren(['name','wealth'])",
+        "name": {
+          ".validate": "newData.isString() && newData.val().length <= 20"
+        },
+        "wealth": {
+          ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 9007199254740991"
+        },
+        "shifts": {
+          ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 9007199254740991"
+        },
+        "world": {
+          ".validate": "newData.isString() && (newData.val() === 'CASA-0001' || newData.val().matches(/^CASA-[23456789ABCDEFGHJKMNPQRSTUVWXYZ]{4}$/))"
+        }
+      }
+    },
+    "sims_world_creators": {
+      "$pid": {
+        ".read": "(auth != null && (auth.token.firebase.sign_in_provider === 'google.com' || (auth.token.firebase.sign_in_provider === 'password' && auth.token.email_verified === true))) && root.child('sims_accounts').child(auth.uid).child('playerId').isString() && $pid === root.child('sims_accounts').child(auth.uid).child('playerId').val()",
+        ".write": "(auth != null && (auth.token.firebase.sign_in_provider === 'google.com' || (auth.token.firebase.sign_in_provider === 'password' && auth.token.email_verified === true))) && root.child('sims_accounts').child(auth.uid).child('playerId').isString() && $pid === root.child('sims_accounts').child(auth.uid).child('playerId').val() && newData.isNumber() && newData.val() <= now && newData.val() > now - 60000 && (!data.exists() || data.val() < now - 600000)"
+      }
+    },
+    "worlds": {
+      "$worldId": {
+        ".validate": "$worldId.matches(/^CASA-[23456789ABCDEFGHJKMNPQRSTUVWXYZ]{4}$/)",
+        "rooms_state": {
+          ".read": "(auth != null && (auth.token.firebase.sign_in_provider === 'google.com' || (auth.token.firebase.sign_in_provider === 'password' && auth.token.email_verified === true))) && root.child('sims_accounts').child(auth.uid).child('playerId').isString()",
+          ".write": "((auth != null && (auth.token.firebase.sign_in_provider === 'google.com' || (auth.token.firebase.sign_in_provider === 'password' && auth.token.email_verified === true))) && root.child('sims_accounts').child(auth.uid).child('playerId').isString()) && newData.exists()",
+          "$room": {
+            "id": {
+              ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 64 && (newData.val() - 1) + '' === $room"
+            },
+            "owner": {
+              ".validate": "newData.isString() && newData.val().length <= 20"
+            },
+            "ownerId": {
+              ".validate": "newData.isString() && newData.val().length <= 140"
+            },
+            "pin": {
+              ".validate": "newData.isString() && newData.val().length <= 20"
+            },
+            "vaultMoney": {
+              ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1000000"
+            },
+            "lastSeen": {
+              ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 9007199254740991"
+            },
+            "layout": {
+              ".validate": "newData.hasChildren()"
+            },
+            "economy": {
+              ".validate": "newData.hasChildren(['version']) && newData.child('version').val() === 1",
+              "ownedItems": {
+                ".validate": "newData.hasChildren()",
+                "top_basic": {
+                  ".validate": "newData.isBoolean()"
+                },
+                "item_hoodie": {
+                  ".validate": "newData.isBoolean()"
+                },
+                "top_stripes": {
+                  ".validate": "newData.isBoolean()"
+                },
+                "top_hawaii": {
+                  ".validate": "newData.isBoolean()"
+                },
+                "top_sport": {
+                  ".validate": "newData.isBoolean()"
+                },
+                "top_xmas": {
+                  ".validate": "newData.isBoolean()"
+                },
+                "top_denim": {
+                  ".validate": "newData.isBoolean()"
+                },
+                "item_leather": {
+                  ".validate": "newData.isBoolean()"
+                },
+                "item_suit": {
+                  ".validate": "newData.isBoolean()"
+                },
+                "pants_jeans": {
+                  ".validate": "newData.isBoolean()"
+                },
+                "pants_shorts": {
+                  ".validate": "newData.isBoolean()"
+                },
+                "pants_black": {
+                  ".validate": "newData.isBoolean()"
+                },
+                "pants_white": {
+                  ".validate": "newData.isBoolean()"
+                },
+                "pants_red": {
+                  ".validate": "newData.isBoolean()"
+                },
+                "pants_camo": {
+                  ".validate": "newData.isBoolean()"
+                },
+                "shoes_sneakers": {
+                  ".validate": "newData.isBoolean()"
+                },
+                "shoes_boots": {
+                  ".validate": "newData.isBoolean()"
+                },
+                "shoes_formal": {
+                  ".validate": "newData.isBoolean()"
+                },
+                "shoes_red": {
+                  ".validate": "newData.isBoolean()"
+                },
+                "shoes_gold": {
+                  ".validate": "newData.isBoolean()"
+                },
+                "item_hat": {
+                  ".validate": "newData.isBoolean()"
+                },
+                "hat_beanie": {
+                  ".validate": "newData.isBoolean()"
+                },
+                "hat_cowboy": {
+                  ".validate": "newData.isBoolean()"
+                },
+                "hat_tophat": {
+                  ".validate": "newData.isBoolean()"
+                },
+                "item_crown": {
+                  ".validate": "newData.isBoolean()"
+                },
+                "item_glasses": {
+                  ".validate": "newData.isBoolean()"
+                },
+                "glasses_round": {
+                  ".validate": "newData.isBoolean()"
+                },
+                "glasses_heart": {
+                  ".validate": "newData.isBoolean()"
+                },
+                "top_white": {
+                  ".validate": "newData.isBoolean()"
+                },
+                "top_print": {
+                  ".validate": "newData.isBoolean()"
+                },
+                "top_tank": {
+                  ".validate": "newData.isBoolean()"
+                },
+                "top_polo": {
+                  ".validate": "newData.isBoolean()"
+                },
+                "top_hoodie_pink": {
+                  ".validate": "newData.isBoolean()"
+                },
+                "top_plaid": {
+                  ".validate": "newData.isBoolean()"
+                },
+                "top_sweater": {
+                  ".validate": "newData.isBoolean()"
+                },
+                "top_jersey": {
+                  ".validate": "newData.isBoolean()"
+                },
+                "top_vest": {
+                  ".validate": "newData.isBoolean()"
+                },
+                "top_puffer": {
+                  ".validate": "newData.isBoolean()"
+                },
+                "top_tuxedo": {
+                  ".validate": "newData.isBoolean()"
+                },
+                "pants_joggers": {
+                  ".validate": "newData.isBoolean()"
+                },
+                "pants_skirt": {
+                  ".validate": "newData.isBoolean()"
+                },
+                "pants_cargo": {
+                  ".validate": "newData.isBoolean()"
+                },
+                "pants_plaid": {
+                  ".validate": "newData.isBoolean()"
+                },
+                "pants_ripped": {
+                  ".validate": "newData.isBoolean()"
+                },
+                "pants_sequin": {
+                  ".validate": "newData.isBoolean()"
+                },
+                "shoes_sandals": {
+                  ".validate": "newData.isBoolean()"
+                },
+                "shoes_slippers": {
+                  ".validate": "newData.isBoolean()"
+                },
+                "shoes_rain": {
+                  ".validate": "newData.isBoolean()"
+                },
+                "shoes_hightop": {
+                  ".validate": "newData.isBoolean()"
+                },
+                "shoes_skate": {
+                  ".validate": "newData.isBoolean()"
+                },
+                "hat_party": {
+                  ".validate": "newData.isBoolean()"
+                },
+                "hat_bandana": {
+                  ".validate": "newData.isBoolean()"
+                },
+                "hat_bucket": {
+                  ".validate": "newData.isBoolean()"
+                },
+                "hat_capback": {
+                  ".validate": "newData.isBoolean()"
+                },
+                "hat_beret": {
+                  ".validate": "newData.isBoolean()"
+                },
+                "hat_santa": {
+                  ".validate": "newData.isBoolean()"
+                },
+                "hat_chef": {
+                  ".validate": "newData.isBoolean()"
+                },
+                "hat_flowers": {
+                  ".validate": "newData.isBoolean()"
+                },
+                "hat_fedora": {
+                  ".validate": "newData.isBoolean()"
+                },
+                "hat_headphones": {
+                  ".validate": "newData.isBoolean()"
+                },
+                "glasses_3d": {
+                  ".validate": "newData.isBoolean()"
+                },
+                "glasses_nerd": {
+                  ".validate": "newData.isBoolean()"
+                },
+                "glasses_star": {
+                  ".validate": "newData.isBoolean()"
+                },
+                "glasses_cat": {
+                  ".validate": "newData.isBoolean()"
+                },
+                "glasses_aviator": {
+                  ".validate": "newData.isBoolean()"
+                },
+                "glasses_ski": {
+                  ".validate": "newData.isBoolean()"
+                },
+                "glasses_monocle": {
+                  ".validate": "newData.isBoolean()"
+                },
+                "neck_tie": {
+                  ".validate": "newData.isBoolean()"
+                },
+                "neck_bowtie": {
+                  ".validate": "newData.isBoolean()"
+                },
+                "neck_scarf": {
+                  ".validate": "newData.isBoolean()"
+                },
+                "neck_backpack": {
+                  ".validate": "newData.isBoolean()"
+                },
+                "neck_medal": {
+                  ".validate": "newData.isBoolean()"
+                },
+                "neck_pearls": {
+                  ".validate": "newData.isBoolean()"
+                },
+                "neck_chain": {
+                  ".validate": "newData.isBoolean()"
+                },
+                "hat_space": {
+                  ".validate": "newData.isBoolean()"
+                },
+                "$other": {
+                  ".validate": false
+                }
+              },
+              "ownedFurniture": {
+                ".validate": "newData.hasChildren()",
+                "bed_std": {
+                  ".validate": "newData.isBoolean()"
+                },
+                "bed_lux": {
+                  ".validate": "newData.isBoolean()"
+                },
+                "wardrobe_std": {
+                  ".validate": "newData.isBoolean()"
+                },
+                "wardrobe_lux": {
+                  ".validate": "newData.isBoolean()"
+                },
+                "nightstand_std": {
+                  ".validate": "newData.isBoolean()"
+                },
+                "nightstand_lux": {
+                  ".validate": "newData.isBoolean()"
+                },
+                "desk_std": {
+                  ".validate": "newData.isBoolean()"
+                },
+                "desk_lux": {
+                  ".validate": "newData.isBoolean()"
+                },
+                "lamp_std": {
+                  ".validate": "newData.isBoolean()"
+                },
+                "lamp_lux": {
+                  ".validate": "newData.isBoolean()"
+                },
+                "sofa_std": {
+                  ".validate": "newData.isBoolean()"
+                },
+                "sofa_lux": {
+                  ".validate": "newData.isBoolean()"
+                },
+                "tv_std": {
+                  ".validate": "newData.isBoolean()"
+                },
+                "tv_lux": {
+                  ".validate": "newData.isBoolean()"
+                },
+                "plant_std": {
+                  ".validate": "newData.isBoolean()"
+                },
+                "plant_lux": {
+                  ".validate": "newData.isBoolean()"
+                },
+                "bed_pre": {
+                  ".validate": "newData.isBoolean()"
+                },
+                "wardrobe_pre": {
+                  ".validate": "newData.isBoolean()"
+                },
+                "nightstand_pre": {
+                  ".validate": "newData.isBoolean()"
+                },
+                "desk_pre": {
+                  ".validate": "newData.isBoolean()"
+                },
+                "lamp_pre": {
+                  ".validate": "newData.isBoolean()"
+                },
+                "sofa_pre": {
+                  ".validate": "newData.isBoolean()"
+                },
+                "tv_pre": {
+                  ".validate": "newData.isBoolean()"
+                },
+                "plant_pre": {
+                  ".validate": "newData.isBoolean()"
+                },
+                "safe_pre": {
+                  ".validate": "newData.isBoolean()"
+                },
+                "$other": {
+                  ".validate": false
+                }
+              },
+              "invest": {
+                ".validate": "newData.hasChildren()",
+                "shop": {
+                  ".validate": "newData.hasChildren(['units','cost'])",
+                  "units": {
+                    ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 9007199254740991"
+                  },
+                  "cost": {
+                    ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 9007199254740991"
+                  }
+                },
+                "app": {
+                  ".validate": "newData.hasChildren(['units','cost'])",
+                  "units": {
+                    ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 9007199254740991"
+                  },
+                  "cost": {
+                    ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 9007199254740991"
+                  }
+                },
+                "crypto": {
+                  ".validate": "newData.hasChildren(['units','cost'])",
+                  "units": {
+                    ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 9007199254740991"
+                  },
+                  "cost": {
+                    ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 9007199254740991"
+                  }
+                },
+                "pizza": {
+                  ".validate": "newData.hasChildren(['units','cost'])",
+                  "units": {
+                    ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 9007199254740991"
+                  },
+                  "cost": {
+                    ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 9007199254740991"
+                  }
+                },
+                "house": {
+                  ".validate": "newData.hasChildren(['units','cost'])",
+                  "units": {
+                    ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 9007199254740991"
+                  },
+                  "cost": {
+                    ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 9007199254740991"
+                  }
+                },
+                "green": {
+                  ".validate": "newData.hasChildren(['units','cost'])",
+                  "units": {
+                    ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 9007199254740991"
+                  },
+                  "cost": {
+                    ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 9007199254740991"
+                  }
+                },
+                "games": {
+                  ".validate": "newData.hasChildren(['units','cost'])",
+                  "units": {
+                    ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 9007199254740991"
+                  },
+                  "cost": {
+                    ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 9007199254740991"
+                  }
+                },
+                "ev": {
+                  ".validate": "newData.hasChildren(['units','cost'])",
+                  "units": {
+                    ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 9007199254740991"
+                  },
+                  "cost": {
+                    ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 9007199254740991"
+                  }
+                },
+                "space": {
+                  ".validate": "newData.hasChildren(['units','cost'])",
+                  "units": {
+                    ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 9007199254740991"
+                  },
+                  "cost": {
+                    ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 9007199254740991"
+                  }
+                },
+                "antiques": {
+                  ".validate": "newData.hasChildren(['units','cost'])",
+                  "units": {
+                    ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 9007199254740991"
+                  },
+                  "cost": {
+                    ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 9007199254740991"
+                  }
+                },
+                "$other": {
+                  ".validate": false
+                }
+              },
+              "bank": {
+                ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 9007199254740991"
+              }
+            },
+            ".validate": "(auth != null && auth.uid === 'market-publisher') || (((!data.child('ownerId').exists() && (!newData.child('ownerId').exists() || (newData.child('ownerId').val() === root.child('sims_accounts').child(auth.uid).child('playerId').val()))) || (data.child('ownerId').val() === newData.child('ownerId').val()) || ((data.child('ownerId').val() === root.child('sims_accounts').child(auth.uid).child('playerId').val()) && !newData.child('ownerId').exists())) && ((data.child('ownerId').val() === root.child('sims_accounts').child(auth.uid).child('playerId').val()) || (newData.child('ownerId').val() === root.child('sims_accounts').child(auth.uid).child('playerId').val()) || (newData.child('owner').val() === data.child('owner').val() && newData.child('lastSeen').val() === data.child('lastSeen').val() && newData.child('pin').val() === data.child('pin').val() && newData.child('economy/version').val() === data.child('economy/version').val() && newData.child('economy/ownedItems/top_basic').val() === data.child('economy/ownedItems/top_basic').val() && newData.child('economy/ownedItems/item_hoodie').val() === data.child('economy/ownedItems/item_hoodie').val() && newData.child('economy/ownedItems/top_stripes').val() === data.child('economy/ownedItems/top_stripes').val() && newData.child('economy/ownedItems/top_hawaii').val() === data.child('economy/ownedItems/top_hawaii').val() && newData.child('economy/ownedItems/top_sport').val() === data.child('economy/ownedItems/top_sport').val() && newData.child('economy/ownedItems/top_xmas').val() === data.child('economy/ownedItems/top_xmas').val() && newData.child('economy/ownedItems/top_denim').val() === data.child('economy/ownedItems/top_denim').val() && newData.child('economy/ownedItems/item_leather').val() === data.child('economy/ownedItems/item_leather').val() && newData.child('economy/ownedItems/item_suit').val() === data.child('economy/ownedItems/item_suit').val() && newData.child('economy/ownedItems/pants_jeans').val() === data.child('economy/ownedItems/pants_jeans').val() && newData.child('economy/ownedItems/pants_shorts').val() === data.child('economy/ownedItems/pants_shorts').val() && newData.child('economy/ownedItems/pants_black').val() === data.child('economy/ownedItems/pants_black').val() && newData.child('economy/ownedItems/pants_white').val() === data.child('economy/ownedItems/pants_white').val() && newData.child('economy/ownedItems/pants_red').val() === data.child('economy/ownedItems/pants_red').val() && newData.child('economy/ownedItems/pants_camo').val() === data.child('economy/ownedItems/pants_camo').val() && newData.child('economy/ownedItems/shoes_sneakers').val() === data.child('economy/ownedItems/shoes_sneakers').val() && newData.child('economy/ownedItems/shoes_boots').val() === data.child('economy/ownedItems/shoes_boots').val() && newData.child('economy/ownedItems/shoes_formal').val() === data.child('economy/ownedItems/shoes_formal').val() && newData.child('economy/ownedItems/shoes_red').val() === data.child('economy/ownedItems/shoes_red').val() && newData.child('economy/ownedItems/shoes_gold').val() === data.child('economy/ownedItems/shoes_gold').val() && newData.child('economy/ownedItems/item_hat').val() === data.child('economy/ownedItems/item_hat').val() && newData.child('economy/ownedItems/hat_beanie').val() === data.child('economy/ownedItems/hat_beanie').val() && newData.child('economy/ownedItems/hat_cowboy').val() === data.child('economy/ownedItems/hat_cowboy').val() && newData.child('economy/ownedItems/hat_tophat').val() === data.child('economy/ownedItems/hat_tophat').val() && newData.child('economy/ownedItems/item_crown').val() === data.child('economy/ownedItems/item_crown').val() && newData.child('economy/ownedItems/hat_space').val() === data.child('economy/ownedItems/hat_space').val() && newData.child('economy/ownedItems/item_glasses').val() === data.child('economy/ownedItems/item_glasses').val() && newData.child('economy/ownedItems/glasses_round').val() === data.child('economy/ownedItems/glasses_round').val() && newData.child('economy/ownedItems/glasses_heart').val() === data.child('economy/ownedItems/glasses_heart').val() && newData.child('economy/ownedItems/top_white').val() === data.child('economy/ownedItems/top_white').val() && newData.child('economy/ownedItems/top_print').val() === data.child('economy/ownedItems/top_print').val() && newData.child('economy/ownedItems/top_tank').val() === data.child('economy/ownedItems/top_tank').val() && newData.child('economy/ownedItems/top_polo').val() === data.child('economy/ownedItems/top_polo').val() && newData.child('economy/ownedItems/top_hoodie_pink').val() === data.child('economy/ownedItems/top_hoodie_pink').val() && newData.child('economy/ownedItems/top_plaid').val() === data.child('economy/ownedItems/top_plaid').val() && newData.child('economy/ownedItems/top_sweater').val() === data.child('economy/ownedItems/top_sweater').val() && newData.child('economy/ownedItems/top_jersey').val() === data.child('economy/ownedItems/top_jersey').val() && newData.child('economy/ownedItems/top_vest').val() === data.child('economy/ownedItems/top_vest').val() && newData.child('economy/ownedItems/top_puffer').val() === data.child('economy/ownedItems/top_puffer').val() && newData.child('economy/ownedItems/top_tuxedo').val() === data.child('economy/ownedItems/top_tuxedo').val() && newData.child('economy/ownedItems/pants_joggers').val() === data.child('economy/ownedItems/pants_joggers').val() && newData.child('economy/ownedItems/pants_skirt').val() === data.child('economy/ownedItems/pants_skirt').val() && newData.child('economy/ownedItems/pants_cargo').val() === data.child('economy/ownedItems/pants_cargo').val() && newData.child('economy/ownedItems/pants_plaid').val() === data.child('economy/ownedItems/pants_plaid').val() && newData.child('economy/ownedItems/pants_ripped').val() === data.child('economy/ownedItems/pants_ripped').val() && newData.child('economy/ownedItems/pants_sequin').val() === data.child('economy/ownedItems/pants_sequin').val() && newData.child('economy/ownedItems/shoes_sandals').val() === data.child('economy/ownedItems/shoes_sandals').val() && newData.child('economy/ownedItems/shoes_slippers').val() === data.child('economy/ownedItems/shoes_slippers').val() && newData.child('economy/ownedItems/shoes_rain').val() === data.child('economy/ownedItems/shoes_rain').val() && newData.child('economy/ownedItems/shoes_hightop').val() === data.child('economy/ownedItems/shoes_hightop').val() && newData.child('economy/ownedItems/shoes_skate').val() === data.child('economy/ownedItems/shoes_skate').val() && newData.child('economy/ownedItems/hat_party').val() === data.child('economy/ownedItems/hat_party').val() && newData.child('economy/ownedItems/hat_bandana').val() === data.child('economy/ownedItems/hat_bandana').val() && newData.child('economy/ownedItems/hat_bucket').val() === data.child('economy/ownedItems/hat_bucket').val() && newData.child('economy/ownedItems/hat_capback').val() === data.child('economy/ownedItems/hat_capback').val() && newData.child('economy/ownedItems/hat_beret').val() === data.child('economy/ownedItems/hat_beret').val() && newData.child('economy/ownedItems/hat_santa').val() === data.child('economy/ownedItems/hat_santa').val() && newData.child('economy/ownedItems/hat_chef').val() === data.child('economy/ownedItems/hat_chef').val() && newData.child('economy/ownedItems/hat_flowers').val() === data.child('economy/ownedItems/hat_flowers').val() && newData.child('economy/ownedItems/hat_fedora').val() === data.child('economy/ownedItems/hat_fedora').val() && newData.child('economy/ownedItems/hat_headphones').val() === data.child('economy/ownedItems/hat_headphones').val() && newData.child('economy/ownedItems/glasses_3d').val() === data.child('economy/ownedItems/glasses_3d').val() && newData.child('economy/ownedItems/glasses_nerd').val() === data.child('economy/ownedItems/glasses_nerd').val() && newData.child('economy/ownedItems/glasses_star').val() === data.child('economy/ownedItems/glasses_star').val() && newData.child('economy/ownedItems/glasses_cat').val() === data.child('economy/ownedItems/glasses_cat').val() && newData.child('economy/ownedItems/glasses_aviator').val() === data.child('economy/ownedItems/glasses_aviator').val() && newData.child('economy/ownedItems/glasses_ski').val() === data.child('economy/ownedItems/glasses_ski').val() && newData.child('economy/ownedItems/glasses_monocle').val() === data.child('economy/ownedItems/glasses_monocle').val() && newData.child('economy/ownedItems/neck_tie').val() === data.child('economy/ownedItems/neck_tie').val() && newData.child('economy/ownedItems/neck_bowtie').val() === data.child('economy/ownedItems/neck_bowtie').val() && newData.child('economy/ownedItems/neck_scarf').val() === data.child('economy/ownedItems/neck_scarf').val() && newData.child('economy/ownedItems/neck_backpack').val() === data.child('economy/ownedItems/neck_backpack').val() && newData.child('economy/ownedItems/neck_medal').val() === data.child('economy/ownedItems/neck_medal').val() && newData.child('economy/ownedItems/neck_pearls').val() === data.child('economy/ownedItems/neck_pearls').val() && newData.child('economy/ownedItems/neck_chain').val() === data.child('economy/ownedItems/neck_chain').val() && newData.child('economy/ownedFurniture/bed_std').val() === data.child('economy/ownedFurniture/bed_std').val() && newData.child('economy/ownedFurniture/bed_lux').val() === data.child('economy/ownedFurniture/bed_lux').val() && newData.child('economy/ownedFurniture/wardrobe_std').val() === data.child('economy/ownedFurniture/wardrobe_std').val() && newData.child('economy/ownedFurniture/wardrobe_lux').val() === data.child('economy/ownedFurniture/wardrobe_lux').val() && newData.child('economy/ownedFurniture/nightstand_std').val() === data.child('economy/ownedFurniture/nightstand_std').val() && newData.child('economy/ownedFurniture/nightstand_lux').val() === data.child('economy/ownedFurniture/nightstand_lux').val() && newData.child('economy/ownedFurniture/desk_std').val() === data.child('economy/ownedFurniture/desk_std').val() && newData.child('economy/ownedFurniture/desk_lux').val() === data.child('economy/ownedFurniture/desk_lux').val() && newData.child('economy/ownedFurniture/lamp_std').val() === data.child('economy/ownedFurniture/lamp_std').val() && newData.child('economy/ownedFurniture/lamp_lux').val() === data.child('economy/ownedFurniture/lamp_lux').val() && newData.child('economy/ownedFurniture/sofa_std').val() === data.child('economy/ownedFurniture/sofa_std').val() && newData.child('economy/ownedFurniture/sofa_lux').val() === data.child('economy/ownedFurniture/sofa_lux').val() && newData.child('economy/ownedFurniture/tv_std').val() === data.child('economy/ownedFurniture/tv_std').val() && newData.child('economy/ownedFurniture/tv_lux').val() === data.child('economy/ownedFurniture/tv_lux').val() && newData.child('economy/ownedFurniture/plant_std').val() === data.child('economy/ownedFurniture/plant_std').val() && newData.child('economy/ownedFurniture/plant_lux').val() === data.child('economy/ownedFurniture/plant_lux').val() && newData.child('economy/ownedFurniture/bed_pre').val() === data.child('economy/ownedFurniture/bed_pre').val() && newData.child('economy/ownedFurniture/wardrobe_pre').val() === data.child('economy/ownedFurniture/wardrobe_pre').val() && newData.child('economy/ownedFurniture/nightstand_pre').val() === data.child('economy/ownedFurniture/nightstand_pre').val() && newData.child('economy/ownedFurniture/desk_pre').val() === data.child('economy/ownedFurniture/desk_pre').val() && newData.child('economy/ownedFurniture/lamp_pre').val() === data.child('economy/ownedFurniture/lamp_pre').val() && newData.child('economy/ownedFurniture/sofa_pre').val() === data.child('economy/ownedFurniture/sofa_pre').val() && newData.child('economy/ownedFurniture/tv_pre').val() === data.child('economy/ownedFurniture/tv_pre').val() && newData.child('economy/ownedFurniture/plant_pre').val() === data.child('economy/ownedFurniture/plant_pre').val() && newData.child('economy/ownedFurniture/safe_pre').val() === data.child('economy/ownedFurniture/safe_pre').val() && newData.child('economy/invest/shop/units').val() === data.child('economy/invest/shop/units').val() && newData.child('economy/invest/shop/cost').val() === data.child('economy/invest/shop/cost').val() && newData.child('economy/invest/app/units').val() === data.child('economy/invest/app/units').val() && newData.child('economy/invest/app/cost').val() === data.child('economy/invest/app/cost').val() && newData.child('economy/invest/crypto/units').val() === data.child('economy/invest/crypto/units').val() && newData.child('economy/invest/crypto/cost').val() === data.child('economy/invest/crypto/cost').val() && newData.child('economy/invest/pizza/units').val() === data.child('economy/invest/pizza/units').val() && newData.child('economy/invest/pizza/cost').val() === data.child('economy/invest/pizza/cost').val() && newData.child('economy/invest/house/units').val() === data.child('economy/invest/house/units').val() && newData.child('economy/invest/house/cost').val() === data.child('economy/invest/house/cost').val() && newData.child('economy/invest/green/units').val() === data.child('economy/invest/green/units').val() && newData.child('economy/invest/green/cost').val() === data.child('economy/invest/green/cost').val() && newData.child('economy/invest/games/units').val() === data.child('economy/invest/games/units').val() && newData.child('economy/invest/games/cost').val() === data.child('economy/invest/games/cost').val() && newData.child('economy/invest/ev/units').val() === data.child('economy/invest/ev/units').val() && newData.child('economy/invest/ev/cost').val() === data.child('economy/invest/ev/cost').val() && newData.child('economy/invest/space/units').val() === data.child('economy/invest/space/units').val() && newData.child('economy/invest/space/cost').val() === data.child('economy/invest/space/cost').val() && newData.child('economy/bank').val() === data.child('economy/bank').val() && ((newData.child('paintings/p1').val() === data.child('paintings/p1').val() && newData.child('sale/p1/price').val() === data.child('sale/p1/price').val() && newData.child('sale/p1/t').val() === data.child('sale/p1/t').val() && newData.child('sale/p1/nextOfferAt').val() === data.child('sale/p1/nextOfferAt').val() && newData.child('sale/p1/round').val() === data.child('sale/p1/round').val()) || (data.child('sale/p1/price').isNumber() && data.child('paintings/p1').exists() && !newData.child('paintings/p1').exists() && !newData.child('sale/p1').exists() && newData.child('vaultMoney').val() >= data.child('vaultMoney').val() + data.child('sale/p1/price').val())) && ((newData.child('paintings/p2').val() === data.child('paintings/p2').val() && newData.child('sale/p2/price').val() === data.child('sale/p2/price').val() && newData.child('sale/p2/t').val() === data.child('sale/p2/t').val() && newData.child('sale/p2/nextOfferAt').val() === data.child('sale/p2/nextOfferAt').val() && newData.child('sale/p2/round').val() === data.child('sale/p2/round').val()) || (data.child('sale/p2/price').isNumber() && data.child('paintings/p2').exists() && !newData.child('paintings/p2').exists() && !newData.child('sale/p2').exists() && newData.child('vaultMoney').val() >= data.child('vaultMoney').val() + data.child('sale/p2/price').val())) && ((newData.child('paintings/p3').val() === data.child('paintings/p3').val() && newData.child('sale/p3/price').val() === data.child('sale/p3/price').val() && newData.child('sale/p3/t').val() === data.child('sale/p3/t').val() && newData.child('sale/p3/nextOfferAt').val() === data.child('sale/p3/nextOfferAt').val() && newData.child('sale/p3/round').val() === data.child('sale/p3/round').val()) || (data.child('sale/p3/price').isNumber() && data.child('paintings/p3').exists() && !newData.child('paintings/p3').exists() && !newData.child('sale/p3').exists() && newData.child('vaultMoney').val() >= data.child('vaultMoney').val() + data.child('sale/p3/price').val()))))) && ((auth != null && auth.uid === 'market-publisher') || !data.child('pendingDeath').exists() || newData.child('pendingDeath').exists())",
+            "pendingDeath": {
+              ".validate": "(auth != null && auth.uid === 'market-publisher') || (data.exists() && newData.child('id').val() === data.child('id').val() && newData.child('name').val() === data.child('name').val() && newData.child('lastSeen').val() === data.child('lastSeen').val())",
+              "id": {
+                ".validate": "newData.isString()"
+              },
+              "name": {
+                ".validate": "newData.isString()"
+              },
+              "lastSeen": {
+                ".validate": "newData.isNumber()"
+              },
+              "$other": {
+                ".validate": false
+              }
+            },
+            "paintings": {
+              "$slot": {
+                ".validate": "$slot.matches(/^p[1-3]$/) && newData.isString() && (newData.val().length === 4800 || newData.val().length === 1200) && newData.val().matches(/^[0-9a-f]+$/)"
+              }
+            },
+            "sale": {
+              "$slot": {
+                ".validate": "$slot.matches(/^p[1-3]$/) && newData.hasChildren(['price','t','nextOfferAt']) && newData.child('price').isNumber() && newData.child('price').val() >= 1 && newData.child('price').val() <= 100000 && newData.child('t').isNumber() && newData.child('nextOfferAt').isNumber() && (!newData.child('round').exists() || newData.child('round').isNumber())"
+              }
+            }
+          },
+          ".validate": "(auth != null && auth.uid === 'market-publisher') || newData.hasChildren(['0','1','2','3','4','5','6','7','8','9','10','11','12','13','14','15','16','17','18','19','20','21','22','23','24','25','26','27','28','29','30','31','32','33','34','35','36','37','38','39','40','41','42','43','44','45','46','47','48','49','50','51','52','53','54','55','56','57','58','59','60','61','62','63'])"
+        },
+        "online_players": {
+          ".read": "(auth != null && (auth.token.firebase.sign_in_provider === 'google.com' || (auth.token.firebase.sign_in_provider === 'password' && auth.token.email_verified === true))) && root.child('sims_accounts').child(auth.uid).child('playerId').isString()",
+          "$pid": {
+            ".write": "(auth != null && (auth.token.firebase.sign_in_provider === 'google.com' || (auth.token.firebase.sign_in_provider === 'password' && auth.token.email_verified === true))) && root.child('sims_accounts').child(auth.uid).child('playerId').val() === $pid",
+            ".validate": "newData.hasChildren(['name','x','y','env'])",
+            "name": {
+              ".validate": "newData.isString() && newData.val().length <= 20"
+            },
+            "x": {
+              ".validate": "newData.isNumber() && newData.val() >= -10000 && newData.val() <= 10000"
+            },
+            "y": {
+              ".validate": "newData.isNumber() && newData.val() >= -10000 && newData.val() <= 10000"
+            },
+            "env": {
+              ".validate": "newData.isString() && newData.val().length <= 60"
+            }
+          }
+        },
+        "chat": {
+          ".read": "(auth != null && (auth.token.firebase.sign_in_provider === 'google.com' || (auth.token.firebase.sign_in_provider === 'password' && auth.token.email_verified === true))) && root.child('sims_accounts').child(auth.uid).child('playerId').isString()",
+          ".indexOn": ["t"],
+          "$key": {
+            ".write": "((auth != null && (auth.token.firebase.sign_in_provider === 'google.com' || (auth.token.firebase.sign_in_provider === 'password' && auth.token.email_verified === true))) && root.child('sims_accounts').child(auth.uid).child('playerId').isString()) && ((!newData.exists() && data.child('id').val() === root.child('sims_accounts').child(auth.uid).child('playerId').val()) || (!data.exists() && newData.child('id').val() === root.child('sims_accounts').child(auth.uid).child('playerId').val()))",
+            ".validate": "newData.hasChildren(['id','name','text','t'])",
+            "id": {
+              ".validate": "newData.isString() && newData.val().length <= 140"
+            },
+            "name": {
+              ".validate": "newData.isString() && newData.val().length <= 20"
+            },
+            "text": {
+              ".validate": "newData.isString() && newData.val().length <= 200"
+            },
+            "t": {
+              ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 9007199254740991"
+            }
+          }
+        },
+        "gossip": {
+          ".read": "(auth != null && (auth.token.firebase.sign_in_provider === 'google.com' || (auth.token.firebase.sign_in_provider === 'password' && auth.token.email_verified === true))) && root.child('sims_accounts').child(auth.uid).child('playerId').isString()",
+          ".indexOn": ["t"],
+          "$key": {
+            ".write": "((auth != null && (auth.token.firebase.sign_in_provider === 'google.com' || (auth.token.firebase.sign_in_provider === 'password' && auth.token.email_verified === true))) && root.child('sims_accounts').child(auth.uid).child('playerId').isString()) && !data.exists() && newData.child('by').val() === root.child('sims_accounts').child(auth.uid).child('playerId').val()",
+            ".validate": "newData.hasChildren(['by','text','t']) && newData.child('t').val() <= now + 60000",
+            "by": {
+              ".validate": "newData.isString() && newData.val().length <= 140"
+            },
+            "text": {
+              ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 140"
+            },
+            "t": {
+              ".validate": "newData.isNumber() && newData.val() >= 0"
+            },
+            "about": {
+              ".validate": "newData.isString() && newData.val().length <= 300"
+            },
+            "$other": {
+              ".validate": false
+            }
+          }
+        },
+        "graveyard": {
+          ".read": "(auth != null && (auth.token.firebase.sign_in_provider === 'google.com' || (auth.token.firebase.sign_in_provider === 'password' && auth.token.email_verified === true))) && root.child('sims_accounts').child(auth.uid).child('playerId').isString()",
+          "$pid": {
+            ".write": "(auth != null && (auth.token.firebase.sign_in_provider === 'google.com' || (auth.token.firebase.sign_in_provider === 'password' && auth.token.email_verified === true))) && root.child('sims_accounts').child(auth.uid).child('playerId').val() === $pid",
+            ".validate": "newData.hasChildren(['name','deadAt','days'])",
+            "name": {
+              ".validate": "newData.isString() && newData.val().length <= 20"
+            },
+            "deadAt": {
+              ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 9007199254740991"
+            },
+            "days": {
+              ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 9007199254740991"
+            },
+            "visitors": {
+              "$visitor": {
+                ".write": "((auth != null && (auth.token.firebase.sign_in_provider === 'google.com' || (auth.token.firebase.sign_in_provider === 'password' && auth.token.email_verified === true))) && root.child('sims_accounts').child(auth.uid).child('playerId').isString()) && root.child('sims_accounts').child(auth.uid).child('playerId').val() === $visitor",
+                ".validate": "newData.isString() && newData.val().length <= 20"
+              }
+            }
+          }
+        },
+        "interactions": {
+          "$pid": {
+            ".read": "(auth != null && (auth.token.firebase.sign_in_provider === 'google.com' || (auth.token.firebase.sign_in_provider === 'password' && auth.token.email_verified === true))) && root.child('sims_accounts').child(auth.uid).child('playerId').val() === $pid",
+            "$key": {
+              ".write": "((auth != null && (auth.token.firebase.sign_in_provider === 'google.com' || (auth.token.firebase.sign_in_provider === 'password' && auth.token.email_verified === true))) && root.child('sims_accounts').child(auth.uid).child('playerId').isString()) && ((!newData.exists() && root.child('sims_accounts').child(auth.uid).child('playerId').val() === $pid) || (!data.exists() && newData.child('from').val() === root.child('sims_accounts').child(auth.uid).child('playerId').val()))",
+              ".validate": "newData.hasChildren(['type','from','fromName','t']) && newData.child('type').val().matches(/^(talk|praise|insult|punch|food|money_notice|drug|drugReturn|romance|kissAsk|kissYes|kissNo|artSold|weedOffer|weedPaid|weedNo|theft|gameInvite|ltdOffer|ltdAccept|ltdNo|ltdGone|usedSold|bizRetired|colOffer|colDone|colNo)$/)",
+              "from": {
+                ".validate": "newData.isString() && newData.val().length <= 140"
+              },
+              "fromName": {
+                ".validate": "newData.isString() && newData.val().length <= 20"
+              },
+              "type": {
+                ".validate": "newData.isString() && newData.val().length <= 24"
+              },
+              "t": {
+                ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 9007199254740991"
+              },
+              "amt": {
+                ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 1000000"
+              }
+            }
+          }
+        },
+        "projects": {
+          ".read": "(auth != null && (auth.token.firebase.sign_in_provider === 'google.com' || (auth.token.firebase.sign_in_provider === 'password' && auth.token.email_verified === true))) && root.child('sims_accounts').child(auth.uid).child('playerId').isString()",
+          "$project": {
+            ".validate": "$project === 'rocket' || $project === 'moonbase'",
+            "funded": {
+              ".write": "(auth != null && (auth.token.firebase.sign_in_provider === 'google.com' || (auth.token.firebase.sign_in_provider === 'password' && auth.token.email_verified === true))) && root.child('sims_accounts').child(auth.uid).child('playerId').isString()",
+              ".validate": "newData.isNumber() && (($project === 'rocket' && newData.val() <= 15000) || ($project === 'moonbase' && newData.val() <= 45000 && root.child('worlds').child($worldId).child('projects').child('rocket').child('launchAt').exists())) && ((!data.exists() && newData.val() > 0) || (data.exists() && newData.val() > data.val() && newData.val() - data.val() <= 45000))"
+            },
+            "donors": {
+              "$pid": {
+                ".write": "(auth != null && (auth.token.firebase.sign_in_provider === 'google.com' || (auth.token.firebase.sign_in_provider === 'password' && auth.token.email_verified === true))) && root.child('sims_accounts').child(auth.uid).child('playerId').val() === $pid",
+                ".validate": "newData.hasChildren(['name','amount'])",
+                "name": {
+                  ".validate": "newData.isString() && newData.val().length <= 20"
+                },
+                "amount": {
+                  ".validate": "newData.isNumber() && newData.val() > 0 && newData.val() <= 45000 && (!data.exists() || newData.val() > data.val())"
+                },
+                "$other": {
+                  ".validate": false
+                }
+              }
+            },
+            "launchAt": {
+              ".write": "$project === 'rocket' && (auth != null && (auth.token.firebase.sign_in_provider === 'google.com' || (auth.token.firebase.sign_in_provider === 'password' && auth.token.email_verified === true))) && root.child('sims_accounts').child(auth.uid).child('playerId').isString() && !data.exists() && root.child('worlds').child($worldId).child('projects').child($project).child('funded').val() >= 15000",
+              ".validate": "newData.isNumber() && newData.val() >= now + 5000 && newData.val() <= now + 20000"
+            },
+            "launchBy": {
+              ".write": "$project === 'rocket' && (auth != null && (auth.token.firebase.sign_in_provider === 'google.com' || (auth.token.firebase.sign_in_provider === 'password' && auth.token.email_verified === true))) && root.child('sims_accounts').child(auth.uid).child('playerId').isString() && !data.exists()",
+              ".validate": "newData.isString() && newData.val().length <= 20"
+            },
+            "notified": {
+              ".validate": "newData.isNumber()"
+            },
+            "trip": {
+              ".write": "$project === 'rocket' && (auth != null && (auth.token.firebase.sign_in_provider === 'google.com' || (auth.token.firebase.sign_in_provider === 'password' && auth.token.email_verified === true))) && root.child('sims_accounts').child(auth.uid).child('playerId').isString() && root.child('worlds').child($worldId).child('projects').child($project).child('launchAt').exists() && root.child('worlds').child($worldId).child('projects').child($project).child('launchAt').val() < now - 72000 && (!data.exists() || data.child('at').val() < now - 72000)",
+              ".validate": "newData.hasChildren(['at','by'])",
+              "at": {
+                ".validate": "newData.isNumber() && newData.val() >= now - 5000 && newData.val() <= now + 15000"
+              },
+              "by": {
+                ".validate": "newData.isString() && newData.val().length <= 20"
+              },
+              "$other": {
+                ".validate": false
+              }
+            },
+            "moonTrip": {
+              ".write": "$project === 'rocket' && (auth != null && (auth.token.firebase.sign_in_provider === 'google.com' || (auth.token.firebase.sign_in_provider === 'password' && auth.token.email_verified === true))) && root.child('sims_accounts').child(auth.uid).child('playerId').isString() && root.child('worlds').child($worldId).child('projects').child($project).child('launchAt').exists() && root.child('worlds').child($worldId).child('projects').child($project).child('launchAt').val() < now - 72000 && (!data.exists() || data.child('at').val() < now - 72000)",
+              ".validate": "newData.hasChildren(['at','by'])",
+              "at": {
+                ".validate": "newData.isNumber() && newData.val() >= now - 5000 && newData.val() <= now + 15000"
+              },
+              "by": {
+                ".validate": "newData.isString() && newData.val().length <= 20"
+              },
+              "$other": {
+                ".validate": false
+              }
+            },
+            "$other": {
+              ".validate": false
+            }
+          }
+        },
+        "games": {
+          "$gid": {
+            ".read": "((auth != null && (auth.token.firebase.sign_in_provider === 'google.com' || (auth.token.firebase.sign_in_provider === 'password' && auth.token.email_verified === true))) && root.child('sims_accounts').child(auth.uid).child('playerId').isString()) && (data.child('a').val() === root.child('sims_accounts').child(auth.uid).child('playerId').val() || data.child('b').val() === root.child('sims_accounts').child(auth.uid).child('playerId').val())",
+            ".write": "((auth != null && (auth.token.firebase.sign_in_provider === 'google.com' || (auth.token.firebase.sign_in_provider === 'password' && auth.token.email_verified === true))) && root.child('sims_accounts').child(auth.uid).child('playerId').isString()) && ((!data.exists() && newData.child('a').val() === root.child('sims_accounts').child(auth.uid).child('playerId').val()) || (data.exists() && (data.child('a').val() === root.child('sims_accounts').child(auth.uid).child('playerId').val() || data.child('b').val() === root.child('sims_accounts').child(auth.uid).child('playerId').val()) && newData.child('a').val() === data.child('a').val() && newData.child('b').val() === data.child('b').val()))",
+            ".validate": "newData.hasChildren(['kind','a','b','status','t']) && newData.child('kind').val().matches(/^(c4|bn|rx)$/) && newData.child('status').val().matches(/^(wait|play|done|no|off)$/)",
+            "a": {
+              ".validate": "newData.isString() && newData.val().length <= 140"
+            },
+            "b": {
+              ".validate": "newData.isString() && newData.val().length <= 140"
+            },
+            "na": {
+              ".validate": "newData.isString() && newData.val().length <= 20"
+            },
+            "nb": {
+              ".validate": "newData.isString() && newData.val().length <= 20"
+            },
+            "board": {
+              ".validate": "newData.isString() && newData.val().length === 42"
+            },
+            "fa": {
+              ".validate": "newData.isString() && newData.val().length === 64"
+            },
+            "fb": {
+              ".validate": "newData.isString() && newData.val().length === 64"
+            },
+            "sa": {
+              ".validate": "newData.isString() && newData.val().length === 64"
+            },
+            "sb": {
+              ".validate": "newData.isString() && newData.val().length === 64"
+            }
+          }
+        },
+        "rps": {
+          "$target": {
+            ".read": "(auth != null && (auth.token.firebase.sign_in_provider === 'google.com' || (auth.token.firebase.sign_in_provider === 'password' && auth.token.email_verified === true))) && root.child('sims_accounts').child(auth.uid).child('playerId').isString()",
+            ".write": "(auth != null && (auth.token.firebase.sign_in_provider === 'google.com' || (auth.token.firebase.sign_in_provider === 'password' && auth.token.email_verified === true))) && ($target === root.child('sims_accounts').child(auth.uid).child('playerId').val() || data.child('a').val() === root.child('sims_accounts').child(auth.uid).child('playerId').val() || (newData.child('a').val() === root.child('sims_accounts').child(auth.uid).child('playerId').val() && (!data.exists() || data.child('state').val() === 'done' || data.child('state').val() === 'declined' || data.child('state').val() === 'cancelled' || data.child('moveT').val() < now - 600000 || (!data.child('moveT').exists() && data.child('t').val() < now - 600000))))",
+            ".validate": "newData.hasChildren(['a','b','bet','state','t']) && newData.child('b').val() === $target",
+            "a": {
+              ".validate": "newData.isString() && newData.val().length <= 140"
+            },
+            "b": {
+              ".validate": "newData.isString()"
+            },
+            "aName": {
+              ".validate": "newData.isString() && newData.val().length <= 20"
+            },
+            "bName": {
+              ".validate": "newData.isString() && newData.val().length <= 20"
+            },
+            "bet": {
+              ".validate": "newData.isNumber() && newData.val() >= 10 && newData.val() <= 500"
+            },
+            "state": {
+              ".validate": "newData.val() === 'invited' || newData.val() === 'playing' || newData.val() === 'done' || newData.val() === 'declined' || newData.val() === 'cancelled'"
+            },
+            "t": {
+              ".validate": "newData.isNumber()"
+            },
+            "moveT": {
+              ".validate": "newData.isNumber()"
+            },
+            "round": {
+              ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1000"
+            },
+            "aHash": {
+              ".validate": "newData.isString() && newData.val().matches(/^[0-9a-f]{64}$/)"
+            },
+            "aChoice": {
+              ".validate": "newData.isString() && newData.val().length <= 10"
+            },
+            "aSalt": {
+              ".validate": "newData.isString() && newData.val().length <= 40"
+            },
+            "bChoice": {
+              ".validate": "newData.isString() && newData.val().length <= 10"
+            },
+            "winner": {
+              ".validate": "newData.isString()"
+            },
+            "paid": {
+              ".validate": "newData.isBoolean()"
+            },
+            "aBack": {
+              ".validate": "newData.isBoolean()"
+            },
+            "bBack": {
+              ".validate": "newData.isBoolean()"
+            },
+            "$other": {
+              ".validate": false
+            }
+          }
+        },
+        "theft": {
+          "$pid": {
+            ".read": "(auth != null && (auth.token.firebase.sign_in_provider === 'google.com' || (auth.token.firebase.sign_in_provider === 'password' && auth.token.email_verified === true))) && root.child('sims_accounts').child(auth.uid).child('playerId').val() === $pid",
+            "$room": {
+              ".write": "(auth != null && (auth.token.firebase.sign_in_provider === 'google.com' || (auth.token.firebase.sign_in_provider === 'password' && auth.token.email_verified === true))) && root.child('sims_accounts').child(auth.uid).child('playerId').val() === $pid && newData.exists()",
+              ".validate": "newData.hasChildren(['n','since']) && newData.child('since').val() <= now && ((data.exists() && data.child('since').val() + 86400000 > now && newData.child('since').val() === data.child('since').val() && newData.child('n').val() === data.child('n').val() + 1 && (newData.child('n').val() <= 3 || ((newData.child('n').val() === 4 && root.child('sims_saves').child($pid).child('personality').child('announced').child('criminal').val() === true) || (newData.child('n').val() === 5 && root.child('sims_saves').child($pid).child('personality').child('announced').child('criminal').val() === true && root.child('sims_saves').child($pid).child('personality').child('prevail').child('criminal').val() >= 15) || (newData.child('n').val() === 6 && root.child('sims_saves').child($pid).child('personality').child('announced').child('criminal').val() === true && root.child('sims_saves').child($pid).child('personality').child('prevail').child('criminal').val() >= 30)))) || ((!data.exists() || data.child('since').val() + 86400000 <= now) && newData.child('n').val() === 1 && newData.child('since').val() > now - 300000))",
+              "n": {
+                ".validate": "newData.isNumber()"
+              },
+              "since": {
+                ".validate": "newData.isNumber()"
+              },
+              "$other": {
+                ".validate": false
+              }
+            }
+          }
+        },
+        "leaderboard": {
+          ".read": "(auth != null && (auth.token.firebase.sign_in_provider === 'google.com' || (auth.token.firebase.sign_in_provider === 'password' && auth.token.email_verified === true))) && root.child('sims_accounts').child(auth.uid).child('playerId').isString()",
+          "$pid": {
+            ".write": "(auth != null && (auth.token.firebase.sign_in_provider === 'google.com' || (auth.token.firebase.sign_in_provider === 'password' && auth.token.email_verified === true))) && root.child('sims_accounts').child(auth.uid).child('playerId').val() === $pid",
+            ".validate": "newData.hasChildren(['name','wealth'])",
+            "name": {
+              ".validate": "newData.isString() && newData.val().length <= 20"
+            },
+            "wealth": {
+              ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 9007199254740991"
+            },
+            "shifts": {
+              ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 9007199254740991"
+            }
+          }
+        }
+      }
     }
   }
 }

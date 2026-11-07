@@ -33,6 +33,7 @@ import {
   firstFreeSlot,
   roomPaintings,
 } from './painting-rules.js';
+import { worldNode } from './world-db.js';
 
 const euro = (n: number) => `${n.toLocaleString('it-IT')} €`;
 const sold = () => game.player.stats.paintingsSold || 0;
@@ -43,7 +44,7 @@ let offerOpen = false;
 
 /** Indice della propria stanza (-1 se non se ne ha una). */
 const myIdx = (): number => game.myAssignedRoomIdx ?? -1;
-const myRoomPath = () => `sims_rooms_state/${myIdx()}`;
+const myRoomPath = () => `${worldNode('rooms_state')}/${myIdx()}`;
 const myRoom = (): GameValue => game.roomsState[myIdx()];
 
 // ---------------------------------------------------------------- sito
@@ -239,7 +240,7 @@ async function buyPainting(item: MarketItem): Promise<void> {
   const me = myIdx();
   let committed = false;
   try {
-    const reference = game.session.db.ref('sims_rooms_state');
+    const reference = game.session.db.ref(worldNode('rooms_state'));
     await reference.get();
     const result = await withTimeout(
       reference.transaction((rooms: GameValue) => {

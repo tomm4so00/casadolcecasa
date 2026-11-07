@@ -10,6 +10,7 @@ import { hashPin } from './safe-pin.js';
 import { settleEconomy } from './economy.js';
 import { isFreeRoom, moveRoom, roomLabel } from './realty-rules.js';
 import { recordActivity } from './activity.js';
+import { worldNode } from './world-db.js';
 
 const label = (idx: number): string => roomLabel(idx, game.ROOMS_PER_APT);
 
@@ -97,7 +98,7 @@ async function moveMyRoom(target: number): Promise<void> {
   await settleEconomy();
   let moved: GameValue = null;
   try {
-    const ref = game.session.db.ref('sims_rooms_state');
+    const ref = game.session.db.ref(worldNode('rooms_state'));
     await withTimeout(ref.get(), 5000);
     const result: GameValue = await withTimeout(
       ref.transaction((cur: GameValue) => {

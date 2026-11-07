@@ -17,7 +17,8 @@ Object.assign(process.env, {
 });
 const namespace = 'demo-casadolcecasa-default-rtdb';
 const headers = { Authorization: 'Bearer owner' };
-await fetch(`http://127.0.0.1:9000/.settings/rules.json?ns=${namespace}`, {
+// se il database rifiuta le regole resterebbero quelle aperte e la prova non varrebbe niente
+const rulesLoaded = await fetch(`http://127.0.0.1:9000/.settings/rules.json?ns=${namespace}`, {
   method: 'PUT',
   headers,
   body: await readFile(
@@ -25,6 +26,7 @@ await fetch(`http://127.0.0.1:9000/.settings/rules.json?ns=${namespace}`, {
     'utf8',
   ),
 });
+assert.equal(rulesLoaded.ok, true, 'rules rejected: ' + (await rulesLoaded.text()));
 await fetch(`http://127.0.0.1:9000/.json?ns=${namespace}`, {
   method: 'PUT',
   headers,
@@ -83,6 +85,8 @@ try {
   await page.locator('#setup-new-sim').click();
   await page.locator('#setup-nickname').fill('Profilo cloud v8');
   await page.locator('#setup-create-sim').click();
+  // personaggio nuovo: prima sceglie il condominio (qui c'è solo quello di sempre)
+  await page.locator('#world-modal [data-w="public"]').click();
   await page
     .locator('#creator-modal')
     .getByRole('button', { name: /Conferma/ })

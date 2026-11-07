@@ -9,6 +9,7 @@ import {
   SLEEP_AFTER_FAINT,
   faintedWhileAway,
 } from './presence-rules.js';
+import { worldNode } from './world-db.js';
 
 const RISE_MS = 900;
 
@@ -23,7 +24,7 @@ export async function resumeFaintSpot(): Promise<void> {
   let last: GameValue = null;
   try {
     last = (
-      await game.session.db.ref('sims_online_players/' + game.session.myPlayerId).get()
+      await game.session.db.ref(worldNode('online_players') + '/' + game.session.myPlayerId).get()
     ).val();
   } catch {
     last = null;

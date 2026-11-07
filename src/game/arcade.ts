@@ -30,9 +30,10 @@ import {
   settleRX,
 } from './arcade-rules.js';
 import { recordActivity } from './activity.js';
+import { worldNode } from './world-db.js';
 
 const serverNow = (): number => Date.now() + (game.session.serverOffset || 0);
-const ref = (gid: string): GameValue => game.session.db.ref('sims_games/' + gid);
+const ref = (gid: string): GameValue => game.session.db.ref(worldNode('games') + '/' + gid);
 
 /** Partita aperta adesso su questo dispositivo. */
 let current: {

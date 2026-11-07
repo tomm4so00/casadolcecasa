@@ -162,6 +162,8 @@ export interface SessionState {
   hadSave?: boolean;
   gameStarted: boolean;
   serverOffset: number;
+  /** Il mondo (condominio) in cui si gioca: stanze, chat, cimitero… sono i suoi. */
+  worldId: string;
 }
 export interface ViewState {
   activeEnvironment: string;

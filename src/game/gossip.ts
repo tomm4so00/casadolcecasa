@@ -15,6 +15,7 @@ import {
   isRepeat,
   timeAgo,
 } from './gossip-rules.js';
+import { worldNode } from './world-db.js';
 
 const READ_KEY = 'sims_gossip_read';
 let entries: (GossipEntry & { k: string })[] = [];
@@ -44,7 +45,7 @@ export function postGossip(text: string, about: string[] = [], windowMs = 30 * 6
   if (ids.length) entry.about = ids.join(',');
   const key = gossipKey(now, Math.random().toString(36).slice(2, 6));
   void Promise.resolve()
-    .then(() => game.session.db.ref('sims_gossip/' + key).set(entry))
+    .then(() => game.session.db.ref(worldNode('gossip') + '/' + key).set(entry))
     .catch((e: unknown) => console.warn('[pettegolezzi]', e));
 }
 
@@ -52,7 +53,7 @@ export function postGossip(text: string, about: string[] = [], windowMs = 30 * 6
 export function startGossip(): void {
   if (started) return;
   started = true;
-  let q: GameValue = game.session.db.ref('sims_gossip');
+  let q: GameValue = game.session.db.ref(worldNode('gossip'));
   if (typeof q.limitToLast === 'function') q = q.limitToLast(GOSSIP_SHOW);
   let first = true;
   const seen = new Set<string>();

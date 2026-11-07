@@ -1,4 +1,5 @@
 import { MOONBASE_PARTS } from './render/moonbase.js';
+import { LEGACY_WORLD } from '../../shared/worlds.js';
 import { canSellJoint } from './weed.js';
 
 import { canKiss } from './romance.js';
@@ -96,6 +97,7 @@ export function initializeGame() {
     saveReady: false,
     gameStarted: false,
     serverOffset: 0,
+    worldId: LEGACY_WORLD,
   };
   game.onlinePlayers = {};
   game.view.activeEnvironment = 'SALOON';

@@ -7,6 +7,7 @@ import { lifetime, dom } from './runtime.js';
 import { closeModal } from './render/primitives.js';
 import { toast } from './missions.js';
 import { recordActivity } from './activity.js';
+import { worldNode } from './world-db.js';
 export function chatColor(name?: GameValue): GameValue {
   let h: GameValue = 0;
   for (const c of String(name)) h = (h * 31 + c.charCodeAt(0)) % 360;
@@ -124,7 +125,7 @@ export async function sendChat(..._args: GameValue[]): Promise<GameValue> {
     t.toString(36).padStart(9, '0') + '_' + Math.random().toString(36).slice(2, 6);
   try {
     await game.session.db
-      .ref('sims_chat/' + key)
+      .ref(worldNode('chat') + '/' + key)
       .set({ id: game.session.myPlayerId, name: game.player.myData.nick, text, t });
     recordActivity('app');
   } catch (e: GameValue) {
@@ -140,10 +141,10 @@ export function startChat(..._args: GameValue[]): GameValue {
       const saved: GameValue = JSON.parse(
         localStorage.getItem(game.session.LS_PREFIX + 'sims_chat_offline') || 'null',
       );
-      if (saved) game.session.db.ref('sims_chat').set(saved);
+      if (saved) game.session.db.ref(worldNode('chat')).set(saved);
     } catch (e: GameValue) {}
   }
-  let q = game.session.db.ref('sims_chat');
+  let q = game.session.db.ref(worldNode('chat'));
   if (typeof q.limitToLast === 'function') q = q.limitToLast(game.CHAT_SHOW);
   q.on('value', (snap): void => {
     const value: unknown = snap.val();

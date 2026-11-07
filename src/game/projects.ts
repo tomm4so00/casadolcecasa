@@ -31,6 +31,7 @@ import {
   LAUNCH_DELAY_MS,
 } from './project-rules.js';
 import { recordActivity } from './activity.js';
+import { worldNode } from './world-db.js';
 
 const rocket = PROJECTS.rocket;
 const moonbase = PROJECTS.moonbase;
@@ -89,7 +90,7 @@ function setBaseState(s: ProjectState): void {
 }
 
 export function startProjects(): void {
-  game.session.db.ref('sims_projects/rocket').on('value', (snap?: GameValue): void => {
+  game.session.db.ref(worldNode('projects') + '/rocket').on('value', (snap?: GameValue): void => {
     const before = rocketStage();
     setState(decodeProject(snap?.val()));
     // avvisa tutti quando il razzo avanza (non al primo caricamento)
@@ -104,7 +105,7 @@ export function startProjects(): void {
     renderProjects();
     updateLaunchBanner();
   });
-  game.session.db.ref('sims_projects/moonbase').on('value', (snap?: GameValue): void => {
+  game.session.db.ref(worldNode('projects') + '/moonbase').on('value', (snap?: GameValue): void => {
     const before = projectStage(moonbase, baseState.funded);
     setBaseState(decodeProject(snap?.val()));
     const now = projectStage(moonbase, baseState.funded);
@@ -343,7 +344,7 @@ async function donate(amount: number, id: ProjectId = 'rocket'): Promise<boolean
   let committed = false;
   try {
     const res = await game.session.db
-      .ref(`sims_projects/${id}/funded`)
+      .ref(`${worldNode('projects')}/${id}/funded`)
       .transaction((cur: GameValue) => {
         const now = Number(cur) || 0;
         return now + amount > goal ? undefined : now + amount;
@@ -361,7 +362,7 @@ async function donate(amount: number, id: ProjectId = 'rocket'): Promise<boolean
   recordActivity('green');
   try {
     await game.session.db
-      .ref(`sims_projects/${id}/donors/` + game.session.myPlayerId)
+      .ref(`${worldNode('projects')}/${id}/donors/` + game.session.myPlayerId)
       .transaction((cur: GameValue) => ({
         name: String(game.player.myData.nick || 'Giocatore').slice(0, 20),
         amount: (Number(cur?.amount) || 0) + amount,
@@ -404,7 +405,7 @@ export async function pressLaunchButton(): Promise<void> {
   let committed = false;
   try {
     const result = await game.session.db
-      .ref('sims_projects/rocket/launchAt')
+      .ref(worldNode('projects') + '/rocket/launchAt')
       .transaction((cur: GameValue) => (cur ? undefined : serverNow() + LAUNCH_DELAY_MS));
     committed = result.committed;
   } catch (e) {
@@ -416,7 +417,7 @@ export async function pressLaunchButton(): Promise<void> {
   }
   try {
     await game.session.db
-      .ref('sims_projects/rocket/launchBy')
+      .ref(worldNode('projects') + '/rocket/launchBy')
       .set(String(game.player.myData.nick || 'Giocatore').slice(0, 20));
   } catch (e) {
     console.warn('[razzo] nome', e);
