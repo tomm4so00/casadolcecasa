@@ -2663,39 +2663,11 @@ export const WORK_JOBS = {
   },
   ospedale: {
     title: '🏥 Ospedale',
-    targets: [{ id: 'paziente', label: 'Paziente', x: -105, y: -95, w: 56, h: 96 }],
-    pool: {
-      termometro: ['🌡️', 'Termometro'],
-      pastiglia: ['💊', 'Pastiglia'],
-      disinfettante: ['🧴', 'Disinfettante'],
-      cerotto: ['🩹', 'Cerotto'],
-      stetoscopio: ['🩺', 'Stetoscopio'],
-      siringa: ['💉', 'Siringa'],
-      forbici: ['✂️', 'Forbici'],
-    },
-    tasks: [
-      {
-        title: 'Paziente con la febbre',
-        steps: [
-          { item: 'termometro', target: 'paziente', text: 'Misura la febbre al paziente' },
-          { item: 'pastiglia', target: 'paziente', text: 'Dagli la medicina per abbassarla' },
-        ],
-      },
-      {
-        title: 'Paziente ferito',
-        steps: [
-          { item: 'disinfettante', target: 'paziente', text: 'Disinfetta la ferita' },
-          { item: 'cerotto', target: 'paziente', text: 'Poi proteggila' },
-        ],
-      },
-      {
-        title: 'Controllo al cuore',
-        steps: [
-          { item: 'stetoscopio', target: 'paziente', text: 'Ascolta il battito del cuore' },
-          { item: 'siringa', target: 'paziente', text: "Fai l'iniezione prescritta" },
-        ],
-      },
-    ],
+    // due pazienti a letto e quattro postazioni (hospital.ts): i compiti generici non si usano
+    mode: 'hospital',
+    targets: [],
+    pool: {},
+    tasks: [],
   },
   ristorante: {
     title: '🍳 Ristorante',
@@ -2778,12 +2750,24 @@ export const WORK_JOBS = {
 };
 
 export const ENV_PROPS = {
+  // Parco 880×640 (room-size.ts): viali a croce con la fontana al centro, l'ingresso davanti,
+  // l'area cani nell'angolo destro, il picnic in fondo, il laghetto a sinistra, i fiori davanti.
   passeggiata: [
-    { kind: 'flowers', x: 150, y: 150, w: 56, h: 30, solid: false, flat: true },
-    { kind: 'flowers', x: -140, y: 140, w: 50, h: 30, solid: false, flat: true },
-    { kind: 'tree', x: -115, y: -95, w: 18, h: 18, size: 1.1, label: 'Albero 🌳', z: 90 },
-    { kind: 'tree', x: -165, y: -155, w: 18, h: 18, size: 0.9, z: 80 },
-    // area cani: terreno, staccionata a pezzi e cancello (vedi dog-park-rules.ts)
+    { kind: 'fountain', x: 0, y: 0, w: 84, h: 84, label: 'Fontana ⛲', z: 60 },
+    // ingresso: siepi ai lati del viale e due lampioni
+    { kind: 'hedge', x: -36, y: 205, w: 12, h: 150, z: 20 },
+    { kind: 'hedge', x: 36, y: 205, w: 12, h: 150, z: 20 },
+    { kind: 'streetlamp', x: -36, y: 300, w: 8, h: 8 },
+    { kind: 'streetlamp', x: 36, y: 300, w: 8, h: 8 },
+    // panchine lungo il viale, rivolte verso chi passa
+    { kind: 'bench', x: -150, y: -38, w: 50, h: 16 },
+    { kind: 'bench', x: -390, y: -38, w: 50, h: 16 },
+    { kind: 'bench', x: 130, y: -38, w: 50, h: 16 },
+    { kind: 'streetlamp', x: -200, y: -34, w: 8, h: 8 },
+    { kind: 'streetlamp', x: 330, y: -34, w: 8, h: 8 },
+    { kind: 'streetlamp', x: 200, y: 34, w: 8, h: 8 },
+    { kind: 'streetlamp', x: -330, y: 34, w: 8, h: 8 },
+    // area cani: terreno, staccionata a pezzi, cancello e giochi (vedi dog-park-rules.ts)
     {
       kind: 'dogParkGround',
       x: (DOG_PARK.x0 + DOG_PARK.x1) / 2,
@@ -2803,14 +2787,57 @@ export const ENV_PROPS = {
       z: 30,
       solid: false,
     },
-    { kind: 'tree', x: -20, y: 130, w: 18, h: 18, size: 0.95, z: 80 },
-    { kind: 'tree', x: 160, y: 75, w: 16, h: 16, size: 0.8, z: 70 },
-    { kind: 'tree', x: -165, y: 35, w: 16, h: 16, size: 0.85, z: 75 },
-    { kind: 'fountain', x: 0, y: 0, w: 70, h: 70, label: 'Fontana ⛲', z: 60 },
-    { kind: 'bench', x: -80, y: 60, w: 50, h: 16 },
-    { kind: 'bench', x: 80, y: 60, w: 50, h: 16 },
-    { kind: 'streetlamp', x: -60, y: -60, w: 8, h: 8 },
-    { kind: 'streetlamp', x: 60, y: 110, w: 8, h: 8 },
+    { kind: 'dogTunnel', x: 225, y: -255, w: 70, h: 18, z: 18, solid: false },
+    { kind: 'dogJump', x: 365, y: -250, w: 32, h: 3, z: 18, solid: false },
+    { kind: 'dogJump', x: 195, y: -170, w: 3, h: 32, z: 18, solid: false },
+    { kind: 'dogSlalom', x: 375, y: -165, w: 4, h: 70, z: 22, solid: false },
+    { kind: 'dogFountain', x: 392, y: -280, w: 14, h: 12, z: 26, solid: false },
+    { kind: 'bench', x: 300, y: -277, w: 46, h: 16 },
+    { kind: 'tree', x: 425, y: -305, w: 16, h: 16, size: 0.85, z: 75 },
+    { kind: 'tree', x: 120, y: -300, w: 18, h: 18, size: 1.05, z: 85 },
+    { kind: 'tree', x: 425, y: -40, w: 16, h: 16, size: 0.8, z: 70 },
+    { kind: 'flowers', x: 200, y: -60, w: 70, h: 18, solid: false, flat: true },
+    // picnic in fondo, sul prato tra gli alberi
+    {
+      kind: 'picnicTable',
+      x: -305,
+      y: -225,
+      w: 56,
+      h: 40,
+      z: 22,
+      basket: true,
+      label: 'Picnic 🧺',
+    },
+    { kind: 'picnicTable', x: -200, y: -185, w: 56, h: 40, z: 22 },
+    { kind: 'tree', x: -400, y: -290, w: 18, h: 18, size: 1.15, z: 90 },
+    { kind: 'tree', x: -150, y: -285, w: 18, h: 18, size: 1, z: 85 },
+    { kind: 'tree', x: -385, y: -150, w: 18, h: 18, size: 0.95, z: 80 },
+    { kind: 'tree', x: -60, y: -250, w: 18, h: 18, size: 1.1, z: 90 },
+    { kind: 'tree', x: 70, y: -200, w: 16, h: 16, size: 0.9, z: 75 },
+    { kind: 'tree', x: -100, y: -120, w: 18, h: 18, size: 0.95, z: 80 },
+    { kind: 'streetlamp', x: -180, y: -110, w: 8, h: 8 },
+    { kind: 'flowers', x: -60, y: -60, w: 40, h: 26, solid: false, flat: true },
+    // laghetto con le anatre, il sentiero intorno e le panchine per guardarlo
+    { kind: 'pond', x: -260, y: 175, w: 150, h: 110, flat: true, label: 'Laghetto 🦆', z: 6 },
+    { kind: 'bench', x: -360, y: 66, w: 46, h: 16 },
+    { kind: 'bench', x: -150, y: 66, w: 46, h: 16 },
+    { kind: 'tree', x: -410, y: 290, w: 18, h: 18, size: 1.1, z: 85 },
+    { kind: 'tree', x: -110, y: 285, w: 18, h: 18, size: 0.95, z: 80 },
+    { kind: 'tree', x: -410, y: 110, w: 16, h: 16, size: 0.85, z: 75 },
+    { kind: 'tree', x: -95, y: 140, w: 16, h: 16, size: 0.9, z: 75 },
+    { kind: 'streetlamp', x: -160, y: 250, w: 8, h: 8 },
+    { kind: 'flowers', x: -260, y: 300, w: 60, h: 22, solid: false, flat: true },
+    // giardino fiorito davanti a destra
+    { kind: 'flowers', x: 270, y: 180, w: 54, h: 54, solid: false, flat: true },
+    { kind: 'flowers', x: 150, y: 175, w: 30, h: 70, solid: false, flat: true },
+    { kind: 'flowers', x: 390, y: 175, w: 30, h: 70, solid: false, flat: true },
+    { kind: 'hedge', x: 270, y: 290, w: 120, h: 12, z: 18 },
+    { kind: 'bench', x: 200, y: 98, w: 46, h: 16 },
+    { kind: 'bench', x: 340, y: 98, w: 46, h: 16 },
+    { kind: 'tree', x: 415, y: 295, w: 18, h: 18, size: 1, z: 85 },
+    { kind: 'tree', x: 110, y: 290, w: 16, h: 16, size: 0.9, z: 75 },
+    { kind: 'tree', x: 420, y: 60, w: 16, h: 16, size: 0.85, z: 75 },
+    { kind: 'tree', x: 95, y: 110, w: 18, h: 18, size: 0.95, z: 80 },
   ],
   bar: [
     // dalla parete (y −180) al fronte (y −112): dietro c'è il mobile del barista, non ci si entra
@@ -2874,21 +2901,74 @@ export const ENV_PROPS = {
       by: -40,
     },
   ],
+  // Coordinate di base: all'avvio si allargano del 30% (room-size.ts). Le postazioni sono quelle
+  // del turno (hospital.ts): monitor e carrelli si spostano mentre si lavora.
   lavoro_ospedale: [
-    { kind: 'hospitalBed', x: -105, y: -95, w: 56, h: 96, label: 'Lettino Medico 🏥', z: 46 },
-    { kind: 'ivStand', x: -60, y: -125, w: 10, h: 10 },
-    { kind: 'heartMonitor', x: -150, y: -10, w: 22, h: 20, z: 64 },
-    { kind: 'medCabinet', x: 120, y: -145, w: 60, h: 28, z: 95, label: 'Armadietto Medicinali 💊' },
-    { kind: 'waitingChairs', x: 110, y: 75, w: 80, h: 20, label: "Sala d'attesa", z: 35 },
-    { kind: 'waitingChairs', x: 110, y: 130, w: 80, h: 20, z: 35 },
-    // secondo lettino con la flebo, e il paravento tra i due
-    { kind: 'hospitalBed', x: 15, y: -110, w: 56, h: 96, z: 46 },
-    { kind: 'ivStand', x: 55, y: -140, w: 10, h: 10 },
-    { kind: 'curtainScreen', x: -45, y: -100, w: 8, h: 70, z: 62 },
-    { kind: 'medCart', x: 60, y: -20, w: 30, h: 20, z: 40, label: 'Carrello 💉' },
-    { kind: 'wheelchair', x: -150, y: 110, w: 26, h: 26, z: 38 },
+    // i due letti dei pazienti, con le flebo e il paravento in mezzo
+    { kind: 'hospitalBed', x: -110, y: -100, w: 56, h: 96, z: 46, bed: 0 },
+    { kind: 'ivStand', x: -70, y: -130, w: 10, h: 10 },
+    { kind: 'hospitalBed', x: 30, y: -100, w: 56, h: 96, z: 46, bed: 1 },
+    { kind: 'ivStand', x: 70, y: -130, w: 10, h: 10 },
+    { kind: 'curtainScreen', x: -40, y: -100, w: 8, h: 70, z: 62 },
+    { kind: 'heartMonitor', x: -165, y: -60, w: 22, h: 20, z: 64 },
+    // le quattro postazioni
+    {
+      kind: 'vitalsStation',
+      x: -172,
+      y: 30,
+      w: 24,
+      h: 22,
+      z: 60,
+      station: 'monitor',
+      label: 'Monitor dei parametri 🖥️',
+    },
+    {
+      kind: 'medCabinet',
+      x: 130,
+      y: -150,
+      w: 60,
+      h: 28,
+      z: 95,
+      station: 'farmaci',
+      label: 'Armadio dei farmaci 💊',
+    },
+    {
+      kind: 'medCart',
+      x: 40,
+      y: 40,
+      w: 30,
+      h: 20,
+      z: 40,
+      station: 'medicazioni',
+      label: 'Carrello delle medicazioni 🩹',
+    },
+    {
+      kind: 'linenCart',
+      x: 120,
+      y: 40,
+      w: 32,
+      h: 22,
+      z: 42,
+      station: 'biancheria',
+      label: 'Carrello della biancheria 🧺',
+    },
+    // defibrillatore per il codice rosso: in mezzo ai due letti, così si arriva in fretta a tutti
+    // e due (ci sono solo 5 secondi)
+    {
+      kind: 'defibStation',
+      x: -40,
+      y: -30,
+      w: 22,
+      h: 20,
+      z: 56,
+      station: 'defib',
+      label: 'Defibrillatore ⚡',
+    },
+    // sala d'attesa e il resto
+    { kind: 'waitingChairs', x: -100, y: 150, w: 80, h: 20, z: 35 },
+    { kind: 'wheelchair', x: -170, y: 110, w: 26, h: 26, z: 38 },
     { kind: 'cooler', x: 172, y: -70, w: 22, h: 22, z: 70 },
-    { kind: 'plant', x: 175, y: 30, w: 24, h: 24, z: 55 },
+    { kind: 'plant', x: 175, y: 140, w: 24, h: 24, z: 55 },
   ],
   lavoro_ristorante: [
     // in fondo: bancone, carrello dei dolci e il portone da cui entrano i clienti
@@ -3617,7 +3697,24 @@ export const ENV_STYLE = {
       { u: 1037, v: 246, r: 75 }, // piazzola libera nell'ala destra
     ],
   },
-  passeggiata: { floor: 'grass', floorColor: '#5fa84a', outdoor: true },
+  passeggiata: {
+    floor: 'grass',
+    floorColor: '#5fa84a',
+    outdoor: true,
+    // u = x + 440, v = y + 320 (vedi la disposizione in ENV_PROPS)
+    paths: [
+      { u: 0, v: 298, w: 880, h: 44 }, // viale da sinistra a destra
+      { u: 418, v: 0, w: 44, h: 640 }, // viale dall'ingresso al fondo
+      { u: 440, v: 320, r: 92 }, // piazza della fontana
+      { u: 690, v: 236, w: 40, h: 64 }, // al cancello dell'area cani
+      { u: 160, v: 140, w: 40, h: 160 }, // verso il picnic
+      { u: 180, v: 120, r: 70 }, // piazzola del picnic
+      { u: 160, v: 342, w: 40, h: 60 }, // verso il laghetto
+      { u: 180, v: 495, r: 100 }, // giro intorno al laghetto
+      { u: 690, v: 342, w: 40, h: 90 }, // verso il giardino fiorito
+      { u: 710, v: 500, r: 78 }, // giardino fiorito
+    ],
+  },
   CIMITERO: { floor: 'grass', floorColor: '#4d7c46', outdoor: true },
   lavoro_cantiere: {
     floor: 'dirt',

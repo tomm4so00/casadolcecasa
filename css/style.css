@@ -835,6 +835,43 @@ input[type='number'] {
   font-size: 0.98rem;
   font-weight: bold;
 }
+/* ospedale, codice rosso: il riquadro lampeggia di rosso finché non si dà la scarica */
+#minigame.mg-code-red {
+  animation: mgcodered 0.5s ease-in-out infinite alternate;
+}
+#minigame .mg-red {
+  color: #ff6b6b;
+  font-weight: bold;
+}
+@keyframes mgcodered {
+  from {
+    background: rgba(15, 15, 25, 0.9);
+    border-color: rgba(231, 76, 60, 0.6);
+    box-shadow: 0 0 0 0 rgba(231, 76, 60, 0);
+  }
+  to {
+    background: rgba(120, 20, 20, 0.92);
+    border-color: #ff6b6b;
+    box-shadow: 0 0 18px 4px rgba(231, 76, 60, 0.7);
+  }
+}
+/* ospedale: riquadro più largo, così i due pazienti stanno sulla stessa riga */
+#minigame.mg-wide {
+  width: min(560px, 92vw);
+}
+/* ospedale: i due pazienti uno accanto all'altro (su due righe se non c'è spazio) */
+#minigame .mg-patients {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  column-gap: 8px;
+}
+#minigame .mg-pt {
+  white-space: nowrap;
+}
+#minigame .mg-sep {
+  opacity: 0.4;
+}
 #minigame .mg-step .held {
   color: #feca57;
 }
@@ -914,6 +951,9 @@ input[type='number'] {
   }
   #minigame .mg-sub {
     font-size: 0.62rem;
+  }
+  #minigame.mg-wide {
+    width: min(440px, 80vw);
   }
 }
 @keyframes mgok {

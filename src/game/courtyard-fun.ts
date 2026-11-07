@@ -12,6 +12,15 @@ import { presenceAlive } from './saves.js';
 import { presenceState } from './presence-rules.js';
 import { recordActivity } from './activity.js';
 import { APERITIVO, DRINK_END, afterAperitivo } from './bar-rules.js';
+import {
+  type Chair,
+  chairFace,
+  chairFront,
+  chairPose,
+  chairsOf,
+  hasTable,
+  pathToChair,
+} from './chair-rules.js';
 
 export const COIN_PRICE = 5;
 export const ICE_CREAM_PRICE = 5;
@@ -38,7 +47,10 @@ interface Spot {
   w: number;
   h: number;
   reach: number;
-  fun: 'bench' | 'stool' | 'fountain' | 'iceCream' | 'realty' | 'gossip';
+  fun: 'bench' | 'stool' | 'chair' | 'fountain' | 'iceCream' | 'realty' | 'gossip';
+  /** Sedie: la sedia e il tavolo (o la fila di sedie d'attesa) a cui appartiene. */
+  chair?: Chair;
+  table?: GameValue;
 }
 
 /**
@@ -53,6 +65,19 @@ export function funSpots(): Record<string, Spot> {
   let benches = 0;
   for (const p of benchesHere())
     out['bench' + benches++] = { x: p.x, y: p.y, w: p.w, h: p.h, reach: 0, fun: 'bench' };
+  // e su tutte le sedie dei tavolini e d'attesa, tranne nei posti di lavoro
+  let chairs = 0;
+  for (const { chair, table } of chairsHere())
+    out['chair' + chairs++] = {
+      x: chair.x,
+      y: chair.y,
+      w: 16,
+      h: 16,
+      reach: 4,
+      fun: 'chair',
+      chair,
+      table,
+    };
   if (env === 'centro_commerciale') {
     const cart = ((game.ENV_DECOR.centro_commerciale || []) as GameValue[]).find(
       (p) => p.kind === 'iceCreamCart',
@@ -89,12 +114,33 @@ export function benchesHere(): GameValue[] {
     .filter((p) => p?.kind === 'bench');
 }
 
+/** Le sedie dell'ambiente in cui si è, ognuna col suo tavolo (nei lavori nessuna). */
+export function chairsHere(): { chair: Chair; table: GameValue }[] {
+  const env = game.view.activeEnvironment;
+  if (env.startsWith('lavoro_')) return [];
+  return ((game.ENV_PROPS[env] || []) as GameValue[])
+    .concat((game.ENV_DECOR[env] || []) as GameValue[])
+    .flatMap((p) => (p ? chairsOf(p).map((chair) => ({ chair, table: p })) : []));
+}
+
+/** Pose da seduti che occupano un posto (panchina, sgabello, sedia). */
+export const SEATED_ACTS = ['bench', 'stool', 'chair', 'chairSide'];
+
 /** Posa da mostrare (e da mandare agli altri) mentre si è seduti. */
 export const myBenchPose = (): string => (seatedPose(game.benchSit) ? game.benchSit.pose : '');
 
-/** Seduti davvero (non ancora per strada verso il posto): sulla panchina o sullo sgabello. */
+/** Seduti davvero (non ancora per strada verso il posto): panchina, sgabello o sedia. */
 function seatedPose(s: GameValue): boolean {
-  return s?.pose === 'bench' || s?.pose === 'stool';
+  return SEATED_ACTS.includes(s?.pose);
+}
+
+/**
+ * Il posto della sedia in cui si sta (seduti, sedendosi o alzandosi), o null: chi è lì si
+ * disegna insieme alla sedia, tra la seduta e lo schienale.
+ */
+export function myChairSeat(): Pt | null {
+  const s: GameValue = game.benchSit;
+  return s?.kind === 'chair' && s.arrived ? s.seat : null;
 }
 
 type Pt = { x: number; y: number };
@@ -163,10 +209,7 @@ const SEAT_GAP = 12;
 /** Chi è già seduto su questo posto (anche se è uscito dal gioco seduto lì), o null. */
 function seatTakenBy(seat: Pt): string | null {
   for (const [id, op] of othersHere())
-    if (
-      (op.act === 'bench' || op.act === 'stool') &&
-      Math.hypot(op.x - seat.x, op.y - seat.y) < SEAT_GAP
-    )
+    if (SEATED_ACTS.includes(op.act) && Math.hypot(op.x - seat.x, op.y - seat.y) < SEAT_GAP)
       return id;
   return null;
 }
@@ -209,7 +252,7 @@ export function toggleBench(key: string): void {
 const SIT_WALK_SPEED = 130;
 
 function startSit(
-  kind: 'bench' | 'sofa' | 'stool',
+  kind: 'bench' | 'sofa' | 'stool' | 'chair',
   seat: Pt,
   front: Pt,
   path: Pt[],
@@ -231,6 +274,26 @@ function startSit(
     pose: '',
     relaxAt: game.animClock + RELAX_EVERY,
   };
+}
+
+/** Siediti sulla sedia (girando attorno al tavolo se serve), oppure alzati se sei già seduto. */
+export function sitOnChair(key: string): void {
+  if (game.benchSit) {
+    standUp();
+    return;
+  }
+  const sp = funSpots()[key];
+  if (!sp || sp.fun !== 'chair' || !sp.chair || game.player.isSleeping) return;
+  const seat = { x: sp.chair.x, y: sp.chair.y };
+  if (seatTakenBy(seat)) {
+    toast('🪑 La sedia è occupata.');
+    sfx('error');
+    return;
+  }
+  const front = chairFront(sp.chair, hasTable(sp.table));
+  const from = { x: game.playerPos.x, y: game.playerPos.y };
+  startSit('chair', seat, front, pathToChair(from, front, sp.table), sp, chairFace(sp.chair));
+  game.benchSit.chairPose = chairPose(sp.chair);
 }
 
 /** Direzione in cui guarda chi si sta sedendo o è seduto (null = quella dei tasti). */
@@ -378,7 +441,8 @@ export function updateBench(now: number): void {
   e -= s.walk;
   // arrivati davanti al posto: ci si gira e ci si lascia andare all'indietro sulla seduta
   s.dir = s.face;
-  s.pose = s.kind === 'stool' ? 'stool' : 'bench';
+  s.arrived = true;
+  s.pose = s.kind === 'stool' ? 'stool' : s.kind === 'chair' ? s.chairPose : 'bench';
   if (e < SIT.down) return slide(s.front, s.seat, e / SIT.down, false);
   slide(s.seat, s.seat, 1, false);
   if (s.kind === 'stool') {
@@ -418,7 +482,12 @@ export function updateBench(now: number): void {
     s.relaxAt = now + RELAX_EVERY;
     if (game.player.happinessLevel < 100) {
       game.player.happinessLevel = Math.min(100, game.player.happinessLevel + 1);
-      toast('🌳 Ti rilassi sulla panchina (Felicità +1%)', 2000);
+      toast(
+        s.kind === 'chair'
+          ? '🪑 Ti rilassi sulla sedia (Felicità +1%)'
+          : '🌳 Ti rilassi sulla panchina (Felicità +1%)',
+        2000,
+      );
     }
   }
 }

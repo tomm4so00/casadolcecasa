@@ -61,6 +61,8 @@ interface GameContext {
   bedSlot: number;
   showerFog: number;
   frameShowerActors: GameValue;
+  /** Chi è seduto su una sedia in questo fotogramma: lo disegna la sedia (render/objects.ts). */
+  frameChairSitters: GameValue;
   SLEEP_DEPLETION_SEC: number;
   SLEEP_RECOVERY_SEC: number;
   HUNGER_AWAKE_DEPLETION_SEC: number;

@@ -109,6 +109,248 @@ export function drawMedCartProp(it?: GameValue): GameValue {
   box(x + w * 0.2, y + h * 0.25, 9, 6, 1.5, '#ffffff', { z0: 31 }); // garze
 }
 
+/**
+ * Monitor dei parametri portatile: scocca grigia, schermo con il tracciato verde e i valori
+ * (frequenza, pressione, saturazione), maniglia sopra. (x, y, z) è il centro della base.
+ */
+export function drawPortableMonitor(x: number, y: number, z: number, t: number, k = 1): void {
+  const ctx = game.view.ctx;
+  const W = 16 * k,
+    D = 8 * k,
+    H = 13 * k;
+  const body = box(x, y, W, D, H, '#dfe6e9', { z0: z, top: '#f5f6fa' });
+  onFace(body, 'left', (FW: number, FH: number): void => {
+    ctx.fillStyle = '#0b1e2d';
+    ctx.fillRect(1.5 * k, 1.5 * k, FW - 3 * k, FH - 3 * k);
+    // tracciato del battito
+    ctx.strokeStyle = '#2ecc71';
+    ctx.lineWidth = 0.7 * k;
+    ctx.beginPath();
+    const y0 = FH * 0.38;
+    for (let u = 2 * k; u < FW * 0.62; u += 0.5) {
+      const ph = (u / (FW * 0.62) + t * 0.9) % 1;
+      let v = y0;
+      if (ph > 0.45 && ph < 0.5) v -= (ph - 0.45) * 60 * k;
+      else if (ph >= 0.5 && ph < 0.55) v += (0.55 - ph) * 60 * k - 1.5 * k;
+      u === 2 * k ? ctx.moveTo(u, v) : ctx.lineTo(u, v);
+    }
+    ctx.stroke();
+    // i valori a destra: frequenza (verde), pressione (rossa), saturazione (azzurra)
+    const vals: [string, number][] = [
+      ['#2ecc71', 0.22],
+      ['#ff7675', 0.5],
+      ['#74b9ff', 0.78],
+    ];
+    for (const [c, v] of vals) {
+      ctx.fillStyle = c;
+      ctx.fillRect(FW * 0.68, FH * v - 1 * k, FW * 0.22, 1.8 * k);
+    }
+    ctx.fillStyle = 'rgba(46,204,113,0.55)';
+    ctx.fillRect(2 * k, FH * 0.66, FW * 0.55, 1 * k);
+  });
+  // maniglia
+  box(x, y, W * 0.6, 1.6 * k, 1.6 * k, '#636e72', { z0: z + H + 2 * k, edge: null });
+  box(x - W * 0.3, y, 1.4 * k, 1.6 * k, 2 * k, '#636e72', { z0: z + H, edge: null });
+  box(x + W * 0.3, y, 1.4 * k, 1.6 * k, 2 * k, '#636e72', { z0: z + H, edge: null });
+}
+
+/**
+ * Postazione del monitor: un carrellino a colonna con il ripiano, il bracciale della pressione
+ * appeso e i cavi; sopra il monitor portatile, finché nessuno l'ha preso (`it.empty`).
+ */
+export function drawVitalsStationProp(it?: GameValue, t?: GameValue): GameValue {
+  const { x, y, w, h } = it;
+  for (const [dx, dy] of [
+    [-1, -1],
+    [1, -1],
+    [-1, 1],
+    [1, 1],
+  ])
+    wheel(x + dx * (w / 2 - 3), y + dy * (h / 2 - 3), 2.5, 2.5);
+  box(x, y, w, h, 3, '#b2bec3', { z0: 4 });
+  box(x, y, 5, 5, 34, '#95a5a6', { z0: 7 });
+  box(x, y, w, h, 4, '#ecf0f1', { z0: 41, top: '#f5f6fa' });
+  // cestino con bracciale e saturimetro sotto il ripiano
+  box(x, y + 2, w - 8, h - 10, 7, '#dfe6e9', { z0: 20 });
+  box(x - 4, y + 2, 7, 4, 3, '#2d3436', { z0: 27 });
+  box(x + 5, y + 2, 4, 4, 2, '#e17055', { z0: 27 });
+  if (!it.empty) drawPortableMonitor(x, y, 45, t);
+  else {
+    // il posto vuoto: la base di ricarica con la spia
+    box(x, y, 12, 6, 1.5, '#2d3436', { z0: 45 });
+    const p = isoProject(x + 5, y + 3, 47);
+    const ctx = game.view.ctx;
+    ctx.fillStyle = Math.sin(t * 4) > 0 ? '#f1c40f' : '#7f6000';
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, 1.4 * isoScale(), 0, 6.3);
+    ctx.fill();
+  }
+}
+
+/**
+ * Carrello della biancheria: telaio di metallo con le rotelle, sacco di stoffa per lo sporco,
+ * ripiano sopra con asciugamani e lenzuola piegati, sapone e spugna.
+ */
+export function drawLinenCartProp(it?: GameValue): GameValue {
+  const ctx = game.view.ctx;
+  const { x, y, w, h } = it;
+  for (const [dx, dy] of [
+    [-1, -1],
+    [1, -1],
+    [-1, 1],
+    [1, 1],
+  ])
+    wheel(x + dx * (w / 2 - 3), y + dy * (h / 2 - 3), 2.5, 2.5);
+  // montanti
+  for (const [dx, dy] of [
+    [-1, -1],
+    [1, -1],
+    [-1, 1],
+    [1, 1],
+  ])
+    line3(
+      [x + dx * (w / 2 - 1), y + dy * (h / 2 - 1), 5],
+      [x + dx * (w / 2 - 1), y + dy * (h / 2 - 1), 34],
+      '#95a5a6',
+      1.3,
+    );
+  // sacco della biancheria sporca, un po' gonfio
+  const bag = box(x, y, w - 4, h - 4, 22, '#5dade2', { z0: 6, top: '#2e86c1' });
+  onFace(bag, 'left', (W: number, H: number): void => {
+    ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+    ctx.lineWidth = 0.8;
+    for (let u = 4; u < W; u += 6) {
+      ctx.beginPath();
+      ctx.moveTo(u, 1);
+      ctx.quadraticCurveTo(u + 2, H / 2, u, H - 1);
+      ctx.stroke();
+    }
+    ctx.fillStyle = 'rgba(255,255,255,0.9)';
+    ctx.fillRect(W / 2 - 5, H * 0.3, 10, 5);
+  });
+  box(x, y, w, h, 2, '#bdc3c7', { z0: 33 });
+  // pile di asciugamani e lenzuola
+  const piles: [number, number, string[]][] = [
+    [-0.25, 0, ['#ffffff', '#dff9fb', '#ffffff']],
+    [0.18, -0.15, ['#a29bfe', '#ffffff']],
+  ];
+  for (const [u, v, cols] of piles)
+    cols.forEach((c, i) =>
+      box(x + u * w, y + v * h, w * 0.38, h * 0.5, 2.6, c, {
+        z0: 35 + i * 2.6,
+        edge: 'rgba(0,0,0,0.15)',
+      }),
+    );
+  // sapone e spugna
+  box(x + w * 0.3, y + h * 0.25, 4, 4, 6, '#55efc4', { z0: 35 });
+  box(x + w * 0.3, y + h * 0.25, 2, 2, 2, '#2d3436', { z0: 41 });
+  box(x + w * 0.05, y + h * 0.3, 7, 4, 3, '#fdcb6e', { z0: 35 });
+  // maniglia per spingerlo
+  line3([x + w / 2 + 3, y - h / 2, 38], [x + w / 2 + 3, y + h / 2, 38], '#7f8c8d', 1.6);
+}
+
+/** Il farmaco in mano: la scatola dell'antibiotico, il flacone di gocce o la siringa del vaccino. */
+export function drawHeldDrug(x: number, y: number, z: number, drug: string): void {
+  if (drug === 'vaccino') {
+    box(x, y, 12, 2.4, 2.4, 'rgba(230,245,255,0.95)', { z0: z, edge: 'rgba(0,0,0,0.3)' });
+    box(x - 7, y, 3, 1, 1, '#636e72', { z0: z + 0.7, edge: null });
+    box(x + 7, y, 2.5, 3.5, 3.5, '#0984e3', { z0: z - 0.5 });
+    return;
+  }
+  if (drug === 'antidolorifico') {
+    box(x, y, 5, 5, 9, '#a0522d', { z0: z, top: '#8b4513' });
+    box(x, y, 2.6, 2.6, 3, '#ffffff', { z0: z + 9 });
+    return;
+  }
+  const b = box(x, y, 11, 6, 5, '#ffffff', { z0: z });
+  onFace(b, 'left', (W: number, H: number): void => {
+    const ctx = game.view.ctx;
+    ctx.fillStyle = '#e74c3c';
+    ctx.fillRect(0, H * 0.35, W, H * 0.3);
+  });
+}
+
+/**
+ * Il defibrillatore (DAE): valigetta verde con il cuore e il fulmine, la maniglia e le due
+ * piastre arrotolate sul fianco. (x, y, z) è il centro della base; `k` lo rimpicciolisce in mano.
+ */
+export function drawDefibrillator(x: number, y: number, z: number, t: number, k = 1): void {
+  const ctx = game.view.ctx;
+  const W = 16 * k,
+    D = 10 * k,
+    H = 12 * k;
+  const body = box(x, y, W, D, H, '#27ae60', { z0: z, top: '#2ecc71' });
+  onFace(body, 'left', (FW: number, FH: number): void => {
+    // cuore bianco con il fulmine
+    const cx = FW / 2,
+      cy = FH / 2;
+    const r = Math.min(FW, FH) * 0.24;
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.arc(cx - r * 0.5, cy - r * 0.3, r * 0.55, Math.PI, 0);
+    ctx.arc(cx + r * 0.5, cy - r * 0.3, r * 0.55, Math.PI, 0);
+    ctx.lineTo(cx, cy + r * 0.9);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = '#e74c3c';
+    ctx.beginPath();
+    ctx.moveTo(cx + r * 0.15, cy - r * 0.6);
+    ctx.lineTo(cx - r * 0.25, cy + r * 0.05);
+    ctx.lineTo(cx + r * 0.05, cy + r * 0.05);
+    ctx.lineTo(cx - r * 0.15, cy + r * 0.7);
+    ctx.lineTo(cx + r * 0.3, cy - r * 0.05);
+    ctx.lineTo(cx, cy - r * 0.05);
+    ctx.closePath();
+    ctx.fill();
+  });
+  // spia che lampeggia: pronto
+  const led = isoProject(x + W * 0.35, y + D / 2, z + H * 0.8);
+  ctx.fillStyle = Math.sin(t * 5) > 0 ? '#f1c40f' : '#7f6000';
+  ctx.beginPath();
+  ctx.arc(led.x, led.y, 1.2 * k * isoScale(), 0, 6.3);
+  ctx.fill();
+  // maniglia e piastre
+  box(x, y, W * 0.5, 1.8 * k, 1.8 * k, '#2d3436', { z0: z + H + 2 * k, edge: null });
+  box(x - W * 0.22, y, 1.6 * k, 1.8 * k, 2 * k, '#2d3436', { z0: z + H, edge: null });
+  box(x + W * 0.22, y, 1.6 * k, 1.8 * k, 2 * k, '#2d3436', { z0: z + H, edge: null });
+  for (const dy of [-0.25, 0.25])
+    box(x + W / 2 + 1.5 * k, y + dy * D, 3 * k, 3.5 * k, 5 * k, '#636e72', { z0: z + 2 * k });
+}
+
+/**
+ * Postazione del defibrillatore: colonnina rossa con il cartello "DAE" e il ripiano; sopra la
+ * valigetta, finché qualcuno non la prende (`it.empty`).
+ */
+export function drawDefibStationProp(it?: GameValue, t?: GameValue): GameValue {
+  const ctx = game.view.ctx;
+  const { x, y, w, h } = it;
+  box(x, y, w, h, 4, '#b2bec3');
+  const post = box(x, y, w - 8, h - 8, 34, '#e74c3c', { z0: 4 });
+  onFace(post, 'left', (W: number, H: number): void => {
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(2, 4, W - 4, 11);
+    ctx.fillStyle = '#c0392b';
+    ctx.font = 'bold 7px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('DAE', W / 2, 10, W - 6);
+    ctx.textBaseline = 'alphabetic';
+    // croce bianca
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(W / 2 - 1.5, H * 0.55, 3, 9);
+    ctx.fillRect(W / 2 - 4.5, H * 0.55 + 3, 9, 3);
+  });
+  box(x, y, w, h, 3, '#ecf0f1', { z0: 38, top: '#f5f6fa' });
+  if (!it.empty) drawDefibrillator(x, y, 41, t);
+  else {
+    const p = isoProject(x, y, 41.5);
+    ctx.fillStyle = Math.sin(t * 6) > 0 ? '#e74c3c' : '#7b241c';
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, 2 * isoScale(), 0, 6.3);
+    ctx.fill();
+  }
+}
+
 /** Sedia a rotelle vista di tre quarti, con le ruote grandi ai lati. */
 export function drawWheelchairProp(it?: GameValue): GameValue {
   const { x, y } = it;

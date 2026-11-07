@@ -2,8 +2,8 @@
 // cancello, che si apre un momento quando qualcuno passa. Misure in dog-park-rules.ts.
 import type { GameValue } from '../context.js';
 import { game } from '../context.js';
-import { isoProject, isoScale, poly, rnd } from './primitives.js';
-import { box, onFace } from './objects.js';
+import { isoProject, isoScale, poly, rnd, setPlane } from './primitives.js';
+import { box, onFace, resetPlane } from './objects.js';
 import { doorOpenAmount } from './doors.js';
 
 const P = isoProject;
@@ -21,8 +21,26 @@ export function drawDogParkGround(it: GameValue): void {
     y0 = it.y - it.h / 2,
     y1 = it.y + it.h / 2;
   poly([P(x0, y0, 0.4), P(x1, y0, 0.4), P(x1, y1, 0.4), P(x0, y1, 0.4)], '#b89466');
+  // chiazze d'erba rimaste lungo la staccionata e qualche zona di terra più scura
+  const area = (it.w * it.h) / 16000;
+  ctx.save();
+  setPlane([x0, y0, 0.45], [1, 0, 0], [0, 1, 0]);
+  ctx.beginPath();
+  ctx.rect(0, 0, it.w, it.h);
+  ctx.clip();
+  for (let i = 0; i < 14 * area; i++) {
+    const u = rnd(i * 4.7 + 1) * it.w,
+      v = rnd(i * 8.3 + 2) * it.h;
+    const edge = Math.min(u, v, it.w - u, it.h - v);
+    ctx.fillStyle = edge < 26 ? 'rgba(95,168,74,0.55)' : 'rgba(110,75,40,0.18)';
+    ctx.beginPath();
+    ctx.ellipse(u, v, 10 + rnd(i) * 14, 6 + rnd(i * 2) * 8, rnd(i * 3) * 3, 0, 6.3);
+    ctx.fill();
+  }
+  resetPlane();
+  ctx.restore();
   // ciuffi d'erba consumati e trucioli
-  for (let i = 0; i < 70; i++) {
+  for (let i = 0; i < 70 * area; i++) {
     const p = P(x0 + 4 + rnd(i * 7.3) * (it.w - 8), y0 + 4 + rnd(i * 3.1 + 9) * (it.h - 8), 0.5);
     ctx.fillStyle = i % 3 ? 'rgba(120,85,45,0.45)' : 'rgba(95,168,74,0.55)';
     ctx.fillRect(p.x - 1.5 * s, p.y - 0.6 * s, 3 * s, 1.2 * s);

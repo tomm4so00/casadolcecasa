@@ -24,6 +24,8 @@ const ENV_HALF: Record<string, { x: number; y: number }> = {
   luna: { x: 300, y: 300 },
   // laboratorio ingegneristico (davanti) e la sua zona esterna (dietro)
   ingegneria: { x: 200, y: 380 },
+  // parco: fontana al centro, area cani a destra, laghetto a sinistra, picnic in fondo
+  passeggiata: { x: 440, y: 320 },
 };
 /** Chi sta più vicino di così a una parete (porte, piante d'angolo) resta attaccato alla parete. */
 const WALL_HUG = 45;

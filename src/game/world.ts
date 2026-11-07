@@ -404,7 +404,10 @@ export function checkProximity(..._args: GameValue[]): GameValue {
   for (const key of Object.keys(spots)) {
     const sp = spots[key];
     const d = Math.hypot(game.playerPos.x - sp.x, game.playerPos.y - sp.y) - sp.reach;
-    if (d < bestDist || (game.benchSit && (sp.fun === 'bench' || sp.fun === 'stool') && d < 40)) {
+    if (
+      d < bestDist ||
+      (game.benchSit && (sp.fun === 'bench' || sp.fun === 'stool' || sp.fun === 'chair') && d < 40)
+    ) {
       bestDist = d;
       found = key;
     }
@@ -841,21 +844,16 @@ export async function doActivity(type?: GameValue): Promise<void> {
     game.player.sleepLevel = Math.max(0, game.player.sleepLevel - 5); // la passeggiata stanca un po'
     game.view.activeEnvironment = 'passeggiata';
     game.view.currentRoomTitle = 'Passeggiata nel Parco 🌳';
+    // si entra dal cancello davanti, in fondo al viale
+    game.playerPos = { x: 0, y: 280 };
+    return;
   } else if (type === 'bar') {
     if (usesLeftToday(game.player.daily, 'bar', new Date()) <= 0) {
       toast(`☕ Sei già andato al bar ${DAILY_LIMITS.bar} volte oggi: riprova domani!`);
       returnHomeFromActivity();
       return;
     }
-    if (game.moneyLevel < 10) {
-      toast('Non hai abbastanza soldi! Ti servono almeno 10 €.');
-      returnHomeFromActivity();
-      return;
-    }
-    if (!(await spendMoney(10))) {
-      returnHomeFromActivity();
-      return;
-    }
+    // al bar si entra gratis: si paga solo l'aperitivo al bancone
     game.player.daily = recordUse(game.player.daily, 'bar', new Date());
     recordActivity('pizza');
     saveGame();

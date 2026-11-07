@@ -4,6 +4,7 @@ import { facadeFootprint } from './render/facades.js';
 import { APERITIVO } from './bar-rules.js';
 import { DOOR_OPEN_RADIUS, resetDoors, setBlockedDoor } from './render/doors.js';
 import { servicePrompt } from './restaurant.js';
+import { hospitalPrompt } from './hospital.js';
 import { officePrompt } from './office.js';
 import { buyPlant, plantLabel, smokeJoint, tendPlant } from './weed.js';
 import { PETS, PET_FOOD_PRICE, type PetKind } from './pet-rules.js';
@@ -14,6 +15,7 @@ import {
   buyIceCream,
   funSpots,
   onSofa,
+  sitOnChair,
   toggleBench,
   sitOnStool,
   toggleSofa,
@@ -635,14 +637,16 @@ const PARK: Place = {
 // ---------------------------------------------------------------- lavoro
 const WORK: Place = {
   prompt: (_key, item) =>
-    item.kind === 'station' || item.kind === 'table'
-      ? servicePrompt(item)
-      : item.office
-        ? officePrompt(item)
-        : {
-            text: mgButtonText(item),
-            locked: item.kind === 'target' && !game.MG.carry,
-          },
+    item.hosp
+      ? hospitalPrompt(item)
+      : item.kind === 'station' || item.kind === 'table'
+        ? servicePrompt(item)
+        : item.office
+          ? officePrompt(item)
+          : {
+              text: mgButtonText(item),
+              locked: item.kind === 'target' && !game.MG.carry,
+            },
   act(key, item) {
     if (item) mgInteract(item, key);
   },
@@ -898,6 +902,7 @@ export function promptFor(key: string, item: GameValue): Prompt {
   // le panchine funzionano allo stesso modo in tutti gli ambienti
   if (item?.fun === 'bench')
     return { text: game.benchSit ? '🧍 Alzati' : '🪑 Siediti sulla panchina' };
+  if (item?.fun === 'chair') return { text: game.benchSit ? '🧍 Alzati' : '🪑 Siediti' };
   // al bar: sgabello del bancone e aperitivo
   if (item?.fun === 'stool')
     return {
@@ -910,6 +915,10 @@ export function promptFor(key: string, item: GameValue): Prompt {
 export async function interactWith(key: string, item: GameValue): Promise<void> {
   if (funSpots()[key]?.fun === 'bench') {
     toggleBench(key);
+    return;
+  }
+  if (funSpots()[key]?.fun === 'chair') {
+    sitOnChair(key);
     return;
   }
   if (funSpots()[key]?.fun === 'stool') {

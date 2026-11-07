@@ -1,7 +1,14 @@
 import { nextActivity } from './activity.js';
 export const MARKET_INTERVAL_MS = 60000;
 export const MARKET_PUBLISH_INTERVAL_MS = 15 * MARKET_INTERVAL_MS;
-export const MARKET_MAX_AGE_MS = 3 * MARKET_PUBLISH_INTERVAL_MS;
+/**
+ * Oltre quest'età le quotazioni sono considerate ferme e non si compra né si vende. Il server le
+ * pubblica ogni 15 minuti, ma GitHub Actions esegue il lavoro programmato molto meno spesso (di
+ * solito una volta all'ora, a volte con buchi di 80 minuti): con 45 minuti il mercato restava
+ * chiuso per un quarto d'ora o più ogni ora. Due ore coprono i ritardi; se il server si ferma
+ * davvero, dopo due ore si chiude lo stesso.
+ */
+export const MARKET_MAX_AGE_MS = 8 * MARKET_PUBLISH_INTERVAL_MS;
 export const MARKET_EPOCH = Date.UTC(2026, 9, 1);
 export const BUSINESSES = [
   {

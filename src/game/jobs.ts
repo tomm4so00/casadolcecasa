@@ -37,6 +37,16 @@ import {
   stopOffice,
   tickOffice,
 } from './office.js';
+import {
+  hospitalDrawables,
+  hospitalHud,
+  hospitalInteract,
+  hospitalOn,
+  hospitalPrompt,
+  startHospital,
+  stopHospital,
+  tickHospital,
+} from './hospital.js';
 export function mgFlash(ok?: GameValue): GameValue {
   if (!game.MG.el) return;
   game.MG.el.classList.remove('mg-flash-ok', 'mg-flash-ko');
@@ -74,6 +84,12 @@ export function mgHud(..._args: GameValue[]): GameValue {
   if (!el || !game.MG.active) return;
   if (serviceOn()) {
     el.innerHTML = MG_TOP + `<div class="mg-step">${serviceHudLine()}</div>`;
+    mgShiftHud();
+    return;
+  }
+  // in ospedale: cosa chiede ciascuno dei due pazienti
+  if (hospitalOn()) {
+    el.innerHTML = MG_TOP + hospitalHud();
     mgShiftHud();
     return;
   }
@@ -218,7 +234,11 @@ export function mgStart(jobKey?: GameValue): GameValue {
   dom('btn-return-home').classList.add('compact');
   // il ristorante ha il servizio ai tavoli, gli altri lavori i compiti da portare al cerchio
   if (game.MG.cfg.mode === 'service') startService();
-  else {
+  // l'ospedale ha i due pazienti a letto e le postazioni fisse
+  else if (game.MG.cfg.mode === 'hospital') {
+    applyRoomBounds(game.view.activeEnvironment);
+    startHospital();
+  } else {
     // l'ufficio ha in più sete, stampe e la visita del capo
     if (jobKey === 'ufficio') startOffice();
     mgSpawnTask();
@@ -228,6 +248,7 @@ export function mgStart(jobKey?: GameValue): GameValue {
 export function mgStop(..._args: GameValue[]): GameValue {
   stopService();
   stopOffice();
+  stopHospital();
   game.MG.active = false;
   game.MG.map = {};
   game.MG.carry = null;
@@ -242,10 +263,12 @@ export function mgStop(..._args: GameValue[]): GameValue {
 export function mgTick(delta: number): void {
   tickService(delta);
   tickOffice(delta);
+  tickHospital(delta);
 }
 
 export function mgButtonText(item?: GameValue): GameValue {
   if (serviceOn()) return servicePrompt(item).text;
+  if (hospitalOn()) return hospitalPrompt(item).text;
   if (officeOn() && officeFrozen()) return '⏸️ Arriva il capo…';
   if (item.office) return officePrompt(item).text;
   if (officeOn() && officeBossActive() && item.kind === 'target') return '😡 Prima il capo!';
@@ -261,6 +284,7 @@ export function mgButtonText(item?: GameValue): GameValue {
 export function mgInteract(item?: GameValue, key?: GameValue): GameValue {
   if (!game.MG.active) return;
   if (serviceOn()) return serviceInteract(item);
+  if (hospitalOn()) return void hospitalInteract(item);
   // appena arriva il capo tutto si ferma per un attimo
   if (officeOn() && officeFrozen()) return;
   if (item.office) return officeInteract(item);
@@ -386,6 +410,7 @@ export function mgAddDrawables(
   t?: GameValue,
 ): GameValue {
   if (serviceOn()) serviceDrawables(drawables, t);
+  else if (hospitalOn()) hospitalDrawables(drawables, t);
   else addTaskDrawables(addThing, drawables, t);
   if (officeOn()) officeDrawables(drawables, t);
   if (game.MG.carry) {
@@ -486,7 +511,7 @@ export async function updateShift(delta: number): Promise<void> {
       text:
         `${basePay} €${multText} di paga + ${delivered} 📦 × ${s.perItem || 0} €` +
         (tips ? ` + ${tips} € di mance e bonus` : '') +
-        (fine ? ` − ${fine} € di multa del capo` : '') +
+        (fine ? ` − ${fine} € ${s.fineLabel || 'di multa del capo'}` : '') +
         '\n\n' +
         nextPayMessage(done) +
         `\n\n${left > 0 ? `Oggi puoi lavorare ancora ${left} ${left === 1 ? 'volta' : 'volte'}.` : 'Per oggi hai finito.'}`,

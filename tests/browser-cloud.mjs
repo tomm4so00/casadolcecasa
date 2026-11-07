@@ -145,7 +145,7 @@ try {
   });
   assert.equal(deniedDelete.ok, false);
   const staleMarket = await other.evaluate(async () =>
-    (await import('/shared/market.ts')).advanceMarket(null, Date.now() - 3600000, () => 0),
+    (await import('/shared/market.ts')).advanceMarket(null, Date.now() - 3 * 3600000, () => 0),
   );
   await fetch(`http://127.0.0.1:9000/sims_market.json?ns=${namespace}`, {
     method: 'PUT',

@@ -1162,6 +1162,8 @@ export function drawAvatarSleeping(
   k?: GameValue,
   bed?: GameValue,
   slot?: number | null,
+  /** Pazienti dell'ospedale: letto più alto (lift, coperta a blanketZ) e svegli (niente Z). */
+  opts?: { lift?: number; blanketZ?: number; awake?: boolean },
 ): GameValue {
   const ctx = game.view.ctx;
   const s: GameValue = isoScale(),
@@ -1170,7 +1172,7 @@ export function drawAvatarSleeping(
   const foot = bedSpot(bed, slot);
   const tx: GameValue = px + (foot.x - px) * e,
     ty: GameValue = py + (foot.y - py) * e;
-  const lift: GameValue = 24 * e + Math.sin(Math.PI * k) * 12;
+  const lift: GameValue = (opts?.lift ?? 24) * e + Math.sin(Math.PI * k) * 12;
   // Si sdraia con la testa verso la testiera: la direzione dipende da come è girato il letto.
   // (letto non girato: testiera verso −y, cioè in alto a destra sullo schermo → π/3)
   const toHead = rotateVector(0, -1, bedRot);
@@ -1198,7 +1200,7 @@ export function drawAvatarSleeping(
     // la coperta è girata insieme al letto
     withFurnitureRotation(bed, () => {
       const bl: GameValue = box(bed.x, bed.y + bed.h * 0.22, bed.w - 8, bed.h * 0.5, 8, col, {
-        z0: 23,
+        z0: opts?.blanketZ ?? 23,
         top: bed.topColor || game.lighten(col, 0.15),
       });
       onFace(bl, 'top', (W?: GameValue, H?: GameValue): GameValue => {
@@ -1214,7 +1216,7 @@ export function drawAvatarSleeping(
     x: pv.x + Math.sin(rot) * 58 * s,
     y: pv.y - lift * s - Math.cos(rot) * 58 * s,
   };
-  if (k > 0.95) {
+  if (k > 0.95 && !opts?.awake) {
     // Z che salgono dalla testa
     ctx.textAlign = 'center';
     for (let i: GameValue = 0; i < 3; i++) {
@@ -1448,10 +1450,15 @@ export function drawPlayerAvatar(
   const pose: string = (opts && opts.pose) || '';
   // sullo sgabello del bar: seduti più in alto, di spalle, girati verso il bancone
   const onStool = pose === 'stool';
-  const sitting = pose === 'sit' || pose === 'bench' || onStool;
+  // sulla sedia di un tavolino: 'chair' guarda in avanti, 'chairSide' il tavolo alla sua destra
+  // (verso +x)
+  const onChair = pose === 'chair' || pose === 'chairSide';
+  const chairSide = pose === 'chairSide';
+  const sitting = pose === 'sit' || pose === 'bench' || onStool || onChair;
   // di spalle: al bancone, o il barista girato verso le mensole
   const fromBehind = onStool || !!(opts && opts.back);
-  const lift = onStool ? 13 : 0;
+  // la seduta della sedia è più alta di quella della panchina
+  const lift = onStool ? 13 : onChair ? 2 : 0;
   const bob: GameValue = sitting
     ? -4
     : moving
@@ -1785,12 +1792,19 @@ export function drawPlayerAvatar(
       [-1, false],
     ] as const)
       drawLeg(P(side * 3.5, 0, 22 + bob), P(side * 3.5, -9, -6), back, P(side * 3.5, -11, 17));
+  } else if (chairSide) {
+    // ginocchia e piedi verso il tavolo; la gamba più lontana da chi guarda va dietro
+    for (const [side, back] of [
+      [-1, true],
+      [1, false],
+    ] as const)
+      drawLeg(P(0, side * 3.5, 22 + bob), P(13, side * 3.5, 2 - lift), back, P(11, side * 3.5, 19));
   } else if (sitting) {
     for (const [side, back] of [
       [1, true],
       [-1, false],
     ] as const)
-      drawLeg(P(side * 3.5, 0, 22 + bob), P(side * 3.5, 13, 2), back, P(side * 3.5, 11, 19));
+      drawLeg(P(side * 3.5, 0, 22 + bob), P(side * 3.5, 13, 2 - lift), back, P(side * 3.5, 11, 19));
   } else {
     drawLeg(
       P(3, -3, 22 + bob),
@@ -1851,34 +1865,38 @@ export function drawPlayerAvatar(
   const stoolBack: Pt | null = onStool ? lerpPt(P(4, -14, 35), P(5, -5, 56), sip) : null;
   const handBack: Pt | null = opts?.hands
     ? opts.hands.back
-    : stoolBack
-      ? stoolBack
-      : pose === 'panic'
-        ? { x: neck.x + 9 * s, y: neck.y - 15 * s + flap }
-        : tap
-          ? { x: tap.x + 2.5 * s + rub, y: tap.y - 0.5 * s - Math.abs(rub) * 0.4 }
-          : pose === 'wash'
-            ? { x: neck.x + 3 * s + rub, y: hip.y - 6 * s }
-            : reading
-              ? { x: neck.x + 9 * s, y: neck.y + 11 * s }
-              : sitting
-                ? { x: P(3.5, 11, 20).x + 1 * s, y: P(3.5, 11, 20).y - 1 * s }
-                : null;
+    : chairSide
+      ? P(10, -3.5, 21)
+      : stoolBack
+        ? stoolBack
+        : pose === 'panic'
+          ? { x: neck.x + 9 * s, y: neck.y - 15 * s + flap }
+          : tap
+            ? { x: tap.x + 2.5 * s + rub, y: tap.y - 0.5 * s - Math.abs(rub) * 0.4 }
+            : pose === 'wash'
+              ? { x: neck.x + 3 * s + rub, y: hip.y - 6 * s }
+              : reading
+                ? { x: neck.x + 9 * s, y: neck.y + 11 * s }
+                : sitting
+                  ? { x: P(3.5, 11, 20).x + 1 * s, y: P(3.5, 11, 20).y - 1 * s }
+                  : null;
   const handFront: Pt | null = opts?.hands
     ? opts.hands.front
-    : onStool
-      ? P(-4, -14, 35)
-      : pose === 'panic'
-        ? { x: neck.x - 9 * s, y: neck.y - 15 * s - flap }
-        : tap
-          ? { x: tap.x - 2.5 * s - rub, y: tap.y + 0.8 * s }
-          : pose === 'wash'
-            ? { x: neck.x - 3 * s - rub, y: hip.y - 5 * s }
-            : reading
-              ? { x: neck.x - 9 * s, y: neck.y + 11 * s }
-              : sitting
-                ? { x: P(-3.5, 11, 20).x - 1 * s, y: P(-3.5, 11, 20).y - 1 * s }
-                : null;
+    : chairSide
+      ? P(10, 3.5, 21)
+      : onStool
+        ? P(-4, -14, 35)
+        : pose === 'panic'
+          ? { x: neck.x - 9 * s, y: neck.y - 15 * s - flap }
+          : tap
+            ? { x: tap.x - 2.5 * s - rub, y: tap.y + 0.8 * s }
+            : pose === 'wash'
+              ? { x: neck.x - 3 * s - rub, y: hip.y - 5 * s }
+              : reading
+                ? { x: neck.x - 9 * s, y: neck.y + 11 * s }
+                : sitting
+                  ? { x: P(-3.5, 11, 20).x - 1 * s, y: P(-3.5, 11, 20).y - 1 * s }
+                  : null;
   const drawArm = (from: Pt, to: Pt, back: boolean): void => {
     if (reading) {
       // gomito sotto la spalla, un po' in fuori: il braccio sale di nuovo verso il giornale

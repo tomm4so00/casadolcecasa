@@ -20,6 +20,9 @@ import {
   drawIceCream,
   drawSofaRelax,
   myBenchPose,
+  myChairSeat,
+  chairsHere,
+  SEATED_ACTS,
   standUp,
   updateBench,
   updateCoinToss,
@@ -84,6 +87,7 @@ import { clerkLines } from './clerks.js';
 import { facadeFootprint, facadeSolids } from './render/facades.js';
 import { checkWalkThrough, doorGapsHere, openGapsHere, roomBounds } from './interactions.js';
 import { clampToRoom, doorwayAt } from './door-walk-rules.js';
+import { chairsOf } from './chair-rules.js';
 
 /** Lo stesso aspetto con gli occhi rossi (dopo una canna). */
 const withStonedEyes = (look: GameValue, on: boolean): GameValue =>
@@ -346,10 +350,21 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
     label?: GameValue,
     draw?: GameValue,
     depthBias: GameValue = 0,
+    hideLabel?: () => boolean,
   ): GameValue => {
     drawables.push({ depth: x + y + depthBias, draw });
-    if (label && !hideLabels) labels.push((): GameValue => drawLabel(label, x, y, w, h, z));
+    if (label && !hideLabels)
+      labels.push((): GameValue => {
+        if (!hideLabel?.()) drawLabel(label, x, y, w, h, z);
+      });
   };
+  // il nome del tavolino coprirebbe la faccia di chi ci è seduto: con qualcuno seduto non si mostra
+  const someoneSeatedAt = (p: GameValue): boolean =>
+    chairsOf(p).some((c) =>
+      (game.frameChairSitters as GameValue[]).some(
+        (f) => Math.abs(f.seat.x - c.x) < 3 && Math.abs(f.seat.y - c.y) < 3,
+      ),
+    );
   (game.ENV_PROPS[game.view.activeEnvironment] || [])
     .concat(game.ENV_DECOR[game.view.activeEnvironment] || [])
     .filter(shownPart)
@@ -393,6 +408,7 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
               p.depthCorner === 'frontLeft'
               ? (p.h - p.w) / 2
               : 0,
+        () => someoneSeatedAt(p),
       );
     });
   if (game.MG.active && game.view.activeEnvironment === 'lavoro_' + game.MG.job)
@@ -434,6 +450,7 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
   }
   const mySayNow: GameValue = game.mySay && Date.now() - game.mySayT < 6000 ? game.mySay : '';
   game.frameShowerActors = [];
+  game.frameChairSitters = [];
   game.frameSinkRunning = game.bathAnim?.pose === 'wash';
   // vestiti piegati davanti alla doccia mentre ci si lava
   const pileAt = showerSpots().pile;
@@ -477,8 +494,11 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
         ? BENCH_SEAT_DEPTH
         : 0);
     const faintK = faintAmount();
-    drawables.push({
+    // sulla sedia (anche sedendosi o alzandosi) lo disegna la sedia, tra seduta e schienale
+    const chairSeat = faintK > 0 ? null : myChairSeat();
+    (chairSeat ? game.frameChairSitters : drawables).push({
       depth,
+      seat: chairSeat,
       draw: (): GameValue =>
         faintK > 0
           ? drawFaintedAvatar(
@@ -724,8 +744,14 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
     );
     addPile(s.look, und);
     if (act === 'wash') game.frameSinkRunning = true;
-    const pose: string =
-      act === 'sit' || act === 'wash' || act === 'bench' || act === 'stool' ? act : '';
+    const pose: string = act === 'sit' || act === 'wash' || SEATED_ACTS.includes(act) ? act : '';
+    // seduto su una sedia: si disegna con la sedia più vicina (vedi drawChair)
+    const othersChair: GameValue =
+      state !== 'fainted' && (act === 'chair' || act === 'chairSide')
+        ? chairsHere()
+            .map((c) => c.chair)
+            .find((c) => Math.hypot(c.x - s.x, c.y - s.y) < 25) || null
+        : null;
     if (act === 'shower' && inCabin(s.x, s.y)) {
       const rx: GameValue = s.x,
         ry: GameValue = s.y;
@@ -742,8 +768,9 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
       (act === 'bench' || act === 'stool' ? BENCH_SEAT_DEPTH : 0);
     // fuori dall'inquadratura non si disegna (chi dorme è sul letto, sempre in vista)
     if (sk <= 0 && !onScreen(s.x, s.y)) return;
-    drawables.push({
+    (othersChair ? game.frameChairSitters : drawables).push({
       depth: rd,
+      seat: othersChair,
       draw: (): GameValue =>
         state === 'fainted'
           ? drawFaintedAvatar(s.x, s.y, shownName, animTime, s.look, 1)
@@ -769,6 +796,8 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
   drawables
     .sort((a?: GameValue, b?: GameValue): GameValue => a.depth - b.depth)
     .forEach((d?: GameValue): GameValue => d.draw());
+  // chi è seduto su una sedia che in questo fotogramma non si è disegnata resta comunque visibile
+  for (const c of game.frameChairSitters as GameValue[]) if (!c.done) c.draw();
   // Giorno e notte: le luci (lampade, lampioni, lampadari) illuminano il buio
   let dark: GameValue = 0;
   if (hour >= 20 || hour < 6) dark = 0.55;

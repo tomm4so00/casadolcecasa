@@ -88,6 +88,30 @@ export function sfx(type?: GameValue): GameValue {
         tone(90, 0.08, 0.18, 'triangle', 0.18);
       },
       click: (): GameValue => tone(660, 0, 0.06, 'triangle', 0.05),
+      // ospedale, codice rosso: l'allarme a due toni che si ripete
+      alarm: (): void => {
+        for (let i = 0; i < 4; i++) {
+          tone(880, i * 0.36, 0.18, 'square', 0.05);
+          tone(660, i * 0.36 + 0.18, 0.18, 'square', 0.05);
+        }
+      },
+      // il defibrillatore si carica (fischio che sale) e scarica (colpo secco)
+      shock: (): void => {
+        const o = game.audioCtx.createOscillator(),
+          g = game.audioCtx.createGain();
+        o.type = 'sine';
+        o.frequency.setValueAtTime(400, t0);
+        o.frequency.exponentialRampToValueAtTime(2400, t0 + 0.45);
+        g.gain.setValueAtTime(0.001, t0);
+        g.gain.linearRampToValueAtTime(0.05, t0 + 0.4);
+        g.gain.linearRampToValueAtTime(0.001, t0 + 0.46);
+        o.connect(g);
+        g.connect(game.audioCtx.destination);
+        o.start(t0);
+        o.stop(t0 + 0.5);
+        noise(0.47, 0.18, 0.12, 600);
+        tone(70, 0.47, 0.25, 'sawtooth', 0.12);
+      },
       // l'animale mangia dalla ciotola: crocchette sgranocchiate, un boccone dopo l'altro
       munch: (): void => {
         for (let i = 0; i < 7; i++) noise(i * 0.42, 0.07, 0.035, 1400 + (i % 3) * 300);

@@ -20,12 +20,12 @@ describe('area cani del parco', () => {
     expect(inDogPark(GATE_INSIDE.x, GATE_INSIDE.y)).toBe(true);
   });
 
-  it('il recinto sta dentro il parco (400×360) e lontano dalla fontana', () => {
-    expect(DOG_PARK.x1).toBeLessThan(200);
-    expect(DOG_PARK.y0).toBeGreaterThan(-180);
-    // fontana 70×70 al centro: tra lei e il recinto passa un giocatore (raggio 9)
-    expect(DOG_PARK.x0 - 35).toBeGreaterThanOrEqual(18);
-    expect(-35 - DOG_PARK.y1).toBeGreaterThanOrEqual(18);
+  it('il recinto sta dentro il parco (880×640) e lontano dalla fontana', () => {
+    expect(DOG_PARK.x1).toBeLessThan(440 - 18);
+    expect(DOG_PARK.y0).toBeGreaterThan(-320 + 18);
+    // fontana 84×84 al centro: tra lei e il recinto passa un giocatore (raggio 9)
+    expect(DOG_PARK.x0 - 42).toBeGreaterThanOrEqual(18);
+    expect(-42 - DOG_PARK.y1).toBeGreaterThanOrEqual(18);
   });
 
   it('entrando si slega il cane, col fischio torna e si rimette il guinzaglio', () => {
@@ -73,15 +73,15 @@ describe('area cani del parco', () => {
 
   it('i passanti rimbalzano sul recinto', () => {
     // arriva da sinistra: si gira solo in orizzontale
-    const left = bounceOffPark(30, -100, 41, -100, 25, 10);
+    const left = bounceOffPark(130, -150, 141, -150, 25, 10);
     expect(left).toEqual({ vx: -25, vy: 10, hit: true });
     // arriva da davanti
-    const front = bounceOffPark(120, -30, 120, -41, 5, -20);
+    const front = bounceOffPark(270, -55, 270, -70, 5, -20);
     expect(front).toEqual({ vx: 5, vy: 20, hit: true });
     // lontano dal recinto non cambia niente
     expect(bounceOffPark(-50, 50, -49, 51, 1, 1).hit).toBe(false);
     // partito da dentro: va verso il bordo più vicino
-    const inside = bounceOffPark(60, -60, 61, -61, 10, -10);
+    const inside = bounceOffPark(160, -90, 161, -91, 10, -10);
     expect(inside.vx).toBeLessThan(0);
     expect(inside.vy).toBeGreaterThan(0);
   });

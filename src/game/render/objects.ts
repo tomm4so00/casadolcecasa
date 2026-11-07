@@ -24,6 +24,7 @@ import { nextUpgrade, tierOf, tierOfPlaced, tiersOf } from '../furniture-tiers.j
 import { LAMP_LIGHT } from '../furniture-benefits.js';
 import { drawCourtyardDoor } from './facades.js';
 import { drawBoutiqueItem } from './mall.js';
+import { chairsOf } from '../chair-rules.js';
 export function resetPlane(..._args: GameValue[]): GameValue {
   game.view.ctx.setTransform(1, 0, 0, 1, 0, 0);
 }
@@ -1999,15 +2000,28 @@ export function drawChair(
 ): GameValue {
   box(x, y, 14, 14, 16, game.darken(color, 0.3));
   box(x, y, 16, 16, 3, color, { z0: 16 });
-  // 'y0': sedia dietro il tavolo, schienale verso il fondo; 'x': sedia sul lato destro del tavolo,
-  // schienale dalla parte opposta al tavolo
-  if (backSide === 'y0') box(x, y - 7, 16, 3, 18, color, { z0: 19 });
-  else box(x + 7, y, 3, 16, 18, color, { z0: 19 });
+  // 'y0': sedia dietro il tavolo, schienale verso il fondo; 'x0': sedia sul lato sinistro del
+  // tavolo, schienale dalla parte opposta al tavolo. Lo schienale sta dietro chi siede, che si
+  // disegna subito dopo (e il piano del tavolo dopo ancora).
+  if (backSide === 'x0') box(x - 7, y, 3, 16, 18, color, { z0: 19 });
+  else box(x, y - 7, 16, 3, 18, color, { z0: 19 });
+  drawChairSitters(x, y);
+}
+
+/**
+ * Chi è seduto su una sedia non entra nell'ordine in profondità della scena: si disegna insieme
+ * alla sua sedia (engine.ts lo mette in game.frameChairSitters con il posto in cui siede).
+ */
+function drawChairSitters(x: number, y: number): void {
+  for (const c of (game.frameChairSitters || []) as GameValue[])
+    if (!c.done && Math.abs(c.seat.x - x) < 3 && Math.abs(c.seat.y - y) < 3) {
+      c.done = true;
+      c.draw();
+    }
 }
 
 export function drawWaitingChairsProp(it?: GameValue): GameValue {
-  for (let i: GameValue = 0; i < 3; i++)
-    drawChair(it.x - it.w / 2 + 14 + (i * (it.w - 28)) / 2, it.y, '#2e86de');
+  for (const c of chairsOf({ ...it, kind: 'waitingChairs' })) drawChair(c.x, c.y, '#2e86de');
 }
 
 /** Bancone del caffè: legno, piano chiaro, la macchina dell'espresso col vapore e le tazzine. */
@@ -2284,7 +2298,9 @@ export function setTableGuestDrawer(fn: ((it: GameValue) => void) | null): void 
 export function drawDinnerTableProp(it?: GameValue): GameValue {
   const ctx = game.view.ctx;
   const { x, y, w, h }: GameValue = it;
-  drawChair(x, y - h / 2 - 2, '#a0522d');
+  const [back, side] = chairsOf({ ...it, kind: 'dinnerTable' });
+  drawChair(side.x, side.y, '#a0522d', 'x0');
+  drawChair(back.x, back.y, '#a0522d');
   tableGuest?.(it);
   box(x, y, 6, 6, 30, '#5d4037');
   const top: GameValue = box(x, y, w, h, 8, '#ffffff', { z0: 28 });
@@ -2321,7 +2337,6 @@ export function drawDinnerTableProp(it?: GameValue): GameValue {
     left: 'rgba(200,230,255,0.7)',
     right: 'rgba(170,210,240,0.7)',
   });
-  drawChair(x + w / 2 + 2, y, '#a0522d', 'x');
 }
 
 export function drawOfficeDeskProp(it?: GameValue, t?: GameValue): GameValue {
@@ -2387,7 +2402,9 @@ export function drawStoolProp(it?: GameValue): GameValue {
 
 export function drawRoundTableProp(it?: GameValue): GameValue {
   const ctx = game.view.ctx;
-  drawChair(it.x, it.y - it.h / 2 - 6, '#6d4c41');
+  const [back, side] = chairsOf({ ...it, kind: 'roundTable' });
+  drawChair(side.x, side.y, '#6d4c41', 'x0');
+  drawChair(back.x, back.y, '#6d4c41');
   box(it.x, it.y, 4, 4, 34, '#2d3436');
   box(it.x, it.y, 18, 18, 2, '#2d3436');
   const p: GameValue = isoProject(it.x, it.y, 36),
@@ -2404,7 +2421,6 @@ export function drawRoundTableProp(it?: GameValue): GameValue {
   ctx.fillRect(p.x - 6 * s, p.y - 9 * s, 4 * s, 8 * s);
   ctx.fillStyle = '#ffffff';
   ctx.fillRect(p.x - 6 * s, p.y - 10 * s, 4 * s, 2 * s);
-  drawChair(it.x + it.w / 2 + 6, it.y, '#6d4c41', 'x');
 }
 
 export function drawJukeboxProp(it?: GameValue, t?: GameValue): GameValue {
@@ -2426,7 +2442,9 @@ export function drawJukeboxProp(it?: GameValue, t?: GameValue): GameValue {
 
 export function drawTableProp(it?: GameValue): GameValue {
   const ctx = game.view.ctx;
-  drawChair(it.x, it.y - it.h / 2 - 4, '#a0522d');
+  const [back, side] = chairsOf({ ...it, kind: 'table' });
+  drawChair(side.x, side.y, '#a0522d', 'x0');
+  drawChair(back.x, back.y, '#a0522d');
   [
     [-1, -1],
     [1, -1],
@@ -2454,7 +2472,6 @@ export function drawTableProp(it?: GameValue): GameValue {
       ctx.fill();
     });
   });
-  drawChair(it.x + it.w / 2 + 4, it.y, '#a0522d', 'x');
 }
 
 export function drawConsoleProp(it?: GameValue): GameValue {

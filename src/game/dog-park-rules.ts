@@ -1,10 +1,10 @@
 // Area cani del parco (ambiente "passeggiata"): recinto, cancello e quando il cane è al guinzaglio.
 // Regole senza browser: il movimento del cane è in pets.ts, il disegno in render/dog-park.ts.
 
-/** Il recinto, nello spicchio di prato a destra della fontana (coordinate del pavimento). */
-export const DOG_PARK = { x0: 55, x1: 192, y0: -172, y1: -55 };
+/** Il recinto, nell'angolo destro del parco (880×640), dietro il viale (coordinate del pavimento). */
+export const DOG_PARK = { x0: 150, x1: 410, y0: -295, y1: -80 };
 /** Cancello sul lato davanti del recinto (quello verso la fontana): centro e larghezza. */
-export const DOG_GATE = { x: 125, y: DOG_PARK.y1, w: 32 };
+export const DOG_GATE = { x: 270, y: DOG_PARK.y1, w: 32 };
 /** Dove ci si trova dopo aver passato il cancello, fuori e dentro. */
 export const GATE_OUTSIDE = { x: DOG_GATE.x, y: DOG_GATE.y + 24 };
 export const GATE_INSIDE = { x: DOG_GATE.x, y: DOG_GATE.y - 26 };
@@ -12,7 +12,7 @@ export const GATE_INSIDE = { x: DOG_GATE.x, y: DOG_GATE.y - 26 };
  * Addestramento: il padrone va verso il centro del recinto, abbastanza lontano dal cancello che
  * il suo pulsante non compaia, e il cane si mette davanti a lui (verso chi guarda lo schermo).
  */
-export const TRAIN_SPOT = { x: 128, y: -126 };
+export const TRAIN_SPOT = { x: 270, y: -175 };
 export const TRAIN_DOG_SPOT = { x: TRAIN_SPOT.x + 12, y: TRAIN_SPOT.y + 24 };
 
 export interface Rect {

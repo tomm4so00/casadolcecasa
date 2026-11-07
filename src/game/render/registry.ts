@@ -16,8 +16,11 @@ import {
   drawBottleShelfProp,
   drawCoatRackProp,
   drawCurtainScreenProp,
+  drawDefibStationProp,
   drawDessertCartProp,
+  drawLinenCartProp,
   drawMedCartProp,
+  drawVitalsStationProp,
   drawPrinterProp,
   drawPizzaOvenProp,
   drawWheelchairProp,
@@ -36,6 +39,15 @@ import {
 import { drawBaseConsole, drawBaseDoor, drawMoonScreen } from './moonbase.js';
 import { drawPetBubble, drawPetHome, drawPetShelf, drawShopPet } from './pets.js';
 import { drawDogFence, drawDogGate, drawDogParkGround } from './dog-park.js';
+import {
+  drawDogFountainProp,
+  drawDogJumpProp,
+  drawDogSlalomProp,
+  drawDogTunnelProp,
+  drawHedgeProp,
+  drawPicnicTableProp,
+  drawPondProp,
+} from './park.js';
 import { homeBubble } from '../pets.js';
 import type { PetKind } from '../pet-rules.js';
 import type { GameValue } from '../context.js';
@@ -254,6 +266,14 @@ export function registerDrawers(): void {
     dogParkGround: drawDogParkGround,
     dogFence: drawDogFence,
     dogGate: drawDogGate,
+    dogJump: drawDogJumpProp,
+    dogTunnel: drawDogTunnelProp,
+    dogSlalom: drawDogSlalomProp,
+    dogFountain: drawDogFountainProp,
+    // parco
+    pond: drawPondProp,
+    hedge: drawHedgeProp,
+    picnicTable: drawPicnicTableProp,
     rocket: drawRocketProp,
     crater: drawCraterProp,
     moonRock: drawMoonRockProp,
@@ -281,6 +301,9 @@ export function registerDrawers(): void {
     sandPile: drawSandPileProp,
     curtainScreen: drawCurtainScreenProp,
     medCart: drawMedCartProp,
+    linenCart: drawLinenCartProp,
+    defibStation: drawDefibStationProp,
+    vitalsStation: drawVitalsStationProp,
     wheelchair: drawWheelchairProp,
     bottleShelf: drawBottleShelfProp,
     dessertCart: drawDessertCartProp,
