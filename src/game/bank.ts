@@ -4,13 +4,7 @@ import { bankDeposit, bankWithdraw } from './economy.js';
 import { openDialog } from './interface.js';
 import { toast } from './missions.js';
 import { sfx } from './audio.js';
-import {
-  BANK_MIN_DEPOSIT,
-  VAULT_MIN_AFTER_DEPOSIT,
-  depositError,
-  maxDeposit,
-  withdrawError,
-} from './bank-rules.js';
+import { BANK_MIN_DEPOSIT, depositError, maxDeposit, withdrawError } from './bank-rules.js';
 import { saveGame } from './saves.js';
 
 const euro = (n: number) => `${n.toLocaleString('it-IT')} €`;
@@ -25,11 +19,10 @@ export async function openBankCounter(): Promise<void> {
     text:
       `Buongiorno! Come posso aiutarla?\n\n` +
       `💳 Sul conto: ${euro(bank)}\n🔐 In cassaforte: ${euro(vault)}\n\n` +
-      `I soldi in banca sono al sicuro dai ladri. Il deposito minimo è di ${euro(BANK_MIN_DEPOSIT)} ` +
-      `e in cassaforte devono restare almeno ${euro(VAULT_MIN_AFTER_DEPOSIT)}.` +
+      `I soldi in banca sono al sicuro dai ladri. Il deposito minimo è di ${euro(BANK_MIN_DEPOSIT)}.` +
       (canDeposit
         ? ''
-        : `\n\n⚠️ Per depositare servono almeno ${euro(BANK_MIN_DEPOSIT + VAULT_MIN_AFTER_DEPOSIT)} in cassaforte.`),
+        : `\n\n⚠️ Per depositare servono almeno ${euro(BANK_MIN_DEPOSIT)} in cassaforte.`),
     buttons: [
       { label: 'Esci', value: null, color: '#57606f' },
       ...(bank > 0 ? [{ label: '💸 Preleva', value: 'withdraw', color: '#e67e22' }] : []),

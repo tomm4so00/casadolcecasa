@@ -22,15 +22,15 @@ async function setup(vaultMoney: number) {
 }
 
 describe('regole della banca', () => {
-  it('deposito minimo 1000 € e almeno 1000 € lasciati in cassaforte', () => {
+  it('deposito minimo 1000 €, anche svuotando la cassaforte', () => {
     expect(depositError(999, 5000)).toContain('minimo');
-    expect(depositError(1000, 1999)).toContain('almeno 1000');
-    expect(depositError(1000, 2000)).toBeNull();
-    expect(depositError(4000, 5000)).toBeNull();
-    expect(depositError(4001, 5000)).toContain('massimo 4000');
+    expect(depositError(1000, 999)).toContain('solo 999');
+    expect(depositError(1000, 1000)).toBeNull();
+    expect(depositError(5000, 5000)).toBeNull();
+    expect(depositError(5001, 5000)).toContain('solo 5000');
     expect(depositError(1000.5, 5000)).toContain('valido');
-    expect(maxDeposit(1999)).toBe(0);
-    expect(maxDeposit(2000)).toBe(1000);
+    expect(maxDeposit(999)).toBe(0);
+    expect(maxDeposit(1000)).toBe(1000);
   });
   it('non si preleva più di quanto c’è sul conto', () => {
     expect(withdrawError(10, 0)).toContain('solo 0');
@@ -49,13 +49,13 @@ describe('conto in banca nella stanza', () => {
     expect((await room()).vaultMoney).toBe(2500);
     expect((await room()).economy.bank).toBe(2500);
   });
-  it('rifiuta i depositi che lascerebbero meno di 1000 € in cassaforte', async () => {
-    const { wallet, room } = await setup(2500);
+  it('rifiuta i depositi più grandi della cassaforte', async () => {
+    const { wallet, room } = await setup(1500);
     expect(await wallet.update(depositChange(1600))).toBe(false);
     expect(
       await Promise.all([wallet.update(depositChange(1000)), wallet.update(depositChange(1000))]),
     ).toEqual([true, false]);
-    expect((await room()).vaultMoney).toBe(1500);
+    expect((await room()).vaultMoney).toBe(500);
     expect((await room()).economy.bank).toBe(1000);
   });
   it('ignora un saldo del conto non valido', () => {

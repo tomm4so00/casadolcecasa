@@ -2,8 +2,6 @@
 
 /** Importo minimo di ogni deposito. */
 export const BANK_MIN_DEPOSIT = 1000;
-/** Soldi che devono restare in cassaforte dopo un deposito. */
-export const VAULT_MIN_AFTER_DEPOSIT = 1000;
 
 /** Saldo del conto salvato nella stanza; un valore assente o non valido vale 0. */
 export function bankBalanceOf(value: unknown): number {
@@ -12,16 +10,14 @@ export function bankBalanceOf(value: unknown): number {
 
 /** Il massimo depositabile ora (0 se la cassaforte non basta per un deposito). */
 export function maxDeposit(vault: number): number {
-  const max = vault - VAULT_MIN_AFTER_DEPOSIT;
-  return max >= BANK_MIN_DEPOSIT ? max : 0;
+  return vault >= BANK_MIN_DEPOSIT ? vault : 0;
 }
 
 /** Spiega perché un deposito non è possibile, oppure null se va bene. */
 export function depositError(amount: number, vault: number): string | null {
   if (!Number.isSafeInteger(amount) || amount <= 0) return 'Inserisci un importo valido in euro.';
   if (amount < BANK_MIN_DEPOSIT) return `Il deposito minimo è di ${BANK_MIN_DEPOSIT} €.`;
-  if (vault - amount < VAULT_MIN_AFTER_DEPOSIT)
-    return `In cassaforte devono restare almeno ${VAULT_MIN_AFTER_DEPOSIT} €: puoi depositare al massimo ${Math.max(0, vault - VAULT_MIN_AFTER_DEPOSIT)} €.`;
+  if (amount > vault) return `In cassaforte hai solo ${vault} €.`;
   return null;
 }
 
