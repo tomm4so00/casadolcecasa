@@ -72,6 +72,7 @@ export function openDialog({
     inp.placeholder = input.placeholder || '';
     inp.inputMode = input.numeric ? 'numeric' : 'text';
     inp.maxLength = input.maxLength || 60;
+    inp.value = input.value || '';
   }
   box.innerHTML = '';
   return new Promise((resolve) => {

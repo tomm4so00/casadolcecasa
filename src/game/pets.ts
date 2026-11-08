@@ -30,6 +30,12 @@ import {
 import { type DogMode, clampToPark, inDogPark, nextDogMode, parkSpot } from './dog-park-rules.js';
 import {
   PETS,
+  PET_NAME_MAX,
+  capitalized,
+  petCalled,
+  petNameError,
+  toPetCalled,
+  cleanPetName,
   PET_FOOD_PRICE,
   PET_HUNGRY,
   PET_KINDS,
@@ -92,8 +98,78 @@ const hungerOf = (kind: PetKind): number => {
   return p ? petHunger(p, Date.now(), depletion()) : 100;
 };
 /** "al cane", "all'uccellino"… */
-const toPet = (kind: PetKind) =>
-  (/^[aeiou]/.test(PETS[kind].name) ? "all'" : 'al ') + PETS[kind].name;
+const toPet = (kind: PetKind) => toPetCalled(kind, book()[kind]);
+/** «Fido», oppure «il tuo cane». */
+const called = (kind: PetKind) => petCalled(kind, book()[kind]);
+/** Il nome da mostrare sull'etichetta: il suo, oppure quello della specie. */
+const shownName = (kind: PetKind) => book()[kind]?.name || PETS[kind].name;
+/** Etichetta della casetta: «Gabbia di Titti 🐦», oppure «Gabbia dell'uccellino 🐦». */
+function homeName(kind: PetKind): string {
+  const name = book()[kind]?.name;
+  const info = PETS[kind];
+  return name ? `${info.home} di ${name} ${info.emoji}` : HOME_NAME[kind] || info.name;
+}
+
+// ---------------------------------------------------------------- nome
+
+/**
+ * Dai un nome al tuo animale (o cambialo). `first`: appena comprato, si può anche saltare.
+ * Restituisce true se il nome è cambiato.
+ */
+export async function renamePet(kind: PetKind, first = false): Promise<boolean> {
+  const st = book()[kind];
+  if (!st) return false;
+  const info = PETS[kind];
+  let hint = '';
+  for (;;) {
+    const res: GameValue = await openDialog({
+      title: first
+        ? `${info.emoji} Come lo chiami?`
+        : `${info.emoji} Il nome ${toPet(kind).replace(/^a /, 'di ')}`,
+      text:
+        (first
+          ? `Dai un nome al tuo ${info.name}: lo vedrai nei messaggi e sulla sua fame, e lo vedranno anche gli amici che passano a trovarti.`
+          : 'Scegli un nuovo nome (al massimo ' + PET_NAME_MAX + ' caratteri).') +
+        (hint ? '\n\n❌ ' + hint : ''),
+      input: {
+        placeholder: 'Es. Fido, Micia, Nemo…',
+        maxLength: PET_NAME_MAX,
+        value: st.name || '',
+      },
+      buttons: [
+        { label: '✅ Conferma', value: 'ok', color: '#27ae60' },
+        ...(st.name && !first
+          ? [{ label: '🗑️ Togli il nome', value: 'clear', color: '#e67e22' }]
+          : []),
+        { label: first ? 'Più tardi' : 'Annulla', value: null },
+      ],
+    });
+    if (!book()[kind]) return false;
+    if (res.action === 'clear') {
+      delete st.name;
+      break;
+    }
+    if (res.action !== 'ok') return false;
+    const error = petNameError(String(res.value || ''));
+    if (error) {
+      hint = error;
+      continue;
+    }
+    st.name = cleanPetName(res.value)!;
+    break;
+  }
+  const home = homes.get(kind);
+  if (home) home.name = homeName(kind);
+  rowsKey = '-'; // la barra della fame mostra il nome nuovo
+  sfx('success');
+  toast(
+    st.name ? `${info.emoji} Ciao ${st.name}!` : `${info.emoji} Ora è di nuovo «${info.name}».`,
+    3000,
+  );
+  saveGame(true);
+  publishRoomLayout();
+  return true;
+}
 
 // ---------------------------------------------------------------- negozio
 
@@ -135,9 +211,10 @@ export async function buyPet(kind: PetKind): Promise<void> {
   book()[kind] = newPet(Date.now(), pos);
   homes.delete(kind);
   sfx('success');
-  toast(`${info.emoji} Il tuo ${info.name} ti aspetta nella tua stanza!`, 4500);
   saveGame(true);
   publishRoomLayout();
+  await renamePet(kind, true);
+  toast(`${info.emoji} ${capitalized(called(kind))} ti aspetta nella tua stanza!`, 4500);
 }
 
 // ---------------------------------------------------------------- casette nella stanza
@@ -162,7 +239,7 @@ export function petRoomItems(): Record<string, GameValue> {
         w: info.w,
         h: info.h,
         z: info.z,
-        name: HOME_NAME[kind],
+        name: homeName(kind),
         pet: kind,
         moveable: true,
       };
@@ -190,7 +267,7 @@ export function freePetsForLayout(): Record<string, GameValue> {
   const out: Record<string, GameValue> = {};
   for (const kind of ['dog', 'cat'] as const)
     if (book()[kind] && !(kind === 'dog' && game.dogWalk))
-      out[KEY[kind]] = { x: 0, y: 0, w: 1, h: 1, z: 1, name: PETS[kind].name, free: kind };
+      out[KEY[kind]] = { x: 0, y: 0, w: 1, h: 1, z: 1, name: shownName(kind), free: kind };
   return out;
 }
 
@@ -377,7 +454,7 @@ export function petSpots(): Record<string, GameValue> {
   const out: Record<string, GameValue> = {};
   if (!isMyRoomNow() || game.view.activeEnvironment !== 'PLAYER_ROOM') return out;
   for (const [kind, r] of roamers)
-    out[KEY[kind]] = { x: r.x, y: r.y, w: 20, h: 12, reach: 0, pet: kind, name: PETS[kind].name };
+    out[KEY[kind]] = { x: r.x, y: r.y, w: 20, h: 12, reach: 0, pet: kind, name: shownName(kind) };
   return out;
 }
 
@@ -388,7 +465,7 @@ export async function feed(kind: PetKind): Promise<void> {
   const st = book()[kind];
   if (!st) return;
   if (hungerOf(kind) >= 99.5) {
-    toast(`${PETS[kind].emoji} Il tuo ${PETS[kind].name} è già sazio!`);
+    toast(`${PETS[kind].emoji} ${capitalized(called(kind))} è già sazio!`);
     return;
   }
   if (feeding) {
@@ -824,17 +901,25 @@ export function updatePetHud(): void {
   const box = dom('pet-rows');
   if (!box) return;
   const kinds = PET_KINDS.filter((k) => book()[k]);
-  const key = kinds.join(',');
+  // anche il nome: cambiandolo la barra si rifà
+  const key = kinds.map((k) => k + ':' + shownName(k)).join(',');
   if (key !== rowsKey) {
     rowsKey = key;
     box.innerHTML = kinds
       .map(
         (k) => `<div class="need-row pet-row">
-      <div class="need-info"><span>${PETS[k].emoji} Fame (${PETS[k].name})</span><span id="pet-text-${k}"></span></div>
+      <div class="need-info"><span>${PETS[k].emoji} Fame (${shownName(k)}) <button type="button" class="pet-rename" data-pet="${k}" title="Dai un nome">✏️</button></span><span id="pet-text-${k}"></span></div>
       <div class="bar-bg"><div id="pet-bar-${k}" class="bar-fill" style="width: 0%; background: #e1b12c"></div></div>
     </div>`,
       )
       .join('');
+    (box as HTMLElement).querySelectorAll<HTMLElement>('[data-pet]').forEach((btn) =>
+      btn.addEventListener('click', (e) => {
+        // solo la matita: il resto del pannello passa dalle percentuali alle barre
+        e.stopPropagation();
+        void renamePet(btn.dataset.pet as PetKind);
+      }),
+    );
   }
   for (const k of kinds) {
     const v = hungerOf(k);
@@ -876,7 +961,12 @@ export async function giveUpForAdoption(): Promise<void> {
     title: '🏡 Dare in adozione',
     text: 'Quale animale vuoi affidare a una nuova famiglia?',
     buttons: [
-      ...kinds.map((k) => ({ label: `${PETS[k].emoji} Il ${PETS[k].name}`, value: k })),
+      ...kinds.map((k) => ({
+        label: book()[k]?.name
+          ? `${PETS[k].emoji} ${book()[k]!.name} (${PETS[k].name})`
+          : `${PETS[k].emoji} Il ${PETS[k].name}`,
+        value: k,
+      })),
       { label: 'Annulla', value: null },
     ],
   });
@@ -884,7 +974,7 @@ export async function giveUpForAdoption(): Promise<void> {
   if (!kind || !book()[kind]) return;
   const ok: GameValue = await openDialog({
     title: `${PETS[kind].emoji} Sei sicuro?`,
-    text: `Il tuo ${PETS[kind].name} andrà a vivere con un'altra famiglia e non tornerà più.
+    text: `${capitalized(called(kind))} andrà a vivere con un'altra famiglia e non tornerà più.
 I soldi spesi per comprarlo non ti verranno restituiti.`,
     buttons: [
       { label: 'Sì, dallo in adozione', value: 'yes', color: '#e67e22' },
@@ -892,9 +982,10 @@ I soldi spesi per comprarlo non ti verranno restituiti.`,
     ],
   });
   if (ok.action !== 'yes' || !book()[kind]) return;
+  const who = capitalized(called(kind));
   removePet(kind);
   sfx('click');
-  toast(`🏡 Il tuo ${PETS[kind].name} troverà una nuova famiglia. Ciao ${PETS[kind].emoji}!`, 4500);
+  toast(`🏡 ${who} troverà una nuova famiglia. Ciao ${PETS[kind].emoji}!`, 4500);
   saveGame(true);
   publishRoomLayout();
 }
@@ -914,9 +1005,10 @@ function checkPetHealth(): void {
     if (!st) continue;
     const info = PETS[kind];
     if (petIsDead(st, now, depletion())) {
+      const who = capitalized(called(kind));
       removePet(kind);
       game.player.happinessLevel = Math.max(0, game.player.happinessLevel - PET_DEATH_SADNESS);
-      const msg = `💔 Il tuo ${info.name} è morto di fame. (Felicità −${PET_DEATH_SADNESS}%)`;
+      const msg = `💔 ${who} è morto di fame. (Felicità −${PET_DEATH_SADNESS}%)`;
       if (document.hidden) sendNotify('Casa dolce casa', msg, 'sims-pet-' + kind);
       toast(msg, 7000);
       sfx('error');
@@ -930,7 +1022,7 @@ function checkPetHealth(): void {
       dyingWarned.add(kind);
       starvingWarned.add(kind); // basta questo avviso, non anche quello della fame a zero
       const h = Math.max(1, Math.ceil(dyingIn / 3_600_000));
-      const msg = `🆘 Il tuo ${info.name} ${info.emoji} sta per morire di fame! Hai ancora ${h} ${h === 1 ? 'ora' : 'ore'} per dargli da mangiare.`;
+      const msg = `🆘 ${capitalized(called(kind))} ${info.emoji} sta per morire di fame! Hai ancora ${h} ${h === 1 ? 'ora' : 'ore'} per dargli da mangiare.`;
       sendNotify('🆘 Casa dolce casa: il tuo animale sta per morire', msg, 'sims-pet-' + kind);
       toast(msg, 8000);
       sfx('error');
@@ -942,7 +1034,7 @@ function checkPetHealth(): void {
         1,
         Math.ceil((petStarvesAt(st, depletion()) + PET_STARVE_MS - now) / 3_600_000),
       );
-      const msg = `⚠️ Il tuo ${info.name} ${info.emoji} non mangia da troppo: se non gli dai da mangiare entro ${hoursLeft} ore morirà!`;
+      const msg = `⚠️ ${capitalized(called(kind))} ${info.emoji} non mangia da troppo: se non gli dai da mangiare entro ${hoursLeft} ore morirà!`;
       if (document.hidden) sendNotify('⚠️ Casa dolce casa: urgente', msg, 'sims-pet-' + kind);
       else toast(msg, 6000);
     } else if (!starving) starvingWarned.delete(kind);
@@ -997,7 +1089,7 @@ function applyCompany(dt: number): void {
     toast(
       w && best === 'dog'
         ? `🦮 Passeggiare con il tuo cane ti rende felice (+${company.rate}% di felicità all'ora)`
-        : `💞 Stare con il tuo ${info.name} ti rende felice (+${company.rate}% di felicità all'ora)`,
+        : `💞 Stare con ${book()[best]?.name || 'il tuo ' + info.name} ti rende felice (+${company.rate}% di felicità all'ora)`,
       4000,
     );
   }

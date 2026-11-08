@@ -484,7 +484,7 @@ export async function sendPetWarnings(
     for (const kind of dying) {
       const diesAt = Math.round(diesAtOf(kind));
       if (warned[kind] === diesAt) continue;
-      const text = petWarningText(kind, diesAt, now);
+      const text = petWarningText(kind, diesAt, now, pets[kind]?.name);
       for (const [key, entry] of Object.entries(push.tokens)) {
         if (!record(entry) || typeof entry.token !== 'string') continue;
         const result = await send(entry.token, {
@@ -502,11 +502,11 @@ export async function sendPetWarnings(
 }
 
 /** Testo dell'avviso per l'animale, con le ore che restano. */
-export function petWarningText(kind: PetKind, diesAt: number, now: number) {
+export function petWarningText(kind: PetKind, diesAt: number, now: number, name?: string) {
   const info = PETS[kind];
   const hours = Math.max(1, Math.round((diesAt - now) / 3600000));
   return {
-    title: `🆘 Il tuo ${info.name} ${info.emoji} sta per morire!`,
+    title: `🆘 ${name || 'Il tuo ' + info.name} ${info.emoji} sta per morire!`,
     body: `Non mangia da troppo tempo. Entra in Casa dolce casa e dagli da mangiare entro ${hours} ${hours === 1 ? 'ora' : 'ore'}.`,
   };
 }

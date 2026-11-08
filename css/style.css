@@ -3267,3 +3267,18 @@ canvas.shake {
     padding: 5px;
   }
 }
+
+/* matita accanto al nome dell'animale, nel pannello dei bisogni: si tocca per dargli un nome */
+.pet-rename {
+  border: none;
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 6px;
+  padding: 0 4px;
+  margin-left: 2px;
+  font-size: 10px;
+  line-height: 16px;
+  cursor: pointer;
+}
+.pet-rename:hover {
+  background: rgba(255, 255, 255, 0.25);
+}

@@ -67,7 +67,8 @@ export interface DialogResult {
 export interface DialogOptions {
   title: string;
   text?: string;
-  input?: { placeholder?: string; numeric?: boolean; maxLength?: number } | null;
+  /** `value`: testo già scritto nel campo (per correggere un nome) */
+  input?: { placeholder?: string; numeric?: boolean; maxLength?: number; value?: string } | null;
   /** `wide`: il pulsante occupa una riga intera, sotto gli altri */
   buttons: { label: string; value: string | null; color?: string; wide?: boolean }[];
 }

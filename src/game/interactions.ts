@@ -7,7 +7,7 @@ import { servicePrompt } from './restaurant.js';
 import { hospitalPrompt } from './hospital.js';
 import { officePrompt } from './office.js';
 import { buyPlant, plantLabel, smokeJoint, tendPlant } from './weed.js';
-import { PETS, PET_FOOD_PRICE, type PetKind } from './pet-rules.js';
+import { PETS, PET_FOOD_PRICE, type PetKind, toPetCalled } from './pet-rules.js';
 import { PET_OF_KEY, buyPet, dogGatePrompt, feed, giveUpForAdoption, useDogGate } from './pets.js';
 import {
   COIN_PRICE,
@@ -278,7 +278,7 @@ const PLAYER_ROOM: Place = {
     if (item.pet && PET_OF_KEY[key] && mine) {
       const kind = item.pet as PetKind;
       return {
-        text: `🍖 Dai da mangiare ${/^[aeiou]/.test(PETS[kind].name) ? "all'" : 'al '}${PETS[kind].name} (${PET_FOOD_PRICE} €)`,
+        text: `🍖 Dai da mangiare ${toPetCalled(kind, game.player.pets?.[kind])} (${PET_FOOD_PRICE} €)`,
         sub: kind === 'dog' ? '🦮 Porta a spasso' : undefined,
       };
     }

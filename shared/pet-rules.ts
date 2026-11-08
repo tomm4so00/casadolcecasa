@@ -100,7 +100,49 @@ export interface PetState {
   rot?: number;
   /** Solo il cane: premietti meritati nell'area cani per ogni comando (vedi dog-training-rules). */
   train?: { sit: number; paw: number };
+  /** Il nome che gli ha dato il padrone (senza nome si chiama col nome della specie). */
+  name?: string;
 }
+
+/** Lunghezza massima del nome di un animale. */
+export const PET_NAME_MAX = 16;
+/** Lettere (anche accentate), numeri, spazi, apostrofo, punto e trattino: niente simboli né HTML. */
+const PET_NAME_CHARS = /^[\p{L}\p{N} '’.-]+$/u;
+
+const tidy = (value: string): string => value.trim().replace(/\s+/g, ' ');
+
+/** Il nome ripulito (spazi in più tolti), o null se non va bene. */
+export function cleanPetName(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const name = tidy(value);
+  if (!name || name.length > PET_NAME_MAX || !PET_NAME_CHARS.test(name)) return null;
+  return name;
+}
+
+/** Spiega cosa non va nel nome scelto, oppure null se va bene. */
+export function petNameError(value: string): string | null {
+  const name = tidy(value);
+  if (!name) return 'Scrivi un nome.';
+  if (name.length > PET_NAME_MAX) return `Il nome può avere al massimo ${PET_NAME_MAX} caratteri.`;
+  if (!PET_NAME_CHARS.test(name))
+    return 'Usa solo lettere, numeri, spazi, apostrofo, punto e trattino.';
+  return null;
+}
+
+/** Come chiamarlo in una frase: «Fido», oppure «il tuo cane». */
+export function petCalled(kind: PetKind, p?: PetState | null): string {
+  return p?.name || 'il tuo ' + PETS[kind].name;
+}
+
+/** Con la preposizione: «a Fido», oppure «al cane» / «all'uccellino». */
+export function toPetCalled(kind: PetKind, p?: PetState | null): string {
+  if (p?.name) return 'a ' + p.name;
+  return (/^[aeiou]/.test(PETS[kind].name) ? "all'" : 'al ') + PETS[kind].name;
+}
+
+/** Con la maiuscola, per cominciare una frase. */
+export const capitalized = (s: string): string => s.charAt(0).toUpperCase() + s.slice(1);
+
 export type PetBook = Partial<Record<PetKind, PetState>>;
 
 /** Fame dell'animale adesso. `depletionSec` = secondi perché la fame passi da 100 a 0. */
@@ -166,6 +208,8 @@ export function decodePets(value: unknown): PetBook {
         Number.isInteger(v) ? Math.max(0, Math.min(60, v as number)) : 0;
       st.train = { sit: count(tr.sit), paw: count(tr.paw) };
     }
+    const name = cleanPetName(p.name);
+    if (name) st.name = name;
     out[kind] = st;
   }
   return out;
