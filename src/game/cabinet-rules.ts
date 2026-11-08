@@ -49,7 +49,7 @@ export function plausibleScore(game: CabinetGameId, score: number, ms: number): 
   );
 }
 
-/** Premi in euro per chi batte il record del condominio o quello mondiale. */
+/** Premi in dindini per chi batte il record del condominio o quello mondiale. */
 export const RECORD_PRIZE = { world: 50, global: 200 } as const;
 /**
  * Punteggio minimo per il premio: in un condominio nuovo il primo record è facile, e non

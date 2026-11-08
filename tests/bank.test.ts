@@ -22,7 +22,7 @@ async function setup(vaultMoney: number) {
 }
 
 describe('regole della banca', () => {
-  it('deposito minimo 1000 €, anche svuotando la cassaforte', () => {
+  it('deposito minimo 1000 Đ, anche svuotando la cassaforte', () => {
     expect(depositError(999, 5000)).toContain('minimo');
     expect(depositError(1000, 999)).toContain('solo 999');
     expect(depositError(1000, 1000)).toBeNull();

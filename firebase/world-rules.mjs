@@ -5,6 +5,7 @@
 // Un test (tests/world-rules.test.ts) controlla che il file sia aggiornato.
 import { readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { withInventoryRules } from './inventory-rules.mjs';
 
 /** Nodi di ogni mondo: gli stessi di shared/worlds.ts (WORLD_NODES). */
 export const WORLD_NODES = [
@@ -226,6 +227,7 @@ export function withWorldRules(rules) {
   const player = r.sims_leaderboard['.read'];
   withArcadeRules(r, player);
   withRouletteRules(r, player);
+  withInventoryRules(r.sims_rooms_state.$room);
   const worlds = { $worldId: { '.validate': `$worldId.matches(${CODE})` } };
   for (const node of WORLD_NODES) worlds.$worldId[node] = intoWorld(r['sims_' + node]);
   r.worlds = worlds;

@@ -29,7 +29,7 @@ import { MemoryStorage } from './helpers.js';
 const rocket = PROJECTS.rocket;
 
 describe('progetto del razzo', () => {
-  it('si vedono i primi pezzi a 5.000 € e il razzo completo con altri 10.000 €', () => {
+  it('si vedono i primi pezzi a 5.000 Đ e il razzo completo con altri 10.000 Đ', () => {
     expect(projectGoal(rocket)).toBe(15000);
     expect(projectStage(rocket, 0)).toBe(0);
     expect(projectStage(rocket, 4999)).toBe(0);
@@ -101,7 +101,7 @@ describe('lancio del razzo', () => {
     expect(countdownText(-5)).toBe('00:00');
   });
 
-  it('a 14.000 € il server avvisa tutti quelli del condominio, una volta sola', async () => {
+  it('a 14.000 Đ il server avvisa tutti quelli del condominio, una volta sola', async () => {
     const database = localDatabase(new Lifetime(), new MemoryStorage());
     await database.ref('sims_projects/rocket').set({ funded: 14200 });
     await database.ref('sims_rooms_state').set([
@@ -122,14 +122,14 @@ describe('lancio del razzo', () => {
     };
     expect(await notifyRocketAlmostReady(database, t0, send)).toBe(2);
     expect(sent[0]).toContain('quasi pronto');
-    expect(sent[0]).toContain('800 €');
+    expect(sent[0]).toContain('800 Đ');
     expect(sent[0]).toContain('pulsante rosso');
     expect((await database.ref('sims_projects/rocket/notified').get()).val()).toBe(t0);
     expect(await notifyRocketAlmostReady(database, t0 + 60000, send)).toBe(-1);
     expect(sent.length).toBe(2);
   });
 
-  it('non avvisa sotto i 14.000 €; se si arriva direttamente a 15.000 dice che è pronto', async () => {
+  it('non avvisa sotto i 14.000 Đ; se si arriva direttamente a 15.000 dice che è pronto', async () => {
     const low = localDatabase(new Lifetime(), new MemoryStorage());
     await low.ref('sims_projects/rocket').set({ funded: 13999 });
     expect(await notifyRocketAlmostReady(low, t0, async () => 'sent')).toBe(-1);
@@ -169,7 +169,7 @@ describe('viaggi sulla luna', () => {
     expect(rocketFlight(t0, t0 + 10000).readyIn).toBe(FLIGHT_TOTAL_MS - 10000);
   });
 
-  it('il viaggio costa 500 € e i decolli sono salvati', () => {
+  it('il viaggio costa 500 Đ e i decolli sono salvati', () => {
     expect(MOON_TRIP_PRICE).toBe(500);
     const s = decodeProject({
       funded: 15000,
@@ -192,7 +192,7 @@ describe('viaggi sulla luna', () => {
 
 describe('base spaziale lunare', () => {
   const base = PROJECTS.moonbase;
-  it('si avvia con 15.000 €, è a metà con 30.000 € e finita con 45.000 €', () => {
+  it('si avvia con 15.000 Đ, è a metà con 30.000 Đ e finita con 45.000 Đ', () => {
     expect(projectGoal(base)).toBe(45000);
     expect(projectStage(base, 14999)).toBe(0);
     expect(projectStage(base, 15000)).toBe(1);
@@ -209,7 +209,7 @@ describe('base spaziale lunare', () => {
     expect(projectUnlocked('moonbase', 1_800_000_000_000)).toBe(true);
   });
 
-  it('le regole del database accettano la base solo dopo il lancio e fino a 45.000 €', () => {
+  it('le regole del database accettano la base solo dopo il lancio e fino a 45.000 Đ', () => {
     const rules = JSON.parse(
       fs.readFileSync('firebase/database.rules.proposed.json', 'utf8'),
     ).rules;

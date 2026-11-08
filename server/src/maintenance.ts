@@ -12,6 +12,7 @@ import {
 import { graveFromSave, releaseRoomsOf } from '../../shared/death-rules.js';
 import { type CryoPass, awakeMs, decodeCryo, realTimeAfterAwake } from '../../shared/cryo-rules.js';
 import { ACTIVE_MARGIN_MS, absentDeath } from '../../src/game/absent-death-rules.js';
+import { encodeDeathCauses } from '../../src/game/death-cause-rules.js';
 import { dayNumber } from '../../src/game/game-clock.js';
 import {
   LEGACY_WORLD,
@@ -158,7 +159,12 @@ export async function maintainWorld(
       const stored = (await reference.get()).val();
       const save = record(stored) ? stored : { savedAt: now, moneyLevel: 0, gameMinutes: 0 };
       const deadAt = realTimeAfterAwake(cryo.get(player.id) ?? null, player.lastSeen, 72 * 3600000);
-      await reference.update({ ...(!record(stored) ? save : {}), dead: true, deadAt });
+      await reference.update({
+        ...(!record(stored) ? save : {}),
+        dead: true,
+        deadAt,
+        deathCause: encodeDeathCauses(['abandoned']),
+      });
       const grave: Record<string, unknown> = {
         name: player.name,
         deadAt,
@@ -302,6 +308,7 @@ export async function markAbsentDeaths(
       deadAt: death.deadAt,
       healthLevel: 0,
       gameMinutes: death.gameMinutes,
+      deathCause: encodeDeathCauses(death.causes),
     });
     const shown = record(here) && typeof here.name === 'string' ? here.name : '';
     // la lapide con il giorno come lo conta il gioco
@@ -518,8 +525,8 @@ export const ROCKET_GOAL = 15000;
 export const ROCKET_NOTIFY_AT = 14000;
 
 /**
- * Quando i giocatori di un condominio arrivano a 14.000 € per il loro razzo, avvisa sul telefono
- * chi abita lì: manca poco e, a 15.000 €, qualcuno potrà premere il pulsante rosso per lanciarlo.
+ * Quando i giocatori di un condominio arrivano a 14.000 Đ per il loro razzo, avvisa sul telefono
+ * chi abita lì: manca poco e, a 15.000 Đ, qualcuno potrà premere il pulsante rosso per lanciarlo.
  * Succede una volta sola per razzo. Restituisce quanti avvisi sono partiti in tutti i mondi (-1
  * se in nessun mondo era il momento di avvisare).
  */
@@ -556,7 +563,7 @@ async function notifyRocketInWorld(
     left > 0
       ? {
           title: '🚀 Il razzo è quasi pronto!',
-          body: `Mancano solo ${left.toLocaleString('it-IT')} € per completare il razzo. Al traguardo si potrà premere il pulsante rosso per lanciarlo: entra in Casa dolce casa!`,
+          body: `Mancano solo ${left.toLocaleString('it-IT')} Đ per completare il razzo. Al traguardo si potrà premere il pulsante rosso per lanciarlo: entra in Casa dolce casa!`,
         }
       : {
           title: '🚀 Il razzo è pronto!',
@@ -588,7 +595,7 @@ async function notifyRocketInWorld(
 export function limitedOfferText(fromName: string, amount: number, name: string) {
   return {
     title: '💎 Hai ricevuto un’offerta!',
-    body: `${fromName} ti offre ${amount.toLocaleString('it-IT')} € per ${name}. Entra in Casa dolce casa per accettare o rifiutare.`,
+    body: `${fromName} ti offre ${amount.toLocaleString('it-IT')} Đ per ${name}. Entra in Casa dolce casa per accettare o rifiutare.`,
   };
 }
 

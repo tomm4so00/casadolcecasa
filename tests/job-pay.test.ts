@@ -22,9 +22,9 @@ describe('paga dei turni', () => {
   it('spiega quanti turni mancano al prossimo aumento', () => {
     expect(nextPayMessage(1)).toContain('Ancora 14 turni');
     expect(nextPayMessage(14)).toContain('Ancora 1 turno ');
-    expect(nextPayMessage(15)).toContain('Dal prossimo turno guadagni 45 € + 6 €');
+    expect(nextPayMessage(15)).toContain('Dal prossimo turno guadagni 45 Đ + 6 Đ');
     expect(nextPayMessage(15)).toContain('Ancora 15 turni');
-    expect(nextPayMessage(60)).toContain('Dal prossimo turno guadagni 95 € + 15 €');
+    expect(nextPayMessage(60)).toContain('Dal prossimo turno guadagni 95 Đ + 15 Đ');
     expect(nextPayMessage(60)).toContain('paga massima');
     expect(nextPayMessage(75)).not.toContain('Dal prossimo turno');
   });

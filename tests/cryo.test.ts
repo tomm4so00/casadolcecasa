@@ -151,11 +151,13 @@ describe('criogenesi: il server', () => {
       savedAt: NOW - 10 * H,
       moneyLevel: 0,
       healthLevel: 10,
-      sleepLevel: 100,
+      sleepLevel: 0,
       hungerLevel: 0,
-      hygieneLevel: 100,
+      hygieneLevel: 0,
       happinessLevel: 100,
       gameMinutes: 2000,
+      // tutto a zero da più di un giorno: le 24 ore di grazia sono già passate
+      needsZeroSince: NOW - 40 * H,
     };
     expect(absentDeath(save, {}, NOW)).not.toBeNull();
     expect(

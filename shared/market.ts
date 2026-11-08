@@ -184,7 +184,7 @@ export function holdingsFromRooms(rooms: unknown): Record<string, Holding> {
 }
 
 /**
- * Effetto della domanda sul prezzo: quanti euro sono entrati (o usciti) nell'ultimo quarto d'ora,
+ * Effetto della domanda sul prezzo: quanti dindini sono entrati (o usciti) nell'ultimo quarto d'ora,
  * diviso la liquidità dell'attività, al massimo ±2%. Restituisce il fattore (es. 1.01 = +1%).
  */
 export function flowImpact(netFlowEuro: number, liquidity: number): number {
@@ -201,7 +201,7 @@ export interface MarketQuote {
   /** Quote possedute in tutto dai giocatori all'ultimo aggiornamento, e da quanti giocatori. */
   held?: number;
   holders?: number;
-  /** Euro comprati (positivi) o venduti (negativi) da tutti nell'ultimo quarto d'ora. */
+  /** Dindini comprati (positivi) o venduti (negativi) da tutti nell'ultimo quarto d'ora. */
   flow?: number;
   /** Spinta dell'attività dei giocatori nel gioco (logaritmo del fattore: 0.1 ≈ +10%). */
   act?: number;

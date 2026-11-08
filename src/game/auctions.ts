@@ -33,7 +33,7 @@ import { worldNode } from './world-db.js';
 import { worldNodePath } from '../../shared/worlds.js';
 import { expiryNotice } from '../../shared/auction-expiry.js';
 
-const euro = (n: number) => `${n.toLocaleString('it-IT')} €`;
+const dindini = (n: number) => `${n.toLocaleString('it-IT')} Đ`;
 const me = (): string => game.session.myPlayerId;
 const serverNow = (): number => Date.now() + (game.session.serverOffset || 0) - 1000;
 const auctionRef = (id: string, child = '') =>
@@ -133,11 +133,11 @@ export async function acceptBid(a: Auction): Promise<void> {
   const res: GameValue = await openDialog({
     title: '🤝 Accetti l’offerta?',
     text:
-      `${bid.name} offre ${euro(bid.amt)} per ${nameOf(a, 'il tuo quadro')}.\n\n` +
+      `${bid.name} offre ${dindini(bid.amt)} per ${nameOf(a, 'il tuo quadro')}.\n\n` +
       'Se ha ancora i soldi, lo scambio è immediato: incassi subito e il quadro passa per sempre a lui.',
     buttons: [
       { label: 'Non ancora', value: null, color: '#57606f' },
-      { label: `Accetta (${euro(bid.amt)})`, value: 'yes', color: '#2ed573' },
+      { label: `Accetta (${dindini(bid.amt)})`, value: 'yes', color: '#2ed573' },
     ],
   });
   if (res.action !== 'yes') return;
@@ -156,7 +156,7 @@ export async function acceptBid(a: Auction): Promise<void> {
       .catch((e: unknown) => console.warn('[aste]', e));
     await sendSocial(bid.by, { type: 'artNo', amt: bid.amt, pic: a.id, why: 'nomoney' });
     toast(
-      `💸 ${bid.name} non ha più ${euro(bid.amt)} in cassaforte: l'offerta è annullata e il quadro resta all'asta.`,
+      `💸 ${bid.name} non ha più ${dindini(bid.amt)} in cassaforte: l'offerta è annullata e il quadro resta all'asta.`,
       5000,
     );
     return;
@@ -177,11 +177,11 @@ export async function acceptBid(a: Auction): Promise<void> {
   saveGame(true);
   sfx('coin');
   toast(
-    `💰 Venduto! ${bid.name} ti ha pagato ${euro(bid.amt)} per ${nameOf(a, 'il tuo quadro')}.`,
+    `💰 Venduto! ${bid.name} ti ha pagato ${dindini(bid.amt)} per ${nameOf(a, 'il tuo quadro')}.`,
     5000,
   );
   postGossip(
-    `${game.player.myData.nick} ha venduto ${nameOf(a, 'un quadro')} a ${bid.name} per ${euro(bid.amt)} 🖼️`,
+    `${game.player.myData.nick} ha venduto ${nameOf(a, 'un quadro')} a ${bid.name} per ${dindini(bid.amt)} 🖼️`,
     [bid.by],
   );
 }
@@ -222,7 +222,7 @@ export async function deliverPainting(a: Auction): Promise<void> {
   saveGame(true);
   sfx('success');
   toast(
-    `🖼️ Hai comprato ${nameOf(a)} di ${a.name} per ${euro(sold.amt)}: è appeso nella tua stanza!`,
+    `🖼️ Hai comprato ${nameOf(a)} di ${a.name} per ${dindini(sold.amt)}: è appeso nella tua stanza!`,
     5000,
   );
 }
@@ -241,7 +241,7 @@ export async function withdrawAuction(a: Auction, ask = true): Promise<void> {
         title: '🖼️ Ritiri il quadro dall’asta?',
         text:
           'Lo appendi nella tua stanza e diventa tuo per sempre: niente più offerte né cuoricini.' +
-          (a.bid ? `\n\nLa migliore offerta era di ${euro(a.bid.amt)} (${a.bid.name}).` : ''),
+          (a.bid ? `\n\nLa migliore offerta era di ${dindini(a.bid.amt)} (${a.bid.name}).` : ''),
         buttons: [
           { label: 'Annulla', value: null, color: '#57606f' },
           { label: '🖼️ Appendi in casa', value: 'hang', color: '#2ed573' },
@@ -470,10 +470,10 @@ export async function placeBid(a: Auction): Promise<void> {
     text:
       `Quanto offri a ${a.name} per ${nameOf(a, 'il suo quadro')}?\n\n` +
       (a.bid
-        ? `La migliore offerta è di ${euro(a.bid.amt)} (${a.bid.name}): devi offrire almeno ${euro(minBid(a))}.`
+        ? `La migliore offerta è di ${dindini(a.bid.amt)} (${a.bid.name}): devi offrire almeno ${dindini(minBid(a))}.`
         : 'Nessuno ha ancora fatto un’offerta.') +
-      `\n\nSe il pittore la accetta paghi con la cassaforte (ora ${euro(game.moneyLevel)}) e il quadro è tuo per sempre.`,
-    input: { placeholder: 'Offerta in €', numeric: true, maxLength: 6 },
+      `\n\nSe il pittore la accetta paghi con la cassaforte (ora ${dindini(game.moneyLevel)}) e il quadro è tuo per sempre.`,
+    input: { placeholder: 'Offerta in Đ', numeric: true, maxLength: 6 },
     buttons: [
       { label: 'Annulla', value: null, color: '#57606f' },
       { label: "Manda l'offerta", value: 'send', color: '#2ed573' },
@@ -511,7 +511,7 @@ export async function placeBid(a: Auction): Promise<void> {
     return;
   }
   sfx('coin');
-  toast(`📨 Hai offerto ${euro(amt)}: ora decide ${a.name}.`, 4000);
+  toast(`📨 Hai offerto ${dindini(amt)}: ora decide ${a.name}.`, 4000);
   await sendSocial(a.by, { type: 'artOffer', amt, pic: a.id });
   const before = prev as Auction['bid'] | null;
   if (before && before.by !== me())
@@ -549,11 +549,11 @@ export async function completePurchase(a: Auction): Promise<void> {
   const res: GameValue = await openDialog({
     title: '🤝 Offerta accettata!',
     text:
-      `${a.name} ha accettato la tua offerta di ${euro(sold.amt)} per ${nameOf(a)}.\n\n` +
+      `${a.name} ha accettato la tua offerta di ${dindini(sold.amt)} per ${nameOf(a)}.\n\n` +
       'Paghi con la cassaforte e il quadro viene appeso nella tua stanza, tuo per sempre.',
     buttons: [
       { label: 'Rinuncio', value: 'no', color: '#57606f' },
-      { label: `Compra (${euro(sold.amt)})`, value: 'buy', color: '#2ed573' },
+      { label: `Compra (${dindini(sold.amt)})`, value: 'buy', color: '#2ed573' },
     ],
   });
   if (res.action === 'no') {
@@ -569,7 +569,7 @@ export async function completePurchase(a: Auction): Promise<void> {
   // chiusa senza scegliere: si riproporrà al prossimo ingresso
   if (res.action !== 'buy') return;
   if (game.moneyLevel < sold.amt) {
-    toast(`❌ Ti servono ${euro(sold.amt)} in cassaforte.`, 4000);
+    toast(`❌ Ti servono ${dindini(sold.amt)} in cassaforte.`, 4000);
     asked.delete(a.id);
     return;
   }
@@ -628,7 +628,7 @@ export async function completePurchase(a: Auction): Promise<void> {
   sfx('success');
   toast(`🖼️ Hai comprato ${nameOf(a)} di ${a.name}! È appeso nella tua stanza.`, 4500);
   postGossip(
-    `${game.player.myData.nick} ha comprato ${nameOf(a, 'un quadro')} di ${a.name} per ${euro(sold.amt)} 🖼️`,
+    `${game.player.myData.nick} ha comprato ${nameOf(a, 'un quadro')} di ${a.name} per ${dindini(sold.amt)} 🖼️`,
     [a.by],
   );
 }
@@ -640,7 +640,7 @@ export async function onArtOffer(m: GameValue, who: string): Promise<void> {
   const a = auctionById(String(m.pic || ''));
   const amt = Number(m.amt);
   if (!a || a.by !== me()) return;
-  const text = `${who} offre ${euro(amt)} per ${nameOf(a, 'il tuo quadro')}.`;
+  const text = `${who} offre ${dindini(amt)} per ${nameOf(a, 'il tuo quadro')}.`;
   sendNotify('🖼️ Offerta per il tuo quadro', text, 'art-offer');
   // si chiede subito solo se è ancora la migliore
   if (!a.bid || a.bid.by !== m.from || a.bid.amt !== amt || a.sold) {
@@ -663,7 +663,7 @@ export async function onArtAccept(m: GameValue): Promise<void> {
 export function onArtNo(m: GameValue, who: string): void {
   const a = auctionById(String(m.pic || ''));
   const what = a ? nameOf(a) : 'il quadro';
-  const amt = euro(Number(m.amt) || 0);
+  const amt = dindini(Number(m.amt) || 0);
   if (m.why === 'over')
     toast(
       `📈 Qualcuno ha offerto più di te (${amt}) per ${what}: puoi rilanciare dal catalogo.`,
@@ -692,7 +692,7 @@ export function onArtSold(buyer: string, amount: number): void {
   game.player.stats.paintingsSold = (game.player.stats.paintingsSold || 0) + 1;
   notePersonality('sellPainting');
   saveGame(false);
-  const text = `🖼️ ${buyer} ha comprato il tuo quadro per ${euro(amount)}!`;
+  const text = `🖼️ ${buyer} ha comprato il tuo quadro per ${dindini(amount)}!`;
   toast(text, 6000);
   sendNotify('Quadro venduto!', text, 'art-sold');
 }
@@ -725,21 +725,21 @@ async function collectorOffer(a: Auction): Promise<void> {
   const what = nameOf(a, 'il tuo quadro');
   sendNotify(
     '🖼️ Offerta per il tuo quadro',
-    `Un collezionista offre ${euro(amount)} per ${what}.`,
+    `Un collezionista offre ${dindini(amount)} per ${what}.`,
     'art-offer',
   );
   sfx('mission');
   const res: GameValue = await openDialog({
     title: '🎩 Offerta di un collezionista',
     text:
-      `Un collezionista ha visto ${what} all'asta e offre ${euro(amount)}.` +
+      `Un collezionista ha visto ${what} all'asta e offre ${dindini(amount)}.` +
       (a.bid
-        ? `\n\nLa migliore offerta di un giocatore è ${euro(a.bid.amt)} (${a.bid.name}).`
+        ? `\n\nLa migliore offerta di un giocatore è ${dindini(a.bid.amt)} (${a.bid.name}).`
         : '') +
       `\n\nSe accetti, il quadro va al collezionista; se rifiuti resta all'asta e più avanti potrebbe arrivare un'altra offerta.`,
     buttons: [
       { label: 'Rifiuta', value: 'no', color: '#57606f' },
-      { label: `Accetta (${euro(amount)})`, value: 'yes', color: '#2ed573' },
+      { label: `Accetta (${dindini(amount)})`, value: 'yes', color: '#2ed573' },
     ],
   });
   const fresh = auctionById(a.id);
@@ -767,7 +767,7 @@ async function collectorOffer(a: Auction): Promise<void> {
   saveGame(true);
   sfx('coin');
   postGossip(
-    `${game.player.myData.nick} ha venduto ${nameOf(a, 'un quadro')} a un collezionista per ${euro(amount)} 🖼️`,
+    `${game.player.myData.nick} ha venduto ${nameOf(a, 'un quadro')} a un collezionista per ${dindini(amount)} 🖼️`,
   );
-  toast(`💰 Quadro venduto al collezionista per ${euro(amount)}!`, 5000);
+  toast(`💰 Quadro venduto al collezionista per ${dindini(amount)}!`, 5000);
 }

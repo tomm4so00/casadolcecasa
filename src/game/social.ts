@@ -16,7 +16,8 @@ import { lifetime } from './runtime.js';
 import { toast } from './missions.js';
 import { sfx } from './audio.js';
 import { openDialog } from './interface.js';
-import { drugTake } from './needs.js';
+import { onInventoryOffer, inventoryChange } from './inventory-market.js';
+import { openInventoryTrade } from './inventory-trade.js';
 import {
   noteRomanticAttention,
   onKissAnswer,
@@ -97,8 +98,8 @@ export async function socDo(act?: GameValue): Promise<GameValue> {
       return;
     }
     const res: GameValue = await openDialog({
-      title: `💶 Regala soldi a ${t.name}`,
-      text: `Disponibili in cassaforte: ${game.moneyLevel} €`,
+      title: `🪙 Regala soldi a ${t.name}`,
+      text: `Disponibili in cassaforte: ${game.moneyLevel} Đ`,
       input: { placeholder: 'Importo', numeric: true, maxLength: 6 },
       buttons: [
         { label: 'Annulla', value: null, color: '#57606f' },
@@ -120,16 +121,13 @@ export async function socDo(act?: GameValue): Promise<GameValue> {
       return;
     }
     await sendSocial(t.id, { type: 'money_notice', amt });
-    toast(`💶 Hai regalato ${amt} € a ${t.name}`);
+    toast(`🪙 Hai regalato ${amt} Đ a ${t.name}`);
   } else if (act === 'kiss') {
     await tryKiss(t);
   } else if (act === 'weed') {
     await offerJoint(t);
   } else if (act === 'drug') {
-    if (game.player.drugStock < 1) return;
-    game.player.drugStock--;
-    sendSocial(t.id, { type: 'drug' });
-    toast(`💊 Hai offerto una dose a ${t.name}`);
+    await openInventoryTrade('drug', t.id);
   }
   game.socKey = '';
 }
@@ -219,6 +217,10 @@ export async function handleSocial(m?: GameValue): Promise<GameValue> {
   if (!m || !m.type) return;
   const who: GameValue = m.fromName || 'Qualcuno';
   const old: GameValue = Date.now() - (m.t || 0) > game.SOC_MSG_TTL;
+  if (m.type === 'inventoryOffer') {
+    await onInventoryOffer(m, who);
+    return;
+  }
   if (m.type === 'talk' && !old) {
     game.player.happinessLevel = Math.min(100, game.player.happinessLevel + 4);
     game.player.healthLevel = Math.min(100, game.player.healthLevel + 2);
@@ -248,13 +250,13 @@ export async function handleSocial(m?: GameValue): Promise<GameValue> {
     toast(`🍽️ ${who} ti ha dato da mangiare! (+50% fame)`, 4000);
     remember(m, who, 'food');
   } else if (m.type === 'money_notice') {
-    toast(`💶 ${who} ti ha regalato ${Math.max(0, Math.floor(Number(m.amt) || 0))} €!`, 4000);
+    toast(`🪙 ${who} ti ha regalato ${Math.max(0, Math.floor(Number(m.amt) || 0))} Đ!`, 4000);
     remember(m, who, 'gift');
   } else if (m.type === 'money') {
     const amt: GameValue = Math.max(0, Math.floor(Number(m.amt) || 0));
     if (amt > 0) {
       if (!(await creditMoney(amt))) return;
-      toast(`💶 ${who} ti ha regalato ${amt} €!`, 4000);
+      toast(`🪙 ${who} ti ha regalato ${amt} Đ!`, 4000);
     }
   } else if (m.type === 'ltdOffer') {
     await onLimitedOffer(m, who);
@@ -266,7 +268,7 @@ export async function handleSocial(m?: GameValue): Promise<GameValue> {
     const b = RETIRED_BUSINESSES[m.biz as string];
     const amt = Math.max(0, Math.floor(Number(m.amt) || 0));
     toast(
-      `${b ? b.emoji + ' ' + b.name : 'Un’attività'} ha lasciato la borsa: le tue quote valevano ${amt.toLocaleString('it-IT')} € e sono in cassaforte.`,
+      `${b ? b.emoji + ' ' + b.name : 'Un’attività'} ha lasciato la borsa: le tue quote valevano ${amt.toLocaleString('it-IT')} Đ e sono in cassaforte.`,
       8000,
     );
   } else if (m.type === 'usedSold') {
@@ -284,7 +286,7 @@ export async function handleSocial(m?: GameValue): Promise<GameValue> {
     // la vittima scopre chi è stato: per tutti gli altri il ladro resta misterioso
     const amt = Math.max(0, Math.floor(Number(m.amt) || 0));
     sfx('robbed');
-    toast(`🕵️ ${who} ti ha svuotato la cassaforte! Rubati ${amt} €.`, 6000);
+    toast(`🕵️ ${who} ti ha svuotato la cassaforte! Rubati ${amt} Đ.`, 6000);
     remember(m, who, 'theft');
   } else if (m.type === 'artOffer') {
     await onArtOffer(m, who);
@@ -307,20 +309,23 @@ export async function handleSocial(m?: GameValue): Promise<GameValue> {
   } else if (m.type === 'weedNo') {
     onJointRefused(who);
   } else if (m.type === 'drugReturn') {
-    game.player.drugStock++;
+    if (!(await inventoryChange((ledger) => ledger.buy('drug', 1, 0)))) return;
+    await saveGame(true);
     toast(`${who} ha rifiutato la dose: ti è tornata.`, 3500);
   } else if (m.type === 'drug') {
     while (game.dialogResolve)
       await new Promise((r?: GameValue): GameValue => lifetime.setTimeout(r, 1500));
     const res: GameValue = await openDialog({
       title: '💊 Una dose in regalo',
-      text: `${who} vuole regalarti una dose di droga.\n\nCrea dipendenza e fa calare la salute per giorni. Accetti?`,
+      text: `${who} vuole regalarti una dose. La troverai nello zaino: potrai conservarla, scambiarla o assumerla più tardi. Accetti?`,
       buttons: [
         { label: 'Rifiuta', value: 'no', color: '#57606f' },
         { label: 'Accetta', value: 'yes', color: '#8e44ad' },
       ],
     });
-    if (res.action === 'yes') drugTake();
-    else sendSocial(m.from, { type: 'drugReturn' });
+    if (res.action === 'yes' && (await inventoryChange((ledger) => ledger.buy('drug', 1, 0)))) {
+      await saveGame(true);
+      toast('💊 Dose ricevuta nello zaino.', 3500);
+    } else await sendSocial(m.from, { type: 'drugReturn' });
   }
 }

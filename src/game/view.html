@@ -41,7 +41,7 @@
 <!-- Versione del gioco: si aggiorna in package.json a ogni fix grande -->
 <div id="app-version"></div>
 
-<!-- HUD CON 5 BARRE E 1 ETICHETTA SOLDI IN EURO -->
+<!-- HUD CON 5 BARRE E 1 ETICHETTA SOLDI IN DINDINI -->
 <div id="hud-top-left">
   <div class="hud-left-col">
     <!-- personalità ottenuta: compare sopra i parametri -->
@@ -99,11 +99,11 @@
       </div>
       <div class="need-row">
         <div class="need-info">
-          <span class="money-label">💰 Soldi (cassaforte/banca)</span>
+          <span class="money-label" title="Dindini · Đ">🪙 Dindini (cassaforte/banca)</span>
         </div>
         <div class="need-info money-amounts">
-          <span id="money-text" title="In cassaforte">🔐 0 €</span>
-          <span id="bank-text" title="In banca">🏦 0 €</span>
+          <span id="money-text" title="In cassaforte">🔐 0 Đ</span>
+          <span id="bank-text" title="In banca">🏦 0 Đ</span>
         </div>
         <div class="bar-bg money-split" title="Verde: cassaforte · Azzurro: banca">
           <div id="money-bar-fill" class="bar-fill" style="width: 0%"></div>
@@ -126,6 +126,34 @@
 <div id="dynamic-joystick"><div id="joystick-knob"></div></div>
 
 <div id="hud-actions" class="hud-controls hidden">
+  <button
+    class="btn-hud"
+    id="btn-inventory"
+    data-action="openInventory"
+    title="Zaino"
+    aria-label="Apri lo zaino"
+  >
+    <svg class="backpack-icon" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+      <path d="M12 8V6a4 4 0 0 1 8 0v2" stroke="#e8d7b0" stroke-width="2.5" />
+      <rect x="3" y="17" width="5" height="10" rx="2" fill="#526757" />
+      <rect x="24" y="17" width="5" height="10" rx="2" fill="#526757" />
+      <rect
+        x="7"
+        y="7"
+        width="18"
+        height="23"
+        rx="6"
+        fill="#8aa17a"
+        stroke="#dae3c4"
+        stroke-width="1.5"
+      />
+      <path d="M8 14h16" stroke="#526757" stroke-width="2" />
+      <rect x="10" y="18" width="12" height="9" rx="2.5" fill="#627c58" stroke="#b7c9a3" />
+      <path d="M12 21h8" stroke="#e8d7b0" stroke-width="1.5" stroke-linecap="round" />
+      <path d="M19 21v2" stroke="#e8d7b0" stroke-width="1.5" stroke-linecap="round" />
+      <rect x="14" y="10" width="4" height="3" rx="1" fill="#e8d7b0" />
+    </svg>
+  </button>
   <button class="btn-hud" id="btn-sound" data-action="toggleSound" title="Suoni on/off">🔊</button>
   <button class="btn-hud" id="btn-music" data-action="toggleMusic" title="Musica on/off">🎵</button>
   <button
@@ -204,7 +232,7 @@
     ✋ Interagisci
   </button>
   <button class="btn-pop btn-pop-action hidden" id="btn-act-sub" data-action="handleSubAction">
-    🍎 Prendi Cibo (-5 €)
+    🍎 Prendi Cibo (-5 Đ)
   </button>
 
   <button
@@ -247,7 +275,7 @@
     data-action="doActivity"
     data-args='["trip"]'
   >
-    ✈️ Viaggio (-100 €, +50% Felicità, +15% Salute, 1 al giorno)
+    ✈️ Viaggio (-100 Đ, +50% Felicità, +15% Salute, 1 al giorno)
   </button>
   <button
     class="btn-pop btn-pop-furniture hidden"
@@ -295,7 +323,7 @@
     data-action="doActivity"
     data-args='["disco"]'
   >
-    🕺 Discoteca (-20 €, +35% Felicità, -15% Sonno, 2 al giorno)
+    🕺 Discoteca (-20 Đ, +35% Felicità, -15% Sonno, 2 al giorno)
   </button>
   <button
     class="btn-pop hidden"
@@ -371,7 +399,7 @@
       🐾 Dì dà la zampa
     </button>
     <button id="btn-dog-treat" class="dog-train-btn dog-treat" data-action="dogTreat">
-      🦴 Dai premietto (-1 €)
+      🦴 Dai premietto (-1 Đ)
     </button>
     <button
       class="dog-train-btn dog-train-stop"
@@ -626,8 +654,8 @@
     <!-- Sezione Scelta Lavoro (Primo accesso o Cambio Lavoro) -->
     <div id="job-choices-container">
       <p style="margin: 5px 0 15px 0; color: #aaa; font-size: 0.75rem">
-        Progressione: turni 1-30 (50€ + 1€/oggetto) | 31-60 (80€ + 2€/oggetto) | 61+ (120€ +
-        3€/oggetto)
+        Progressione: turni 1-30 (50Đ + 1Đ/oggetto) | 31-60 (80Đ + 2Đ/oggetto) | 61+ (120Đ +
+        3Đ/oggetto)
       </p>
       <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 15px">
         <button
@@ -775,6 +803,130 @@
   </div>
 </div>
 
+<!-- ZAINO -->
+<div
+  id="inventory-modal"
+  class="fullscreen-modal hidden"
+  role="dialog"
+  aria-modal="true"
+  aria-labelledby="inventory-title"
+>
+  <div class="browser-window inventory-window">
+    <div class="browser-header">
+      <div class="chat-title" id="inventory-title">Zaino</div>
+      <button
+        type="button"
+        class="browser-close"
+        id="inventory-close"
+        data-action="closeInventory"
+        aria-label="Chiudi lo zaino"
+      >
+        ✕
+      </button>
+    </div>
+    <div class="browser-body inventory-body">
+      <div id="inventory-count" class="inventory-count">0/20 spazi occupati</div>
+      <div
+        id="inventory-grid"
+        class="inventory-grid"
+        role="group"
+        aria-label="I 20 spazi dello zaino"
+      ></div>
+      <p id="inventory-details" class="inventory-details" aria-live="polite"></p>
+      <button
+        type="button"
+        id="inventory-smoke"
+        class="btn-primary hidden"
+        data-action="smokeInventoryJoint"
+      >
+        🌿 Fuma (1 g)
+      </button>
+      <p id="inventory-use-hint" class="inventory-details" aria-live="polite"></p>
+      <button
+        type="button"
+        id="inventory-drug"
+        class="btn-primary hidden"
+        data-action="consumeInventoryDrug"
+      >
+        💊 Assumi (1 dose)
+      </button>
+      <button
+        type="button"
+        id="inventory-trade"
+        class="btn-primary"
+        data-action="openInventoryTrade"
+      >
+        🤝 Scambia
+      </button>
+    </div>
+  </div>
+</div>
+
+<div
+  id="inventory-trade-modal"
+  class="fullscreen-modal hidden"
+  role="dialog"
+  aria-modal="true"
+  aria-labelledby="trade-title"
+>
+  <div class="browser-window inventory-window">
+    <div class="browser-header">
+      <div class="chat-title" id="trade-title">🤝 Scambia dallo zaino</div>
+      <button
+        type="button"
+        id="trade-close"
+        class="browser-close"
+        data-action="closeInventoryTrade"
+        aria-label="Chiudi scambio"
+      >
+        ✕
+      </button>
+    </div>
+    <div class="browser-body inventory-body">
+      <div id="trade-form" class="trade-form">
+        <label>Oggetto<select id="trade-item"></select></label>
+        <label>Giocatore vicino<select id="trade-recipient"></select></label>
+        <label
+          >Quantità<input
+            id="trade-quantity"
+            type="number"
+            min="1"
+            step="1"
+            value="1"
+            inputmode="numeric"
+        /></label>
+        <label
+          >Prezzo totale in Đ<input
+            id="trade-price"
+            type="number"
+            min="0"
+            step="1"
+            value="0"
+            inputmode="numeric"
+        /></label>
+        <p class="inventory-details">
+          Metti 0 per un regalo. L’offerta dura 2 minuti; puoi averne una in attesa alla volta.
+        </p>
+        <p id="trade-summary" class="inventory-details" aria-live="polite"></p>
+        <button
+          type="button"
+          id="trade-send"
+          class="btn-primary"
+          data-action="submitInventoryTrade"
+        >
+          Invia offerta
+        </button>
+      </div>
+      <div id="trade-pending" class="trade-form hidden">
+        <p id="trade-pending-text" class="inventory-details" aria-live="polite"></p>
+        <button type="button" class="btn-primary" data-action="cancelInventoryTrade">
+          Annulla offerta
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- SITO BUSINESS ONLINE -->
 <div id="art-modal" class="fullscreen-modal hidden">
   <div class="browser-window">
@@ -844,7 +996,7 @@
         Esci
       </button>
       <button class="btn-primary" id="slot-spin" style="background: #e1b12c" data-action="spinSlot">
-        🎰 Gira (5 €)
+        🎰 Gira (5 Đ)
       </button>
     </div>
   </div>

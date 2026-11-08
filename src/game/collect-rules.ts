@@ -266,9 +266,9 @@ export function reservedBy(sale: CollectSale | undefined, now: number): string |
 /** Perché il prezzo non va bene (null se va bene). */
 export function usedPriceError(price: number): string | null {
   if (!Number.isInteger(price) || price < USED_MIN_PRICE)
-    return 'Scrivi un prezzo in euro, senza decimali.';
+    return 'Scrivi un prezzo in dindini, senza decimali.';
   if (price > USED_MAX_PRICE)
-    return `Il prezzo massimo è ${USED_MAX_PRICE.toLocaleString('it-IT')} €.`;
+    return `Il prezzo massimo è ${USED_MAX_PRICE.toLocaleString('it-IT')} Đ.`;
   return null;
 }
 
@@ -322,7 +322,7 @@ export function collectOfferError(
   const price = usedPriceError(amount);
   if (price) return price;
   if (amount > money)
-    return `In cassaforte hai solo ${money.toLocaleString('it-IT')} €: non puoi offrire di più.`;
+    return `In cassaforte hai solo ${money.toLocaleString('it-IT')} Đ: non puoi offrire di più.`;
   return null;
 }
 

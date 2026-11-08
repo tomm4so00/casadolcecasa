@@ -140,7 +140,7 @@ function mgShiftHud(): void {
   fill.classList.toggle('boss', boss !== null);
   fill.style.width = Math.max(0, (boss ?? s.remaining / game.SHIFT_SECONDS) * 100) + '%';
   dom('mg-pay').textContent =
-    `💰 ${Math.max(0, s.pay + (s.delivered || 0) * (s.perItem || 0) + (s.tips || 0) - (s.fine || 0))} €`;
+    `💰 ${Math.max(0, s.pay + (s.delivered || 0) * (s.perItem || 0) + (s.tips || 0) - (s.fine || 0))} Đ`;
 }
 
 export function mgSpawnTask(..._args: GameValue[]): GameValue {
@@ -327,7 +327,7 @@ export function mgInteract(item?: GameValue, key?: GameValue): GameValue {
     const done = game.MG.stepIdx >= game.MG.task.steps.length;
     if (done) mgSpawnTask();
     else mgHud();
-    mgPop((done ? '🎉 ' : '✅ ') + (perItem ? `+${perItem} €` : ''));
+    mgPop((done ? '🎉 ' : '✅ ') + (perItem ? `+${perItem} Đ` : ''));
   } else {
     mgScore(-0.5);
     sfx('error');
@@ -507,11 +507,11 @@ export async function updateShift(delta: number): Promise<void> {
     const multText = s.mult !== 1 ? ' ×' + String(s.mult).replace('.', ',') : '';
     const left = shiftsLeftToday(game.player.workDay, new Date());
     void openDialog({
-      title: `✅ +${s.pay} €`,
+      title: `✅ +${s.pay} Đ`,
       text:
-        `${basePay} €${multText} di paga + ${delivered} 📦 × ${s.perItem || 0} €` +
-        (tips ? ` + ${tips} € di mance e bonus` : '') +
-        (fine ? ` − ${fine} € ${s.fineLabel || 'di multa del capo'}` : '') +
+        `${basePay} Đ${multText} di paga + ${delivered} 📦 × ${s.perItem || 0} Đ` +
+        (tips ? ` + ${tips} Đ di mance e bonus` : '') +
+        (fine ? ` − ${fine} Đ ${s.fineLabel || 'di multa del capo'}` : '') +
         '\n\n' +
         nextPayMessage(done) +
         `\n\n${left > 0 ? `Oggi puoi lavorare ancora ${left} ${left === 1 ? 'volta' : 'volte'}.` : 'Per oggi hai finito.'}`,

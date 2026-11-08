@@ -1,6 +1,6 @@
 import { MOONBASE_PARTS } from './render/moonbase.js';
 import { LEGACY_WORLD } from '../../shared/worlds.js';
-import { canSellJoint } from './weed.js';
+import { canSellJoint, isSmoking } from './weed.js';
 
 import { canKiss } from './romance.js';
 import { registerDrawers } from './render/registry.js';
@@ -354,6 +354,7 @@ export function initializeGame() {
   });
   game.player.isDead = false;
   game.player.deadAt = 0;
+  game.player.deathCause = '';
   game.player.bornAt = 0;
   game.player.epitaph = '';
   game.ABSENT_DEATH_MS = 80 * 3600 * 1000;
@@ -408,7 +409,7 @@ export function initializeGame() {
       color: '#e67e22',
       show: (): GameValue => game.player.foodIsCooked,
     },
-    { id: 'money', label: '💶 Regala soldi', color: '#27ae60', show: (): GameValue => hasRoom() },
+    { id: 'money', label: '🪙 Regala soldi', color: '#27ae60', show: (): GameValue => hasRoom() },
     {
       id: 'kiss',
       label: '💋 Prova a baciare',
@@ -417,18 +418,19 @@ export function initializeGame() {
     },
     {
       id: 'weed',
-      label: (): GameValue => `🌿 Vendi una canna (5 €) · ${game.player.weed?.grams || 0} g`,
+      label: (): GameValue => `🌿 Scambia erba · ${game.player.weed?.grams || 0} g`,
       color: '#2e7d32',
       show: (): GameValue => canSellJoint(),
     },
     {
       id: 'drug',
-      label: (): GameValue => `💊 Regala droga (${game.player.drugStock})`,
+      label: (): GameValue => `💊 Scambia dosi (${game.player.drugStock})`,
       color: '#8e44ad',
       show: (): GameValue => game.player.drugStock > 0,
     },
   ];
   game.socBusy = (): GameValue =>
+    isSmoking() ||
     game.player.isDead ||
     game.player.isSleeping ||
     !!game.showerAnim ||
@@ -451,11 +453,12 @@ export function initializeGame() {
   };
   game.investedTotal = (): GameValue =>
     game.BIZ.reduce((n?: GameValue, b?: GameValue): GameValue => n + game.bizValue(b.id), 0);
+  // Nome storico mantenuto per compatibilità con il manifest della versione originale.
   game.fmtEur = (n?: GameValue): GameValue =>
     (Math.round(n * 100) / 100).toLocaleString('it-IT', {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
-    }) + ' €';
+    }) + ' Đ';
   game.fmtPct = (p?: GameValue): GameValue =>
     (p >= 0 ? '+' : '') + (Math.round(p * 10) / 10).toFixed(1).replace('.', ',') + '%';
   game.bizBuilt = false;

@@ -1,4 +1,4 @@
-// Prova degli inviti con gli emulatori di Firebase: chi arriva da un link riceve 300€, e
+// Prova degli inviti con gli emulatori di Firebase: chi arriva da un link riceve 300Đ, e
 // altrettanti ne riceve chi l'ha invitato, qualunque sia il modo di accedere.
 //   npm run test:invite
 import { readFile } from 'node:fs/promises';
@@ -69,7 +69,7 @@ async function waitMoney(page, expected, what) {
     async (n) => (await import('/src/game/context.ts')).game.moneyLevel === n,
     expected,
   );
-  if (!ok) assert.fail(`${what}: attesi ${expected} €, in cassaforte ${await money(page)} €`);
+  if (!ok) assert.fail(`${what}: attesi ${expected} Đ, in cassaforte ${await money(page)} Đ`);
 }
 
 const hasRoomNow = async () => {

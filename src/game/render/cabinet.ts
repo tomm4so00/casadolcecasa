@@ -45,7 +45,7 @@ export function drawCabinet(it: GameValue, t: number, lights?: GameValue[]): voi
       ctx.fillStyle = '#fcfc54';
       ctx.font = 'bold 5px monospace';
       ctx.textAlign = 'center';
-      ctx.fillText(`${CONSOLE_COIN} €`, W / 2, H * 0.68);
+      ctx.fillText(`${CONSOLE_COIN} Đ`, W / 2, H * 0.68);
     }
     ctx.fillStyle = TRIM;
     ctx.fillRect(0, 0, W, 1.2);

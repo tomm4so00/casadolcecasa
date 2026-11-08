@@ -117,8 +117,8 @@ export function addChip(
   if (!isBetKey(key) || !(CHIPS as readonly number[]).includes(chip))
     return { error: 'Puntata non valida.' };
   if (totalOf(bets) + chip > MAX_ROUND_BET)
-    return { error: `Al massimo ${MAX_ROUND_BET} € a giro.` };
-  if (money < chip) return { error: `Non hai ${chip} € in cassaforte.` };
+    return { error: `Al massimo ${MAX_ROUND_BET} Đ a giro.` };
+  if (money < chip) return { error: `Non hai ${chip} Đ in cassaforte.` };
   return { bets: { ...bets, [key]: (bets[key] || 0) + chip } };
 }
 

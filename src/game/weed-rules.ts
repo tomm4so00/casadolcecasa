@@ -13,12 +13,12 @@ export const STRAINS: Record<
 };
 const isStrain = (v: unknown): v is StrainId => typeof v === 'string' && v in STRAINS;
 
-/** Giorni (reali) prima del raccolto per la varietà di riferimento (quella da 150 €). */
+/** Giorni (reali) prima del raccolto per la varietà di riferimento (quella da 150 Đ). */
 const GROW_DAYS = 5;
 export const GROW_MS = GROW_DAYS * 24 * 3600 * 1000;
 /** Prezzo della varietà che cresce in GROW_DAYS. */
 const BASE_PRICE = 150;
-/** Ogni 30 € di prezzo in più la pianta cresce il 10% più in fretta (in meno: più piano). */
+/** Ogni 30 Đ di prezzo in più la pianta cresce il 10% più in fretta (in meno: più piano). */
 const PRICE_STEP = 30;
 const SPEED_STEP = 0.1;
 
@@ -33,7 +33,7 @@ export function growMsFor(strain?: StrainId): number {
 }
 /** Grammi che una pianta mette nel barattolo. */
 export const HARVEST_GRAMS = 100;
-/** Ogni canna usa 1 grammo, alza la felicità del 10% e si vende a 5 €. */
+/** Ogni canna usa 1 grammo, alza la felicità del 10% e si vende a 5 Đ. */
 const JOINT_GRAMS = 1;
 export const JOINT_HAPPY = 10;
 export const JOINT_PRICE = 5;

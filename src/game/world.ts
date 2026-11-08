@@ -1,5 +1,6 @@
 import { postGossip } from './gossip.js';
 import { watchRoulette } from './roulette.js';
+import { isSmoking } from './weed.js';
 import {
   SAFE_LEVEL2_PRICE,
   isValidPin,
@@ -377,8 +378,8 @@ export function checkProximity(..._args: GameValue[]): GameValue {
   if (game.isMovingFurnitureMode) return;
   // in modalità Arreda contano solo i mobili che si possono spostare
   const arrange: boolean = game.arrangeMode;
-  if (game.fainted || game.rocketTrip) {
-    // svenuto o a bordo del razzo: niente pulsanti
+  if (game.fainted || game.rocketTrip || isSmoking()) {
+    // Durante le animazioni che bloccano il personaggio non si propongono altre azioni.
     dom('pop-interaction').classList.add('hidden');
     return;
   }
@@ -701,7 +702,7 @@ export function keepOwnPillow(): void {
 export async function handleObjectInteract(..._args: GameValue[]): Promise<void> {
   const key: string | null = game.activeTargetProp;
   if (!key) return;
-  if (game.showerAnim || game.bathAnim || game.rocketTrip) return;
+  if (game.showerAnim || game.bathAnim || game.rocketTrip || isSmoking()) return;
   if (game.arrangeMode && isMyRoomNow()) {
     startMovingFurniture();
     return;
@@ -726,10 +727,10 @@ export async function handleSafeInteraction(..._args: GameValue[]): Promise<Game
     const res: GameValue = await openDialog({
       title: `🔐 Cassaforte personale · Livello ${level}`,
       text:
-        `In cassaforte: ${game.moneyLevel} €\n\nTutti i tuoi soldi sono qui, al sicuro sul server… a meno che qualcuno indovini il PIN!` +
+        `In cassaforte: ${game.moneyLevel} Đ\n\nTutti i tuoi soldi sono qui, al sicuro sul server… a meno che qualcuno indovini il PIN!` +
         `\n\nCombinazione: ${pinHint(level)}.` +
         (level < 2
-          ? `\n🔐 Con la cassaforte livello 2 (negozio di mobili, ${SAFE_LEVEL2_PRICE} €) puoi usare anche il 5: è più difficile da indovinare.`
+          ? `\n🔐 Con la cassaforte livello 2 (negozio di mobili, ${SAFE_LEVEL2_PRICE} Đ) puoi usare anche il 5: è più difficile da indovinare.`
           : '') +
         (game.hasSetSafePin ? '' : '\n\n⚠️ La cassaforte non ha ancora un PIN.'),
       buttons,
@@ -819,12 +820,12 @@ export async function handleSafeInteraction(..._args: GameValue[]): Promise<Game
       if (!(await creditMoney(stolen))) return;
       saveGame(true);
       sfx('theft');
-      toast(`🎉 COLPO RIUSCITO! Hai rubato ${stolen} € dalla cassaforte! 💰`, 4000);
+      toast(`🎉 COLPO RIUSCITO! Hai rubato ${stolen} Đ dalla cassaforte! 💰`, 4000);
       // la vittima scopre chi è stato (e il ladro diventa suo nemico)
       if (room.ownerId) void sendSocial(room.ownerId, { type: 'theft', amt: stolen });
       // per tutti gli altri il ladro resta misterioso: si sa solo di chi era la cassaforte
       postGossip(
-        `La cassaforte di ${room.owner || 'qualcuno'} è stata svuotata da un ladro misterioso 🕵️ (${stolen} €)`,
+        `La cassaforte di ${room.owner || 'qualcuno'} è stata svuotata da un ladro misterioso 🕵️ (${stolen} Đ)`,
         room.ownerId ? [room.ownerId] : [],
       );
       notePersonality('theftSuccess');
@@ -843,6 +844,7 @@ export async function handleSafeInteraction(..._args: GameValue[]): Promise<Game
 }
 
 export async function doActivity(type?: GameValue): Promise<void> {
+  if (isSmoking()) return;
   game.view.isOutsideMenuOpen = false;
   game.view.outsideSubmenu = '';
   dom('pop-interaction').classList.add('hidden');
@@ -884,7 +886,7 @@ export async function doActivity(type?: GameValue): Promise<void> {
       return;
     }
     if (game.moneyLevel < game.DISCO_PRICE) {
-      toast(`Non hai abbastanza soldi! L'ingresso costa ${game.DISCO_PRICE} €.`);
+      toast(`Non hai abbastanza soldi! L'ingresso costa ${game.DISCO_PRICE} Đ.`);
       returnHomeFromActivity();
       return;
     }
@@ -910,7 +912,7 @@ export async function doActivity(type?: GameValue): Promise<void> {
       return;
     }
     if (game.moneyLevel < TRIP_PRICE) {
-      toast(`Non hai abbastanza soldi! Il viaggio costa ${TRIP_PRICE} €.`);
+      toast(`Non hai abbastanza soldi! Il viaggio costa ${TRIP_PRICE} Đ.`);
       returnHomeFromActivity();
       return;
     }
@@ -922,7 +924,7 @@ export async function doActivity(type?: GameValue): Promise<void> {
     game.player.happinessLevel = Math.min(100, game.player.happinessLevel + TRIP_HAPPY);
     game.player.healthLevel = Math.min(100, game.player.healthLevel + TRIP_HEALTH);
     toast(
-      `✈️ Buon viaggio! −${TRIP_PRICE} €, Felicità +${TRIP_HAPPY}%, Salute +${TRIP_HEALTH}%`,
+      `✈️ Buon viaggio! −${TRIP_PRICE} Đ, Felicità +${TRIP_HAPPY}%, Salute +${TRIP_HEALTH}%`,
       4000,
     );
     saveGame();
@@ -1034,8 +1036,8 @@ export function workbenchMessage(): void {
     stage >= 2
       ? '🔧 Il razzo è completo! Sul bancone si progettano già le prossime idee…'
       : stage === 1
-        ? `🔧 Stai lucidando un pezzo del razzo. Per completarlo mancano ${left} €: versali alla bacheca!`
-        : '🔧 Sul bancone ci sono i disegni del razzo: per iniziare i lavori servono 5.000 € versati alla bacheca.',
+        ? `🔧 Stai lucidando un pezzo del razzo. Per completarlo mancano ${left} Đ: versali alla bacheca!`
+        : '🔧 Sul bancone ci sono i disegni del razzo: per iniziare i lavori servono 5.000 Đ versati alla bacheca.',
     5500,
   );
 }
@@ -1059,7 +1061,7 @@ export function openFurnitureShopModal(..._args: GameValue[]): GameValue {
           <div class="shop-item-info">
             <h4>${def.name}</h4>
             <p class="ltd-tag">💎 Edizione limitata · ${n ? `tua: copia #${n}/${def.limited}` : left ? `ne restano ${left} su ${def.limited}` : 'esaurita'}</p>
-            <p>💰 ${def.price.toLocaleString('it-IT')} €</p>
+            <p>💰 ${def.price.toLocaleString('it-IT')} Đ</p>
           </div>
           ${n || !left ? '' : `<button class="btn-buy" type="button">Acquista</button>`}`;
     card
@@ -1080,12 +1082,12 @@ export function openFurnitureShopModal(..._args: GameValue[]): GameValue {
     card.innerHTML = `
           <div class="shop-item-info">
             <h4>${item.name}</h4>
-            <p>💰 ${item.price} € · ${item.category === 'safe' ? 'Livello 2 🔐' : TIER_LABEL[tierOf(item)]}</p>
+            <p>💰 ${item.price} Đ · ${item.category === 'safe' ? 'Livello 2 🔐' : TIER_LABEL[tierOf(item)]}</p>
             <p class="shop-item-benefit">${furnitureBenefit(item)}</p>
           </div>
           ${
             isOwned
-              ? `<button class="btn-buy btn-sell" data-action="sellFurnitureItem" data-arg="${item.id}">💸 Rivendi ${resaleValue(item.price)} €</button>`
+              ? `<button class="btn-buy btn-sell" data-action="sellFurnitureItem" data-arg="${item.id}">💸 Rivendi ${resaleValue(item.price)} Đ</button>`
               : status === 'next'
                 ? `<button class="btn-buy" data-action="buyFurnitureItem" data-arg="${item.id}">Acquista</button>`
                 : status === 'better'
@@ -1155,17 +1157,17 @@ export async function sellFurnitureItem(itemId: string): Promise<void> {
   const refund = resaleValue(definition.price);
   const res: GameValue = await openDialog({
     title: `💸 Rivendere ${definition.name}?`,
-    text: `L'avevi pagato ${definition.price} €: rivendendolo ricevi ${refund} € (il 15% in meno).
+    text: `L'avevi pagato ${definition.price} Đ: rivendendolo ricevi ${refund} Đ (il 15% in meno).
 Sparirà dalla tua stanza (se hai un modello più semplice, tornerà quello).`,
     buttons: [
       { label: 'Annulla', value: null },
-      { label: `Rivendi (${refund} €)`, value: 'sell', color: '#e67e22' },
+      { label: `Rivendi (${refund} Đ)`, value: 'sell', color: '#e67e22' },
     ],
   });
   if (res.action !== 'sell') return;
   if (!(await sellItem('ownedFurniture', itemId, refund))) return;
   sfx('coin');
-  toast(`💸 Hai rivenduto ${definition.name}: +${refund} € in cassaforte.`, 3500);
+  toast(`💸 Hai rivenduto ${definition.name}: +${refund} Đ in cassaforte.`, 3500);
   saveGame(true);
   openFurnitureShopModal();
   // senza la cassaforte livello 2 il 5 non è più permesso: se la combinazione lo usa va cambiata
@@ -1247,7 +1249,7 @@ export async function chooseOrGoToJob(
   if (game.player.activeJobKey && game.player.activeJobKey !== jobKey) {
     const res: GameValue = await openDialog({
       title: '⚠️ Cambiare lavoro?',
-      text: `Hai già un lavoro attivo (${game.player.activeJobKey.toUpperCase()}). Se cambi perdi i turni accumulati e ricominci da ${JOB_PAY_TIERS[0].base} € a turno.`,
+      text: `Hai già un lavoro attivo (${game.player.activeJobKey.toUpperCase()}). Se cambi perdi i turni accumulati e ricominci da ${JOB_PAY_TIERS[0].base} Đ a turno.`,
       buttons: [
         { label: 'No', value: null, color: '#57606f' },
         { label: 'Sì, cambia', value: 'ok', color: '#e74c3c' },

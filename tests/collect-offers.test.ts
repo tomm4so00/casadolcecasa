@@ -21,7 +21,7 @@ describe('offerte per i pezzi sulla mensola', () => {
     expect(collectOfferError(500, 1000, undefined, B)).toContain('non è più');
     expect(collectOfferError(0, 1000, owner, B)).toContain('prezzo');
     expect(collectOfferError(2.5, 1000, owner, B)).toContain('prezzo');
-    expect(collectOfferError(15000, 10000, owner, B)).toContain('10.000 €');
+    expect(collectOfferError(15000, 10000, owner, B)).toContain('10.000 Đ');
   });
 
   it('accettando, il proprietario dà subito il pezzo (fuori dalla sua mensola)', () => {

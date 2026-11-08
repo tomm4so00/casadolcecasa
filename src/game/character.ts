@@ -270,7 +270,7 @@ export function previewShopLook(..._args: GameValue[]): GameValue {
 }
 
 export function renderClothesShop(..._args: GameValue[]): GameValue {
-  dom('clothes-money').textContent = `💰 ${game.moneyLevel} €`;
+  dom('clothes-money').textContent = `💰 ${game.moneyLevel} Đ`;
   renderTabs('clothes-tabs', game.shopState.slot, (sl?: GameValue): GameValue => {
     game.shopState.slot = sl;
     game.shopState.tryOn = null;
@@ -292,14 +292,14 @@ export function renderClothesShop(..._args: GameValue[]): GameValue {
       const status = it.limited
         ? owned
           ? `<div class="owned-tag">💎 Tua: copia #${myCopy(it.id)}/${it.limited}</div>`
-          : `<div class="ltd-tag">💎 Edizione limitata · ${left ? `ne restano ${left} su ${it.limited}` : 'esaurita'}</div><div class="price">💰 ${it.price.toLocaleString('it-IT')} €</div>`
+          : `<div class="ltd-tag">💎 Edizione limitata · ${left ? `ne restano ${left} su ${it.limited}` : 'esaurita'}</div><div class="price">💰 ${it.price.toLocaleString('it-IT')} Đ</div>`
         : owned
           ? `<div class="owned-tag">✓ Nel tuo armadio</div>`
-          : `<div class="price">💰 ${it.price} €</div>`;
+          : `<div class="price">💰 ${it.price} Đ</div>`;
       const action = owned
         ? it.limited
           ? ''
-          : `<button type="button" class="sell" data-act="sell">💸 Rivendi ${resaleValue(it.price)} €</button>`
+          : `<button type="button" class="sell" data-act="sell">💸 Rivendi ${resaleValue(it.price)} Đ</button>`
         : it.limited && !left
           ? ''
           : '<button type="button" class="buy" data-act="buy">Compra</button>';
@@ -326,7 +326,7 @@ export async function buyClothing(id: string): Promise<void> {
   const it: GameValue = itemById(id);
   if (!it || ownsItem(id) || it.limited) return;
   if (game.moneyLevel < it.price) {
-    toast(`❌ Ti servono ${it.price} € per ${it.name}.`);
+    toast(`❌ Ti servono ${it.price} Đ per ${it.name}.`);
     return;
   }
   if (!(await purchaseItem('ownedItems', id, it.price))) return;
@@ -343,10 +343,10 @@ async function sellClothing(id: string): Promise<void> {
   const refund = resaleValue(it.price);
   const res: GameValue = await openDialog({
     title: `💸 Rivendere ${it.name}?`,
-    text: `L'avevi pagato ${it.price} €: rivendendolo ricevi ${refund} € (il 15% in meno).`,
+    text: `L'avevi pagato ${it.price} Đ: rivendendolo ricevi ${refund} Đ (il 15% in meno).`,
     buttons: [
       { label: 'Annulla', value: null },
-      { label: `Rivendi (${refund} €)`, value: 'sell', color: '#e67e22' },
+      { label: `Rivendi (${refund} Đ)`, value: 'sell', color: '#e67e22' },
     ],
   });
   if (res.action !== 'sell') return;
@@ -354,7 +354,7 @@ async function sellClothing(id: string): Promise<void> {
   if (game.player.equipped[it.slot] === id)
     game.player.equipped[it.slot] = game.DEFAULT_LOOK[it.slot];
   sfx('coin');
-  toast(`💸 Hai rivenduto ${it.name}: +${refund} € in cassaforte.`, 3500);
+  toast(`💸 Hai rivenduto ${it.name}: +${refund} Đ in cassaforte.`, 3500);
   saveGame(true);
   renderClothesShop();
 }
@@ -458,6 +458,7 @@ export function equipItem(slot?: GameValue, id?: GameValue): GameValue {
 }
 
 export function returnHomeFromActivity(..._args: GameValue[]): GameValue {
+  if (performance.now() < game.smokeUntil) return;
   if (hasRoom()) game.currentApt = game.aptOfRoom(game.myAssignedRoomIdx);
   backToCourtyardGate();
   dom('btn-return-home').classList.add('hidden');
@@ -487,14 +488,14 @@ export async function handleSubAction(..._args: GameValue[]): Promise<void> {
     game.view.fridgeIsOpen
   ) {
     if (game.moneyLevel < 5) {
-      toast('Non hai abbastanza soldi per prendere il cibo! Ti servono 5 €.');
+      toast('Non hai abbastanza soldi per prendere il cibo! Ti servono 5 Đ.');
       return;
     }
     if (!(await spendMoney(5))) return;
     recordActivity('pizza');
     game.player.hasFoodInInventory = true;
     game.player.foodIsCooked = false;
-    toast('Hai preso del cibo! (-5 €) 🍎');
+    toast('Hai preso del cibo! (-5 Đ) 🍎');
     dom('btn-act-sub').classList.add('hidden');
   }
 }

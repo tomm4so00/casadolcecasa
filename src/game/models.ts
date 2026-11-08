@@ -89,6 +89,7 @@ export interface EconomyState {
   bank?: number;
 }
 export interface RoomState {
+  inventory?: import('./inventory-trade-rules.js').StockInventory;
   id: number;
   owner?: string | null;
   ownerId?: string | null;
@@ -109,6 +110,8 @@ export interface CharacterState {
   happinessLevel: number;
   isSleeping: boolean;
   sleepGainedSinceLastHealthBoost: number;
+  /** Da quando (ms) fame, sonno e igiene sono tutti a zero; 0 se non lo sono. */
+  needsZeroSince?: number;
   hasFoodInInventory: boolean;
   foodIsCooked: boolean;
   ownedItems: Record<string, boolean>;
@@ -123,12 +126,16 @@ export interface CharacterState {
   drugStock: number;
   /** fino a quando si hanno gli occhi rossi dopo una canna (ms, ora del dispositivo) */
   stonedUntil: number;
+  /** Prossimo consumo di erba consentito, anche dopo la fine degli effetti. */
+  jointReadyAt?: number;
   coffeeAt: number;
   /** Ultimo uso del WC, per l’attesa di due ore anche a gioco chiuso. */
   toiletAt?: number;
   bornAt: number;
   isDead: boolean;
   deadAt: number;
+  /** Motivi della morte (death-cause-rules.ts), "hunger,sleep". */
+  deathCause?: string;
   epitaph: string;
   gameMinutes: number;
   missionIndex: number;

@@ -1,4 +1,17 @@
 import { game } from './context.js';
+import {
+  openInventory,
+  closeInventory,
+  selectInventoryItem,
+  smokeInventoryJoint,
+  consumeInventoryDrug,
+} from './inventory.js';
+import {
+  openInventoryTrade,
+  closeInventoryTrade,
+  submitInventoryTrade,
+  cancelInventoryTrade,
+} from './inventory-trade.js';
 import { openArtSite, setArtTab } from './art-market.js';
 import { leaveDogHome } from './pets.js';
 import { dogCommand, dogTreat, startDogTraining, stopDogTraining } from './dog-training.js';
@@ -46,6 +59,15 @@ const isBusinessId = (id: unknown): id is BusinessId => BUSINESSES.some((b) => b
 export type UiArgument = string | number | boolean | null;
 type UiAction = (args: readonly UiArgument[]) => unknown;
 export const uiActions: Readonly<Record<string, UiAction>> = {
+  openInventory: () => openInventory(),
+  consumeInventoryDrug: () => consumeInventoryDrug(),
+  openInventoryTrade: ([item]) => openInventoryTrade(String(item ?? '')),
+  closeInventoryTrade: () => closeInventoryTrade(),
+  submitInventoryTrade: () => submitInventoryTrade(),
+  cancelInventoryTrade: () => cancelInventoryTrade(),
+  smokeInventoryJoint: () => smokeInventoryJoint(),
+  closeInventory: () => closeInventory(),
+  selectInventoryItem: ([id]) => selectInventoryItem(String(id)),
   openMissions: () => openMissions(),
   dismissInstall: () => dismissInstall(),
   installApp: () => installApp(),

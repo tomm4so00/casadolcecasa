@@ -191,7 +191,7 @@ interface GameContext {
   rocketLaunchAt: number;
   /** Momento (animClock) in cui si è premuto il pulsante rosso, per l'animazione. */
   launchPressedAt: number;
-  /** Chi ha versato per il razzo (codice giocatore → euro): per la targhetta in camera. */
+  /** Chi ha versato per il razzo (codice giocatore → dindini): per la targhetta in camera. */
   rocketDonors: Record<string, number>;
   saloonDoors: SceneMap;
   courtyardDoors: SceneMap;

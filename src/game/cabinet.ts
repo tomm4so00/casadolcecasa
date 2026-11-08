@@ -192,9 +192,9 @@ async function finishRun(id: CabinetGameId, score: number): Promise<string[]> {
       lines.push(`PRIMO NEL ${where}!`);
       const prize = recordPrize(id, kind, score, leader, pid);
       if (prize && (await creditMoney(prize))) {
-        lines.push(`PREMIO +${prize} EURO`);
+        lines.push(`PREMIO +${prize} DINDINI`);
         sfx('coin');
-        toast(`🏆 Primo in classifica (${where.toLowerCase()}): +${prize} € in cassaforte!`, 5000);
+        toast(`🏆 Primo in classifica (${where.toLowerCase()}): +${prize} Đ in cassaforte!`, 5000);
       }
     } else if (place > 0) lines.push(`${place} POSTO NEL ${where}`);
   }
@@ -227,7 +227,7 @@ function buildModal(): HTMLElement {
       ).join('')}</div>
       <div class="cab-boards"></div>
       <p class="cab-prize">Il primo di ogni classifica vince un premio quando qualcuno lo supera:
-        ${RECORD_PRIZE.world} € nel condominio, ${RECORD_PRIZE.global} € nel mondo.</p>
+        ${RECORD_PRIZE.world} Đ nel condominio, ${RECORD_PRIZE.global} Đ nel mondo.</p>
       <div class="cab-actions"><button type="button" data-cab="menu">⬅ Menù</button></div>
     </div>
     <div class="cab-play">
@@ -383,7 +383,7 @@ function render(): void {
       </button>`,
     ).join('');
     modal.querySelector('.cab-coin')!.textContent = state.coin
-      ? `🪙 ${state.coin} € a partita${state.paid ? ' · moneta già inserita ✅' : ''}`
+      ? `🪙 ${state.coin} Đ a partita${state.paid ? ' · moneta già inserita ✅' : ''}`
       : '';
   } else if (state.view === 'scores') {
     const id = state.boardId;
@@ -413,7 +413,7 @@ function loop(now: number): void {
         if (ok) {
           s.paid = true;
           sfx('coin');
-        } else toast(`🪙 Ti servono ${s.coin} € in cassaforte per giocare.`, 3000);
+        } else toast(`🪙 Ti servono ${s.coin} Đ in cassaforte per giocare.`, 3000);
       });
     }
   } else if (!s.mini.over) s.mini.update(dt, input);

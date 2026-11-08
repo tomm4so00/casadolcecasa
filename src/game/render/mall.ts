@@ -316,7 +316,7 @@ function drawWindowDisplay(shop: string, x: number, y: number, w: number, h: num
       ctx.fillStyle = '#c0392b';
       ctx.font = 'bold 3.5px sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText('€', px + 4.5, y + 13);
+      ctx.fillText('Đ', px + 4.5, y + 13);
     }
   } else if (shop === 'collezione') {
     // due piedistalli con un pezzo ciascuno, sotto una luce calda

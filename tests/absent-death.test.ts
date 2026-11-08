@@ -8,17 +8,21 @@ import { MemoryStorage } from './helpers.js';
 
 const NOW = 1_800_000_000_000;
 const H = 3600000;
-/** Affamato e quasi senza salute: con la fame a zero la salute cala di 100 ogni 48 ore. */
+/**
+ * Quasi senza salute, con fame, sonno e igiene a zero da più di un giorno (passate le 24 ore di
+ * grazia): la salute cala di 100 ogni 48 ore.
+ */
 const starving = (savedAt: number) => ({
   savedAt,
   moneyLevel: 0,
   nick: 'Laura',
   healthLevel: 10,
-  sleepLevel: 100,
+  sleepLevel: 0,
   hungerLevel: 0,
-  hygieneLevel: 100,
+  hygieneLevel: 0,
   happinessLevel: 100,
   gameMinutes: 2000,
+  needsZeroSince: savedAt - 25 * H,
 });
 
 describe('morte mentre si è via', () => {
@@ -37,11 +41,26 @@ describe('morte mentre si è via', () => {
     const state = needsStateFromSave(save);
     advanceNeeds(state, 10 * 3600, NOW, NEEDS_RULES);
     expect(state.healthLevel).toBe(0);
-    const ok = { ...save, hungerLevel: 100, healthLevel: 80 };
+    const ok = { ...save, hungerLevel: 100, sleepLevel: 100, hygieneLevel: 100, healthLevel: 80 };
     const alive = needsStateFromSave(ok);
     advanceNeeds(alive, 10 * 3600, NOW, NEEDS_RULES);
     expect(alive.healthLevel).toBeGreaterThan(0);
     expect(absentDeath(ok, {}, NOW)).toBeNull();
+  });
+
+  it("con i bisogni a zero si resta all'1% finché non sono tutti a zero da 24 ore", () => {
+    // solo la fame a zero: la salute scende ma non arriva mai a zero
+    const hungry = { ...starving(NOW - 10 * H), sleepLevel: 100, hygieneLevel: 100 };
+    delete (hungry as { needsZeroSince?: number }).needsZeroSince;
+    const state = needsStateFromSave(hungry);
+    advanceNeeds(state, 10 * 3600, NOW, NEEDS_RULES);
+    expect(state.healthLevel).toBe(1);
+    expect(absentDeath(hungry, {}, NOW)).toBeNull();
+    // tutti a zero da adesso: vivo per 24 ore, poi l'1% rimasto dura circa mezz'ora
+    const empty = { ...starving(NOW - 30 * H), needsZeroSince: 0 };
+    const death = absentDeath(empty, {}, NOW)!;
+    expect(death.deadAt - empty.savedAt).toBeGreaterThan(24 * H);
+    expect(death.deadAt - empty.savedAt).toBeLessThan(25 * H);
   });
 
   it('chi è già morto o non ha un salvataggio datato non si tocca', () => {

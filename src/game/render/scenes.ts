@@ -323,27 +323,6 @@ export function drawFloorPattern(st?: GameValue): GameValue {
           ctx.strokeRect(u, v, 80, 80);
         }
       break;
-    case 'concrete': {
-      const g: GameValue = ctx.createLinearGradient(0, 0, W, H);
-      g.addColorStop(0, game.lighten(base, 0.12));
-      g.addColorStop(1, game.darken(base, 0.08));
-      ctx.fillStyle = g;
-      ctx.fillRect(0, 0, W, H);
-      ctx.strokeStyle = 'rgba(0,0,0,0.15)';
-      for (let u: GameValue = 0; u <= W; u += 80) {
-        ctx.beginPath();
-        ctx.moveTo(u, 0);
-        ctx.lineTo(u, H);
-        ctx.stroke();
-      }
-      for (let v: GameValue = 0; v <= H; v += 80) {
-        ctx.beginPath();
-        ctx.moveTo(0, v);
-        ctx.lineTo(W, v);
-        ctx.stroke();
-      }
-      break;
-    }
     case 'grass': {
       // Prato con i vialetti: quelli dell'ambiente (st.paths, in unità del pavimento a partire
       // dall'angolo di fondo) o la croce centrale di sempre. Cespi e fiori seguono la superficie.
@@ -885,7 +864,7 @@ export function wallMenu(d?: GameValue): GameValue {
   ctx.textAlign = 'center';
   ctx.fillText('MENU DEL GIORNO', d.u, t + 12);
   ctx.font = '7px sans-serif';
-  ['Pasta al pomodoro  9€', 'Pizza margherita  8€', 'Tiramisù  5€'].forEach(
+  ['Pasta al pomodoro  9Đ', 'Pizza margherita  8Đ', 'Tiramisù  5Đ'].forEach(
     (s?: GameValue, i?: GameValue): GameValue => ctx.fillText(s, d.u, t + 25 + i * 10),
   );
 }
@@ -1885,7 +1864,7 @@ export function wallAdScreen(d?: GameValue, t?: GameValue): GameValue {
     // prezzo
     ctx.fillStyle = '#feca57';
     ctx.font = 'bold 10px sans-serif';
-    ctx.fillText(`${slide.price} €`, left + 36, top + 48);
+    ctx.fillText(`${slide.price} Đ`, left + 36, top + 48);
     ctx.fillStyle = 'rgba(255,255,255,0.8)';
     ctx.font = '7px sans-serif';
     ctx.textAlign = 'right';

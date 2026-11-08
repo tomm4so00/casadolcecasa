@@ -383,7 +383,7 @@ export async function sitOnStool(key: string): Promise<void> {
     return;
   }
   if (game.moneyLevel < APERITIVO.price) {
-    toast(`🍹 Un aperitivo costa ${APERITIVO.price} €: non ne hai abbastanza in cassaforte.`);
+    toast(`🍹 Un aperitivo costa ${APERITIVO.price} Đ: non ne hai abbastanza in cassaforte.`);
     sfx('error');
     return;
   }
@@ -538,13 +538,13 @@ export function updateBench(now: number): void {
 
 // ---------------------------------------------------------------- fontana
 
-/** Lancia una moneta nella fontana: costa 5 € e porta un po' di buon umore. */
+/** Lancia una moneta nella fontana: costa 5 Đ e porta un po' di buon umore. */
 export async function tossCoin(): Promise<void> {
   if (game.coinToss) return;
   const f = funSpots().fountain;
   if (!f) return;
   if (game.moneyLevel < COIN_PRICE) {
-    toast(`Ti servono ${COIN_PRICE} € in cassaforte per lanciare una moneta.`);
+    toast(`Ti servono ${COIN_PRICE} Đ in cassaforte per lanciare una moneta.`);
     sfx('error');
     return;
   }
@@ -651,11 +651,11 @@ const FLAVOURS = [
   { name: 'stracciatella', color: '#fffaf0' },
 ];
 
-/** Compra un gelato al carretto: 5 € e la fame sale del 50%. */
+/** Compra un gelato al carretto: 5 Đ e la fame sale del 50%. */
 export async function buyIceCream(): Promise<void> {
   if (game.iceCream) return;
   if (game.moneyLevel < ICE_CREAM_PRICE) {
-    toast(`Ti servono ${ICE_CREAM_PRICE} € in cassaforte per il gelato.`);
+    toast(`Ti servono ${ICE_CREAM_PRICE} Đ in cassaforte per il gelato.`);
     sfx('error');
     return;
   }

@@ -21,7 +21,7 @@ describe('inviti', () => {
     expect(parseInviteCode('player_<script>')).toBeNull();
     expect(parseInviteCode('qualcosa')).toBeNull();
     expect(inviteMessage('Anna')).toContain('Sono «Anna»');
-    expect(inviteMessage('Anna')).toContain('riceviamo 300€ a testa');
+    expect(inviteMessage('Anna')).toContain('riceviamo 300Đ a testa');
     // il link personale sta dentro il testo del messaggio
     const link = inviteLink('player_abc123');
     expect(inviteMessage('Anna', link).endsWith('\n' + link)).toBe(true);

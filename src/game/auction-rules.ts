@@ -148,15 +148,15 @@ export function movedAuction(a: Auction) {
   };
 }
 
-/** L'offerta minima: un euro più della migliore offerta di un giocatore. */
+/** L'offerta minima: un dindini più della migliore offerta di un giocatore. */
 export const minBid = (a: Auction): number => (a.bid?.amt ?? 0) + 1;
 
 /** Perché l'offerta non va bene, oppure null. */
 export function bidError(a: Auction, me: string, amt: number, money: number): string | null {
   if (a.by === me) return 'È il tuo quadro: le offerte le fanno gli altri giocatori.';
   if (a.sold) return 'Il pittore ha già accettato un’offerta per questo quadro.';
-  if (!isValidPrice(amt)) return 'Scrivi una cifra intera fra 1 e 100.000 €.';
-  if (amt < minBid(a)) return `Devi offrire almeno ${minBid(a).toLocaleString('it-IT')} €.`;
-  if (amt > money) return `In cassaforte hai solo ${money.toLocaleString('it-IT')} €.`;
+  if (!isValidPrice(amt)) return 'Scrivi una cifra intera fra 1 e 100.000 Đ.';
+  if (amt < minBid(a)) return `Devi offrire almeno ${minBid(a).toLocaleString('it-IT')} Đ.`;
+  if (amt > money) return `In cassaforte hai solo ${money.toLocaleString('it-IT')} Đ.`;
   return null;
 }

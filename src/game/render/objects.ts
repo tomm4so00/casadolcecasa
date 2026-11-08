@@ -1127,7 +1127,7 @@ export function drawShelf(it?: GameValue, t?: GameValue): GameValue {
     ctx.fillStyle = '#fff';
     ctx.font = 'bold 7px sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText(def.price + '€', W / 2, H - 4);
+    ctx.fillText(def.price + 'Đ', W / 2, H - 4);
   });
   const pd: GameValue = def.propData;
   const k: GameValue = Math.min((it.w - 8) / pd.w, (it.h - 8) / pd.h, 1);

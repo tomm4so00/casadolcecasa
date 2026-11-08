@@ -12,7 +12,7 @@ export interface LedgerEntry {
   on: string;
   /** Quando è passata di mano l'ultima volta. */
   t: number;
-  /** Venduta a `to` per `p` €, in attesa che paghi. */
+  /** Venduta a `to` per `p` Đ, in attesa che paghi. */
   sale?: { to: string; p: number; t: number };
 }
 /** oggetto → numero della copia (1-5) → proprietario. */
@@ -80,7 +80,7 @@ export function offerError(
   if (isOwner) return 'È già tuo!';
   if (buyerOwnsOne) return 'Hai già una copia di questo oggetto.';
   if (!Number.isInteger(amount) || amount < OFFER_MIN || amount > OFFER_MAX)
-    return 'Scrivi una cifra in euro (un numero intero).';
+    return 'Scrivi una cifra in dindini (un numero intero).';
   if (amount > money) return 'Non hai abbastanza soldi in cassaforte per questa offerta.';
   return null;
 }
@@ -178,7 +178,7 @@ export const withdrawnText = (fromName: string, name: string): string =>
 /** Testo della notifica sul telefono per un'offerta ricevuta. */
 export const offerPushText = (o: LimitedOffer) => ({
   title: '💎 Hai ricevuto un’offerta!',
-  body: `${o.fromName} ti offre ${o.amt.toLocaleString('it-IT')} € per ${o.name}. Entra in Casa dolce casa per accettare o rifiutare.`,
+  body: `${o.fromName} ti offre ${o.amt.toLocaleString('it-IT')} Đ per ${o.name}. Entra in Casa dolce casa per accettare o rifiutare.`,
 });
 
 /** Il proprietario accetta l'offerta: la copia resta sua finché il compratore non paga. */

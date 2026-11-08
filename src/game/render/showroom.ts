@@ -55,7 +55,7 @@ export function drawShowroomItem(it: GameValue, t: number, lights?: GameValue[])
     ctx.fillStyle = '#ffffff';
     ctx.font = 'bold 4.6px sans-serif';
     ctx.textAlign = 'center';
-    const price = it.price === null ? 'in ogni stanza' : `${it.price} €`;
+    const price = it.price === null ? 'in ogni stanza' : `${it.price} Đ`;
     ctx.fillText(`${TIER_LABEL[tier].replace(/ .*/, '').toUpperCase()} · ${price}`, W / 2, H - 1.4);
   });
   // il mobile vero, sulla pedana

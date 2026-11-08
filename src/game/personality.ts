@@ -228,7 +228,7 @@ export async function applyDailyPerks(): Promise<void> {
         });
         if (!ok) return; // si riprova al prossimo giro
         toast(
-          `💼 Interessi da ${personalityTitle(state)}: +${interest} € sul tuo conto in banca.`,
+          `💼 Interessi da ${personalityTitle(state)}: +${interest} Đ sul tuo conto in banca.`,
           5500,
         );
       }

@@ -1,4 +1,4 @@
-// Sala scommesse: slot da 5 € e morra cinese tra due giocatori con puntata.
+// Sala scommesse: slot da 5 Đ e morra cinese tra due giocatori con puntata.
 import type { GameValue } from './context.js';
 import { game } from './context.js';
 import { dom, lifetime } from './runtime.js';
@@ -28,7 +28,7 @@ import {
 import { recordActivity } from './activity.js';
 import { worldNode } from './world-db.js';
 
-const euro = (n: number) => `${n.toLocaleString('it-IT')} €`;
+const dindini = (n: number) => `${n.toLocaleString('it-IT')} Đ`;
 const serverNow = (): number => Date.now() + (game.session.serverOffset || 0);
 const me = (): string => game.session.myPlayerId;
 const myName = (): string => String(game.player.myData.nick || 'Giocatore').slice(0, 20);
@@ -39,14 +39,14 @@ let spinning = false;
 
 export function openSlot(): void {
   dom('slot-modal').classList.remove('hidden');
-  dom('slot-result').textContent = `Ogni giro costa ${SLOT_BET} €. Tre simboli uguali vincono!`;
+  dom('slot-result').textContent = `Ogni giro costa ${SLOT_BET} Đ. Tre simboli uguali vincono!`;
   dom('slot-result').className = 'slot-result';
 }
 
 export async function spinSlot(): Promise<void> {
   if (spinning) return;
   if (game.moneyLevel < SLOT_BET) {
-    toast(`Ti servono ${SLOT_BET} € in cassaforte per giocare.`);
+    toast(`Ti servono ${SLOT_BET} Đ in cassaforte per giocare.`);
     return;
   }
   spinning = true;
@@ -84,13 +84,13 @@ export async function spinSlot(): Promise<void> {
       sfx('coin');
       box.textContent =
         win >= SLOT_BET * 50
-          ? `🎉 JACKPOT! Hai vinto ${euro(win)}!`
+          ? `🎉 JACKPOT! Hai vinto ${dindini(win)}!`
           : win === SLOT_BET
-            ? `🍒 Due ciliegie: riprendi i tuoi ${euro(win)}.`
-            : `🎉 Hai vinto ${euro(win)}!`;
+            ? `🍒 Due ciliegie: riprendi i tuoi ${dindini(win)}.`
+            : `🎉 Hai vinto ${dindini(win)}!`;
       box.className = 'slot-result win';
     } else {
-      box.textContent = `Niente questa volta (−${euro(SLOT_BET)}). Riprova!`;
+      box.textContent = `Niente questa volta (−${dindini(SLOT_BET)}). Riprova!`;
       box.className = 'slot-result';
     }
     game.player.stats.slotSpins = (game.player.stats.slotSpins || 0) + 1;
@@ -180,13 +180,13 @@ async function askToAccept(g: RpsGame): Promise<void> {
   if (answered.has(g.t) || serverNow() - g.t > RPS_ANSWER_MS) return;
   answered.add(g.t);
   sfx('mission');
-  sendNotify('⚔️ Sfida a morra cinese', `${g.aName} ti sfida per ${euro(g.bet)}`, 'sims-rps');
+  sendNotify('⚔️ Sfida a morra cinese', `${g.aName} ti sfida per ${dindini(g.bet)}`, 'sims-rps');
   const res: GameValue = await openDialog({
     title: '⚔️ Sfida a morra cinese',
-    text: `${g.aName} ti sfida a morra cinese per ${euro(g.bet)}.\nSe accetti, metti ${euro(g.bet)} nel piatto: chi vince prende ${euro(g.bet * 2)}.`,
+    text: `${g.aName} ti sfida a morra cinese per ${dindini(g.bet)}.\nSe accetti, metti ${dindini(g.bet)} nel piatto: chi vince prende ${dindini(g.bet * 2)}.`,
     buttons: [
       { label: 'Rifiuta', value: 'no', color: '#57606f' },
-      { label: `Accetta (${euro(g.bet)})`, value: 'yes', color: '#e17055' },
+      { label: `Accetta (${dindini(g.bet)})`, value: 'yes', color: '#e17055' },
     ],
   });
   if (res.action !== 'yes') {
@@ -253,7 +253,7 @@ function renderChallengeList(): void {
   const body: HTMLElement = dom('rps-body');
   body.innerHTML =
     `<p class="rps-help">Sfida un qualsiasi giocatore online: gli arriva l'invito ovunque si trovi. Ognuno mette la stessa puntata nel piatto e chi vince prende tutto. In caso di pareggio si rigioca.</p>` +
-    `<label class="rps-bet">Puntata: <input id="rps-bet" type="number" inputmode="numeric" min="${RPS_MIN_BET}" max="${RPS_MAX_BET}" value="20"> €</label>` +
+    `<label class="rps-bet">Puntata: <input id="rps-bet" type="number" inputmode="numeric" min="${RPS_MIN_BET}" max="${RPS_MAX_BET}" value="20"> Đ</label>` +
     (players.length
       ? players
           .map(
@@ -314,7 +314,7 @@ async function challenge(target: string, name: string, bet: number): Promise<voi
     myPick = null;
     lastRound = -1;
     watch(target);
-    toast(`⚔️ Hai sfidato ${name} per ${euro(bet)}. Aspetta che accetti…`, 4000);
+    toast(`⚔️ Hai sfidato ${name} per ${dindini(bet)}. Aspetta che accetti…`, 4000);
   } finally {
     busy = false;
   }
@@ -340,8 +340,8 @@ async function onGame(target: string, g: RpsGame | null): Promise<void> {
       await creditMoney(g.bet);
       toast(
         g.state === 'declined'
-          ? `🙅 ${g.bName} ha rifiutato la sfida: i tuoi ${euro(g.bet)} sono tornati in cassaforte.`
-          : `⌛ Sfida annullata: i tuoi ${euro(g.bet)} sono tornati in cassaforte.`,
+          ? `🙅 ${g.bName} ha rifiutato la sfida: i tuoi ${dindini(g.bet)} sono tornati in cassaforte.`
+          : `⌛ Sfida annullata: i tuoi ${dindini(g.bet)} sono tornati in cassaforte.`,
         5000,
       );
       localStorage.removeItem(game.session.LS_PREFIX + OUT_KEY);
@@ -351,7 +351,7 @@ async function onGame(target: string, g: RpsGame | null): Promise<void> {
   if (g.state === 'cancelled' && role === 'b' && !g.bBack) {
     if (await change(target, (cur) => (cur.bBack ? null : { bBack: true }))) {
       await creditMoney(g.bet);
-      toast(`⌛ Sfida annullata: i tuoi ${euro(g.bet)} sono tornati in cassaforte.`, 5000);
+      toast(`⌛ Sfida annullata: i tuoi ${dindini(g.bet)} sono tornati in cassaforte.`, 5000);
     }
     return;
   }
@@ -558,7 +558,7 @@ function renderRps(): void {
   setPart(
     body,
     'rps-top',
-    `<div class="rps-pot">💰 Nel piatto: <b>${euro(g.bet * 2)}</b> · contro ${escapeHtmlSafe(other)}</div>`,
+    `<div class="rps-pot">💰 Nel piatto: <b>${dindini(g.bet * 2)}</b> · contro ${escapeHtmlSafe(other)}</div>`,
   );
   if (g.state === 'invited') {
     setPart(
@@ -595,7 +595,7 @@ function renderRps(): void {
     const controls = setPart(
       body,
       'rps-controls',
-      `<p class="rps-final ${win ? 'win' : ''}${both ? ' delayed' : ''}">${win ? `🏆 Hai vinto ${euro(g.bet * 2)}!` : `😞 Hai perso ${euro(g.bet)}.`}</p>` +
+      `<p class="rps-final ${win ? 'win' : ''}${both ? ' delayed' : ''}">${win ? `🏆 Hai vinto ${dindini(g.bet * 2)}!` : `😞 Hai perso ${dindini(g.bet)}.`}</p>` +
         '<button type="button" class="art-btn rps-again" style="background:#e17055">⚔️ Nuova sfida</button>',
     );
     const again = controls.querySelector('.rps-again') as HTMLButtonElement;

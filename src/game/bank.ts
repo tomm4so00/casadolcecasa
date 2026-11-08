@@ -7,7 +7,7 @@ import { sfx } from './audio.js';
 import { BANK_MIN_DEPOSIT, depositError, maxDeposit, withdrawError } from './bank-rules.js';
 import { saveGame } from './saves.js';
 
-const euro = (n: number) => `${n.toLocaleString('it-IT')} €`;
+const dindini = (n: number) => `${n.toLocaleString('it-IT')} Đ`;
 
 // Sportello della banca: mostra i saldi e permette di depositare o prelevare.
 export async function openBankCounter(): Promise<void> {
@@ -18,11 +18,11 @@ export async function openBankCounter(): Promise<void> {
     title: '🏦 Sportello Bancario',
     text:
       `Buongiorno! Come posso aiutarla?\n\n` +
-      `💳 Sul conto: ${euro(bank)}\n🔐 In cassaforte: ${euro(vault)}\n\n` +
-      `I soldi in banca sono al sicuro dai ladri. Il deposito minimo è di ${euro(BANK_MIN_DEPOSIT)}.` +
+      `💳 Sul conto: ${dindini(bank)}\n🔐 In cassaforte: ${dindini(vault)}\n\n` +
+      `I soldi in banca sono al sicuro dai ladri. Il deposito minimo è di ${dindini(BANK_MIN_DEPOSIT)}.` +
       (canDeposit
         ? ''
-        : `\n\n⚠️ Per depositare servono almeno ${euro(BANK_MIN_DEPOSIT)} in cassaforte.`),
+        : `\n\n⚠️ Per depositare servono almeno ${dindini(BANK_MIN_DEPOSIT)} in cassaforte.`),
     buttons: [
       { label: 'Esci', value: null, color: '#57606f' },
       ...(bank > 0 ? [{ label: '💸 Preleva', value: 'withdraw', color: '#e67e22' }] : []),
@@ -37,7 +37,7 @@ async function askAmount(title: string, text: string, label: string, color: stri
   const res: GameValue = await openDialog({
     title,
     text,
-    input: { placeholder: 'Importo in €', numeric: true, maxLength: 9 },
+    input: { placeholder: 'Importo in Đ', numeric: true, maxLength: 9 },
     buttons: [
       { label: 'Annulla', value: null, color: '#57606f' },
       { label, value: 'ok', color },
@@ -51,7 +51,7 @@ async function askDeposit(): Promise<void> {
   const max = maxDeposit(game.moneyLevel);
   const amount = await askAmount(
     '💰 Deposito',
-    `Quanto vuoi depositare?\nMinimo ${euro(BANK_MIN_DEPOSIT)}, massimo ${euro(max)}.`,
+    `Quanto vuoi depositare?\nMinimo ${dindini(BANK_MIN_DEPOSIT)}, massimo ${dindini(max)}.`,
     'Deposita',
     '#2ed573',
   );
@@ -64,14 +64,14 @@ async function askDeposit(): Promise<void> {
   if (!(await bankDeposit(amount))) return;
   sfx('coin');
   saveGame(true);
-  toast(`✅ Hai depositato ${euro(amount)}. Sul conto: ${euro(game.bankBalance)}`, 4500);
+  toast(`✅ Hai depositato ${dindini(amount)}. Sul conto: ${dindini(game.bankBalance)}`, 4500);
 }
 
 async function askWithdraw(): Promise<void> {
   const bank = game.bankBalance || 0;
   const amount = await askAmount(
     '💸 Prelievo',
-    `Quanto vuoi prelevare? Sul conto hai ${euro(bank)}.\nI soldi tornano nella tua cassaforte.`,
+    `Quanto vuoi prelevare? Sul conto hai ${dindini(bank)}.\nI soldi tornano nella tua cassaforte.`,
     'Preleva',
     '#e67e22',
   );
@@ -84,5 +84,5 @@ async function askWithdraw(): Promise<void> {
   if (!(await bankWithdraw(amount))) return;
   sfx('coin');
   saveGame(true);
-  toast(`✅ Hai prelevato ${euro(amount)}. In cassaforte: ${euro(game.moneyLevel)}`, 4500);
+  toast(`✅ Hai prelevato ${dindini(amount)}. In cassaforte: ${dindini(game.moneyLevel)}`, 4500);
 }

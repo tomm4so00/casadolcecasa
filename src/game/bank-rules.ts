@@ -15,16 +15,18 @@ export function maxDeposit(vault: number): number {
 
 /** Spiega perché un deposito non è possibile, oppure null se va bene. */
 export function depositError(amount: number, vault: number): string | null {
-  if (!Number.isSafeInteger(amount) || amount <= 0) return 'Inserisci un importo valido in euro.';
-  if (amount < BANK_MIN_DEPOSIT) return `Il deposito minimo è di ${BANK_MIN_DEPOSIT} €.`;
-  if (amount > vault) return `In cassaforte hai solo ${vault} €.`;
+  if (!Number.isSafeInteger(amount) || amount <= 0)
+    return 'Inserisci un importo valido in dindini.';
+  if (amount < BANK_MIN_DEPOSIT) return `Il deposito minimo è di ${BANK_MIN_DEPOSIT} Đ.`;
+  if (amount > vault) return `In cassaforte hai solo ${vault} Đ.`;
   return null;
 }
 
 /** Spiega perché un prelievo non è possibile, oppure null se va bene. */
 export function withdrawError(amount: number, bank: number): string | null {
-  if (!Number.isSafeInteger(amount) || amount <= 0) return 'Inserisci un importo valido in euro.';
-  if (amount > bank) return `Sul conto hai solo ${bank} €.`;
+  if (!Number.isSafeInteger(amount) || amount <= 0)
+    return 'Inserisci un importo valido in dindini.';
+  if (amount > bank) return `Sul conto hai solo ${bank} Đ.`;
   return null;
 }
 

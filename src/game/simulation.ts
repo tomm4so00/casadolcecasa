@@ -20,6 +20,11 @@ export interface NeedsRules {
 const SAD_HAPPINESS = 10;
 /** …di tanti punti all'ora. */
 const SAD_HEALTH_PER_HOUR = 1;
+/**
+ * Fame, sonno e igiene da soli non uccidono finché non sono tutti a zero da tanto: fino ad allora
+ * la salute si ferma all'1%, così c'è sempre tempo per rientrare e rimediare.
+ */
+export const NEEDS_ZERO_GRACE_MS = 24 * 3600000;
 
 function dependencyRate(drug: DrugState, now: number, rules: NeedsRules): number {
   if (!drug.active || now >= drug.endAt) return 0;
@@ -55,6 +60,12 @@ export function advanceNeeds(
     const flu = state.flu;
     if (flu) updateFluOnset(flu, now);
     const sleeping = state.isSleeping;
+    // da quando fame, sonno e igiene sono tutti a zero (0: non lo sono)
+    const allZero =
+      state.hungerLevel <= 1e-8 && state.sleepLevel <= 1e-8 && state.hygieneLevel <= 1e-8;
+    if (!allZero) state.needsZeroSince = 0;
+    else if (!state.needsZeroSince) state.needsZeroSince = now;
+    const graceOver = allZero && now >= (state.needsZeroSince || 0) + NEEDS_ZERO_GRACE_MS;
     const sleepRate = sleeping ? (100 * bed) / rules.sleepRecovery : -100 / rules.sleepDepletion;
     const hungerRate = -100 / (sleeping ? rules.hungerSleeping : rules.hungerAwake);
     const hygieneRate = (-100 * (sleeping ? 0.5 : 1)) / rules.hygieneDepletion;
@@ -79,6 +90,8 @@ export function advanceNeeds(
       ])
         boundary((time - now) / 1000);
     }
+    if (allZero && !graceOver)
+      boundary(((state.needsZeroSince || 0) + NEEDS_ZERO_GRACE_MS - now) / 1000);
     if (flu) {
       boundary((fluOnsetAt(flu) - now) / 1000);
       boundary((flu.until - now) / 1000);
@@ -100,10 +113,10 @@ export function advanceNeeds(
     // Midpoint integration is exact on each linear section of dependencyRate.
     const drugDamage = (dependencyRate(drug, now + step * 500, rules) * step) / 3600;
     const sickDamage = flu ? fluDamage(flu, now, now + step * 1000) : 0;
-    state.healthLevel = Math.max(
-      0,
-      state.healthLevel - healthRate * step - drugDamage - sickDamage - sadDamage,
-    );
+    // droga e febbre possono uccidere sempre; i bisogni solo dopo il periodo di grazia
+    const afterIllness = Math.max(0, state.healthLevel - drugDamage - sickDamage);
+    const floor = graceOver ? 0 : Math.min(afterIllness, 1);
+    state.healthLevel = Math.max(floor, afterIllness - healthRate * step - sadDamage);
     if (sleeping && state.healthLevel > 0) {
       state.sleepGainedSinceLastHealthBoost += sleepRate * step;
       if (state.sleepGainedSinceLastHealthBoost >= 20 - 1e-8) {

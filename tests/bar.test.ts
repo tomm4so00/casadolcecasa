@@ -11,7 +11,7 @@ const SPOTS = { idle: { x: -58, y: -152 }, shelfY: -158, counterY: -152 };
 const at = (e: number) => barMoment(e, 50, SPOTS);
 
 describe("l'aperitivo al bancone", () => {
-  it('costa 5 € e dà +25% di fame e +5% di felicità, senza superare il 100%', () => {
+  it('costa 5 Đ e dà +25% di fame e +5% di felicità, senza superare il 100%', () => {
     expect(APERITIVO).toEqual({ price: 5, hunger: 25, happiness: 5 });
     expect(afterAperitivo({ hunger: 40, happiness: 50 })).toEqual({ hunger: 65, happiness: 55 });
     expect(afterAperitivo({ hunger: 90, happiness: 98 })).toEqual({ hunger: 100, happiness: 100 });

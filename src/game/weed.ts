@@ -8,8 +8,21 @@ import { hasRoom, publishRoomLayout, saveGame } from './saves.js';
 import { sfx } from './audio.js';
 import { spendMoney, transferMoney } from './economy.js';
 import { sendSocial } from './social.js';
+import { inventoryChange } from './inventory-market.js';
+import { openInventoryTrade } from './inventory-trade.js';
+import { trainingHoldsOwner } from './dog-training.js';
+import { LAB_WALL_Y } from './data/catalogues.js';
+import {
+  JOINT_ANIMATION_MS,
+  JOINT_EFFECT_MS,
+  JOINT_COOLDOWN_MS,
+  jointReadyAt,
+  jointOutdoors,
+  jointUseError,
+} from './joint-rules.js';
 import {
   JOINT_HAPPY,
+  HARVEST_GRAMS,
   JOINT_PRICE,
   STRAINS,
   type StrainId,
@@ -20,7 +33,6 @@ import {
   growProgress,
   growTimeText,
   harvest,
-  takeJoint,
 } from './weed-rules.js';
 
 /** Dove stanno il vaso e il barattolo nella camera (davanti a destra, fuori dal passaggio). */
@@ -28,7 +40,7 @@ const POT_SPOT = { x: 70, y: 118 };
 const JAR_SPOT_WITH_POT = { x: 70, y: 82 };
 
 const weed = (): WeedState => (game.player.weed ??= emptyWeed());
-const euro = (n: number) => `${n.toLocaleString('it-IT')} €`;
+const dindini = (n: number) => `${n.toLocaleString('it-IT')} Đ`;
 
 /** Il vaso resta lo stesso oggetto finché la pianta cresce, così quando lo sposti la posizione resta. */
 let pot: GameValue = null;
@@ -103,10 +115,10 @@ export async function buyPlant(strain: StrainId): Promise<void> {
   }
   const res: GameValue = await openDialog({
     title: `🌱 ${s.name}`,
-    text: `Una pianta di ${s.name} costa ${euro(s.price)}.\nLa troverai nella tua stanza: cresce in ${growTimeText(strain)} (le varietà più care crescono un po' più in fretta), poi potrai raccoglierla e avere 100 grammi d'erba.`,
+    text: `Una pianta di ${s.name} costa ${dindini(s.price)}.\nLa troverai nella tua stanza: cresce in ${growTimeText(strain)} (le varietà più care crescono un po' più in fretta), poi potrai raccoglierla e avere 100 grammi d'erba.`,
     buttons: [
       { label: 'Annulla', value: null, color: '#57606f' },
-      { label: `Compra (${euro(s.price)})`, value: 'ok', color: '#2e7d32' },
+      { label: `Compra (${dindini(s.price)})`, value: 'ok', color: '#2e7d32' },
     ],
   });
   if (res.action !== 'ok' || !(await spendMoney(s.price))) return;
@@ -128,7 +140,7 @@ export function plantLabel(): string {
     : `🌱 ${name}: pronta tra ${growLeftText(w.plantedAt, Date.now(), w.strain)}`;
 }
 
-export function tendPlant(): void {
+export async function tendPlant(): Promise<void> {
   const w = weed();
   if (!w.plantedAt || !w.strain) return;
   const done = harvest(w, Date.now());
@@ -139,6 +151,8 @@ export function tendPlant(): void {
     );
     return;
   }
+  if (!(await inventoryChange((ledger) => ledger.harvest(HARVEST_GRAMS, w.plantedAt!)))) return;
+  done.grams = weed().grams;
   // la pianta diventa un barattolo: compare dove c'era il vaso (se il barattolo c'era già, resta lì)
   if (pot && !jar) {
     done.jarX = Math.round(pot.x);
@@ -154,25 +168,52 @@ export function tendPlant(): void {
   );
 }
 
-/** Si fuma una canna: −1 grammo, +10% felicità e un po' di fumo che sale. */
-export function smokeJoint(): void {
-  const next = takeJoint(weed());
-  if (!next) {
-    toast('Il barattolo è vuoto.');
-    return;
-  }
-  game.player.weed = next;
-  enjoyJoint();
-  saveGame(false);
-  publishRoomLayout();
-  toast(
-    `🌿 Ti sei fatto una canna: felicità +${JOINT_HAPPY}%. Nel barattolo restano ${next.grams} g.`,
-    4500,
+export const isSmoking = (): boolean => performance.now() < game.smokeUntil;
+
+export function smokeJointError(): string | null {
+  const env = game.view.activeEnvironment;
+  return jointUseError(
+    weed().grams,
+    jointOutdoors(env, !!game.ENV_STYLE[env]?.outdoor, game.playerPos.y, LAB_WALL_Y),
+    jointReadyAt(game.player.jointReadyAt, game.player.stonedUntil),
+    Date.now(),
+    !!(
+      game.socBusy() ||
+      game.rocketTrip ||
+      game.benchSit ||
+      game.coinToss ||
+      game.iceCream ||
+      game.kissAnim ||
+      game.dogWalk?.mode === 'called' ||
+      trainingHoldsOwner()
+    ),
   );
 }
 
-/** Per quanto restano gli occhi rossi dopo una canna. */
-const STONED_MS = 15 * 60 * 1000;
+/** Un grammo, sette secondi di animazione, dieci minuti di effetto e trenta di attesa. */
+let smoking = false;
+export async function smokeJoint(): Promise<boolean> {
+  if (smoking) return false;
+  const error = smokeJointError();
+  if (error) {
+    toast(error, 4000);
+    return false;
+  }
+  smoking = true;
+  try {
+    if (!(await inventoryChange((ledger) => ledger.consume('weed')))) return false;
+    enjoyJoint();
+    await saveGame(true);
+    publishRoomLayout();
+    toast(
+      `🌿 Felicità +${JOINT_HAPPY}%. Per 10 minuti: occhi rossi e velocità −10%. Puoi fumare di nuovo tra 30 minuti. Nello zaino restano ${weed().grams} g.`,
+      4500,
+    );
+    return true;
+  } finally {
+    smoking = false;
+  }
+}
 
 /** Se il proprio personaggio ha ancora gli occhi rossi. */
 export const isStoned = (): boolean => game.player.stonedUntil > Date.now();
@@ -180,8 +221,13 @@ export const isStoned = (): boolean => game.player.stonedUntil > Date.now();
 /** Effetto di una canna: felicità, fumetto e nuvolette di fumo (le vedono anche gli altri). */
 function enjoyJoint(): void {
   game.player.happinessLevel = Math.min(100, game.player.happinessLevel + JOINT_HAPPY);
-  game.smokeUntil = performance.now() + 6000;
-  game.player.stonedUntil = Date.now() + STONED_MS;
+  game.smokeUntil = performance.now() + JOINT_ANIMATION_MS;
+  const now = Date.now();
+  game.player.stonedUntil = now + JOINT_EFFECT_MS;
+  game.player.jointReadyAt = now + JOINT_COOLDOWN_MS;
+  game.moveRight = game.moveForward = 0;
+  game.keysPressed = { w: false, a: false, s: false, d: false };
+  game.isWalking = false;
   game.mySay = '💨 Che relax…';
   game.mySayT = Date.now();
 }
@@ -192,23 +238,17 @@ export const canSellJoint = (): boolean => weed().grams >= 1;
 
 /** Propone una canna a un giocatore vicino: il grammo si mette da parte finché non risponde. */
 export async function offerJoint(target: { id: string; name: string }): Promise<void> {
-  const next = takeJoint(weed());
-  if (!next) return;
-  game.player.weed = next;
-  saveGame(false);
-  publishRoomLayout();
-  await sendSocial(target.id, { type: 'weedOffer', price: JOINT_PRICE });
-  toast(`🌿 Hai proposto una canna a ${target.name} per ${euro(JOINT_PRICE)}…`, 4000);
+  await openInventoryTrade('weed', target.id);
 }
 
 export async function onJointOffer(m: GameValue, who: string): Promise<void> {
   while (game.dialogResolve) await new Promise((r) => lifetime.setTimeout(r, 1500));
   const res: GameValue = await openDialog({
     title: '🌿 Una canna?',
-    text: `${who} ti propone una canna per ${euro(JOINT_PRICE)}.\nTi alza la felicità del ${JOINT_HAPPY}%. La compri?`,
+    text: `${who} ti propone 1 g di erba per ${dindini(JOINT_PRICE)}.\nLo ritroverai nello zaino e potrai fumarlo all’aperto. La compri?`,
     buttons: [
       { label: 'No grazie', value: 'no', color: '#57606f' },
-      { label: `Compra (${euro(JOINT_PRICE)})`, value: 'yes', color: '#2e7d32' },
+      { label: `Compra (${dindini(JOINT_PRICE)})`, value: 'yes', color: '#2e7d32' },
     ],
   });
   if (res.action !== 'yes') {
@@ -221,19 +261,20 @@ export async function onJointOffer(m: GameValue, who: string): Promise<void> {
     return;
   }
   sendSocial(m.from, { type: 'weedPaid', price: JOINT_PRICE });
-  enjoyJoint();
-  toast(`🌿 Hai comprato una canna da ${who}: felicità +${JOINT_HAPPY}%.`, 4500);
+  if (!(await inventoryChange((ledger) => ledger.buy('weed', 1, 0)))) return;
+  saveGame(true);
+  publishRoomLayout();
+  toast(`🌿 Hai comprato 1 g di erba da ${who}: lo trovi nello zaino.`, 4500);
 }
 
 export function onJointPaid(who: string): void {
   sfx('coin');
-  toast(`💶 ${who} ha comprato la tua canna: +${euro(JOINT_PRICE)} in cassaforte!`, 4500);
+  toast(`🪙 ${who} ha comprato la tua canna: +${dindini(JOINT_PRICE)} in cassaforte!`, 4500);
 }
 
-export function onJointRefused(who: string): void {
-  const w = weed();
-  game.player.weed = { ...w, grams: w.grams + 1, jarStrain: w.jarStrain || 'amnesia' };
-  saveGame(false);
+export async function onJointRefused(who: string): Promise<void> {
+  if (!(await inventoryChange((ledger) => ledger.buy('weed', 1, 0)))) return;
+  saveGame(true);
   publishRoomLayout();
   toast(`${who} non ha preso la canna: il grammo è tornato nel barattolo.`, 4000);
 }

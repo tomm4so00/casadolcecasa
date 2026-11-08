@@ -27,7 +27,7 @@ import {
   withdrawAuction,
 } from './auctions.js';
 
-const euro = (n: number) => `${n.toLocaleString('it-IT')} €`;
+const dindini = (n: number) => `${n.toLocaleString('it-IT')} Đ`;
 const sold = () => game.player.stats.paintingsSold || 0;
 /** Livello da Artista (0 = non lo è): più è alto, più offrono i collezionisti. */
 const isArtist = () => levelOf(game.player.personality, 'artist');
@@ -47,7 +47,7 @@ export function renderArtSite(): void {
   const tier = botTier(sold());
   dom('art-summary').innerHTML =
     `🔨 Qui i quadri si vendono all'asta: <b>il prezzo lo fanno le offerte dei giocatori</b> e il pittore accetta quella che preferisce.` +
-    `<br>🖼️ Quadri venduti: <b>${sold()}</b> · Offerte dei collezionisti: <b>${artistOffer(tier.min, isArtist())}–${artistOffer(tier.max, isArtist())} €</b>` +
+    `<br>🖼️ Quadri venduti: <b>${sold()}</b> · Offerte dei collezionisti: <b>${artistOffer(tier.min, isArtist())}–${artistOffer(tier.max, isArtist())} Đ</b>` +
     (isArtist() ? ' <span style="color:#fdcb6e">(🎨 +25% da Artista)</span>' : '');
   for (const b of document.querySelectorAll<HTMLButtonElement>('[data-art-tab]'))
     b.classList.toggle('active', b.dataset.artTab === tab);
@@ -105,7 +105,7 @@ function button(label: string, color: string, onClick: () => void): HTMLButtonEl
 const titleOf = (a: Auction) => escapeHtmlSafe(quotedTitle(a.code)) || 'Senza titolo';
 const bestLine = (a: Auction) =>
   a.bid
-    ? `💰 Offerta migliore: <b>${euro(a.bid.amt)}</b> (${a.bid.by === me() ? 'tu' : escapeHtmlSafe(a.bid.name)})`
+    ? `💰 Offerta migliore: <b>${dindini(a.bid.amt)}</b> (${a.bid.by === me() ? 'tu' : escapeHtmlSafe(a.bid.name)})`
     : '💰 Nessuna offerta: fai la prima!';
 
 function voteButton(a: Auction): HTMLButtonElement {
@@ -173,7 +173,9 @@ function renderMine(list: HTMLElement): void {
   for (const a of mineOpen) {
     const el = card(a.code, titleOf(a), [`❤️ ${a.voters.size} cuoricini`, bestLine(a)]);
     if (a.bid)
-      el.appendChild(button(`🤝 Accetta ${euro(a.bid.amt)}`, '#2ed573', () => void acceptBid(a)));
+      el.appendChild(
+        button(`🤝 Accetta ${dindini(a.bid.amt)}`, '#2ed573', () => void acceptBid(a)),
+      );
     const rename = renameButton(a.code);
     if (rename) el.appendChild(rename);
     el.appendChild(button('🖼️ Ritira e appendi in casa', '#636e72', () => void withdrawAuction(a)));
@@ -198,8 +200,8 @@ function renderMine(list: HTMLElement): void {
     const el = card(a.code, titleOf(a), [
       `di ${escapeHtmlSafe(a.name)}`,
       a.sold!.paid
-        ? `✅ Comprato per <b>${euro(a.sold!.amt)}</b>: è tuo, manca solo da appenderlo`
-        : `🤝 Offerta accettata: <b>${euro(a.sold!.amt)}</b>`,
+        ? `✅ Comprato per <b>${dindini(a.sold!.amt)}</b>: è tuo, manca solo da appenderlo`
+        : `🤝 Offerta accettata: <b>${dindini(a.sold!.amt)}</b>`,
     ]);
     // pagato al pittore quando ha accettato: resta solo da scegliere dove appenderlo
     el.appendChild(
@@ -213,7 +215,7 @@ function renderMine(list: HTMLElement): void {
     list.appendChild(
       card(a.code, titleOf(a), [
         `di ${escapeHtmlSafe(a.name)}`,
-        `💰 La tua è l'offerta migliore: <b>${euro(a.bid!.amt)}</b>`,
+        `💰 La tua è l'offerta migliore: <b>${dindini(a.bid!.amt)}</b>`,
       ]),
     );
   const hung = roomPaintings(game.roomsState[game.myAssignedRoomIdx ?? -1]);

@@ -1,5 +1,5 @@
 // Inviti: un giocatore manda il link del gioco a un amico. Se l'amico crea il suo primo
-// personaggio partendo da quel link, ricevono 300€ a testa. Lo stesso link serve anche a
+// personaggio partendo da quel link, ricevono 300Đ a testa. Lo stesso link serve anche a
 // chiamare chi gioca già: in quel caso nessun bonus, solo l'invito.
 
 export const GAME_URL = 'https://tomm4so00.github.io/casadolcecasa/';
@@ -31,7 +31,7 @@ export function inviteMessage(nick: string, link?: string): string {
   const who = nick.trim() ? ` Sono «${nick.trim()}».` : '';
   return (
     `Vieni a giocare con me a Casa dolce casa! 🏠${who} ` +
-    `Se è la prima volta che entri, con questo link riceviamo ${INVITE_BONUS}€ a testa:` +
+    `Se è la prima volta che entri, con questo link riceviamo ${INVITE_BONUS}Đ a testa:` +
     (link ? '\n' + link : '')
   );
 }

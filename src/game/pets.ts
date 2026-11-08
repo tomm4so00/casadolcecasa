@@ -190,11 +190,11 @@ export async function buyPet(kind: PetKind): Promise<void> {
   const res: GameValue = await openDialog({
     title: `${info.emoji} Un ${info.name} tutto per te`,
     text:
-      `Costa ${info.price} €. ${where}\n\n` +
+      `Costa ${info.price} Đ. ${where}\n\n` +
       `Ricordati di dargli da mangiare: la sua fame scende come la tua, ` +
-      `e ogni porzione (${PET_FOOD_PRICE} €) gli dà +50%.`,
+      `e ogni porzione (${PET_FOOD_PRICE} Đ) gli dà +50%.`,
     buttons: [
-      { label: `Compra (${info.price} €)`, value: 'buy', color: '#27ae60' },
+      { label: `Compra (${info.price} Đ)`, value: 'buy', color: '#27ae60' },
       { label: 'Annulla', value: null },
     ],
   });
@@ -460,7 +460,7 @@ export function petSpots(): Record<string, GameValue> {
 
 // ---------------------------------------------------------------- cibo
 
-/** Dà una porzione di cibo all'animale: 5 € e +50% di fame. */
+/** Dà una porzione di cibo all'animale: 5 Đ e +50% di fame. */
 export async function feed(kind: PetKind): Promise<void> {
   const st = book()[kind];
   if (!st) return;
@@ -473,7 +473,7 @@ export async function feed(kind: PetKind): Promise<void> {
     return;
   }
   if (game.moneyLevel < PET_FOOD_PRICE) {
-    toast(`Ti servono ${PET_FOOD_PRICE} € in cassaforte per il cibo.`);
+    toast(`Ti servono ${PET_FOOD_PRICE} Đ in cassaforte per il cibo.`);
     sfx('error');
     return;
   }

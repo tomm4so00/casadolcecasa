@@ -35,7 +35,7 @@ import { worldNode } from './world-db.js';
 
 const rocket = PROJECTS.rocket;
 const moonbase = PROJECTS.moonbase;
-const euro = (n: number) => `${n.toLocaleString('it-IT')} €`;
+const dindini = (n: number) => `${n.toLocaleString('it-IT')} Đ`;
 let state: ProjectState = { funded: 0, donors: {} };
 let baseState: ProjectState = { funded: 0, donors: {} };
 const stateOf = (id: ProjectId): ProjectState => (id === 'rocket' ? state : baseState);
@@ -247,7 +247,7 @@ function statusText(id: ProjectId): string {
       : '✅ <b>Razzo completo!</b> Vai nella zona esterna del laboratorio e premi il pulsante rosso per lanciarlo.';
   if (id === 'moonbase' && stage >= 3)
     return '🌙 <b>Base lunare completa!</b> Guardala dallo schermo del laboratorio o vai a visitarla sulla luna.';
-  return `Mancano <b>${euro(toNextStage(p, funded))}</b> per: ${p.stages[stage].label.toLowerCase()}.`;
+  return `Mancano <b>${dindini(toNextStage(p, funded))}</b> per: ${p.stages[stage].label.toLowerCase()}.`;
 }
 
 /** Scheda di un progetto sulla bacheca. */
@@ -262,14 +262,14 @@ function projectCard(id: ProjectId): string {
   const marks = p.stages
     .map(
       (s, i) =>
-        `<div class="proj-mark ${funded >= s.at ? 'done' : ''}" style="left:${(s.at / goal) * 100}%"><span>${icons[i]} ${euro(s.at)}</span></div>`,
+        `<div class="proj-mark ${funded >= s.at ? 'done' : ''}" style="left:${(s.at / goal) * 100}%"><span>${icons[i]} ${dindini(s.at)}</span></div>`,
     )
     .join('');
   const mine = st.donors[game.session.myPlayerId]?.amount || 0;
   const donors = topDonors(st)
     .map(
       (d, i) =>
-        `<li><span>${['🥇', '🥈', '🥉'][i] || '•'} ${escapeHtmlSafe(d.name)}</span><b>${euro(d.amount)}</b></li>`,
+        `<li><span>${['🥇', '🥈', '🥉'][i] || '•'} ${escapeHtmlSafe(d.name)}</span><b>${dindini(d.amount)}</b></li>`,
     )
     .join('');
   return `
@@ -278,11 +278,11 @@ function projectCard(id: ProjectId): string {
       <div class="proj-info">
         <h4>${p.name}</h4>
         <p>${p.description}</p>
-        <div class="proj-total">Raccolti: <b>${euro(funded)}</b> su ${euro(goal)}</div>
+        <div class="proj-total">Raccolti: <b>${dindini(funded)}</b> su ${dindini(goal)}</div>
         <div class="proj-bar"><div class="proj-fill" style="width:${pct}%"></div>${marks}</div>
         <p class="proj-status">${statusText(id)}</p>
-        ${mine ? `<p class="proj-mine">💙 Tu hai versato ${euro(mine)}</p>` : ''}
-        ${stage < p.stages.length ? `<button type="button" class="art-btn proj-donate" data-project="${id}" style="background:#0984e3">💶 Versa soldi</button>` : ''}
+        ${mine ? `<p class="proj-mine">💙 Tu hai versato ${dindini(mine)}</p>` : ''}
+        ${stage < p.stages.length ? `<button type="button" class="art-btn proj-donate" data-project="${id}" style="background:#0984e3">🪙 Versa soldi</button>` : ''}
       </div>
     </div>
     <div class="proj-donors">
@@ -312,9 +312,9 @@ async function askDonation(id: ProjectId): Promise<void> {
   const left = projectGoal(p) - stateOf(id).funded;
   const what = id === 'rocket' ? 'il razzo' : 'la base lunare';
   const res: GameValue = await openDialog({
-    title: `💶 Versa per ${what}`,
-    text: `Quanto vuoi versare? In cassaforte hai ${euro(game.moneyLevel)}.\nMinimo ${euro(Math.min(MIN_DONATION, left))}, mancano ${euro(left)} per completare ${what}.`,
-    input: { placeholder: 'Importo in €', numeric: true, maxLength: 6 },
+    title: `🪙 Versa per ${what}`,
+    text: `Quanto vuoi versare? In cassaforte hai ${dindini(game.moneyLevel)}.\nMinimo ${dindini(Math.min(MIN_DONATION, left))}, mancano ${dindini(left)} per completare ${what}.`,
+    input: { placeholder: 'Importo in Đ', numeric: true, maxLength: 6 },
     buttons: [
       { label: 'Annulla', value: null, color: '#57606f' },
       { label: 'Versa', value: 'ok', color: '#0984e3' },
@@ -381,7 +381,7 @@ async function donate(amount: number, id: ProjectId = 'rocket'): Promise<boolean
   toast(
     reached
       ? `🎉 Grazie! ${reached.label}! ${where}`
-      : `✅ Hai versato ${euro(amount)} per ${id === 'rocket' ? 'il razzo' : 'la base lunare'}. Grazie!`,
+      : `✅ Hai versato ${dindini(amount)} per ${id === 'rocket' ? 'il razzo' : 'la base lunare'}. Grazie!`,
     5500,
   );
   return true;
@@ -394,7 +394,7 @@ export async function pressLaunchButton(): Promise<void> {
   const { phase } = rocketLaunch();
   if (phase === 'building') {
     toast(
-      `🔒 Il razzo non è ancora completo: mancano ${euro(projectGoal(rocket) - state.funded)}.`,
+      `🔒 Il razzo non è ancora completo: mancano ${dindini(projectGoal(rocket) - state.funded)}.`,
       4500,
     );
     return;

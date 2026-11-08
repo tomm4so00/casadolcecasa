@@ -886,13 +886,13 @@ export function drawFace(
       ctx.lineTo(ex + shape[0] * 0.45 * s, ey + 0.5 * s);
       ctx.stroke();
     }
-    ctx.fillStyle = eyeC;
+    ctx.fillStyle = stonedLid ? '#ee353e' : eyeC;
     ctx.beginPath();
     ctx.arc(ex, ey + 0.1 * s, Math.min(shape[2], shape[1]) * s, 0, 6.3);
     ctx.fill();
     ctx.fillStyle = '#111';
     ctx.beginPath();
-    ctx.arc(ex, ey + 0.1 * s, shape[2] * 0.5 * s, 0, 6.3);
+    ctx.arc(ex, ey + 0.1 * s, shape[2] * (stonedLid ? 0.3 : 0.5) * s, 0, 6.3);
     ctx.fill();
     ctx.fillStyle = 'rgba(255,255,255,0.95)';
     ctx.beginPath();
@@ -903,14 +903,14 @@ export function drawFace(
       ctx.fillStyle = stonedLid;
       ctx.beginPath();
       ctx.ellipse(ex, ey, shape[0] * s + 0.4, shape[1] * s + 0.4, 0, Math.PI, Math.PI * 2);
-      ctx.lineTo(ex + shape[0] * s + 0.4, ey + 0.2 * s);
-      ctx.lineTo(ex - shape[0] * s - 0.4, ey + 0.2 * s);
+      ctx.lineTo(ex + shape[0] * s + 0.4, ey - 0.3 * s);
+      ctx.lineTo(ex - shape[0] * s - 0.4, ey - 0.3 * s);
       ctx.fill();
       ctx.strokeStyle = 'rgba(0,0,0,0.55)';
       ctx.lineWidth = 0.8;
       ctx.beginPath();
-      ctx.moveTo(ex - shape[0] * s, ey + 0.2 * s);
-      ctx.lineTo(ex + shape[0] * s, ey + 0.2 * s);
+      ctx.moveTo(ex - shape[0] * s, ey - 0.3 * s);
+      ctx.lineTo(ex + shape[0] * s, ey - 0.3 * s);
       ctx.stroke();
       return;
     }
@@ -2066,6 +2066,11 @@ export function drawPlayerAvatar(
   const tap = pose === 'wash' ? underTap(neck, s) : null;
   // nel panico (in ufficio arriva il capo) le braccia stanno alzate e si agitano
   const flap = pose === 'panic' ? Math.sin(animTime * 18) * 2.5 * s : 0;
+  // La mano sale alla bocca e si abbassa, con la canna tra le dita.
+  const smokingHand: Pt | null =
+    pose === 'smoke'
+      ? { x: head.x - 3 * s, y: head.y + (6 + (1 - Math.sin(animTime * 2.6)) * 5) * s }
+      : null;
   // al bancone le mani stanno sul piano; per bere una sale col bicchiere fino alla bocca
   const sip: number = (opts && opts.sip) || 0;
   const stoolBack: Pt | null = onStool ? lerpPt(P(4, -14, 35), P(5, -5, 56), sip) : null;
@@ -2086,25 +2091,27 @@ export function drawPlayerAvatar(
                 : sitting
                   ? { x: P(3.5, 11, 20).x + 1 * s, y: P(3.5, 11, 20).y - 1 * s }
                   : null;
-  const handFront: Pt | null = opts?.hands
-    ? opts.hands.front
-    : chairSide
-      ? P(10, 3.5, 21)
-      : onStool
-        ? P(-4, -14, 35)
-        : pose === 'panic'
-          ? { x: neck.x - 9 * s, y: neck.y - 15 * s - flap }
-          : tap
-            ? { x: tap.x - 2.5 * s - rub, y: tap.y + 0.8 * s }
-            : pose === 'wash'
-              ? { x: neck.x - 3 * s - rub, y: hip.y - 5 * s }
-              : reading
-                ? { x: neck.x - 9 * s, y: neck.y + 11 * s }
-                : sitting
-                  ? { x: P(-3.5, 11, 20).x - 1 * s, y: P(-3.5, 11, 20).y - 1 * s }
-                  : null;
+  const handFront: Pt | null = smokingHand
+    ? smokingHand
+    : opts?.hands
+      ? opts.hands.front
+      : chairSide
+        ? P(10, 3.5, 21)
+        : onStool
+          ? P(-4, -14, 35)
+          : pose === 'panic'
+            ? { x: neck.x - 9 * s, y: neck.y - 15 * s - flap }
+            : tap
+              ? { x: tap.x - 2.5 * s - rub, y: tap.y + 0.8 * s }
+              : pose === 'wash'
+                ? { x: neck.x - 3 * s - rub, y: hip.y - 5 * s }
+                : reading
+                  ? { x: neck.x - 9 * s, y: neck.y + 11 * s }
+                  : sitting
+                    ? { x: P(-3.5, 11, 20).x - 1 * s, y: P(-3.5, 11, 20).y - 1 * s }
+                    : null;
   const drawArm = (from: Pt, to: Pt, back: boolean): void => {
-    if (reading) {
+    if (reading || (pose === 'smoke' && !back)) {
       // gomito sotto la spalla, un po' in fuori: il braccio sale di nuovo verso il giornale
       const elbow = { x: from.x + (back ? 2.5 : -2.5) * s, y: neck.y + 16 * s };
       armPiece(from, elbow, back, true);
@@ -2644,6 +2651,21 @@ export function drawPlayerAvatar(
   }
   if (!fromBehind) drawGlasses(head, s, look.glasses);
   drawHat(head, s, look.hat);
+  if (smokingHand) {
+    ctx.strokeStyle = '#efe8d5';
+    ctx.lineWidth = 2 * s;
+    ctx.beginPath();
+    ctx.moveTo(smokingHand.x, smokingHand.y);
+    ctx.lineTo(smokingHand.x + 7 * s, smokingHand.y - 1.5 * s);
+    ctx.stroke();
+    ctx.fillStyle = '#ff7139';
+    ctx.shadowColor = '#ff5722';
+    ctx.shadowBlur = 3 * s;
+    ctx.beginPath();
+    ctx.arc(smokingHand.x + 7 * s, smokingHand.y - 1.5 * s, 1.2 * s, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+  }
   // il casco spaziale (comprato al negozio) si disegna sopra tutto, come una bolla di vetro
   if (look.hat && look.hat.style === 'space') {
     ctx.fillStyle = 'rgba(200,230,255,0.18)';
@@ -2994,11 +3016,6 @@ export function drawSmokePuffs(x: number, y: number, t: number): void {
     ctx.arc(px, py, (3 + k * 7) * s, 0, 6.3);
     ctx.fill();
   }
-  // brace della canna
-  ctx.fillStyle = `rgba(255,120,40,${0.7 + 0.3 * Math.sin(t * 8)})`;
-  ctx.beginPath();
-  ctx.arc(mouth.x + 7 * s, mouth.y + 2 * s, 1.4 * s, 0, 6.3);
-  ctx.fill();
 }
 
 /** Influenza: germi verdi che girano intorno alla testa e un'aria un po' verdognola. */

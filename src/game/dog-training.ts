@@ -1,6 +1,6 @@
 // Addestramento del cane nell'area cani: il padrone va al centro del recinto e fischia, il cane gli
 // si mette davanti e aspetta un comando ("seduto", "dà la zampa"). Se obbedisce e riceve subito
-// il premietto (1 €), la volta dopo obbedirà più spesso. Le probabilità sono in
+// il premietto (1 Đ), la volta dopo obbedirà più spesso. Le probabilità sono in
 // dog-training-rules.ts; il cane libero e il guinzaglio in pets.ts.
 import type { GameValue } from './context.js';
 import { game } from './context.js';
@@ -72,7 +72,7 @@ export function trainingHoldsOwner(): boolean {
 // ---------------------------------------------------------------- pulsanti
 
 export function startDogTraining(): void {
-  if (!canTrain() || session) return;
+  if (!canTrain() || session || performance.now() < game.smokeUntil) return;
   session = {
     phase: 'walk',
     since: now(),
@@ -123,7 +123,7 @@ export function dogCommand(cmd: TrainCommand): void {
   }
 }
 
-/** Premietto da 1 €: insegna qualcosa solo se arriva subito dopo un comando eseguito. */
+/** Premietto da 1 Đ: insegna qualcosa solo se arriva subito dopo un comando eseguito. */
 export async function dogTreat(): Promise<void> {
   const s = session;
   const w = game.dogWalk;
@@ -131,7 +131,7 @@ export async function dogTreat(): Promise<void> {
   if (!s || !w || !dog || (s.phase !== 'ready' && s.phase !== 'act')) return;
   if (s.treatAt >= 0 && now() - s.treatAt < TREAT_S) return;
   if (game.moneyLevel < TREAT_PRICE) {
-    toast(`Ti serve ${TREAT_PRICE} € in cassaforte per il premietto.`);
+    toast(`Ti serve ${TREAT_PRICE} Đ in cassaforte per il premietto.`);
     sfx('error');
     return;
   }

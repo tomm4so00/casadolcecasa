@@ -1,4 +1,4 @@
-// Viaggi sulla luna con il razzo, dopo il primo lancio: biglietto da 500 €, decollo animato
+// Viaggi sulla luna con il razzo, dopo il primo lancio: biglietto da 500 Đ, decollo animato
 // (lo vede chi è lì vicino) e arrivo dall'altra parte; il ritorno è compreso nel biglietto.
 import type { GameValue } from './context.js';
 import { game } from './context.js';
@@ -76,17 +76,17 @@ export async function travelToMoon(): Promise<void> {
   }
   if (game.moneyLevel < MOON_TRIP_PRICE) {
     toast(
-      `🌙 Il biglietto per la luna costa ${MOON_TRIP_PRICE} €: non hai abbastanza soldi in cassaforte.`,
+      `🌙 Il biglietto per la luna costa ${MOON_TRIP_PRICE} Đ: non hai abbastanza soldi in cassaforte.`,
       5000,
     );
     return;
   }
   const res: GameValue = await openDialog({
     title: '🌙 Viaggio sulla luna',
-    text: `Il biglietto costa ${MOON_TRIP_PRICE} € (andata e ritorno).\nSali sul razzo e parti?`,
+    text: `Il biglietto costa ${MOON_TRIP_PRICE} Đ (andata e ritorno).\nSali sul razzo e parti?`,
     buttons: [
       { label: 'Resto qui', value: null, color: '#57606f' },
-      { label: `🚀 Parto (${MOON_TRIP_PRICE} €)`, value: 'ok', color: '#0984e3' },
+      { label: `🚀 Parto (${MOON_TRIP_PRICE} Đ)`, value: 'ok', color: '#0984e3' },
     ],
   });
   if (res.action !== 'ok' || !(await spendMoney(MOON_TRIP_PRICE))) return;

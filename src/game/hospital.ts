@@ -238,7 +238,7 @@ export function tickHospital(delta: number): void {
         if (shift) shift.fine = (shift.fine || 0) + fine;
         mgScore(-1);
         sfx('error');
-        mgPop(`🚑 Tempo scaduto per ${patientName(i)} · −${fine} €`, false);
+        mgPop(`🚑 Tempo scaduto per ${patientName(i)} · −${fine} Đ`, false);
         hud = true;
       }
       return;
@@ -460,7 +460,7 @@ function shockPatient(p: Patient, idx: number): void {
   p.shock = SHOCK_FLASH;
   mgScore(2);
   sfx('shock');
-  mgPop(`⚡ ${patientName(idx)} salvato! +${bonus} €`);
+  mgPop(`⚡ ${patientName(idx)} salvato! +${bonus} Đ`);
   mgHud();
 }
 
@@ -520,7 +520,7 @@ async function careAtBed(s: Shift, idx: number): Promise<void> {
   s.cured++;
   mgScore(1);
   sfx('coin');
-  mgPop(`✅ ${reading(done)} · +${perItem} €`);
+  mgPop(`✅ ${reading(done)} · +${perItem} Đ`);
   mgHud();
 }
 

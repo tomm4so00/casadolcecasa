@@ -147,11 +147,11 @@ export async function showGraveInfo(item?: GameValue): Promise<GameValue> {
       : '');
   const buttons: GameValue = [{ label: 'Chiudi', value: null, color: '#57606f' }];
   if (!item.hasVisited)
-    buttons.push({ label: '💐 Lascia dei fiori (5 €)', value: 'flowers', color: '#e84393' });
+    buttons.push({ label: '💐 Lascia dei fiori (5 Đ)', value: 'flowers', color: '#e84393' });
   const res: GameValue = await openDialog({ title: `⚰️ ${item.who}`, text, buttons });
   if (res.action === 'flowers') {
     if (game.moneyLevel < 5) {
-      toast('Non hai abbastanza soldi: servono 5 € in cassaforte.');
+      toast('Non hai abbastanza soldi: servono 5 Đ in cassaforte.');
       return;
     }
     if (!(await spendMoney(5))) return;

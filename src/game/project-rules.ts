@@ -15,7 +15,7 @@ export const PROJECTS: Record<ProjectId, ProjectDef> = {
     id: 'rocket',
     name: 'Razzo spaziale 🚀',
     description:
-      'Costruiamo insieme un razzo nella zona esterna del laboratorio. Con 5.000 € iniziano i lavori e si vedono i primi pezzi; con altri 10.000 € il razzo è completo e si può premere il pulsante rosso per lanciarlo!',
+      'Costruiamo insieme un razzo nella zona esterna del laboratorio. Con 5.000 Đ iniziano i lavori e si vedono i primi pezzi; con altri 10.000 Đ il razzo è completo e si può premere il pulsante rosso per lanciarlo!',
     stages: [
       { at: 5000, label: 'Lavori iniziati: primi pezzi del razzo' },
       { at: 15000, label: 'Razzo completo' },
@@ -25,7 +25,7 @@ export const PROJECTS: Record<ProjectId, ProjectDef> = {
     id: 'moonbase',
     name: 'Base spaziale lunare 🌙',
     description:
-      'Dopo il razzo, costruiamo una base sulla luna! Con 15.000 € partono i lavori e sulla luna compaiono i primi moduli; a 30.000 € la base è a metà, a 45.000 € è completa. Nel laboratorio uno schermo la trasmette in diretta.',
+      'Dopo il razzo, costruiamo una base sulla luna! Con 15.000 Đ partono i lavori e sulla luna compaiono i primi moduli; a 30.000 Đ la base è a metà, a 45.000 Đ è completa. Nel laboratorio uno schermo la trasmette in diretta.',
     stages: [
       { at: 15000, label: 'Lavori avviati: primi moduli della base' },
       { at: 30000, label: 'Base a metà: secondo modulo e antenna' },
@@ -81,9 +81,9 @@ export function donationError(
 ): string | null {
   const left = projectGoal(p) - funded;
   if (left <= 0) return 'Il progetto è già completo!';
-  if (!Number.isSafeInteger(amount) || amount <= 0) return 'Scrivi un numero intero di euro.';
-  if (amount < MIN_DONATION && amount < left) return `Il versamento minimo è di ${MIN_DONATION} €.`;
-  if (amount > left) return `Per completare il progetto mancano solo ${left} €.`;
+  if (!Number.isSafeInteger(amount) || amount <= 0) return 'Scrivi un numero intero di dindini.';
+  if (amount < MIN_DONATION && amount < left) return `Il versamento minimo è di ${MIN_DONATION} Đ.`;
+  if (amount > left) return `Per completare il progetto mancano solo ${left} Đ.`;
   if (amount > money) return 'Non hai abbastanza soldi in cassaforte.';
   return null;
 }

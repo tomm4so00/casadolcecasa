@@ -11,7 +11,7 @@ import {
 } from '../src/game/safe-pin';
 
 describe('cassaforte a muro e livelli', () => {
-  it('il negozio di mobili vende la cassaforte livello 2 a 850 €', () => {
+  it('il negozio di mobili vende la cassaforte livello 2 a 850 Đ', () => {
     const def = FURNITURE_CATALOG.find((f) => f.id === SAFE_LEVEL2_ID)!;
     expect(def).toBeDefined();
     expect(def.price).toBe(850);

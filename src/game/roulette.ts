@@ -204,10 +204,10 @@ function announce(n: number, bets: Bets, won: number): void {
   const name = `${n} ${color === 'red' ? '🔴' : color === 'black' ? '⚫' : '🟢'}`;
   if (won > 0) {
     sfx('success');
-    toast(`🎡 È uscito ${name}: hai vinto ${won} €! (puntati ${spent} €)`, 5000);
+    toast(`🎡 È uscito ${name}: hai vinto ${won} Đ! (puntati ${spent} Đ)`, 5000);
   } else {
     sfx('error');
-    toast(`🎡 È uscito ${name}: hai perso ${spent} €.`, 4000);
+    toast(`🎡 È uscito ${name}: hai perso ${spent} Đ.`, 4000);
   }
 }
 
@@ -289,7 +289,7 @@ async function withdraw(): Promise<void> {
   }
   setPending(pending().filter((r) => r !== p.round));
   await creditMoney(total);
-  toast(`↩️ Puntate ritirate: ${total} € di nuovo in cassaforte.`, 3000);
+  toast(`↩️ Puntate ritirate: ${total} Đ di nuovo in cassaforte.`, 3000);
 }
 
 /** Rifà le puntate dell'ultimo giro giocato. */
@@ -434,14 +434,14 @@ function render(): void {
       const t = totalOf(e.bets);
       const line = Object.entries(e.bets)
         .slice(0, 3)
-        .map(([k, v]) => `${v} € ${betLabel(k)}`)
+        .map(([k, v]) => `${v} Đ ${betLabel(k)}`)
         .join(', ');
       const res = p.phase === 'show' && n !== undefined ? payout(e.bets, n) : null;
-      return `<li>${pid === me() ? '👉 ' : ''}<b>${escape(e.nick)}</b>: ${t} €${line ? ` <small>(${escape(line)}${Object.keys(e.bets).length > 3 ? '…' : ''})</small>` : ''}${
+      return `<li>${pid === me() ? '👉 ' : ''}<b>${escape(e.nick)}</b>: ${t} Đ${line ? ` <small>(${escape(line)}${Object.keys(e.bets).length > 3 ? '…' : ''})</small>` : ''}${
         res === null
           ? ''
           : res > 0
-            ? ` <span class="rl-win">+${res} €</span>`
+            ? ` <span class="rl-win">+${res} Đ</span>`
             : ' <span class="rl-lose">perso</span>'
       }</li>`;
     })
@@ -477,7 +477,7 @@ function render(): void {
       .querySelectorAll<HTMLElement>('[data-chip]')
       .forEach((b) => b.classList.toggle('active', Number(b.dataset.chip) === chip));
     modal.querySelector('.rl-mine')!.textContent =
-      `Le tue puntate: ${totalOf(mine)} € (max ${MAX_ROUND_BET}) · in cassaforte ${game.moneyLevel} €`;
+      `Le tue puntate: ${totalOf(mine)} Đ (max ${MAX_ROUND_BET}) · in cassaforte ${game.moneyLevel} Đ`;
   }
   // barra del tempo della fase
   const bar = modal.querySelector<HTMLElement>('.rl-bar > div');

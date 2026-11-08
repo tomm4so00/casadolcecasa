@@ -25,11 +25,13 @@ export interface SaveV8 {
   missionSet?: number;
   sleeping?: boolean;
   sleepGainedSinceLastHealthBoost?: number;
+  needsZeroSince?: number;
   currentOutfitColor?: string;
   equippedAcc?: Record<string, boolean>;
   body?: string;
   drugStock?: number;
   stonedUntil?: number;
+  jointReadyAt?: number;
   coffeeAt?: number;
   toiletAt?: number;
   invest?: Record<string, { units: number; cost: number }>;
@@ -38,6 +40,7 @@ export interface SaveV8 {
   epitaph?: string;
   dead?: boolean;
   deadAt?: number;
+  deathCause?: string;
   inventory?: { hasFood: boolean; foodCooked: boolean };
   romance?: unknown;
   relations?: unknown;
@@ -109,11 +112,13 @@ export function decodeSaveV8(value: unknown): ValidatedSave | null {
         'missionSet',
         'drugStock',
         'stonedUntil',
+        'jointReadyAt',
         'coffeeAt',
         'toiletAt',
         'bornAt',
         'deadAt',
         'sleepGainedSinceLastHealthBoost',
+        'needsZeroSince',
       ],
       nonnegative,
     )
@@ -126,7 +131,7 @@ export function decodeSaveV8(value: unknown): ValidatedSave | null {
   if (
     !optionalFields(
       value,
-      ['nick', 'body', 'epitaph', 'currentOutfitColor'],
+      ['nick', 'body', 'epitaph', 'currentOutfitColor', 'deathCause'],
       (entry) => typeof entry === 'string' && entry.length <= 200,
     )
   )

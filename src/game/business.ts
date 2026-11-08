@@ -53,7 +53,7 @@ export function bizBuild(..._args: GameValue[]): GameValue {
           <canvas id="biz-c-${b.id}" width="320" height="56" style="width:100%;height:56px;background:rgba(0,0,0,0.25);border-radius:6px;"></canvas>
           <div id="biz-x-${b.id}" style="font-size:0.75rem;color:#aaa;"></div>
           <div id="biz-m-${b.id}" style="font-size:0.8rem;"></div>
-          <div style="display:flex;gap:8px;"><button type="button" class="btn-buy" style="background:#2ed573;flex:1;" data-action="bizInvest" data-arg="${b.id}">💶 Investi</button><button type="button" class="btn-buy" id="biz-w-${b.id}" style="background:#e74c3c;flex:1;" data-action="bizWithdraw" data-arg="${b.id}">💰 Ritira</button></div>`;
+          <div style="display:flex;gap:8px;"><button type="button" class="btn-buy" style="background:#2ed573;flex:1;" data-action="bizInvest" data-arg="${b.id}">🪙 Investi</button><button type="button" class="btn-buy" id="biz-w-${b.id}" style="background:#e74c3c;flex:1;" data-action="bizWithdraw" data-arg="${b.id}">💰 Ritira</button></div>`;
     box.appendChild(c);
   });
   game.bizBuilt = true;
@@ -112,7 +112,7 @@ export function bizUpdate(..._args: GameValue[]): GameValue {
   });
   const pl: GameValue = tot - cost;
   dom('biz-sum').innerHTML =
-    `Cassaforte: <b>${game.moneyLevel} €</b> · Investito ora: <b>${game.fmtEur(tot)}</b> <span style="color:${pl >= 0 ? '#2ed573' : '#ff4757'}">(${pl >= 0 ? '+' : ''}${game.fmtEur(pl)})</span>`;
+    `Cassaforte: <b>${game.moneyLevel} Đ</b> · Investito ora: <b>${game.fmtEur(tot)}</b> <span style="color:${pl >= 0 ? '#2ed573' : '#ff4757'}">(${pl >= 0 ? '+' : ''}${game.fmtEur(pl)})</span>`;
 }
 
 /** Quanto spinge la quotazione l'attività dei giocatori nel gioco (shared/activity.ts). */
@@ -135,11 +135,11 @@ function crowdText(
   const flow = q.flow || 0;
   const trend =
     flow > 0
-      ? `<span style="color:#2ed573">▲ si compra (+${flow.toLocaleString('it-IT')} €)</span>`
+      ? `<span style="color:#2ed573">▲ si compra (+${flow.toLocaleString('it-IT')} Đ)</span>`
       : flow < 0
-        ? `<span style="color:#ff4757">▼ si vende (${flow.toLocaleString('it-IT')} €)</span>`
+        ? `<span style="color:#ff4757">▼ si vende (${flow.toLocaleString('it-IT')} Đ)</span>`
         : '<span>= stabile</span>';
-  return `👥 Investiti da tutti: <b>${total.toLocaleString('it-IT')} €</b> (${q.holders || 0} ${q.holders === 1 ? 'giocatore' : 'giocatori'}) · ${trend}`;
+  return `👥 Investiti da tutti: <b>${total.toLocaleString('it-IT')} Đ</b> (${q.holders || 0} ${q.holders === 1 ? 'giocatore' : 'giocatori'}) · ${trend}`;
 }
 
 export function openBizSite(..._args: GameValue[]): GameValue {
@@ -157,8 +157,8 @@ export async function bizInvest(id: BusinessId): Promise<void> {
   if (!b) return;
   const res = await openDialog({
     title: `${b.emoji} Investi in ${b.name}`,
-    text: `Disponibili in cassaforte: ${game.moneyLevel} €\n${b.risk}. Il valore sale e scende nel tempo: puoi anche perdere soldi.\nCommissione: ${Math.round(TRADE_FEE * 100)}%. Quando tanti giocatori comprano il prezzo sale, quando vendono scende.`,
-    input: { placeholder: 'Importo in €', numeric: true, maxLength: 6 },
+    text: `Disponibili in cassaforte: ${game.moneyLevel} Đ\n${b.risk}. Il valore sale e scende nel tempo: puoi anche perdere soldi.\nCommissione: ${Math.round(TRADE_FEE * 100)}%. Quando tanti giocatori comprano il prezzo sale, quando vendono scende.`,
+    input: { placeholder: 'Importo in Đ', numeric: true, maxLength: 6 },
     buttons: [
       { label: 'Annulla', value: null, color: '#57606f' },
       { label: 'Investi', value: 'ok', color: '#27ae60' },
@@ -191,10 +191,10 @@ export async function bizInvest(id: BusinessId): Promise<void> {
     }))
   )
     return;
-  toast(`✅ Hai investito ${amt} € in ${b.name}`);
+  toast(`✅ Hai investito ${amt} Đ in ${b.name}`);
   if (amt >= 1000)
     postGossip(
-      `${game.player.myData.nick} ha investito ${amt.toLocaleString('it-IT')} € in ${b.name} 📈 Chissà cosa sa…`,
+      `${game.player.myData.nick} ha investito ${amt.toLocaleString('it-IT')} Đ in ${b.name} 📈 Chissà cosa sa…`,
     );
   notePersonality('invest');
   saveGame(true);
@@ -221,7 +221,7 @@ export async function bizWithdraw(id: BusinessId): Promise<void> {
   const res = await openDialog({
     title: `${b.emoji} Ritira da ${b.name}`,
     text: `Valore attuale: ${game.fmtEur(val)}\nSu quello che ritiri c'è una commissione dell'${Math.round(TRADE_FEE * 100)}%.`,
-    input: { placeholder: 'Importo in €', numeric: true, maxLength: 7 },
+    input: { placeholder: 'Importo in Đ', numeric: true, maxLength: 7 },
     buttons: [
       { label: 'Annulla', value: null, color: '#57606f' },
       { label: 'Ritira tutto', value: 'all', color: '#e67e22' },
@@ -259,7 +259,7 @@ export async function bizWithdraw(id: BusinessId): Promise<void> {
   )
     return;
   const amt = amount;
-  toast(`💰 Hai ritirato ${amt} € da ${b.name}`);
+  toast(`💰 Hai ritirato ${amt} Đ da ${b.name}`);
   saveGame(true);
   bizUpdate();
 }

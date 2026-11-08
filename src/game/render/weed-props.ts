@@ -160,7 +160,7 @@ export function drawStrainDisplay(it?: GameValue, t?: GameValue): GameValue {
     ctx.fillStyle = '#2e7d32';
     ctx.font = 'bold 6px sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText(`${st.price} €`, W / 2, H / 2 + 2);
+    ctx.fillText(`${st.price} Đ`, W / 2, H / 2 + 2);
   });
   box(it.x, it.y, 22, 22, 14, '#b5651d', { z0: 22, top: '#4e342e' });
   drawWeedPlant(it.x, it.y, 36, it.strain, 1, t || 0);

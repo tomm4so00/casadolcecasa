@@ -74,7 +74,7 @@ describe('roulette: puntate e vincite', () => {
     expect(payout(bets, 30)).toBe(20 * 2 + 5 * 3); // rosso, terza dozzina
     expect(payout(bets, 0)).toBe(0);
   });
-  it('fiches valide, al massimo 500 € a giro e solo con i soldi in cassaforte', () => {
+  it('fiches valide, al massimo 500 Đ a giro e solo con i soldi in cassaforte', () => {
     expect(addChip({}, 'red', 25, 100)).toEqual({ bets: { red: 25 } });
     expect(addChip({ red: 25 }, 'red', 10, 100)).toEqual({ bets: { red: 35 } });
     expect(addChip({}, 'red', 7, 100)).toHaveProperty('error');

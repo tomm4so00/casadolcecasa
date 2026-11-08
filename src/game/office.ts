@@ -297,12 +297,12 @@ function nextRequest(o: Office, b: Boss): void {
       const shift: GameValue = game.activeShift;
       const bonus = bossBonus(shift?.perItem ?? 0);
       if (shift) shift.tips = (shift.tips || 0) + bonus;
-      mgPop(`😌 Il capo è soddisfatto: bonus +${bonus} €`);
+      mgPop(`😌 Il capo è soddisfatto: bonus +${bonus} Đ`);
     } else {
       const shift: GameValue = game.activeShift;
       const fine = bossFine(shift?.perItem ?? 0);
       if (shift) shift.fine = (shift.fine || 0) + fine;
-      mgPop(`💢 Il capo se ne va scontento: multa −${fine} €`, false);
+      mgPop(`💢 Il capo se ne va scontento: multa −${fine} Đ`, false);
     }
   }
   mgHud();
@@ -453,7 +453,7 @@ export function officeInteract(item: GameValue): void {
     if (shift) shift.delivered = (shift.delivered || 0) + 1;
     mgScore(1);
     sfx('coin');
-    mgPop(`📄 Stampa consegnata +${perItem} €`);
+    mgPop(`📄 Stampa consegnata +${perItem} Đ`);
   } else if (item.kind === 'boss' && o.boss) {
     const req = currentRequest();
     const ok = req && (req.kind === 'print' ? c?.id === 'foglio' : c?.id === req.id);
@@ -463,7 +463,7 @@ export function officeInteract(item: GameValue): void {
     if (shift) shift.delivered = (shift.delivered || 0) + 1;
     mgScore(1);
     sfx('coin');
-    mgPop(`😤 Il capo prende: +${perItem} €`);
+    mgPop(`😤 Il capo prende: +${perItem} Đ`);
     nextRequest(o, o.boss);
   }
   refreshMap();

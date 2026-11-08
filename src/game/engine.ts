@@ -79,7 +79,8 @@ import { overlapsCorridor } from './room-layout.js';
 import { approachKissPartner, drawKissHearts, kissActive } from './romance.js';
 import { faintAmount } from './faint.js';
 import { fadeOnRoomChange, updateCamera } from './camera.js';
-import { isStoned } from './weed.js';
+import { isStoned, isSmoking } from './weed.js';
+import { jointSpeed } from './joint-rules.js';
 import { officeSpeed } from './office.js';
 import { applyRoomBounds } from './room-size.js';
 import { presenceState } from './presence-rules.js';
@@ -173,7 +174,13 @@ export function getSolidObstacles(..._args: GameValue[]): GameValue {
       (k?: GameValue): GameValue =>
         !k.startsWith('door') && k !== 'exitHouse' && k !== game.movingPropKey && !map[k].wallItem,
     )
-    .map((k?: GameValue): GameValue => footprintOf(map[k]))
+    .map((k?: GameValue): GameValue => {
+      const fp = footprintOf(map[k]);
+      // Il piano della banca sporge: ai lati serve spazio anche per le spalle del personaggio.
+      return game.view.activeEnvironment === 'banca' && k === 'bankCounter'
+        ? { ...fp, w: fp.w + 24, h: fp.h + 6 }
+        : fp;
+    })
     .filter(
       (o?: GameValue): GameValue =>
         game.view.activeEnvironment !== 'PLAYER_ROOM' || !overlapsCorridor(o),
@@ -228,7 +235,10 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
   }
   // stanco = più lento; in ufficio anche disidratati
   const speed: GameValue =
-    (game.isSprinting ? 220 : 130) * (game.player.sleepLevel < 20 ? 0.6 : 1) * officeSpeed();
+    (game.isSprinting ? 220 : 130) *
+    (game.player.sleepLevel < 20 ? 0.6 : 1) *
+    officeSpeed() *
+    jointSpeed(game.player.stonedUntil, Date.now());
   // sulla luna il terreno è convesso
   // luna: sfera di raggio 800 (abbastanza grande che l'angolo in fondo non finisca oltre l'orizzonte)
   game.moonCurve = game.view.activeEnvironment === 'luna' ? 1 / 1600 : 0;
@@ -289,6 +299,7 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
     !game.isMovingFurnitureMode &&
     !kissActive() &&
     !petHoldsOwner() &&
+    !isSmoking() &&
     !faintAmount() &&
     (game.moveRight !== 0 || game.moveForward !== 0)
   ) {
@@ -587,7 +598,7 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
               game.bedSlot,
               cabinetPlayerPose()?.dir ||
                 benchWalkDir() || { x: game.moveRight, y: -game.moveForward },
-              myBathPose() || myBenchPose(),
+              isSmoking() ? 'smoke' : myBathPose() || myBenchPose(),
               myBarDrinkOpts() ||
                 (cabinetPlayerPose()?.back ? { back: true } : null) ||
                 (sit?.kind === 'sofa' && sit.pose === 'bench'
@@ -814,7 +825,8 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
     );
     addPile(s.look, und);
     if (act === 'wash') game.frameSinkRunning = true;
-    const pose: string = act === 'sit' || act === 'wash' || SEATED_ACTS.includes(act) ? act : '';
+    const pose: string =
+      act === 'sit' || act === 'wash' || act === 'smoke' || SEATED_ACTS.includes(act) ? act : '';
     // seduto su una sedia: si disegna con la sedia più vicina (vedi drawChair)
     const othersChair: GameValue =
       state !== 'fainted' &&

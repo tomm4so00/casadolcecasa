@@ -5,7 +5,15 @@ import { isValidPin, pinHint } from './safe-pin.js';
 import { startNewLife } from './rebirth.js';
 import { clockText, dayNumber, isNight, realHour } from './game-clock.js';
 import { spendMoney } from './economy.js';
+import { inventoryChange, tickInventoryMarket } from './inventory-market.js';
+import { updateInventoryTrade } from './inventory-trade.js';
 import { advanceNeeds } from './simulation.js';
+import {
+  decodeDeathCauses,
+  deathCauseText,
+  deathCauses,
+  encodeDeathCauses,
+} from './death-cause-rules.js';
 import { needsRules } from './needs-rules.js';
 import type { GameValue } from './context.js';
 import { game } from './context.js';
@@ -17,6 +25,7 @@ import {
   hashPin,
   normalizeRooms,
   withTimeout,
+  saveGame,
 } from './saves.js';
 import { mgStop, updateShift } from './jobs.js';
 import { openDialog, writeGrave } from './interface.js';
@@ -28,6 +37,7 @@ import { isoProject, isoScale } from './render/primitives.js';
 import { sfx } from './audio.js';
 import { updateFlu } from './flu.js';
 import { updatePetHud } from './pets.js';
+import { updateInventory } from './inventory.js';
 import { welcomeTeachesPin } from './welcome.js';
 import { worldNode } from './world-db.js';
 export async function reapAbsentPlayers(..._args: GameValue[]): Promise<GameValue> {
@@ -66,6 +76,7 @@ export async function reapAbsentPlayers(..._args: GameValue[]): Promise<GameValu
       const deadAt: GameValue = g.lastSeen + game.ABSENT_DEATH_ESTIMATE_MS;
       await game.session.db.ref('sims_saves/' + g.id + '/dead').set(true);
       await game.session.db.ref('sims_saves/' + g.id + '/deadAt').set(deadAt);
+      await game.session.db.ref('sims_saves/' + g.id + '/deathCause').set('abandoned');
       const grave: GameValue = {
         name: g.name,
         deadAt,
@@ -87,6 +98,13 @@ export async function die(..._args: GameValue[]): Promise<GameValue> {
   game.player.isDead = true;
   // chi è morto mentre era via ha già il suo momento (vedi loadGame)
   game.player.deadAt = game.player.deadAt || Date.now();
+  // morto adesso, giocando: il motivo si guarda ora (chi muore a gioco chiuso ce l'ha già)
+  if (!game.player.deathCause) {
+    const onMoon = game.view.activeEnvironment === 'luna' && !game.rocketTrip;
+    game.player.deathCause = encodeDeathCauses(
+      deathCauses(game.player, game.player.deadAt, onMoon),
+    );
+  }
   game.player.isSleeping = false;
   game.activeShift = null;
   game.showerAnim = null;
@@ -196,7 +214,9 @@ export function showDeathScreen(..._args: GameValue[]): GameValue {
     '<h1 style="margin:12px 0 6px;font-size:28px">' +
     escapeHtmlSafe(game.player.myData.nick) +
     ' è morto</h1>' +
-    '<p style="max-width:380px;line-height:1.5;opacity:.85">La salute è arrivata a zero: il personaggio non ce l\'ha fatta. Ha vissuto fino al giorno ' +
+    '<p style="max-width:380px;line-height:1.5;opacity:.85">' +
+    escapeHtmlSafe(deathCauseText(decodeDeathCauses(game.player.deathCause))) +
+    '<br>Ha vissuto fino al giorno ' +
     days +
     '.' +
     (when ? '<br>' + when : '') +
@@ -253,7 +273,7 @@ export async function faint(..._args: GameValue[]): Promise<void> {
   dom('btn-return-home').classList.remove('hidden');
   openDialog({
     title: '🚑 Sei svenuto!',
-    text: `La tua salute è arrivata a zero. Ti hanno portato in ospedale e le cure sono costate ${fee} €.\n\nRicordati di mangiare, dormire e lavarti!`,
+    text: `La tua salute è arrivata a zero. Ti hanno portato in ospedale e le cure sono costate ${fee} Đ.\n\nRicordati di mangiare, dormire e lavarti!`,
     buttons: [{ label: 'Ok', value: 'ok' }],
   });
 }
@@ -296,30 +316,22 @@ export async function openDealer(..._args: GameValue[]): Promise<GameValue> {
   const res: GameValue = await openDialog({
     title: '🕴️ Lo spacciatore',
     text:
-      `«Psst… hai l'aria di uno che vuole dimenticare i problemi.»\n\nUna dose costa ${game.DRUG_PRICE} €. Dà euforia subito (+${game.DRUG_EUPHORIA}% felicità), ma crea dipendenza: la salute scende più in fretta per giorni e, se la dipendenza arriva a 100%, è molto peggio. Più dosi compri, più dura.` +
+      `«Psst… cerchi qualcosa?»\n\nUna dose costa ${game.DRUG_PRICE} Đ e finisce nello zaino: puoi conservarla, scambiarla o assumerla da lì.\n\nSe la assumi dà +${game.DRUG_EUPHORIA}% felicità, ma crea dipendenza e fa scendere la salute per giorni. Più dosi assumi, più a lungo durano gli effetti negativi.` +
       (game.player.drug.active ? `\n\nDipendenza attuale: ${Math.round(v)}%.` : '') +
       (game.player.drugStock ? `\nDosi che hai con te: ${game.player.drugStock}.` : ''),
     buttons: [
       { label: 'Vai via', value: null, color: '#57606f' },
-      { label: `Compra da portare via (${game.DRUG_PRICE} €)`, value: 'stock', color: '#6c5ce7' },
-      { label: `Compra e assumi (${game.DRUG_PRICE} €)`, value: 'buy', color: '#8e44ad' },
+      { label: `Compra (${game.DRUG_PRICE} Đ)`, value: 'buy', color: '#6c5ce7' },
     ],
   });
-  if (res.action !== 'buy' && res.action !== 'stock') return;
+  if (res.action !== 'buy') return;
   if (game.moneyLevel < game.DRUG_PRICE) {
-    toast(`Non hai abbastanza soldi: servono ${game.DRUG_PRICE} € in cassaforte.`);
+    toast(`Non hai abbastanza soldi: servono ${game.DRUG_PRICE} Đ in cassaforte.`);
     return;
   }
-  if (!(await spendMoney(game.DRUG_PRICE))) return;
-  if (res.action === 'stock') {
-    game.player.drugStock++;
-    toast(
-      `💊 Hai comprato una dose da portare via (ne hai ${game.player.drugStock}). Puoi regalarla a un altro giocatore.`,
-      4500,
-    );
-    return;
-  }
-  drugTake();
+  if (!(await inventoryChange((ledger) => ledger.buy('drug', 1, game.DRUG_PRICE)))) return;
+  await saveGame(true);
+  toast(`💊 Hai comprato una dose: la trovi nello zaino (${game.player.drugStock} dosi).`, 4500);
 }
 
 export function drugTake(..._args: GameValue[]): GameValue {
@@ -582,8 +594,11 @@ export function updateNeeds(delta?: GameValue): GameValue {
   updateDrugHud();
   updateFlu();
   updatePetHud();
-  // Sotto i 1000 € in cassaforte la barra si riempie solo di verde, verso 1000 €.
-  // Da 1000 € in su è piena e divisa in proporzione: verde cassaforte, azzurro banca.
+  updateInventory();
+  tickInventoryMarket();
+  updateInventoryTrade();
+  // Sotto i 1000 Đ in cassaforte la barra si riempie solo di verde, verso 1000 Đ.
+  // Da 1000 Đ in su è piena e divisa in proporzione: verde cassaforte, azzurro banca.
   const bankMoney: number = game.bankBalance || 0;
   const totalMoney: number = game.moneyLevel + bankMoney;
   const vaultFull: boolean = game.moneyLevel >= 1000;
@@ -592,8 +607,8 @@ export function updateNeeds(delta?: GameValue): GameValue {
     : (game.moneyLevel / 1000) * 100;
   dom('money-bar-fill').style.width = vaultWidth + '%';
   dom('bank-bar-fill').style.width = (vaultFull ? 100 - vaultWidth : 0) + '%';
-  dom('money-text').innerText = '🔐 ' + game.moneyLevel + ' €';
-  dom('bank-text').innerText = '🏦 ' + bankMoney + ' €';
+  dom('money-text').innerText = '🔐 ' + game.moneyLevel + ' Đ';
+  dom('bank-text').innerText = '🏦 ' + bankMoney + ' Đ';
   // Chiede il PIN solo quando i soldi salgono oltre l'ultima richiesta (prima chiedeva ad ogni frame)
   if (
     game.session.saveReady &&

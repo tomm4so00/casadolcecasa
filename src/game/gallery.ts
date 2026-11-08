@@ -71,7 +71,7 @@ export const viewGalleryPiece = (slot: number): void => {
 // ---------------------------------------------------------------- scheda e catalogo
 
 const isMine = (a: Auction) => a.by === game.session.myPlayerId;
-const euro = (n: number) => `${n.toLocaleString('it-IT')} €`;
+const dindini = (n: number) => `${n.toLocaleString('it-IT')} Đ`;
 
 /** Il quadro dipinto su un canvas grande `w`×`h` (i quadretti restano netti). */
 function canvasOf(code: string, w: number, h: number): HTMLCanvasElement {
@@ -112,7 +112,7 @@ function actionButtons(a: Auction): HTMLElement[] {
 
 const bestOffer = (a: Auction) =>
   a.bid
-    ? `Offerta migliore: ${euro(a.bid.amt)} (${a.bid.by === game.session.myPlayerId ? 'tu' : escapeHtml(a.bid.name)})`
+    ? `Offerta migliore: ${dindini(a.bid.amt)} (${a.bid.by === game.session.myPlayerId ? 'tu' : escapeHtml(a.bid.name)})`
     : 'Nessuna offerta: fai la prima!';
 
 /** Il quadro da vicino, come una scheda di museo; si aggiorna con cuoricini e offerte. */

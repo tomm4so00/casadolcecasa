@@ -110,7 +110,7 @@ export function wallGalleryPainting(d: GameValue): void {
     ctx.textAlign = 'right';
     ctx.fillStyle = '#2d3436';
     ctx.font = '4px sans-serif';
-    ctx.fillText(`${piece.bid.amt.toLocaleString('it-IT')} €`, lx + lw - 3, ly + 15, lw / 2);
+    ctx.fillText(`${piece.bid.amt.toLocaleString('it-IT')} Đ`, lx + lw - 3, ly + 15, lw / 2);
   }
 }
 

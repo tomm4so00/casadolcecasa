@@ -94,6 +94,8 @@ async function worldExists(code: string): Promise<boolean> {
  * stanza in un altro mondo la porta con sé e quella di prima torna libera. 'full' se non c'è posto.
  */
 async function moveIntoWorld(code: string, carryFrom: string | null): Promise<'ok' | 'full'> {
+  if (carryFrom && carryFrom !== code && hasRoom())
+    await (await import('./inventory-market.js')).settleInventoryTrades();
   const db = game.session.db;
   const me = game.session.myPlayerId;
   const nick = game.player.myData.nick;

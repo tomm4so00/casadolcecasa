@@ -268,7 +268,7 @@ function drawFridgeInterior(ctx: GameValue, W: number, H: number, light: number,
   });
   shelf(s2);
 
-  // ripiano basso: il piatto pronto da 5 € (sparisce quando lo prendi) e le uova
+  // ripiano basso: il piatto pronto da 5 Đ (sparisce quando lo prendi) e le uova
   if (hasMeal) {
     ctx.fillStyle = 'rgba(255,255,255,0.75)';
     roundRect(ctx, W * 0.1, s3 - 9, 22, 9, 2);

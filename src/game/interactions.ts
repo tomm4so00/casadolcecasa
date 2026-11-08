@@ -7,7 +7,8 @@ import { DOOR_OPEN_RADIUS, resetDoors, setBlockedDoor } from './render/doors.js'
 import { servicePrompt } from './restaurant.js';
 import { hospitalPrompt } from './hospital.js';
 import { officePrompt } from './office.js';
-import { buyPlant, plantLabel, smokeJoint, tendPlant } from './weed.js';
+import { buyPlant, plantLabel, isSmoking, tendPlant } from './weed.js';
+import { openInventory } from './inventory.js';
 import { PETS, PET_FOOD_PRICE, type PetKind, toPetCalled } from './pet-rules.js';
 import { PET_OF_KEY, buyPet, dogGatePrompt, feed, giveUpForAdoption, useDogGate } from './pets.js';
 import {
@@ -196,7 +197,7 @@ const KITCHEN: Place = {
       if (!game.view.fridgeIsOpen) return { text: '🧊 Apri Frigorifero' };
       return {
         text: '🧊 Chiudi Frigorifero',
-        sub: game.player.hasFoodInInventory ? undefined : '🍎 Prendi Cibo (-5 €)',
+        sub: game.player.hasFoodInInventory ? undefined : '🍎 Prendi Cibo (-5 Đ)',
       };
     }
     if (key === 'stove') {
@@ -264,7 +265,7 @@ const PLAYER_ROOM: Place = {
     if (key === 'weedJar')
       return {
         text: mine
-          ? `🚬 Fuma una canna (${game.player.weed?.grams || 0} g)`
+          ? `🎒 Apri lo zaino (${game.player.weed?.grams || 0} g di erba)`
           : '🌿 Barattolo di erba',
         locked: !mine,
       };
@@ -280,7 +281,7 @@ const PLAYER_ROOM: Place = {
     if (item.pet && PET_OF_KEY[key] && mine) {
       const kind = item.pet as PetKind;
       return {
-        text: `🍖 Dai da mangiare ${toPetCalled(kind, game.player.pets?.[kind])} (${PET_FOOD_PRICE} €)`,
+        text: `🍖 Dai da mangiare ${toPetCalled(kind, game.player.pets?.[kind])} (${PET_FOOD_PRICE} Đ)`,
         sub: kind === 'dog' ? '🦮 Porta a spasso' : undefined,
       };
     }
@@ -306,7 +307,7 @@ const PLAYER_ROOM: Place = {
       if (isMyRoomNow()) tendPlant();
       else toast('🌱 Questa pianta non è tua!');
     } else if (key === 'weedJar') {
-      if (isMyRoomNow()) smokeJoint();
+      if (isMyRoomNow()) openInventory();
       else toast('🚫 Questo barattolo non è tuo!');
     } else if (key === 'bed') {
       if (!game.player.isSleeping) {
@@ -366,7 +367,7 @@ const CORTILE: Place = {
     if (item.fun === 'gossip') return { text: '📰 Leggi i pettegolezzi del condominio' };
     if (item.fun === 'fountain')
       return {
-        text: `⛲ Lancia una moneta nella fontana (${COIN_PRICE} €)`,
+        text: `⛲ Lancia una moneta nella fontana (${COIN_PRICE} Đ)`,
         locked: !!game.coinToss,
       };
     const mine: GameValue = hasRoom() && game.aptOfRoom(game.myAssignedRoomIdx) === item.aptIdx;
@@ -415,7 +416,7 @@ const MALL: Place = {
       return {
         text: game.iceCream
           ? '🍦 Stai mangiando il gelato…'
-          : `🍦 Compra un gelato (${ICE_CREAM_PRICE} €)`,
+          : `🍦 Compra un gelato (${ICE_CREAM_PRICE} Đ)`,
         locked: !!game.iceCream,
       };
     return { text: item.enter ? `🚪 Entra: ${item.name}` : '🏠 Torna a casa' };
@@ -455,7 +456,7 @@ const FURNITURE_SHOP = shop(
     );
     if (!next) return { text: `✅ Già posseduto (Versione Lusso)`, locked: true };
     const icon = { std: '🛒', premium: '💎', lux: '✨' }[tierOf(next)];
-    return { text: `${icon} Acquista ${next.name} (${next.price} €)` };
+    return { text: `${icon} Acquista ${next.name} (${next.price} Đ)` };
   },
   async (key, item) => {
     if (key === 'shopCounter') {
@@ -472,7 +473,7 @@ const FURNITURE_SHOP = shop(
     // nello showroom si compra il modello davanti a cui si è (se è il prossimo della serie)
     if (item.showId && item.showId !== next.id) return;
     if (game.moneyLevel < next.price) {
-      toast(`Non hai abbastanza soldi: ${next.name} costa ${next.price} €.`);
+      toast(`Non hai abbastanza soldi: ${next.name} costa ${next.price} Đ.`);
       return;
     }
     if (!(await purchaseItem('ownedFurniture', next.id, next.price))) return;
@@ -506,7 +507,7 @@ const PET_SHOP = shop(
       return {
         text: owned
           ? `${info.emoji} Hai già un ${info.name}`
-          : `${info.emoji} Compra un ${info.name} (${info.price} €)`,
+          : `${info.emoji} Compra un ${info.name} (${info.price} Đ)`,
         locked: owned,
       };
     }
@@ -538,7 +539,7 @@ const GROW_SHOP = shop(
   (key, item) =>
     item.strain
       ? {
-          text: `🌱 Compra ${STRAINS[item.strain as StrainId].name} (${STRAINS[item.strain as StrainId].price} €, cresce in ${growTimeText(item.strain as StrainId)})`,
+          text: `🌱 Compra ${STRAINS[item.strain as StrainId].name} (${STRAINS[item.strain as StrainId].price} Đ, cresce in ${growTimeText(item.strain as StrainId)})`,
         }
       : clerkPrompt(key),
   async (key, item) => {
@@ -557,7 +558,7 @@ const BANK = shop(
 const ARCADE = shop(
   (key, item) =>
     key === 'arcadeConsole'
-      ? { text: `🕹️ Gioca alla console (${CONSOLE_COIN} € a partita)` }
+      ? { text: `🕹️ Gioca alla console (${CONSOLE_COIN} Đ a partita)` }
       : isArcadeGame(item.game)
         ? {
             text: `${ARCADE_GAMES[item.game as ArcadeGame].emoji} Sfida qualcuno a ${ARCADE_GAMES[item.game as ArcadeGame].name}`,
@@ -572,7 +573,7 @@ const ARCADE = shop(
 const BETTING = shop(
   (key) =>
     key.startsWith('slot')
-      ? { text: `🎰 Gioca alla slot (${SLOT_BET} €)` }
+      ? { text: `🎰 Gioca alla slot (${SLOT_BET} Đ)` }
       : key === 'rpsTable'
         ? { text: '✊ Sfida qualcuno a morra cinese' }
         : key === 'rouletteTable'
@@ -649,7 +650,7 @@ const ENGINEERING = shop(
       return {
         text:
           flight.phase === 'idle'
-            ? `🌙 Vola sulla luna (${MOON_TRIP_PRICE} €)`
+            ? `🌙 Vola sulla luna (${MOON_TRIP_PRICE} Đ)`
             : '🚀 Il razzo è in viaggio…',
         locked: flight.phase !== 'idle',
       };
@@ -910,6 +911,7 @@ function walkStep(): void {
   }
   const { x, y } = game.playerPos;
   const busy =
+    isSmoking() ||
     game.player.isSleeping ||
     game.showerAnim ||
     game.bathAnim ||
@@ -978,7 +980,7 @@ export function promptFor(key: string, item: GameValue): Prompt {
   // al bar: sgabello del bancone e aperitivo
   if (item?.fun === 'stool')
     return {
-      text: game.benchSit ? '🧍 Alzati' : `🍹 Siediti per un aperitivo (${APERITIVO.price} €)`,
+      text: game.benchSit ? '🧍 Alzati' : `🍹 Siediti per un aperitivo (${APERITIVO.price} Đ)`,
     };
   return placeHere()?.prompt(key, item) ?? touch(item);
 }

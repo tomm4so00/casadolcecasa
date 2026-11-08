@@ -55,7 +55,7 @@ export function updateMissionHud(..._args: GameValue[]): GameValue {
   const m: GameValue = game.MISSIONS[game.player.missionIndex];
   const el: GameValue = dom('mission-text');
   el.style.display = game.MISSIONS.length ? '' : 'none'; // senza missioni il riquadro sparisce
-  el.textContent = m ? `📋 ${m.text} (+${m.reward} €)` : '🏆 Tutte le missioni completate!';
+  el.textContent = m ? `📋 ${m.text} (+${m.reward} Đ)` : '🏆 Tutte le missioni completate!';
 }
 
 export async function checkMissions(..._args: GameValue[]): Promise<void> {
@@ -76,7 +76,7 @@ export async function checkMissions(..._args: GameValue[]): Promise<void> {
         return;
       }
       sfx('mission');
-      toast(`🏆 Missione completata: ${m.text} (+${m.reward} €)`, 4000, false);
+      toast(`🏆 Missione completata: ${m.text} (+${m.reward} Đ)`, 4000, false);
       saveGame(true);
     }
   }
@@ -87,7 +87,7 @@ export function openMissions(..._args: GameValue[]): GameValue {
   if (!game.MISSIONS.length) return void openWelcomeList();
   const lines: GameValue = game.MISSIONS.map(
     (m?: GameValue, i?: GameValue): GameValue =>
-      `${i < game.player.missionIndex ? '✅' : i === game.player.missionIndex ? '👉' : '⬜'} ${m.text} · ${m.reward} €`,
+      `${i < game.player.missionIndex ? '✅' : i === game.player.missionIndex ? '👉' : '⬜'} ${m.text} · ${m.reward} Đ`,
   ).join('\n');
   openDialog({
     title: `📋 Missioni (${Math.min(game.player.missionIndex, game.MISSIONS.length)}/${game.MISSIONS.length})`,
@@ -134,7 +134,7 @@ export async function openLeaderboard(
     lived ? 'lived' : 'wealth',
     rows,
     game.session.myPlayerId,
-    (r) => (lived ? fmtDuration(r.value) : `${r.value.toLocaleString('it-IT')} €`),
+    (r) => (lived ? fmtDuration(r.value) : `${r.value.toLocaleString('it-IT')} Đ`),
     (m) => void openLeaderboard(m, scope),
     { scope, world: game.session.worldId, onScope: (sc) => void openLeaderboard(mode, sc) },
   );

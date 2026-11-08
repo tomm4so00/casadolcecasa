@@ -110,7 +110,7 @@ try {
     await sleep(500);
   }
   const round = (await phase(ada)).round;
-  // Ada punta 25 € sul rosso (fiche da 25), Bea 10 € sul 17 (fiche da 10)
+  // Ada punta 25 Đ sul rosso (fiche da 25), Bea 10 Đ sul 17 (fiche da 10)
   await ada.locator('#roulette-modal [data-chip="25"]').click();
   await ada.locator('#roulette-modal [data-bet="red"]').click();
   await bea.locator('#roulette-modal [data-chip="10"]').click();
@@ -125,13 +125,13 @@ try {
   // ognuna vede la puntata dell'altra al tavolo
   assert(
     await until(ada, async () =>
-      /Bea<\/b>: 10 €/.test(document.querySelector('#roulette-modal .rl-players')?.innerHTML || ''),
+      /Bea<\/b>: 10 Đ/.test(document.querySelector('#roulette-modal .rl-players')?.innerHTML || ''),
     ),
     'Ada non vede la puntata di Bea',
   );
   assert(
     await until(bea, async () =>
-      /Ada<\/b>: 25 €/.test(document.querySelector('#roulette-modal .rl-players')?.innerHTML || ''),
+      /Ada<\/b>: 25 Đ/.test(document.querySelector('#roulette-modal .rl-players')?.innerHTML || ''),
     ),
     'Bea non vede la puntata di Ada',
   );
@@ -173,11 +173,11 @@ try {
         expected,
         30000,
       ),
-      `${who}: attesi ${expected} €, in cassaforte ${await money(page)} €`,
+      `${who}: attesi ${expected} Đ, in cassaforte ${await money(page)} Đ`,
     );
   await waitMoney(ada, adaExpected, 'Ada');
   await waitMoney(bea, beaExpected, 'Bea');
-  console.log(`PASS: vincite giuste (Ada ${adaExpected} €, Bea ${beaExpected} €)`);
+  console.log(`PASS: vincite giuste (Ada ${adaExpected} Đ, Bea ${beaExpected} Đ)`);
   // il giro si chiude per tutte e due (anche chi perde lo segna), e nessuno incassa due volte
   let paid = {};
   for (let i = 0; i < 160 && Object.keys(paid || {}).length < 2; i++) {

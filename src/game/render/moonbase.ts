@@ -522,7 +522,7 @@ export function drawMoonScreen(it: GameValue, t: number, lights?: GameValue[]): 
     ctx.fillStyle = '#fff';
     ctx.font = 'bold 4px sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText(`${funded.toLocaleString('it-IT')} / 45.000 €`, W / 2, H - 4.6);
+    ctx.fillText(`${funded.toLocaleString('it-IT')} / 45.000 Đ`, W / 2, H - 4.6);
   });
   if (lights) lights.push({ x, y: y + 20, z: z - 25, r: 90, color: '150,190,255' });
 }

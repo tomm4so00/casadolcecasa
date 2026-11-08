@@ -41,14 +41,14 @@ export const WELCOME_MISSIONS: WelcomeMission[] = [
     title: '🍳 Il primo pasto',
     reward: 20,
     intro:
-      'Prepara il tuo primo pasto in cucina: il cibo costa 5 € e un pasto recupera il 50% di Fame. Il prossimo passo resta visibile sotto i parametri.',
+      'Prepara il tuo primo pasto in cucina: il cibo costa 5 Đ e un pasto recupera il 50% di Fame. Il prossimo passo resta visibile sotto i parametri.',
     counter: 'meals',
     done: (v, base) => v.meals > base,
     hint: (v) =>
       v.env !== 'KITCHEN'
         ? '🍳 Vai in cucina: è una delle porte del salone del tuo appartamento.'
         : !v.hasFood
-          ? '🧊 Apri il frigorifero, poi premi «Prendi Cibo» (5 €).'
+          ? '🧊 Apri il frigorifero, poi premi «Prendi Cibo» (5 Đ).'
           : !v.foodCooked
             ? '🔥 Ora porta il cibo al fornello e cuocilo.'
             : '😋 È pronto! Vicino al fornello premi «Mangia» per mangiarlo.',

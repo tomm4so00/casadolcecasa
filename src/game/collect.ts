@@ -36,7 +36,7 @@ let refilling = false;
 const me = (): string => game.session.myPlayerId;
 const ref = (path: string): GameValue =>
   game.session.db.ref(path ? 'sims_collect/' + path : 'sims_collect');
-const euro = (n: number) => `${n.toLocaleString('it-IT')} €`;
+const dindini = (n: number) => `${n.toLocaleString('it-IT')} Đ`;
 
 /** Stato attuale di espositori e proprietari (per il disegno). */
 export const collectState = (): CollectState => state;
@@ -97,7 +97,7 @@ export async function refillStands(): Promise<void> {
 export function standPrompt(i: number): { text: string; locked?: boolean } {
   const c = onSale(state, i);
   if (!c) return { text: '🏺 Espositore vuoto', locked: true };
-  return { text: `${c.emoji} Compra ${c.name} (${euro(c.price)})` };
+  return { text: `${c.emoji} Compra ${c.name} (${dindini(c.price)})` };
 }
 
 /** Compra il pezzo dell'espositore `i`. */
@@ -108,15 +108,15 @@ export async function buyFromStand(i: number): Promise<void> {
     return;
   }
   if (game.moneyLevel < c.price) {
-    toast(`❌ Ti servono ${euro(c.price)} per ${c.name}.`, 4000);
+    toast(`❌ Ti servono ${dindini(c.price)} per ${c.name}.`, 4000);
     return;
   }
   const res = await openDialog({
     title: `${c.emoji} ${c.name}`,
-    text: `Pezzo unico: ne esiste una sola copia in tutto il gioco. Se lo compri sarà solo tuo e potrai metterlo sulla mensola della tua stanza.\n\nPrezzo: ${euro(c.price)}.`,
+    text: `Pezzo unico: ne esiste una sola copia in tutto il gioco. Se lo compri sarà solo tuo e potrai metterlo sulla mensola della tua stanza.\n\nPrezzo: ${dindini(c.price)}.`,
     buttons: [
       { label: 'Annulla', value: null, color: '#57606f' },
-      { label: `🏺 Compra (${euro(c.price)})`, value: 'ok', color: '#8e44ad' },
+      { label: `🏺 Compra (${dindini(c.price)})`, value: 'ok', color: '#8e44ad' },
     ],
   });
   if (res.action !== 'ok') return;

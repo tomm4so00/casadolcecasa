@@ -127,7 +127,7 @@ describe('domanda e offerta e nuove attività', () => {
     const t = start.updatedAt + MARKET_PUBLISH_INTERVAL_MS;
     const none = holdingsFromRooms({});
     const base = advanceMarket(start, t, () => 0, undefined, none)!;
-    // un quarto d'ora dopo: un giocatore ha comprato quote di "app" per circa 2.000 €
+    // un quarto d'ora dopo: un giocatore ha comprato quote di "app" per circa 2.000 Đ
     const units = 2000 / base.quotes.app.price;
     const rooms = { 0: { economy: { invest: { app: { units, cost: 2000 } } } } };
     const t2 = t + MARKET_PUBLISH_INTERVAL_MS;

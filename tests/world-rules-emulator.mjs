@@ -167,7 +167,7 @@ await check('Ada non punta a nome di Bea', false, () =>
 await check('una casella che non esiste no', false, () =>
   put(`${RL}/bets/${next}/p1`, bet(next, { n37: 25 }), 'u1'),
 );
-await check('una fiche da 7 € no', false, () =>
+await check('una fiche da 7 Đ no', false, () =>
   put(`${RL}/bets/${next}/p1`, bet(next, { red: 7 }), 'u1'),
 );
 await check('il giro nel nodo deve essere quello nei dati', false, () =>

@@ -210,7 +210,7 @@ describe('notifica delle offerte per l’edizione limitata', () => {
     const { database, calls, send } = await setup(120);
     expect(await notifyLimitedOffers(database, now, send)).toBe(1);
     expect(calls[0].title).toBe('💎 Hai ricevuto un’offerta!');
-    expect(calls[0].body).toContain('Luca ti offre 5000 € per Corona di Diamanti 💎 #2/5');
+    expect(calls[0].body).toContain('Luca ti offre 5000 Đ per Corona di Diamanti 💎 #2/5');
     expect(await notifyLimitedOffers(database, now + 15 * 60000, send)).toBe(0);
     // non scade: è ancora nella cassetta del proprietario
     expect((await database.ref('sims_ltd_offers/player_owner/o1/amt').get()).val()).toBe(5000);

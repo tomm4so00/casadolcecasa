@@ -180,7 +180,7 @@ export function feedPet(p: PetState, now: number, depletionSec: number): PetStat
 export function buyPetError(book: PetBook, kind: PetKind, money: number): string | null {
   if (book[kind]) return `Hai già un ${PETS[kind].name}.`;
   if (money < PETS[kind].price)
-    return `Ti servono ${PETS[kind].price} € in cassaforte per il ${PETS[kind].name}.`;
+    return `Ti servono ${PETS[kind].price} Đ in cassaforte per il ${PETS[kind].name}.`;
   return null;
 }
 

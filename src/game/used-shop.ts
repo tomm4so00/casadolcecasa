@@ -34,7 +34,7 @@ export const USED_ENV = 'usato';
 
 const me = (): string => game.session.myPlayerId;
 const ref = (path: string): GameValue => game.session.db.ref('sims_collect/' + path);
-const euro = (n: number) => `${n.toLocaleString('it-IT')} €`;
+const dindini = (n: number) => `${n.toLocaleString('it-IT')} Đ`;
 const serverNow = (): number => Date.now() + (game.session.serverOffset || 0);
 
 /** Legge un proprietario dal valore grezzo di una transazione. */
@@ -59,10 +59,10 @@ export function usedPrompt(i: number): { text: string; locked?: boolean } {
   const state = collectState();
   const l = usedListing(state, i);
   if (!l) return { text: '🏷️ Metti in vendita un tuo pezzo da collezione' };
-  if (l.owner.o === me()) return { text: `↩️ Ritira ${l.c.name} (${euro(l.sale.p)})` };
+  if (l.owner.o === me()) return { text: `↩️ Ritira ${l.c.name} (${dindini(l.sale.p)})` };
   const other = reservedBy(l.sale, serverNow());
   if (other && other !== me()) return { text: '⏳ Qualcuno lo sta comprando…', locked: true };
-  return { text: `${l.c.emoji} Compra ${l.c.name} (${euro(l.sale.p)})` };
+  return { text: `${l.c.emoji} Compra ${l.c.name} (${dindini(l.sale.p)})` };
 }
 
 /** Preme il pulsante dell'espositore `i`. */
@@ -105,8 +105,8 @@ async function listItem(i: number): Promise<void> {
 export async function listPiece(c: Collectible, i: number, fromShelf = false): Promise<boolean> {
   const res = await openDialog({
     title: `${c.emoji} ${c.name}`,
-    text: `A quanto lo vendi? Al negozio costava ${euro(c.price)}.\nPuoi ritirarlo dalla vendita quando vuoi, finché nessuno lo compra.`,
-    input: { placeholder: 'Prezzo in €', numeric: true, maxLength: 7 },
+    text: `A quanto lo vendi? Al negozio costava ${dindini(c.price)}.\nPuoi ritirarlo dalla vendita quando vuoi, finché nessuno lo compra.`,
+    input: { placeholder: 'Prezzo in Đ', numeric: true, maxLength: 7 },
     buttons: [
       { label: 'Annulla', value: null, color: '#57606f' },
       { label: '🏷️ Metti in vendita', value: 'ok', color: '#27ae60' },
@@ -156,7 +156,7 @@ export async function listPiece(c: Collectible, i: number, fromShelf = false): P
   }
   recordActivity('antiques');
   sfx('coin');
-  toast(`🏷️ ${c.name} è in vendita a ${euro(price)}!`, 4500);
+  toast(`🏷️ ${c.name} è in vendita a ${dindini(price)}!`, 4500);
   return true;
 }
 
@@ -165,7 +165,7 @@ async function withdraw(i: number): Promise<void> {
   if (!l) return;
   const res = await openDialog({
     title: `${l.c.emoji} ${l.c.name}`,
-    text: `È in vendita a ${euro(l.sale.p)}. Vuoi ritirarlo? Torna nella tua collezione.`,
+    text: `È in vendita a ${dindini(l.sale.p)}. Vuoi ritirarlo? Torna nella tua collezione.`,
     buttons: [
       { label: 'Lascialo in vendita', value: null, color: '#57606f' },
       { label: '↩️ Ritira', value: 'ok', color: '#e17055' },
@@ -198,15 +198,15 @@ async function buy(i: number): Promise<void> {
   if (!l) return;
   const { c, owner, sale } = l;
   if (game.moneyLevel < sale.p) {
-    toast(`❌ Ti servono ${euro(sale.p)} in cassaforte per ${c.name}.`, 4000);
+    toast(`❌ Ti servono ${dindini(sale.p)} in cassaforte per ${c.name}.`, 4000);
     return;
   }
   const res = await openDialog({
     title: `${c.emoji} ${c.name}`,
-    text: `Pezzo unico, venduto da ${owner.on}.\nPrezzo: ${euro(sale.p)}: i soldi vanno direttamente al venditore.`,
+    text: `Pezzo unico, venduto da ${owner.on}.\nPrezzo: ${dindini(sale.p)}: i soldi vanno direttamente al venditore.`,
     buttons: [
       { label: 'Annulla', value: null, color: '#57606f' },
-      { label: `🏷️ Compra (${euro(sale.p)})`, value: 'ok', color: '#27ae60' },
+      { label: `🏷️ Compra (${dindini(sale.p)})`, value: 'ok', color: '#27ae60' },
     ],
   });
   if (res.action !== 'ok') return;
@@ -231,7 +231,7 @@ async function buy(i: number): Promise<void> {
   );
   void sendSocial(owner.o, { type: 'usedSold', item: c.id, amt: sale.p });
   postGossip(
-    `${game.player.myData.nick} ha comprato ${c.emoji} ${c.name} da ${owner.on} al negozio dell'usato per ${euro(sale.p)}`,
+    `${game.player.myData.nick} ha comprato ${c.emoji} ${c.name} da ${owner.on} al negozio dell'usato per ${dindini(sale.p)}`,
     [owner.o],
   );
   saveGame(true);
@@ -302,7 +302,7 @@ export function onUsedSold(m: GameValue, who: string): void {
   const amt = Math.max(0, Math.floor(Number(m.amt) || 0));
   sfx('coin');
   toast(
-    `🏷️ ${who} ha comprato ${c ? `${c.emoji} ${c.name}` : 'un tuo pezzo'} al negozio dell'usato: +${euro(amt)} in cassaforte!`,
+    `🏷️ ${who} ha comprato ${c ? `${c.emoji} ${c.name}` : 'un tuo pezzo'} al negozio dell'usato: +${dindini(amt)} in cassaforte!`,
     6000,
   );
 }

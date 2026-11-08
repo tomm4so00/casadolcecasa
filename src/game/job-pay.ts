@@ -1,6 +1,6 @@
 // Regole della paga dei turni di lavoro (senza dipendenze dal browser, così sono testabili).
 
-// Livelli di carriera: paga base del turno ed euro extra per ogni oggetto consegnato.
+// Livelli di carriera: paga base del turno ed dindini extra per ogni oggetto consegnato.
 // `from` è il numero del turno (1 = primo turno) da cui vale il livello.
 export const JOB_PAY_TIERS = [
   // un livello ogni 15 turni: gli aumenti crescono man mano che si sale
@@ -22,20 +22,20 @@ export function nextPayMessage(done: number): string {
   const current = jobPayTier(nextTurn);
   const now =
     current.from === nextTurn && nextTurn > 1
-      ? `🎉 Dal prossimo turno guadagni ${current.base} € + ${current.perItem} € per oggetto!\n\n`
+      ? `🎉 Dal prossimo turno guadagni ${current.base} Đ + ${current.perItem} Đ per oggetto!\n\n`
       : '';
   if (!next) {
     return (
       now +
-      `🏆 Hai raggiunto la paga massima: ${current.base} € a turno + ${current.perItem} € per ogni oggetto consegnato.`
+      `🏆 Hai raggiunto la paga massima: ${current.base} Đ a turno + ${current.perItem} Đ per ogni oggetto consegnato.`
     );
   }
   const missing = next.from - nextTurn;
   return (
     now +
     `📈 Ancora ${missing} ${missing === 1 ? 'turno' : 'turni'} in questo lavoro e passi a ` +
-    `${next.base} € a turno + ${next.perItem} € per ogni oggetto consegnato ` +
-    `(ora: ${current.base} € + ${current.perItem} € per oggetto).`
+    `${next.base} Đ a turno + ${next.perItem} Đ per ogni oggetto consegnato ` +
+    `(ora: ${current.base} Đ + ${current.perItem} Đ per oggetto).`
   );
 }
 

@@ -648,7 +648,7 @@ export function drawCoinPrompt(ctx: CanvasRenderingContext2D, price: number, t: 
   ctx.fillStyle = '#fcfc54';
   ctx.fillRect(0, SCREEN_H / 2 - 18, SCREEN_W, 1);
   ctx.fillRect(0, SCREEN_H / 2 + 17, SCREEN_W, 1);
-  text(ctx, `INSERISCI ${price} EURO`, SCREEN_W / 2, SCREEN_H / 2 - 12, '#fcfc54', 'center', 2);
+  text(ctx, `INSERISCI ${price} DINDINI`, SCREEN_W / 2, SCREEN_H / 2 - 12, '#fcfc54', 'center', 2);
   if (Math.floor(t * 2) % 2)
     text(ctx, 'PREMI A PER PAGARE', SCREEN_W / 2, SCREEN_H / 2 + 6, '#ffffff', 'center');
 }

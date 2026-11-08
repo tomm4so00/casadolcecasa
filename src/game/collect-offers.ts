@@ -35,7 +35,7 @@ import {
 
 const me = (): string => game.session.myPlayerId;
 const ref = (path: string): GameValue => game.session.db.ref('sims_collect/' + path);
-const euro = (n: number) => `${n.toLocaleString('it-IT')} €`;
+const dindini = (n: number) => `${n.toLocaleString('it-IT')} Đ`;
 const amountOf = (m: GameValue) => Math.max(0, Math.floor(Number(m?.amt) || 0));
 
 /** Aspetta che non ci siano altre finestre aperte (le offerte arrivano anche mentre si gioca). */
@@ -91,7 +91,7 @@ export async function makeCollectOffer(c: Collectible, ownerId: string): Promise
     return;
   }
   if (inUsedShop(state, c.id)) {
-    toast(`🏷️ ${owner.on} lo vende al negozio dell’usato, a ${euro(owner.sale!.p)}.`, 4500);
+    toast(`🏷️ ${owner.on} lo vende al negozio dell’usato, a ${dindini(owner.sale!.p)}.`, 4500);
     return;
   }
   if (!hasRoom()) {
@@ -113,10 +113,10 @@ export async function makeCollectOffer(c: Collectible, ownerId: string): Promise
   const res = await openDialog({
     title: `💌 Offerta per ${c.emoji} ${c.name}`,
     text:
-      `Pezzo unico di ${owner.on}. Al negozio costava ${euro(c.price)}.\n` +
+      `Pezzo unico di ${owner.on}. Al negozio costava ${dindini(c.price)}.\n` +
       `Quanto offri? Se accetta, l’affare si conclude subito: i soldi passano dalla tua cassaforte alla sua e il pezzo diventa tuo, anche se in quel momento non stai giocando. ` +
-      `Se è offline vedrà l’offerta quando rientra.\n\nIn cassaforte hai ${euro(game.moneyLevel)}.`,
-    input: { placeholder: 'Offerta in €', numeric: true, maxLength: 7 },
+      `Se è offline vedrà l’offerta quando rientra.\n\nIn cassaforte hai ${dindini(game.moneyLevel)}.`,
+    input: { placeholder: 'Offerta in Đ', numeric: true, maxLength: 7 },
     buttons: [
       { label: 'Annulla', value: null, color: '#57606f' },
       { label: '💌 Invia l’offerta', value: 'ok', color: '#8e44ad' },
@@ -132,7 +132,7 @@ export async function makeCollectOffer(c: Collectible, ownerId: string): Promise
   try {
     await sendSocial(ownerId, { type: 'colOffer', item: c.id, amt: amount });
     sfx('click');
-    toast(`💌 Offerta inviata a ${owner.on}: ${euro(amount)} per ${c.emoji} ${c.name}.`, 4500);
+    toast(`💌 Offerta inviata a ${owner.on}: ${dindini(amount)} per ${c.emoji} ${c.name}.`, 4500);
   } catch {
     toast('Non sono riuscito a inviare l’offerta. Riprova quando sei connesso.', 4000);
   }
@@ -144,7 +144,7 @@ export async function onCollectDeal(m: GameValue, who: string): Promise<void> {
   if (!c) return;
   sfx('personality');
   toast(
-    `🤝 ${who} ha accettato la tua offerta! ${c.emoji} ${c.name} è tuo (−${euro(amountOf(m))} dalla cassaforte).`,
+    `🤝 ${who} ha accettato la tua offerta! ${c.emoji} ${c.name} è tuo (−${dindini(amountOf(m))} dalla cassaforte).`,
     6500,
   );
   recordActivity('antiques');
@@ -158,7 +158,7 @@ export async function onCollectDeal(m: GameValue, who: string): Promise<void> {
 export function onCollectOfferRefused(m: GameValue, who: string): void {
   const c = collectible(m.item);
   if (!c) return;
-  const what = `${euro(amountOf(m))} per ${c.emoji} ${c.name}`;
+  const what = `${dindini(amountOf(m))} per ${c.emoji} ${c.name}`;
   toast(
     m.broke
       ? `💸 ${who} voleva accettare la tua offerta di ${what}, ma in cassaforte non avevi abbastanza soldi.`
@@ -308,7 +308,7 @@ export async function onCollectOffer(m: GameValue, who: string): Promise<void> {
   if (owner?.o !== me()) return no();
   if (owner.sale) {
     toast(
-      `💌 ${who} ha offerto ${euro(amt)} per ${c.emoji} ${c.name}, ma è in vendita all’usato: l’offerta è stata rifiutata.`,
+      `💌 ${who} ha offerto ${dindini(amt)} per ${c.emoji} ${c.name}, ma è in vendita all’usato: l’offerta è stata rifiutata.`,
       5000,
     );
     return no();
@@ -317,11 +317,11 @@ export async function onCollectOffer(m: GameValue, who: string): Promise<void> {
   const res = await openDialog({
     title: '💌 Un’offerta per te!',
     text:
-      `${who} offre ${euro(amt)} per il tuo pezzo unico ${c.emoji} ${c.name}` +
-      ` (al negozio costava ${euro(c.price)}).\n\nSe accetti, i soldi arrivano subito nella tua cassaforte e il pezzo diventa suo.`,
+      `${who} offre ${dindini(amt)} per il tuo pezzo unico ${c.emoji} ${c.name}` +
+      ` (al negozio costava ${dindini(c.price)}).\n\nSe accetti, i soldi arrivano subito nella tua cassaforte e il pezzo diventa suo.`,
     buttons: [
       { label: 'Rifiuta', value: 'no', color: '#57606f' },
-      { label: `🤝 Accetta (${euro(amt)})`, value: 'yes', color: '#2ed573' },
+      { label: `🤝 Accetta (${dindini(amt)})`, value: 'yes', color: '#2ed573' },
     ],
   });
   if (res.action !== 'yes') {
@@ -330,7 +330,7 @@ export async function onCollectOffer(m: GameValue, who: string): Promise<void> {
   }
   // 1. i soldi dalla sua cassaforte alla mia, nella stessa transazione
   if (!(await collectMoneyFrom(m.from, amt))) {
-    toast(`💸 ${who} non ha più ${euro(amt)} in cassaforte: l’affare non si può fare.`, 5000);
+    toast(`💸 ${who} non ha più ${dindini(amt)} in cassaforte: l’affare non si può fare.`, 5000);
     return no({ broke: 1 });
   }
   // 2. il pezzo passa a lui (se non riesce, gli restituisco i soldi)
@@ -352,9 +352,9 @@ export async function onCollectOffer(m: GameValue, who: string): Promise<void> {
   }
   void sendSocial(m.from, { type: 'colDone', item: c.id, amt });
   sfx('coin');
-  toast(`🤝 Affare fatto! ${c.emoji} ${c.name} è di ${who}: +${euro(amt)} in cassaforte.`, 5500);
+  toast(`🤝 Affare fatto! ${c.emoji} ${c.name} è di ${who}: +${dindini(amt)} in cassaforte.`, 5500);
   postGossip(
-    `${who} ha comprato ${c.emoji} ${c.name} da ${game.player.myData.nick} per ${euro(amt)}`,
+    `${who} ha comprato ${c.emoji} ${c.name} da ${game.player.myData.nick} per ${dindini(amt)}`,
     [m.from],
   );
   saveGame(true);

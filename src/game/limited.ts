@@ -128,15 +128,15 @@ export async function buyLimited(item: string, price: number): Promise<void> {
     return;
   }
   if (game.moneyLevel < price) {
-    toast(`❌ Ti servono ${price.toLocaleString('it-IT')} € per ${limitedName(item)}.`, 4000);
+    toast(`❌ Ti servono ${price.toLocaleString('it-IT')} Đ per ${limitedName(item)}.`, 4000);
     return;
   }
   const res = await openDialog({
     title: `💎 ${limitedName(item)}`,
-    text: `Edizione limitata: ne esistono solo ${LIMITED_COPIES} copie numerate in tutto il gioco, e ne restano ${copiesLeft(ledger, item)}.\n\nPrezzo: ${price.toLocaleString('it-IT')} €. Potrai venderla ad altri giocatori se ti fanno un’offerta.`,
+    text: `Edizione limitata: ne esistono solo ${LIMITED_COPIES} copie numerate in tutto il gioco, e ne restano ${copiesLeft(ledger, item)}.\n\nPrezzo: ${price.toLocaleString('it-IT')} Đ. Potrai venderla ad altri giocatori se ti fanno un’offerta.`,
     buttons: [
       { label: 'Annulla', value: null, color: '#57606f' },
-      { label: `💎 Compra (${price.toLocaleString('it-IT')} €)`, value: 'ok', color: '#8e44ad' },
+      { label: `💎 Compra (${price.toLocaleString('it-IT')} Đ)`, value: 'ok', color: '#8e44ad' },
     ],
   });
   if (res.action !== 'ok' || !(await spendMoney(price))) return;
@@ -171,8 +171,8 @@ export async function makeOffer(item: string, n: number): Promise<void> {
   if (!entry) return;
   const res = await openDialog({
     title: `💎 Offerta per ${label(item, n)}`,
-    text: `Appartiene a ${entry.on}. Quanto offri? Se accetta, i soldi passano dalla tua cassaforte alla sua e l’oggetto diventa tuo.\n\nAttenzione: una volta inviata non puoi ritirarla. Se però spendi i soldi e non puoi più pagare, l’offerta si annulla.\n\nIn cassaforte hai ${game.moneyLevel.toLocaleString('it-IT')} €.`,
-    input: { placeholder: 'Offerta in €', numeric: true, maxLength: 7 },
+    text: `Appartiene a ${entry.on}. Quanto offri? Se accetta, i soldi passano dalla tua cassaforte alla sua e l’oggetto diventa tuo.\n\nAttenzione: una volta inviata non puoi ritirarla. Se però spendi i soldi e non puoi più pagare, l’offerta si annulla.\n\nIn cassaforte hai ${game.moneyLevel.toLocaleString('it-IT')} Đ.`,
+    input: { placeholder: 'Offerta in Đ', numeric: true, maxLength: 7 },
     buttons: [
       { label: 'Annulla', value: null, color: '#57606f' },
       { label: '💌 Invia l’offerta', value: 'ok', color: '#8e44ad' },
@@ -204,7 +204,7 @@ export async function makeOffer(item: string, n: number): Promise<void> {
       .ref(`sims_ltd_sent/${me()}/${id}`)
       .set({ owner: entry.o, item, n, amt: amount, t });
     toast(
-      `💌 Offerta inviata a ${entry.on}: ${amount.toLocaleString('it-IT')} € per ${label(item, n)}. Se è offline la vedrà quando rientra.`,
+      `💌 Offerta inviata a ${entry.on}: ${amount.toLocaleString('it-IT')} Đ per ${label(item, n)}. Se è offline la vedrà quando rientra.`,
       5000,
     );
   } catch {
@@ -241,7 +241,7 @@ async function cancelOffer(s: SentOffer): Promise<void> {
   if (removed) {
     void sendSocial(s.owner, { type: 'ltdGone', id: s.id, item: s.item, n: s.n, amt: s.amt });
     toast(
-      `💸 La tua offerta di ${s.amt.toLocaleString('it-IT')} € per ${label(s.item, s.n)} è stata annullata: non hai più abbastanza soldi.`,
+      `💸 La tua offerta di ${s.amt.toLocaleString('it-IT')} Đ per ${label(s.item, s.n)} è stata annullata: non hai più abbastanza soldi.`,
       6000,
     );
   }
@@ -329,11 +329,11 @@ async function reviewOffer(o: LimitedOffer): Promise<void> {
     sfx('gossip');
     const res = await openDialog({
       title: '💎 Un’offerta per te!',
-      text: `${o.fromName} offre ${o.amt.toLocaleString('it-IT')} € per il tuo oggetto in edizione limitata «${label(o.item, o.n)}».\n\nPuoi rispondere una volta sola. Se accetti, quando ti avrà pagato l’oggetto diventerà suo.`,
+      text: `${o.fromName} offre ${o.amt.toLocaleString('it-IT')} Đ per il tuo oggetto in edizione limitata «${label(o.item, o.n)}».\n\nPuoi rispondere una volta sola. Se accetti, quando ti avrà pagato l’oggetto diventerà suo.`,
       buttons: [
         { label: 'Rifiuta', value: 'no', color: '#57606f' },
         {
-          label: `🤝 Accetta (${o.amt.toLocaleString('it-IT')} €)`,
+          label: `🤝 Accetta (${o.amt.toLocaleString('it-IT')} Đ)`,
           value: 'yes',
           color: '#2ed573',
         },
@@ -435,7 +435,7 @@ export async function onLimitedAnswer(m: GameValue, who: string, accepted: boole
     // ho speso i soldi nel frattempo: l'offerta si annulla e il venditore viene avvisato
     void sendSocial(entry.o, { type: 'ltdGone', id: m.id, sale: true, item, n, amt: amount });
     toast(
-      `💸 ${who} ha accettato, ma non hai più ${amount.toLocaleString('it-IT')} € in cassaforte: l’offerta è stata annullata.`,
+      `💸 ${who} ha accettato, ma non hai più ${amount.toLocaleString('it-IT')} Đ in cassaforte: l’offerta è stata annullata.`,
       6000,
     );
     return;
@@ -464,7 +464,7 @@ export async function onLimitedAnswer(m: GameValue, who: string, accepted: boole
   sfx('personality');
   toast(`💎 Affare fatto! ${label(item, n)} ora è tuo.`, 5000);
   postGossip(
-    `${game.player.myData.nick} ha comprato ${label(item, n)} da ${who} per ${amount.toLocaleString('it-IT')} € 💎`,
+    `${game.player.myData.nick} ha comprato ${label(item, n)} da ${who} per ${amount.toLocaleString('it-IT')} Đ 💎`,
     [m.from],
   );
   saveGame(true);

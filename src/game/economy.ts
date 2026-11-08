@@ -93,7 +93,7 @@ export function purchaseItem(
   });
 }
 /**
- * Rivende un oggetto comprato: smette di essere tuo e ricevi `refund` euro, nella stessa
+ * Rivende un oggetto comprato: smette di essere tuo e ricevi `refund` dindini, nella stessa
  * transazione. Le regole del database vogliono vero/falso per ogni oggetto: si segna false.
  */
 export function sellItem(

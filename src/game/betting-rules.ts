@@ -2,7 +2,7 @@
 
 // ---------------------------------------------------------------- slot
 
-/** Ogni giro della slot costa 5 €. */
+/** Ogni giro della slot costa 5 Đ. */
 export const SLOT_BET = 5;
 
 /** Simboli dei rulli, con quante volte compaiono su 100 (i più rari pagano di più). */
@@ -44,7 +44,7 @@ export function reelSymbol(random: number): SlotSymbol {
 export const symbolEmoji = (id: SlotSymbol): string =>
   SLOT_SYMBOLS.find((s) => s.id === id)?.emoji ?? '?';
 
-/** Vincita in euro per i tre rulli (0 se si perde). */
+/** Vincita in dindini per i tre rulli (0 se si perde). */
 export function slotWin(reels: SlotSymbol[]): number {
   const [a, b, c] = reels;
   if (a === b && b === c) return SLOT_BET * SLOT_THREE[a];
@@ -52,7 +52,7 @@ export function slotWin(reels: SlotSymbol[]): number {
   return pair && SLOT_TWO[pair] ? SLOT_BET * SLOT_TWO[pair]! : 0;
 }
 
-/** Quanto restituisce in media la slot per ogni euro giocato (calcolo esatto). */
+/** Quanto restituisce in media la slot per ogni dindino giocato (calcolo esatto). */
 export function slotReturnRate(): number {
   let expected = 0;
   for (const a of SLOT_SYMBOLS)
@@ -97,9 +97,9 @@ export const isRpsChoice = (v: unknown): v is RpsChoice =>
 
 /** Spiega perché la puntata non va bene, oppure null. */
 export function rpsBetError(bet: number, money: number): string | null {
-  if (!Number.isSafeInteger(bet)) return 'Scrivi un numero intero di euro.';
+  if (!Number.isSafeInteger(bet)) return 'Scrivi un numero intero di dindini.';
   if (bet < RPS_MIN_BET || bet > RPS_MAX_BET)
-    return `La puntata va da ${RPS_MIN_BET} a ${RPS_MAX_BET} €.`;
+    return `La puntata va da ${RPS_MIN_BET} a ${RPS_MAX_BET} Đ.`;
   if (bet > money) return 'Non hai abbastanza soldi in cassaforte.';
   return null;
 }

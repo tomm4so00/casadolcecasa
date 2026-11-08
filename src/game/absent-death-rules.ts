@@ -7,6 +7,7 @@ import { type NeedsRules, advanceNeeds } from './simulation.js';
 import type { CharacterState } from './models.js';
 import { decodeFlu } from './flu-rules.js';
 import { type CryoPass, awakeSpans } from '../../shared/cryo-rules.js';
+import { type DeathCause, deathCauses } from './death-cause-rules.js';
 
 /**
  * I bisogni durante un'assenza da `from` a `to`, saltando il tempo passato in criogenesi:
@@ -77,6 +78,7 @@ export function needsStateFromSave(
     },
     flu: decodeFlu(save.flu),
     gameMinutes: num(save.gameMinutes, 8 * 60),
+    needsZeroSince: num(save.needsZeroSince, 0),
     isDead: false,
   } as unknown as CharacterState;
 }
@@ -97,7 +99,7 @@ function after(
 /**
  * Se il personaggio è morto mentre era via, il momento (ms) e i minuti di gioco a quel punto;
  * altrimenti null. Il momento si cerca dimezzando l'intervallo: precisione di pochi secondi.
- * Il tempo passato in criogenesi (`cryo`) non conta.
+ * Il tempo passato in criogenesi (`cryo`) non conta. `causes`: cosa ha tolto la salute.
  */
 export function absentDeath(
   save: Save,
@@ -105,7 +107,7 @@ export function absentDeath(
   now: number,
   rules: NeedsRules = NEEDS_RULES,
   cryo: CryoPass | null = null,
-): { deadAt: number; gameMinutes: number } | null {
+): { deadAt: number; gameMinutes: number; causes: DeathCause[] } | null {
   const from = num(save.savedAt, 0);
   if (!from || now <= from || save.dead === true) return null;
   if (after(save, ownedFurniture, now, rules, cryo).healthLevel > 0) return null;
@@ -116,5 +118,7 @@ export function absentDeath(
     if (after(save, ownedFurniture, mid, rules, cryo).healthLevel > 0) lo = mid;
     else hi = mid;
   }
-  return { deadAt: hi, gameMinutes: after(save, ownedFurniture, hi, rules, cryo).gameMinutes };
+  // un istante prima di morire: cosa stava togliendo salute
+  const end = after(save, ownedFurniture, hi, rules, cryo);
+  return { deadAt: hi, gameMinutes: end.gameMinutes, causes: [...deathCauses(end, hi), 'away'] };
 }

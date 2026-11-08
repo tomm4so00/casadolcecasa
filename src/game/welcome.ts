@@ -82,7 +82,7 @@ async function finishMission(s: WelcomeState, next: WelcomeState): Promise<void>
   if (!(await creditMoney(m.reward))) return; // si riprova al prossimo giro
   game.player.welcome = { ...next, snoozeUntil: Date.now() + 4000 };
   sfx('mission');
-  toast(`🏆 Missione completata: ${m.title} (+${m.reward} €)`, 5000, false);
+  toast(`🏆 Missione completata: ${m.title} (+${m.reward} Đ)`, 5000, false);
   if (welcomeFinished(game.player.welcome))
     toast('🎉 Hai completato le missioni di benvenuto: ora sai come far vivere il tuo Sim!', 6000);
   saveGame(true);
@@ -98,7 +98,7 @@ async function offerMission(): Promise<void> {
     sfx('mission');
     const res = await openDialog({
       title: `📋 Missione ${s.i + 1} di ${WELCOME_MISSIONS.length}: ${m.title}`,
-      text: `${m.intro}\n\n🎁 Premio: ${m.reward} €`,
+      text: `${m.intro}\n\n🎁 Premio: ${m.reward} Đ`,
       buttons: [
         { label: '🚫 Non seguire le missioni', value: 'no', color: '#57606f' },
         { label: '⏰ Più tardi', value: 'later', color: '#e67e22' },
@@ -137,14 +137,14 @@ function welcomeHudText(): string | null {
   const m = WELCOME_MISSIONS[s.i];
   if (s.status === 'off') return '📋 Missioni di benvenuto (tocca per riattivarle)';
   if (s.status === 'offer') return `📋 ${m.title} · tocca per iniziare`;
-  return `📋 ${m.title}: ${m.hint(view())} (+${m.reward} €)`;
+  return `📋 ${m.title}: ${m.hint(view())} (+${m.reward} Đ)`;
 }
 
 /** Tocco sulla scritta delle missioni: elenco, e riattivazione o inizio della missione. */
 export async function openWelcomeList(): Promise<void> {
   const s = state();
   const lines = WELCOME_MISSIONS.map(
-    (m, i) => `${i < s.i ? '✅' : i === s.i ? '👉' : '🔒'} ${m.title} · ${m.reward} €`,
+    (m, i) => `${i < s.i ? '✅' : i === s.i ? '👉' : '🔒'} ${m.title} · ${m.reward} Đ`,
   ).join('\n');
   const finished = welcomeFinished(s);
   const res = await openDialog({

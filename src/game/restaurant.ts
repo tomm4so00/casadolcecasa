@@ -380,13 +380,13 @@ export function serviceInteract(item: GameValue): void {
   if (shift) shift.delivered = (shift.delivered || 0) + 1;
   mgScore(1);
   sfx('coin');
-  if (missing(g.order, g.served).length) mgPop(`✅ +${perItem} €`);
+  if (missing(g.order, g.served).length) mgPop(`✅ +${perItem} Đ`);
   else {
     const tip = tipFor(g.patience / g.max, perItem);
     if (shift) shift.tips = (shift.tips || 0) + tip;
     g.state = 'eat';
     g.timer = EAT_SECONDS;
-    mgPop(`😋 +${perItem} €${tip ? ` · mancia ${tip} €` : ''}`);
+    mgPop(`😋 +${perItem} Đ${tip ? ` · mancia ${tip} Đ` : ''}`);
   }
   mgHud();
 }

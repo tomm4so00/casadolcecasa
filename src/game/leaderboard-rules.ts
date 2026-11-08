@@ -5,7 +5,7 @@ export type LeaderboardMode = 'wealth' | 'lived';
 export interface LeaderboardRow {
   id: string;
   name: string;
-  /** Euro (più ricchi) o millisecondi di vita (più longevi). */
+  /** Dindini (più ricchi) o millisecondi di vita (più longevi). */
   value: number;
   /** Personaggio morto (solo per i più longevi). */
   dead?: boolean;

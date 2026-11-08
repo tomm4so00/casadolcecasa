@@ -109,6 +109,124 @@ try {
   await page.evaluate(async () => (await import('/src/game/chat.ts')).sendChat());
   await page.getByText('Messaggio di prova offline', { exact: true }).waitFor();
   await page.evaluate(async () => (await import('/src/game/chat.ts')).closeGlobalChat());
+  await page.locator('#btn-inventory').click();
+  await page.locator('#inventory-modal').waitFor({ state: 'visible' });
+  assert.equal(await page.locator('.inventory-slot').count(), 20);
+  assert.equal(await page.locator('#inventory-count').textContent(), '0/20 spazi occupati');
+  await page.evaluate(async () => {
+    const { game } = await import('/src/game/context.ts');
+    const { inventoryChange } = await import('/src/game/inventory-market.ts');
+    await inventoryChange((ledger) => ledger.buy('weed', 42, 0));
+    await inventoryChange((ledger) => ledger.buy('drug', 3, 0));
+    game.player.weed = { grams: 42, jarStrain: 'lemon' };
+    (await import('/src/game/inventory.ts')).updateInventory();
+  });
+  await page.getByRole('button', { name: 'Erba: 42 g', exact: true }).click();
+  assert.match(await page.locator('#inventory-details').textContent(), /Lemon Haze/);
+  assert.equal(await page.locator('#inventory-smoke').isDisabled(), true);
+  assert.match(await page.locator('#inventory-use-hint').textContent(), /all’aperto/);
+  await page.getByRole('button', { name: 'Dosi: 3 dosi', exact: true }).click();
+  assert.match(await page.locator('#inventory-details').textContent(), /3 dosi/);
+  assert.equal(await page.locator('#inventory-count').textContent(), '2/20 spazi occupati');
+  await page.keyboard.press('Escape');
+  await page.locator('#inventory-modal').waitFor({ state: 'hidden' });
+  assert.equal(
+    await page.locator('#btn-inventory').evaluate((el) => el === document.activeElement),
+    true,
+  );
+  await page.locator('#btn-inventory').click();
+  assert.equal(await page.locator('#inventory-count').textContent(), '2/20 spazi occupati');
+  await page.getByRole('button', { name: 'Chiudi lo zaino', exact: true }).click();
+  await page.evaluate(async () => {
+    const { game } = await import('/src/game/context.ts');
+    const { applyRoomBounds } = await import('/src/game/room-size.ts');
+    game.view.activeEnvironment = 'CORTILE';
+    applyRoomBounds('CORTILE');
+    game.playerPos = { x: 0, y: 150 };
+    game.player.happinessLevel = 50;
+  });
+  await page.locator('#btn-inventory').click();
+  await page.getByRole('button', { name: 'Erba: 42 g', exact: true }).click();
+  assert.equal(await page.locator('#inventory-smoke').isEnabled(), true);
+  await page.locator('#inventory-smoke').click();
+  await page.locator('#inventory-modal').waitFor({ state: 'hidden' });
+  const joint = await page.evaluate(async () => {
+    const { game } = await import('/src/game/context.ts');
+    const { isSmoking, smokeJoint } = await import('/src/game/weed.ts');
+    const { renderEnvironment } = await import('/src/game/engine.ts');
+    const { buildSaveData } = await import('/src/game/saves.ts');
+    const before = { ...game.playerPos };
+    game.moveRight = 1;
+    renderEnvironment(0.1, game.animClock);
+    const blocked = game.playerPos.x === before.x && game.playerPos.y === before.y;
+    game.moveRight = 0;
+    return {
+      grams: game.player.weed.grams,
+      happiness: Math.round(game.player.happinessLevel),
+      smoking: isSmoking(),
+      blocked,
+      canRepeat: await smokeJoint(),
+      persisted:
+        buildSaveData().stonedUntil === game.player.stonedUntil &&
+        buildSaveData().jointReadyAt === game.player.jointReadyAt,
+      remaining: game.player.stonedUntil - Date.now(),
+      cooldown: game.player.jointReadyAt - Date.now(),
+    };
+  });
+  assert.equal(joint.grams, 41);
+  assert.equal(joint.happiness, 60);
+  assert.equal(joint.smoking, true);
+  assert.equal(joint.blocked, true);
+  assert.equal(joint.canRepeat, false);
+  assert.equal(joint.persisted, true);
+  assert(joint.remaining > 590_000 && joint.remaining <= 600_000);
+  assert(joint.cooldown > 1_790_000 && joint.cooldown <= 1_800_000);
+  const jointReload = await page.evaluate(async () => {
+    const { game } = await import('/src/game/context.ts');
+    const { buildSaveData, applySave } = await import('/src/game/saves.ts');
+    const { smokeJointError, isStoned } = await import('/src/game/weed.ts');
+    // Gli effetti sono finiti; l'attesa deve restare nel salvataggio e al caricamento.
+    game.player.stonedUntil = Date.now() - 1;
+    const data = JSON.parse(JSON.stringify(buildSaveData()));
+    game.player.jointReadyAt = 0;
+    applySave(data);
+    return { stoned: isStoned(), error: smokeJointError(), cooldown: data.jointReadyAt };
+  });
+  assert.equal(jointReload.stoned, false);
+  assert.match(jointReload.error, /Aspetta ancora/);
+  assert(jointReload.cooldown > 0);
+  await page.evaluate(async () => {
+    const { game } = await import('/src/game/context.ts');
+    const { worldNode } = await import('/src/game/world-db.ts');
+    await game.session.db
+      .ref(`${worldNode('rooms_state')}/${game.myAssignedRoomIdx}/inventory/items`)
+      .set({ weed: 0, drug: 0 });
+    game.player.weed = { grams: 0 };
+    game.player.drugStock = 0;
+    game.player.stonedUntil = 0;
+    game.player.jointReadyAt = 0;
+    game.smokeUntil = 0;
+  });
+  const bankCollision = await page.evaluate(async () => {
+    const { game } = await import('/src/game/context.ts');
+    const { getSolidObstacles, collidesAt } = await import('/src/game/engine.ts');
+    game.view.activeEnvironment = 'banca';
+    const obstacles = getSolidObstacles();
+    return {
+      leftCorner: collidesAt(-105, -60, obstacles),
+      rightCorner: collidesAt(105, -60, obstacles),
+      counterEdge: collidesAt(0, -30, obstacles),
+      frontAccess: collidesAt(0, -20, obstacles),
+      leftPassage: collidesAt(-125, -60, obstacles),
+    };
+  });
+  assert.deepEqual(bankCollision, {
+    leftCorner: true,
+    rightCorner: true,
+    counterEdge: true,
+    frontAccess: false,
+    leftPassage: false,
+  });
   await page.evaluate(async () => {
     const { game } = await import('/src/game/context.ts');
     for (const env of [

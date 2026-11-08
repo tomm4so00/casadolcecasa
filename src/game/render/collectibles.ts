@@ -52,7 +52,7 @@ export function drawCollectStand(it: GameValue, t: GameValue): void {
     ctx.textBaseline = 'middle';
     const empty = it.used ? 'LIBERO' : 'VENDUTO';
     ctx.fillText(
-      c ? `${(price || 0).toLocaleString('it-IT')} €` : empty,
+      c ? `${(price || 0).toLocaleString('it-IT')} Đ` : empty,
       W / 2,
       H * 0.35 + 4.8,
       20,

@@ -1,5 +1,5 @@
 // Inviti: il pulsante del profilo condivide il link del gioco (WhatsApp, Telegram, Messaggi…).
-// Chi entra per la prima volta da quel link riceve 300€, e altrettanti ne riceve chi l'ha invitato.
+// Chi entra per la prima volta da quel link riceve 300Đ, e altrettanti ne riceve chi l'ha invitato.
 import { currentWorldCode } from './world-select.js';
 import { googlePlayerId } from './account-model.js';
 import { creditMoney } from './economy.js';
@@ -32,7 +32,7 @@ export function remindInvite(): void {
   lifetime.setTimeout(
     () =>
       toast(
-        `💌 Invita qualcuno a giocare: apri il profilo (🧑) e tocca «Invita amici». Se è la sua prima volta, ricevete ${INVITE_BONUS}€ a testa!`,
+        `💌 Invita qualcuno a giocare: apri il profilo (🧑) e tocca «Invita amici». Se è la sua prima volta, ricevete ${INVITE_BONUS}Đ a testa!`,
         8000,
       ),
     REMINDER_AFTER_MS,
@@ -195,7 +195,7 @@ async function registerInvite(firstCharacter: boolean): Promise<void> {
   }
   localStorage.removeItem(storage(PENDING_KEY));
   localStorage.setItem(storage(CLAIMED_KEY), '1');
-  owe(`🎉 Invito di un amico: +${INVITE_BONUS}€ in cassaforte, a te e a chi ti ha invitato!`);
+  owe(`🎉 Invito di un amico: +${INVITE_BONUS}Đ in cassaforte, a te e a chi ti ha invitato!`);
   await payOwed();
 }
 
@@ -239,7 +239,7 @@ async function payInvites(uids: string[], entries: Record<string, GameValue>): P
       continue;
     }
     const nick = String(entries[uid]?.nick || 'Un amico').slice(0, 20);
-    owe(`🎉 Nuovo amico in città: ${nick} ha usato il tuo invito. +${INVITE_BONUS}€!`);
+    owe(`🎉 Nuovo amico in città: ${nick} ha usato il tuo invito. +${INVITE_BONUS}Đ!`);
   }
   await payOwed();
 }
@@ -278,7 +278,7 @@ export async function openInvite(): Promise<void> {
     title: '💌 Invita amici',
     text:
       'Manda il link del gioco a chi vuoi: per giocare insieme online, o per far conoscere ' +
-      `Casa dolce casa a qualcuno di nuovo.\n\n🎁 Se un amico entra per la prima volta dal tuo link, ricevete ${INVITE_BONUS}€ a testa` +
+      `Casa dolce casa a qualcuno di nuovo.\n\n🎁 Se un amico entra per la prima volta dal tuo link, ricevete ${INVITE_BONUS}Đ a testa` +
       ` (fino a ${INVITE_MAX_PAID} amici).` +
       (count !== null ? `\n\nAmici arrivati con il tuo invito: ${count}` : '') +
       `\n\n🔗 Il tuo link personale:\n${link}` +

@@ -1,4 +1,6 @@
 import { decodeWeed } from './weed-rules.js';
+import { jointReadyAt } from './joint-rules.js';
+import { syncInventoryFromRoom } from './inventory-market.js';
 import { LEGACY_WORLD, countFree, isWorldCode } from '../../shared/worlds.js';
 import { publishFreeRooms } from './world-select.js';
 import { hashPin, pinHint, pinTooHighForLevel, safeLevel } from './safe-pin.js';
@@ -17,6 +19,7 @@ import type { GameValue } from './context.js';
 import type { SaveV8 } from './save-model.js';
 import { decodeSaveV8 } from './save-model.js';
 import { absentDeath, advanceAbsence } from './absent-death-rules.js';
+import { deathCauses, encodeDeathCauses } from './death-cause-rules.js';
 import { type CryoPass, frozenMs } from '../../shared/cryo-rules.js';
 import { loadMyCryo } from './cryo.js';
 import { applyPrefs, collectPrefs } from './prefs.js';
@@ -58,6 +61,7 @@ export function syncVaultFromServer(..._args: GameValue[]): GameValue {
   const room: GameValue = game.roomsState[game.myAssignedRoomIdx ?? -1];
   if (!room || room.ownerId !== game.session.myPlayerId) return;
   syncRoomEconomy(room);
+  syncInventoryFromRoom(room);
   if (!game.vaultSynced) {
     game.vaultSynced = true;
     game.pinPromptMoneyThreshold = game.vaultCache;
@@ -70,7 +74,7 @@ export function syncVaultFromServer(..._args: GameValue[]): GameValue {
     void creditMoney(amount).then((ok) => {
       if (!ok) game.legacyPocketMoney += amount;
     });
-    toast(`💰 I ${amount} € che avevi in tasca sono stati spostati in cassaforte.`, 5000);
+    toast(`💰 I ${amount} Đ che avevi in tasca sono stati spostati in cassaforte.`, 5000);
     saveGame(true);
   }
 }
@@ -145,12 +149,15 @@ export function buildSaveData(..._args: GameValue[]): SaveV8 {
     if (typeof game.bedSlot === 'number') data.bedSlot = game.bedSlot;
   }
   data.sleepGainedSinceLastHealthBoost = game.player.sleepGainedSinceLastHealthBoost;
+  if (game.player.needsZeroSince) data.needsZeroSince = game.player.needsZeroSince;
   data.inventory = {
     hasFood: !!game.player.hasFoodInInventory,
     foodCooked: !!game.player.foodIsCooked,
   };
   if (game.player.drugStock > 0) data.drugStock = game.player.drugStock;
   if (game.player.stonedUntil > Date.now()) data.stonedUntil = game.player.stonedUntil;
+  if (game.player.jointReadyAt && game.player.jointReadyAt > Date.now())
+    data.jointReadyAt = game.player.jointReadyAt;
   if (game.player.romance && Object.keys(game.player.romance).length)
     data.romance = game.player.romance;
   if (game.player.relations && Object.keys(game.player.relations).length)
@@ -200,6 +207,7 @@ export function buildSaveData(..._args: GameValue[]): SaveV8 {
   if (game.player.isDead) {
     data.dead = true;
     data.deadAt = game.player.deadAt;
+    if (game.player.deathCause) data.deathCause = game.player.deathCause;
   }
   return data;
 }
@@ -215,6 +223,7 @@ export function applySave(value: unknown): void {
     19.999999,
     s.sleepGainedSinceLastHealthBoost ?? 0,
   );
+  game.player.needsZeroSince = s.needsZeroSince ?? 0;
   if (s.inventory) {
     game.player.hasFoodInInventory = s.inventory.hasFood === true;
     game.player.foodIsCooked = s.inventory.foodCooked === true;
@@ -232,6 +241,7 @@ export function applySave(value: unknown): void {
   game.player.bornAt = num(s.bornAt, 0);
   game.player.drugStock = Math.max(0, Math.floor(num(s.drugStock, 0)));
   game.player.stonedUntil = num(s.stonedUntil, 0);
+  game.player.jointReadyAt = jointReadyAt(s.jointReadyAt, game.player.stonedUntil);
   game.player.romance = decodeRomance(s.romance);
   game.player.relations = decodeRelations(s.relations);
   game.player.personality = decodePersonality(s.personality);
@@ -436,6 +446,18 @@ export function catchUpOffline(s?: GameValue, cryo: CryoPass | null = null): Gam
     );
 }
 
+/**
+ * Morti salvate prima che si scrivesse il motivo: se il gioco ha salvato al momento della morte,
+ * i bisogni nel salvataggio sono quelli di allora (la manutenzione invece non li riscrive).
+ */
+function olderDeathCause(save: GameValue): string {
+  if (!save.deadAt || (save.savedAt || 0) < save.deadAt) return '';
+  const causes = deathCauses(game.player, save.deadAt);
+  // salvato molto dopo la morte: è il gioco che, riaprendolo, l'ha trovato morto
+  if (save.savedAt - save.deadAt > 10 * 60000) causes.push('away');
+  return encodeDeathCauses(causes);
+}
+
 export async function loadGame(..._args: GameValue[]): Promise<GameValue> {
   let local: GameValue = null,
     cloud: GameValue = null;
@@ -457,19 +479,33 @@ export async function loadGame(..._args: GameValue[]): Promise<GameValue> {
   if (cloud && (!best || (cloud.savedAt || 0) > (best.savedAt || 0))) best = cloud;
   // il pass di criogenesi serve prima di ricalcolare l'assenza
   const cryo = await loadMyCryo();
-  const deadSave: GameValue = [local, cloud].find((x?: GameValue): GameValue => x && x.dead);
+  // Una copia locale morta conta, tranne quando online c'è un salvataggio vivo più recente
+  // (personaggio riportato in vita): altrimenti questo dispositivo lo farebbe morire di nuovo.
+  const revived = (x: GameValue): boolean =>
+    x !== cloud && !!cloud && !cloud.dead && (cloud.savedAt || 0) > (x.savedAt || 0);
+  const deadSave: GameValue = [local, cloud].find(
+    (x?: GameValue): GameValue => x && x.dead && !revived(x),
+  );
   if (deadSave) {
     game.player.isDead = true;
     game.player.deadAt = deadSave.deadAt || 0;
     applySave(deadSave);
+    game.player.deathCause = deadSave.deathCause || olderDeathCause(deadSave);
   } else if (best) {
     applySave(best);
     catchUpOffline(best, cryo);
     // morto mentre era via: sulla lapide va il momento in cui la salute è arrivata a zero
-    if (game.player.healthLevel <= 0)
-      game.player.deadAt =
-        absentDeath(best, game.player.ownedFurniture || {}, Date.now(), undefined, cryo)?.deadAt ||
-        0;
+    if (game.player.healthLevel <= 0) {
+      const death = absentDeath(
+        best,
+        game.player.ownedFurniture || {},
+        Date.now(),
+        undefined,
+        cryo,
+      );
+      game.player.deadAt = death?.deadAt || 0;
+      game.player.deathCause = death ? encodeDeathCauses(death.causes) : '';
+    }
   }
   if (!game.player.bornAt && !game.player.isDead) game.player.bornAt = Date.now(); // nascita del personaggio (salvataggi vecchi: da ora)
   // Arrivo da un altro dispositivo con il codice: riprendo anche il nome
