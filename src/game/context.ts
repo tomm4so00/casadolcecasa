@@ -63,6 +63,8 @@ interface GameContext {
   frameShowerActors: GameValue;
   /** Chi è seduto su una sedia in questo fotogramma: lo disegna la sedia (render/objects.ts). */
   frameChairSitters: GameValue;
+  /** La scrivania del PC della stanza in cui si è (per la sua sedia), o null. */
+  frameDesk: GameValue;
   SLEEP_DEPLETION_SEC: number;
   SLEEP_RECOVERY_SEC: number;
   HUNGER_AWAKE_DEPLETION_SEC: number;

@@ -15,6 +15,8 @@ import {
   buyIceCream,
   funSpots,
   onSofa,
+  atDesk,
+  sitAtDesk,
   sitOnChair,
   toggleBench,
   sitOnStool,
@@ -51,7 +53,7 @@ import { type DoorGap, type RoomBounds, crossedDoor, gapFor, nearDoor } from './
 import { roomPaintings, slotOfKey } from './painting-rules.js';
 import { relaxWith, toast } from './missions.js';
 import { freeRoomsInApt, openClothesShop, openWardrobe } from './character.js';
-import { mgButtonText, mgInteract, openComputerShopModal } from './jobs.js';
+import { mgButtonText, mgInteract } from './jobs.js';
 import { coffeeLeftMs, openDealer, useCoffee } from './needs.js';
 import { showGraveInfo } from './render/graveyard.js';
 import { startShower, startToilet, startWash } from './bathroom.js';
@@ -68,6 +70,7 @@ import {
   viewGalleryPiece,
 } from './gallery.js';
 import { nextUpgrade, tierOf } from './furniture-tiers.js';
+import { openCabinet } from './cabinet.js';
 import {
   announceFurnitureBenefit,
   backToSaloon,
@@ -290,6 +293,8 @@ const PLAYER_ROOM: Place = {
     }
     if (key === 'collectShelf') return shelfPrompt(mine);
     if (key === 'tv') return { text: '📺 Guarda la TV' };
+    if (key === 'cabinet') return { text: '🕹️ Gioca al cabinato' };
+    if (key === 'desk' && mine) return { text: atDesk() ? '🧍 Alzati' : '💻 Usa il PC' };
     if (key === 'sofa') return { text: onSofa() ? '🧍 Alzati' : '🛋️ Siediti sul Divano' };
     return touch(item);
   },
@@ -326,11 +331,17 @@ const PLAYER_ROOM: Place = {
       const room: GameValue = game.roomsState[game.currentRoomIdx ?? -1];
       if (isMyRoomNow()) await openShelf();
       else await openOthersShelf(room?.ownerId, room?.owner);
-    } else if (key === 'desk') openComputerShopModal();
-    else if (PET_OF_KEY[key] && isMyRoomNow()) await feed(PET_OF_KEY[key]);
+    } else if (key === 'desk') {
+      // nella propria stanza ci si siede al PC (che si accende da seduti); da un altro no
+      if (isMyRoomNow()) sitAtDesk(item);
+      else toast('💻 Questo PC non è tuo!');
+    } else if (PET_OF_KEY[key] && isMyRoomNow()) await feed(PET_OF_KEY[key]);
     else if (key === 'sofa') toggleSofa(item);
     else if (key === 'tv') relaxWith(key, item);
-    else if (key === 'safe') handleSafeInteraction();
+    else if (key === 'cabinet') {
+      if (isMyRoomNow()) openCabinet(item);
+      else toast('🕹️ Questo cabinato non è tuo: compralo anche tu al negozio di mobili!');
+    } else if (key === 'safe') handleSafeInteraction();
     else if (String(key).startsWith('painting')) {
       if (isMyRoomNow()) await managePainting(key);
       else

@@ -20,6 +20,7 @@ export const WORLD_NODES = [
   'theft',
   'leaderboard',
   'auctions',
+  'arcade_records',
 ];
 
 /** Ogni giocatore crea al massimo un mondo ogni 10 minuti (come WORLD_CREATE_EVERY_MS). */
@@ -45,11 +46,94 @@ function intoWorld(value) {
   return value;
 }
 
+/**
+ * Cabinato dei minigiochi (come src/game/cabinet-rules.ts): punti al secondo che nessuno supera
+ * giocando davvero, più un margine. Un punteggio più alto del tempo passato dall'inizio della
+ * partita (segnato dal server in sims_arcade_runs) non si può scrivere.
+ */
+export const ARCADE_RATES = { dog: 25, bricks: 20, meteors: 40 };
+const ARCADE_SLACK = 100;
+const ARCADE_MAX = 1000000;
+
+/** Le regole del cabinato: mobile acquistabile, partita in corso, record. */
+function withArcadeRules(r, player) {
+  const me = "root.child('sims_accounts').child(auth.uid).child('playerId').val()";
+  const run = "root.child('sims_arcade_runs').child(auth.uid)";
+  const games = Object.keys(ARCADE_RATES);
+  const isGame = (v) => '(' + games.map((g) => `${v} === '${g}'`).join(' || ') + ')';
+  // il punteggio: intero, positivo, credibile per il gioco della partita in corso
+  const score = (s) =>
+    `${s}.isNumber() && ${s}.val() % 1 === 0 && ${s}.val() > 0 && ${s}.val() <= ${ARCADE_MAX} && ` +
+    `${run}.child('g').val() === $game && (` +
+    games
+      .map(
+        (g) =>
+          `($game === '${g}' && ${s}.val() <= (now - ${run}.child('t').val()) * ${ARCADE_RATES[g] / 1000} + ${ARCADE_SLACK})`,
+      )
+      .join(' || ') +
+    ')';
+  const better = "(!data.exists() || newData.child('score').val() > data.child('score').val())";
+  // record del condominio e mondiale: solo a proprio nome e più alto di quello che c'è
+  const record = {
+    $game: {
+      '.write': `${player} && ${isGame('$game')}`,
+      '.validate':
+        `newData.hasChildren(['score','pid','nick','t']) && ${better} && ` +
+        score("newData.child('score')"),
+      score: { '.validate': 'newData.isNumber()' },
+      pid: { '.validate': `newData.val() === ${me}` },
+      nick: { '.validate': 'newData.isString() && newData.val().length <= 20' },
+      t: { '.validate': 'newData.val() === now' },
+      $other: { '.validate': false },
+    },
+  };
+  r.sims_arcade_records = { '.read': player, ...structuredClone(record) };
+  r.sims_arcade_global = { '.read': player, ...structuredClone(record) };
+  // il record personale di ogni gioco
+  r.sims_arcade_best = {
+    $pid: {
+      '.read': `${player} && $pid === ${me}`,
+      $game: {
+        '.write': `${player} && $pid === ${me} && ${isGame('$game')}`,
+        '.validate':
+          `newData.hasChildren(['score','t']) && ${better} && ` + score("newData.child('score')"),
+        score: { '.validate': 'newData.isNumber()' },
+        t: { '.validate': 'newData.val() === now' },
+        $other: { '.validate': false },
+      },
+    },
+  };
+  // la partita in corso: quale gioco e quando è cominciata (l'ora la mette il server)
+  r.sims_arcade_runs = {
+    $uid: {
+      '.read': `${player} && auth.uid === $uid`,
+      '.write': `${player} && auth.uid === $uid`,
+      '.validate': "newData.hasChildren(['g','t'])",
+      g: { '.validate': isGame('newData.val()') },
+      t: { '.validate': 'newData.val() === now' },
+      $other: { '.validate': false },
+    },
+  };
+  // il cabinato si compra come gli altri mobili: negli acquisti della stanza e protetto
+  // dalle scritture degli altri (come ogni mobile, vedi la regola della stanza)
+  const room = r.sims_rooms_state.$room;
+  room.economy.ownedFurniture.cabinet_std = { '.validate': 'newData.isBoolean()' };
+  const guard =
+    "newData.child('economy/ownedFurniture/cabinet_std').val() === data.child('economy/ownedFurniture/cabinet_std').val()";
+  const anchor =
+    "newData.child('economy/ownedFurniture/sofa_std').val() === data.child('economy/ownedFurniture/sofa_std').val()";
+  if (!room['.validate'].includes(guard)) {
+    if (!room['.validate'].includes(anchor)) throw new Error('regola della stanza cambiata');
+    room['.validate'] = room['.validate'].replace(anchor, `${anchor} && ${guard}`);
+  }
+}
+
 /** Le regole complete: quelle di oggi più mondi, elenco dei mondi e classifica globale. */
 export function withWorldRules(rules) {
   const r = { ...rules.rules };
   // chi ha un personaggio (stessa condizione della lettura della classifica)
   const player = r.sims_leaderboard['.read'];
+  withArcadeRules(r, player);
   const worlds = { $worldId: { '.validate': `$worldId.matches(${CODE})` } };
   for (const node of WORLD_NODES) worlds.$worldId[node] = intoWorld(r['sims_' + node]);
   r.worlds = worlds;

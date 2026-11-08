@@ -67,6 +67,8 @@ export function furnitureBenefit(def: { id: string; category: string }): string 
       );
     case 'safe':
       return '🔐 Livello 2: la combinazione può usare le cifre da 1 a 5 (125 combinazioni invece di 64), così è molto più difficile da indovinare.';
+    case 'cabinet':
+      return '🕹️ Tre giochi in stile anni ’80: Cane in fuga, Mattoncini e Pioggia di meteore. Record personale, del condominio e mondiale, con un premio per chi li batte.';
     default:
       return '';
   }

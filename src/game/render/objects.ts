@@ -2010,6 +2010,14 @@ export function drawChair(
   // 'y0': sedia dietro il tavolo, schienale verso il fondo; 'x0': sedia sul lato sinistro del
   // tavolo, schienale dalla parte opposta al tavolo. Lo schienale sta dietro chi siede, che si
   // disegna subito dopo (e il piano del tavolo dopo ancora).
+  // 'y1'/'x1': sedia davanti alla scrivania, schienale dalla parte di chi guarda: chi siede
+  // (di spalle) si disegna prima, poi lo schienale lo copre
+  if (backSide === 'y1' || backSide === 'x1') {
+    drawChairSitters(x, y);
+    if (backSide === 'x1') box(x + 7, y, 3, 16, 18, color, { z0: 19 });
+    else box(x, y + 7, 16, 3, 18, color, { z0: 19 });
+    return;
+  }
   if (backSide === 'x0') box(x - 7, y, 3, 16, 18, color, { z0: 19 });
   else box(x, y - 7, 16, 3, 18, color, { z0: 19 });
   drawChairSitters(x, y);

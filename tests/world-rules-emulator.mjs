@@ -148,7 +148,58 @@ await check('Ada non scrive un messaggio a nome di Bea', false, () =>
   put('worlds/CASA-2222/chat/m2', { id: 'p2', name: 'Bea', text: 'ciao', t: Date.now() }, 'u1'),
 );
 
+// cabinato: la partita la data il server, i record devono essere credibili e solo a proprio nome
+const sv = { '.sv': 'timestamp' };
+await check('Ada comincia una partita a Cane in fuga', true, () =>
+  put('sims_arcade_runs/u1', { g: 'dog', t: sv }, 'u1'),
+);
+await check("Ada non retrodata l'inizio della partita", false, () =>
+  put('sims_arcade_runs/u1', { g: 'dog', t: Date.now() - 3600000 }, 'u1'),
+);
+await check('Ada non comincia una partita a nome di Bea', false, () =>
+  put('sims_arcade_runs/u2', { g: 'dog', t: sv }, 'u1'),
+);
+const rec = (score, pid = 'p1', nick = 'Ada') => ({ score, pid, nick, t: sv });
+await check('un punteggio piccolo appena cominciato passa (margine)', true, () =>
+  put('sims_arcade_global/dog', rec(60), 'u1'),
+);
+await check('un punteggio impossibile per il tempo giocato no', false, () =>
+  put('sims_arcade_global/dog', rec(5000), 'u1'),
+);
+await check('un record più basso di quello che c’è no', false, () =>
+  put('sims_arcade_global/dog', rec(50), 'u1'),
+);
+await check('un record a nome di Bea no', false, () =>
+  put('sims_arcade_global/dog', rec(90, 'p2', 'Bea'), 'u1'),
+);
+await check('un record di un altro gioco da quello della partita no', false, () =>
+  put('sims_arcade_global/bricks', rec(60), 'u1'),
+);
+// un minuto di partita: a Cane in fuga al massimo 25 punti al secondo, più il margine di 100
+assert(await put('sims_arcade_runs/u1', { g: 'dog', t: Date.now() - 60000 }));
+await check('dopo un minuto 1500 punti sono credibili', true, () =>
+  put('sims_arcade_global/dog', rec(1500), 'u1'),
+);
+await check('dopo un minuto 1700 punti no', false, () =>
+  put('sims_arcade_global/dog', rec(1700), 'u1'),
+);
+await check('Ada batte il record del suo condominio', true, () =>
+  put('worlds/CASA-2222/arcade_records/dog', rec(1500), 'u1'),
+);
+await check('Ada salva il suo record personale', true, () =>
+  put('sims_arcade_best/p1/dog', { score: 1500, t: sv }, 'u1'),
+);
+await check('Bea non tocca il record personale di Ada', false, () =>
+  put('sims_arcade_best/p1/dog', { score: 1600, t: sv }, 'u2'),
+);
+await check('Bea non legge il record personale di Ada', false, () =>
+  call('GET', 'sims_arcade_best/p1', undefined, 'u2'),
+);
+await check('Bea legge la classifica mondiale', true, () =>
+  call('GET', 'sims_arcade_global', undefined, 'u2'),
+);
+
 console.log(results);
 console.log(
-  'PASS: world rules (rooms, world creation limit, world list, global leaderboard, chat).',
+  'PASS: world rules (rooms, world creation limit, world list, global leaderboard, chat, cabinet records).',
 );

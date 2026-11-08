@@ -18,9 +18,13 @@ import {
   chairFront,
   chairPose,
   chairsOf,
+  deskChair,
+  deskChairFront,
   hasTable,
   pathToChair,
+  pathToDeskChair,
 } from './chair-rules.js';
+import { openComputerShopModal } from './jobs.js';
 
 export const COIN_PRICE = 5;
 export const ICE_CREAM_PRICE = 5;
@@ -124,7 +128,7 @@ export function chairsHere(): { chair: Chair; table: GameValue }[] {
 }
 
 /** Pose da seduti che occupano un posto (panchina, sgabello, sedia). */
-export const SEATED_ACTS = ['bench', 'stool', 'chair', 'chairSide'];
+export const SEATED_ACTS = ['bench', 'stool', 'chair', 'chairSide', 'chairAway', 'chairAwaySide'];
 
 /** Posa da mostrare (e da mandare agli altri) mentre si è seduti. */
 export const myBenchPose = (): string => (seatedPose(game.benchSit) ? game.benchSit.pose : '');
@@ -140,7 +144,7 @@ function seatedPose(s: GameValue): boolean {
  */
 export function myChairSeat(): Pt | null {
   const s: GameValue = game.benchSit;
-  return s?.kind === 'chair' && s.arrived ? s.seat : null;
+  return (s?.kind === 'chair' || s?.kind === 'desk') && s.arrived ? s.seat : null;
 }
 
 type Pt = { x: number; y: number };
@@ -252,7 +256,7 @@ export function toggleBench(key: string): void {
 const SIT_WALK_SPEED = 130;
 
 function startSit(
-  kind: 'bench' | 'sofa' | 'stool' | 'chair',
+  kind: 'bench' | 'sofa' | 'stool' | 'chair' | 'desk',
   seat: Pt,
   front: Pt,
   path: Pt[],
@@ -295,6 +299,36 @@ export function sitOnChair(key: string): void {
   startSit('chair', seat, front, pathToChair(from, front, sp.table), sp, chairFace(sp.chair));
   game.benchSit.chairPose = chairPose(sp.chair);
 }
+
+/**
+ * Al PC: si va alla sedia davanti alla scrivania, ci si siede girati verso il monitor e si
+ * accende il computer. Ci si rialza quando si chiudono le finestre del PC.
+ */
+export function sitAtDesk(desk: GameValue): void {
+  if (game.benchSit) {
+    standUp();
+    return;
+  }
+  if (!desk || game.player.isSleeping) return;
+  const chair = deskChair(desk);
+  const seat = { x: chair.x, y: chair.y };
+  if (seatTakenBy(seat)) {
+    toast('🪑 Al PC c’è già seduto qualcuno.');
+    sfx('error');
+    return;
+  }
+  const front = deskChairFront(chair);
+  const from = { x: game.playerPos.x, y: game.playerPos.y };
+  startSit('desk', seat, front, pathToDeskChair(from, front, desk), desk, chairFace(chair));
+  game.benchSit.chairPose = chairPose(chair);
+}
+
+/** La sedia del PC della stanza in cui si è (per disegnarci seduti anche gli altri), o null. */
+export const deskChairHere = (): Chair | null =>
+  game.frameDesk ? deskChair(game.frameDesk) : null;
+
+/** Si è seduti alla scrivania del PC (anche mentre ci si siede o ci si alza). */
+export const atDesk = (): boolean => game.benchSit?.kind === 'desk';
 
 /** Direzione in cui guarda chi si sta sedendo o è seduto (null = quella dei tasti). */
 export const benchWalkDir = (): Pt | null => game.benchSit?.dir || null;
@@ -442,7 +476,8 @@ export function updateBench(now: number): void {
   // arrivati davanti al posto: ci si gira e ci si lascia andare all'indietro sulla seduta
   s.dir = s.face;
   s.arrived = true;
-  s.pose = s.kind === 'stool' ? 'stool' : s.kind === 'chair' ? s.chairPose : 'bench';
+  s.pose =
+    s.kind === 'stool' ? 'stool' : s.kind === 'chair' || s.kind === 'desk' ? s.chairPose : 'bench';
   if (e < SIT.down) return slide(s.front, s.seat, e / SIT.down, false);
   slide(s.seat, s.seat, 1, false);
   if (s.kind === 'stool') {
@@ -462,6 +497,15 @@ export function updateBench(now: number): void {
       );
       standUp();
     }
+    return;
+  }
+  if (s.kind === 'desk') {
+    // appena seduti si accende il PC; chiuse tutte le sue finestre ci si alza
+    if (s.seatedAt === undefined) {
+      s.seatedAt = now;
+      openComputerShopModal();
+    } else if (now - s.seatedAt > 0.4 && !document.querySelector('.fullscreen-modal:not(.hidden)'))
+      standUp();
     return;
   }
   if (s.kind === 'sofa') {

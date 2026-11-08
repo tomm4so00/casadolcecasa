@@ -49,6 +49,8 @@ export const DELETION_NODES = [
   'sims_invites',
   'sims_invited',
   'sims_emails',
+  'sims_arcade_records',
+  'sims_arcade_global',
 ] as const;
 
 /** I nodi in cui ogni giocatore ha una voce tutta sua, con il codice come chiave. */
@@ -66,6 +68,7 @@ const PER_PLAYER = [
   'sims_rps',
   'sims_invites',
   'sims_leaderboard_global',
+  'sims_arcade_best',
 ];
 
 /**
@@ -100,6 +103,7 @@ export function deletionPaths(uid: string, data: Partial<Record<string, unknown>
   add(`sims_accounts/${uid}`);
   add(`sims_link_requests/${uid}`);
   add(`sims_invited/${uid}`);
+  add(`sims_arcade_runs/${uid}`);
 
   // contatori delle attività in borsa: giorno → attività → giocatore
   for (const [day, byBiz] of entries(data.sims_activity))
@@ -167,6 +171,9 @@ export function deletionPaths(uid: string, data: Partial<Record<string, unknown>
     if (record(invited) && uid in invited) add(`sims_invites/${inviter}/${uid}`);
   for (const [other, inviter] of entries(data.sims_invited))
     if (mine(inviter)) add(`sims_invited/${other}`);
+  // record del cabinato a suo nome (del condominio e mondiali): si liberano
+  for (const node of ['sims_arcade_records', 'sims_arcade_global'] as const)
+    for (const [g, r] of entries(data[node])) if (record(r) && mine(r.pid)) add(`${node}/${g}`);
   // la casella email occupata dall'account: si libera (l'email non resta salvata)
   for (const [key, owner] of entries(data.sims_emails))
     if (owner === uid) add(`sims_emails/${key}`);

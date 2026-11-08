@@ -28,6 +28,7 @@ import {
   drawWineRackProp,
 } from './workplaces.js';
 import { MOONBASE_DRAW } from './moonbase.js';
+import { drawCabinet } from './cabinet.js';
 import {
   MOONBASE_INSIDE_DRAW,
   drawBaseConsole,
@@ -192,6 +193,7 @@ export function registerDrawers(): void {
     lamp: drawLamp,
     sofa: drawSofa,
     tv: drawTV,
+    cabinet: drawCabinet,
     plant: drawPlant,
     safe: drawSafe,
     stove: drawStove,

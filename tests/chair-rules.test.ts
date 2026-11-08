@@ -4,8 +4,11 @@ import {
   chairFront,
   chairPose,
   chairsOf,
+  deskChair,
+  deskChairFront,
   hasTable,
   pathToChair,
+  pathToDeskChair,
   segmentHitsRect,
 } from '../src/game/chair-rules';
 
@@ -73,5 +76,50 @@ describe('sedie dei tavolini', () => {
     expect(segmentHitsRect({ x: -5, y: 5 }, { x: 15, y: 5 }, r)).toBe(true);
     expect(segmentHitsRect({ x: -5, y: -5 }, { x: 15, y: -5 }, r)).toBe(false);
     expect(segmentHitsRect({ x: 5, y: 5 }, { x: 6, y: 6 }, r)).toBe(true);
+  });
+});
+
+describe('sedia della scrivania del PC', () => {
+  // la scrivania della stanza: 80×70, il monitor guarda verso +y
+  const desk = { kind: 'desk', x: 120, y: 40, w: 80, h: 70 };
+
+  it('sta davanti al monitor e gira con la scrivania', () => {
+    expect(deskChair(desk)).toEqual({ x: 120, y: 84, back: 'y1' });
+    expect(deskChair({ ...desk, rot: 1 })).toEqual({ x: 169, y: 40, back: 'x1' });
+    expect(deskChair({ ...desk, rot: 2 })).toEqual({ x: 120, y: -4, back: 'y0' });
+    expect(deskChair({ ...desk, rot: 3 })).toEqual({ x: 71, y: 40, back: 'x0' });
+  });
+
+  it('da seduti si guarda il monitor: di spalle se la scrivania guarda verso chi osserva', () => {
+    const faces = [0, 1, 2, 3].map((rot) => {
+      const c = deskChair({ ...desk, rot });
+      return [chairPose(c), chairFace(c)];
+    });
+    expect(faces).toEqual([
+      ['chairAway', { x: 0, y: -1 }],
+      ['chairAwaySide', { x: -1, y: 0 }],
+      ['chair', { x: 0, y: 1 }],
+      ['chairSide', { x: 1, y: 0 }],
+    ]);
+    // lo sguardo va sempre verso la scrivania
+    for (const rot of [0, 1, 2, 3]) {
+      const c = deskChair({ ...desk, rot });
+      const f = chairFace(c);
+      expect(Math.sign(desk.x - c.x) || 0).toBe(f.x);
+      expect(Math.sign(desk.y - c.y) || 0).toBe(f.y);
+    }
+  });
+
+  it('per arrivare alla sedia da dietro si gira attorno alla scrivania', () => {
+    const c = deskChair(desk);
+    const front = deskChairFront(c);
+    const from = { x: 120, y: -40 }; // dietro la scrivania
+    const path = pathToDeskChair(from, front, desk);
+    expect(path.length).toBeGreaterThan(2);
+    const block = { x0: 80, x1: 160, y0: 5, y1: 75 };
+    for (let i = 1; i < path.length; i++)
+      expect(segmentHitsRect(path[i - 1], path[i], block)).toBe(false);
+    // dal davanti si va dritti
+    expect(pathToDeskChair({ x: 170, y: 150 }, front, desk)).toEqual([{ x: 170, y: 150 }, front]);
   });
 });

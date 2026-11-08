@@ -48,7 +48,7 @@ try {
   assert.equal(catalog.rooms, 64);
   assert(
     catalog.clothes === 78 &&
-      catalog.furniture === 22 &&
+      catalog.furniture === 23 &&
       catalog.jobs === 4 &&
       catalog.business === 9,
   );

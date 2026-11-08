@@ -7,7 +7,7 @@
  * sinistro ('x0': sedia a sinistra del tavolo, si guarda il tavolo verso +x). Tutte e due stanno
  * dietro il tavolo, così chi siede si vede di fronte e non di spalle.
  */
-export type ChairBack = 'y0' | 'x0';
+export type ChairBack = 'y0' | 'x0' | 'y1' | 'x1';
 
 export interface Chair {
   x: number;
@@ -58,11 +58,51 @@ export const hasTable = (it: Prop): boolean => TABLE_GAP[it.kind] !== undefined;
  * Da seduti: 'chair' guarda in avanti (verso +y, come in panchina), 'chairSide' guarda il tavolo
  * verso +x (sullo schermo in basso a destra).
  */
-export type ChairPose = 'chair' | 'chairSide';
-export const chairPose = (c: Chair): ChairPose => (c.back === 'x0' ? 'chairSide' : 'chair');
+export type ChairPose = 'chair' | 'chairSide' | 'chairAway' | 'chairAwaySide';
+export const chairPose = (c: Chair): ChairPose =>
+  c.back === 'x0'
+    ? 'chairSide'
+    : c.back === 'y1'
+      ? 'chairAway'
+      : c.back === 'x1'
+        ? 'chairAwaySide'
+        : 'chair';
 
-/** Direzione dello sguardo da seduti, sul pavimento. */
-export const chairFace = (c: Chair): Pt => (c.back === 'x0' ? { x: 1, y: 0 } : { x: 0, y: 1 });
+/** Direzione dello sguardo da seduti, sul pavimento (sempre dalla parte opposta allo schienale). */
+export const chairFace = (c: Chair): Pt =>
+  c.back === 'x0'
+    ? { x: 1, y: 0 }
+    : c.back === 'y1'
+      ? { x: 0, y: -1 }
+      : c.back === 'x1'
+        ? { x: -1, y: 0 }
+        : { x: 0, y: 1 };
+
+/** Distanza tra il bordo della scrivania e il centro della sedia: le ginocchia vanno sotto. */
+const DESK_GAP = 9;
+
+/**
+ * La sedia davanti alla scrivania del PC, che gira con lei (rot: quarti di giro, il monitor
+ * guarda verso +y, +x, -y, -x). Lo schienale sta dalla parte opposta alla scrivania: con la
+ * scrivania dritta chi siede dà le spalle a chi guarda (schienale 'y1', davanti a lui).
+ */
+export function deskChair(desk: Prop & { rot?: number }): Chair {
+  const k = (((desk.rot || 0) % 4) + 4) % 4;
+  const d = (k % 2 ? desk.w : desk.h) / 2 + DESK_GAP;
+  const backs: ChairBack[] = ['y1', 'x1', 'y0', 'x0'];
+  const off = [
+    { x: 0, y: d },
+    { x: d, y: 0 },
+    { x: 0, y: -d },
+    { x: -d, y: 0 },
+  ][k];
+  return { x: desk.x + off.x, y: desk.y + off.y, back: backs[k] };
+}
+
+/** Dove ci si mette prima di sedersi alla scrivania: di fianco alla sedia, poi ci si infila. */
+export function deskChairFront(c: Chair): Pt {
+  return c.back === 'y0' || c.back === 'y1' ? { x: c.x + 22, y: c.y } : { x: c.x, y: c.y + 22 };
+}
 
 /**
  * Dove ci si mette prima di sedersi: davanti la sedia d'attesa; per le sedie del tavolo dal lato
@@ -118,6 +158,33 @@ export function pathToChair(from: Pt, front: Pt, table: Prop | null): Pt[] {
     y0: table.y - table.h / 2 - g - 2,
     y1: table.y + table.h / 2 + 1,
   };
+  return pathAround(from, front, block);
+}
+
+/**
+ * Strada per arrivare accanto alla sedia della scrivania senza attraversare la scrivania: come
+ * per i tavolini, girando dall'angolo che allunga meno.
+ */
+export function pathToDeskChair(from: Pt, front: Pt, desk: Prop & { rot?: number }): Pt[] {
+  const k = (((desk.rot || 0) % 4) + 4) % 4;
+  const hw = (k % 2 ? desk.h : desk.w) / 2,
+    hh = (k % 2 ? desk.w : desk.h) / 2;
+  // si evita la scrivania; la sedia si raggiunge di lato (vedi deskChairFront)
+  const block = {
+    x0: desk.x - hw - 2,
+    x1: desk.x + hw + 2,
+    y0: desk.y - hh - 2,
+    y1: desk.y + hh + 2,
+  };
+  return pathAround(from, front, block);
+}
+
+/** Dritti se si può, altrimenti per uno o due angoli del rettangolo, la strada più corta. */
+function pathAround(
+  from: Pt,
+  front: Pt,
+  block: { x0: number; x1: number; y0: number; y1: number },
+): Pt[] {
   if (!segmentHitsRect(from, front, block)) return [from, front];
   const m = 14; // gli angoli un po' fuori, così si passa accanto e non rasente
   const corners = [

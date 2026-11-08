@@ -40,6 +40,7 @@ import { kissActive } from './romance.js';
 import { noteFaintOnReturn } from './faint.js';
 import { promptSetSafePin } from './needs.js';
 import { worldNode } from './world-db.js';
+import { cabinetOpen } from './cabinet.js';
 
 /** Segna la presenza come offline, con l'ora del server in cui il giocatore è uscito. */
 export const OFFLINE_MARK = { offline: true, offAt: { '.sv': 'timestamp' } };
@@ -711,21 +712,23 @@ export function startPresence(..._args: GameValue[]): GameValue {
       ...(isStoned() ? { stoned: true } : {}),
       act: game.rocketTrip
         ? 'rocket'
-        : performance.now() < game.smokeUntil
-          ? 'smoke'
-          : game.fainted
-            ? 'faint'
-            : kissActive()
-              ? 'kiss'
-              : game.showerAnim
-                ? 'shower'
-                : game.bathAnim
-                  ? game.bathAnim.pose || ''
-                  : game.benchSit
-                    ? myBenchPose()
-                    : game.player.isSleeping
-                      ? 'sleep'
-                      : '',
+        : cabinetOpen()
+          ? 'arcade'
+          : performance.now() < game.smokeUntil
+            ? 'smoke'
+            : game.fainted
+              ? 'faint'
+              : kissActive()
+                ? 'kiss'
+                : game.showerAnim
+                  ? 'shower'
+                  : game.bathAnim
+                    ? game.bathAnim.pose || ''
+                    : game.benchSit
+                      ? myBenchPose()
+                      : game.player.isSleeping
+                        ? 'sleep'
+                        : '',
       ...(game.showerAnim?.und ? { und: game.showerAnim.und } : {}),
       say: game.mySay,
       sayT: game.mySayT,

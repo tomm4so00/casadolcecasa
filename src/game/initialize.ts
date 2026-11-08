@@ -139,6 +139,7 @@ export function initializeGame() {
   game.showerFog = 0;
   game.frameShowerActors = [];
   game.frameChairSitters = [];
+  game.frameDesk = null;
   game.view.isOutsideMenuOpen = false;
   game.view.outsideSubmenu = '';
   game.view.fridgeIsOpen = false;

@@ -3042,3 +3042,228 @@ canvas.shake {
   padding-bottom: 4px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.12);
 }
+
+/* ---------- Cabinato dei minigiochi ---------- */
+#cabinet-modal {
+  z-index: 520;
+}
+.cab-shell {
+  width: min(94vw, 560px);
+  max-height: 96vh;
+  overflow-y: auto;
+  background: linear-gradient(180deg, #27347f, #141a45);
+  border: 3px solid #00d2ff;
+  border-radius: 16px;
+  padding: 10px 12px 12px;
+  box-shadow:
+    0 0 24px rgba(0, 210, 255, 0.35),
+    inset 0 0 0 2px rgba(255, 255, 255, 0.08);
+  color: #fff;
+  font-family: system-ui, sans-serif;
+}
+.cab-marquee {
+  text-align: center;
+  font: bold 18px monospace;
+  letter-spacing: 3px;
+  padding: 6px;
+  margin-bottom: 8px;
+  border-radius: 8px;
+  background: linear-gradient(90deg, #ff4757, #ffa502, #ff4757);
+  text-shadow: 0 2px 0 rgba(0, 0, 0, 0.35);
+}
+.cab-tabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.cab-tabs button {
+  flex: 1;
+  padding: 7px 4px;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  background: #0b0f2a;
+  color: #fff;
+  font-size: 13px;
+  font-weight: bold;
+  cursor: pointer;
+}
+.cab-tabs button.active {
+  border-color: #fcfc54;
+  background: #2f3c99;
+}
+.cab-bezel {
+  background: #05070f;
+  border-radius: 10px;
+  padding: 8px;
+  border: 2px solid #3d4652;
+}
+.cab-screen {
+  display: block;
+  width: 100%;
+  aspect-ratio: 192 / 120;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  border-radius: 4px;
+  touch-action: none;
+}
+.cab-info {
+  font-size: 13px;
+  margin: 8px 2px 4px;
+}
+.cab-how {
+  margin: 0 0 6px;
+  opacity: 0.85;
+}
+.cab-records {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 3px;
+}
+.cab-records span {
+  float: right;
+  color: #fcfc54;
+  font-size: 12px;
+}
+.cab-pad {
+  display: none;
+  justify-content: space-between;
+  align-items: center;
+  margin: 8px 6px 4px;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.cab-arrows {
+  display: grid;
+  grid-template-columns: repeat(3, 46px);
+  grid-template-rows: repeat(2, 40px);
+  gap: 4px;
+}
+.cab-arrows button,
+.cab-a {
+  border: none;
+  border-radius: 10px;
+  background: #2f3640;
+  color: #fff;
+  font-size: 18px;
+  touch-action: none;
+}
+.cab-arrows [data-cab-key='up'] {
+  grid-column: 2;
+  grid-row: 1;
+}
+.cab-arrows [data-cab-key='left'] {
+  grid-column: 1;
+  grid-row: 2;
+}
+.cab-arrows [data-cab-key='down'] {
+  grid-column: 2;
+  grid-row: 2;
+}
+.cab-arrows [data-cab-key='right'] {
+  grid-column: 3;
+  grid-row: 2;
+}
+.cab-a {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: #e84118;
+  font: bold 24px monospace;
+  box-shadow: 0 4px 0 #8c2a10;
+}
+.cab-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+.cab-actions button {
+  flex: 1;
+  padding: 9px;
+  border: none;
+  border-radius: 8px;
+  font-weight: bold;
+  color: #fff;
+  cursor: pointer;
+  background: #2ed573;
+}
+.cab-actions .cab-close {
+  background: #57606f;
+}
+/* sul telefono (dito) i pulsanti sotto lo schermo */
+@media (pointer: coarse) {
+  .cab-pad {
+    display: flex;
+  }
+}
+/* telefono in orizzontale: frecce a sinistra, schermo al centro, A a destra */
+@media (pointer: coarse) and (orientation: landscape) {
+  .cab-shell {
+    width: 98vw;
+    max-width: none;
+    max-height: 98vh;
+    padding: 6px 8px;
+    display: grid;
+    grid-template-columns: 150px 1fr 110px;
+    grid-template-areas:
+      'tabs tabs tabs'
+      'arrows screen a'
+      'arrows info a'
+      'act act act';
+    column-gap: 8px;
+  }
+  .cab-marquee {
+    display: none;
+  }
+  .cab-tabs {
+    grid-area: tabs;
+    margin-bottom: 4px;
+  }
+  .cab-tabs button {
+    padding: 4px;
+    font-size: 12px;
+  }
+  .cab-bezel {
+    grid-area: screen;
+    padding: 4px;
+    justify-self: center;
+  }
+  .cab-screen {
+    width: auto;
+    height: calc(98vh - 140px);
+  }
+  .cab-info {
+    grid-area: info;
+    margin: 2px;
+    font-size: 11px;
+  }
+  .cab-how {
+    display: none;
+  }
+  .cab-records {
+    grid-template-columns: repeat(3, auto);
+  }
+  .cab-records span {
+    display: none;
+  }
+  .cab-pad {
+    display: contents;
+  }
+  .cab-arrows {
+    grid-area: arrows;
+    align-self: center;
+  }
+  .cab-a {
+    grid-area: a;
+    align-self: center;
+    justify-self: center;
+  }
+  .cab-actions {
+    grid-area: act;
+    margin-top: 4px;
+  }
+  .cab-actions button {
+    padding: 5px;
+  }
+}

@@ -1091,6 +1091,27 @@ export const FURNITURE_CATALOG = [
     },
   },
   {
+    // cabinato dei minigiochi: solo standard (tre giochi), davanti alla scrivania con lo schermo
+    // verso chi guarda, così chi gioca si vede di spalle
+    id: 'cabinet_std',
+    name: 'Cabinato Arcade 🕹️',
+    price: 120,
+    category: 'cabinet',
+    isLuxury: false,
+    propKey: 'cabinet',
+    propData: {
+      x: 168,
+      y: 108,
+      w: 36,
+      h: 30,
+      z: 84,
+      name: 'Cabinato 🕹️',
+      color: '#1f2a6b',
+      topColor: '#111833',
+      moveable: true,
+    },
+  },
+  {
     id: 'tv_pre',
     name: 'TV 50 pollici Pregiata 💎📺',
     price: 145,

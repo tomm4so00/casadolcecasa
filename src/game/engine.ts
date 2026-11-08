@@ -22,6 +22,7 @@ import {
   myBenchPose,
   myChairSeat,
   chairsHere,
+  deskChairHere,
   SEATED_ACTS,
   standUp,
   updateBench,
@@ -59,7 +60,8 @@ import {
   drawStaticScene,
   getEnvStyle,
 } from './render/scenes.js';
-import { box, drawMapItem, drawSafeCorridor, softShadow } from './render/objects.js';
+import { box, drawChair, drawMapItem, drawSafeCorridor, softShadow } from './render/objects.js';
+import { tierOfPlaced } from './furniture-tiers.js';
 import { mgAddDrawables } from './jobs.js';
 import {
   aptLabel,
@@ -87,7 +89,8 @@ import { clerkLines } from './clerks.js';
 import { facadeFootprint, facadeSolids } from './render/facades.js';
 import { checkWalkThrough, doorGapsHere, openGapsHere, roomBounds } from './interactions.js';
 import { clampToRoom, doorwayAt } from './door-walk-rules.js';
-import { chairsOf } from './chair-rules.js';
+import { chairsOf, deskChair } from './chair-rules.js';
+import { cabinetFacesAway, cabinetPlayerPose } from './cabinet.js';
 
 /** Lo stesso aspetto con gli occhi rossi (dopo una canna). */
 const withStonedEyes = (look: GameValue, on: boolean): GameValue =>
@@ -175,7 +178,15 @@ export function getSolidObstacles(..._args: GameValue[]): GameValue {
       (o?: GameValue): GameValue =>
         game.view.activeEnvironment !== 'PLAYER_ROOM' || !overlapsCorridor(o),
     )
-    .concat(extra, courtyardBuildings(map));
+    .concat(extra, courtyardBuildings(map), deskChairSolid(map));
+}
+
+/** La sedia davanti alla scrivania della stanza (si sposta e gira con la scrivania). */
+function deskChairSolid(map: GameValue): GameValue[] {
+  if (game.view.activeEnvironment !== 'PLAYER_ROOM' || !map.desk) return [];
+  if (game.movingPropKey === 'desk') return [];
+  const c = deskChair(map.desk);
+  return [{ x: c.x, y: c.y, w: 16, h: 16 }];
 }
 
 /** Le palazzine del cortile sono solide (le loro porte invece non sono ostacoli). */
@@ -486,6 +497,15 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
       );
     });
   }
+  // la sedia davanti alla scrivania del PC: chi ci siede si disegna con lei (vedi drawChair)
+  game.frameDesk = game.view.activeEnvironment === 'PLAYER_ROOM' && map.desk ? map.desk : null;
+  if (game.frameDesk) {
+    const desk: GameValue = game.frameDesk;
+    const c = deskChair(desk);
+    const tier = tierOfPlaced(desk);
+    const color = tier === 'lux' ? '#3d3d7a' : tier === 'premium' ? '#6d4c41' : '#353b48';
+    addThing(c.x, c.y, 16, 16, 37, '', (): GameValue => drawChair(c.x, c.y, color, c.back));
+  }
   const mySayNow: GameValue = game.mySay && Date.now() - game.mySayT < 6000 ? game.mySay : '';
   game.frameShowerActors = [];
   game.frameChairSitters = [];
@@ -565,9 +585,11 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
               game.sleepK,
               map.bed,
               game.bedSlot,
-              benchWalkDir() || { x: game.moveRight, y: -game.moveForward },
+              cabinetPlayerPose()?.dir ||
+                benchWalkDir() || { x: game.moveRight, y: -game.moveForward },
               myBathPose() || myBenchPose(),
               myBarDrinkOpts() ||
+                (cabinetPlayerPose()?.back ? { back: true } : null) ||
                 (sit?.kind === 'sofa' && sit.pose === 'bench'
                   ? sofaBackOpts(sit.item, game.playerPos.x, game.playerPos.y)
                   : null),
@@ -795,9 +817,11 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
     const pose: string = act === 'sit' || act === 'wash' || SEATED_ACTS.includes(act) ? act : '';
     // seduto su una sedia: si disegna con la sedia più vicina (vedi drawChair)
     const othersChair: GameValue =
-      state !== 'fainted' && (act === 'chair' || act === 'chairSide')
+      state !== 'fainted' &&
+      (act === 'chair' || act === 'chairSide' || act === 'chairAway' || act === 'chairAwaySide')
         ? chairsHere()
             .map((c) => c.chair)
+            .concat(deskChairHere() || [])
             .find((c) => Math.hypot(c.x - s.x, c.y - s.y) < 25) || null
         : null;
     if (act === 'shower' && inCabin(s.x, s.y)) {
@@ -836,7 +860,11 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
               typeof op.bed === 'number' ? op.bed : null,
               s.dir || null,
               pose,
-              act === 'bench' ? sofaBackOpts(map.sofa, s.x, s.y) : null,
+              act === 'bench'
+                ? sofaBackOpts(map.sofa, s.x, s.y)
+                : act === 'arcade' && map.cabinet && cabinetFacesAway(map.cabinet)
+                  ? { back: true }
+                  : null,
             ),
     });
   });

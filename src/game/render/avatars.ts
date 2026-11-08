@@ -1640,7 +1640,10 @@ export function drawPlayerAvatar(
   const onStool = pose === 'stool';
   // sulla sedia di un tavolino: 'chair' guarda in avanti, 'chairSide' il tavolo alla sua destra
   // (verso +x)
-  const onChair = pose === 'chair' || pose === 'chairSide';
+  // 'chairAway' e 'chairAwaySide': alla scrivania del PC, girati verso il monitor (di spalle),
+  // verso -y o verso -x
+  const chairAway = pose === 'chairAway' || pose === 'chairAwaySide';
+  const onChair = pose === 'chair' || pose === 'chairSide' || chairAway;
   const chairSide = pose === 'chairSide';
   const sitting = pose === 'sit' || pose === 'bench' || onStool || onChair;
   // Direzione di marcia (a terra): il passo va avanti e indietro lungo questa.
@@ -1653,7 +1656,7 @@ export function drawPlayerAvatar(
   // altrimenti sembrerebbe di camminare all'indietro guardando chi osserva.
   const walkingAway = !!moving && !sitting && wl > 0.01 && dX + dY < -0.3;
   // di spalle: al bancone, il barista girato verso le mensole, o chi si allontana
-  const fromBehind = onStool || !!(opts && opts.back) || walkingAway;
+  const fromBehind = onStool || chairAway || !!(opts && opts.back) || walkingAway;
   // da che parte dello schermo si va (1 = destra): lì punta la scarpa e, di spalle, si vede
   // l'orecchio (vista di tre quarti)
   const screenSide: number = dX - dY;
@@ -1994,6 +1997,14 @@ export function drawPlayerAvatar(
       [1, false],
     ] as const)
       drawLeg(P(0, side * 3.5, 22 + bob), P(13, side * 3.5, 2 - lift), back, P(11, side * 3.5, 19));
+  } else if (chairAway) {
+    // ginocchia e piedi sotto la scrivania, dalla parte opposta a chi guarda (il busto li copre)
+    const sideways = pose === 'chairAwaySide';
+    for (const side of [-1, 1]) {
+      const at = (a: number, b: number, z: number) =>
+        sideways ? P(-b, side * 3.5 + a, z) : P(side * 3.5 + a, -b, z);
+      drawLeg(at(0, 0, 22 + bob), at(0, 13, 2 - lift), true, at(0, 11, 19));
+    }
   } else if (sitting) {
     for (const [side, back] of [
       [1, true],
