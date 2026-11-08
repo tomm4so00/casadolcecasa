@@ -51,6 +51,8 @@ export const DELETION_NODES = [
   'sims_emails',
   'sims_arcade_records',
   'sims_arcade_global',
+  'sims_arcade_board',
+  'sims_arcade_top',
 ] as const;
 
 /** I nodi in cui ogni giocatore ha una voce tutta sua, con il codice come chiave. */
@@ -174,6 +176,10 @@ export function deletionPaths(uid: string, data: Partial<Record<string, unknown>
   // record del cabinato a suo nome (del condominio e mondiali): si liberano
   for (const node of ['sims_arcade_records', 'sims_arcade_global'] as const)
     for (const [g, r] of entries(data[node])) if (record(r) && mine(r.pid)) add(`${node}/${g}`);
+  // le sue voci nelle classifiche del cabinato (del condominio e del mondo)
+  for (const node of ['sims_arcade_board', 'sims_arcade_top'] as const)
+    for (const [g, list] of entries(data[node]))
+      for (const [pid] of entries(list)) if (ids.has(pid)) add(`${node}/${g}/${pid}`);
   // la casella email occupata dall'account: si libera (l'email non resta salvata)
   for (const [key, owner] of entries(data.sims_emails))
     if (owner === uid) add(`sims_emails/${key}`);

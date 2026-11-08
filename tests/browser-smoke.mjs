@@ -60,11 +60,17 @@ try {
   await page.evaluate(async () =>
     (await import('/src/game/render/primitives.ts')).closeModal('clothes-modal'),
   );
-  await page.evaluate(async () => {
+  // si sale di una fascia alla volta: il lusso senza il pregiato no, poi pregiato e lusso sì
+  const skipped = await page.evaluate(async () => {
     const { game } = await import('/src/game/context.ts');
-    const item = game.furnitureCatalog.find((f) => f.id === 'bed_lux');
-    await (await import('/src/game/world.ts')).buyFurnitureItem(item.id);
+    const { buyFurnitureItem } = await import('/src/game/world.ts');
+    await buyFurnitureItem('bed_lux');
+    const skippedLux = !!game.player.ownedFurniture.bed_lux;
+    await buyFurnitureItem('bed_pre');
+    await buyFurnitureItem('bed_lux');
+    return skippedLux;
   });
+  assert.equal(skipped, false, 'il lusso non si compra prima del pregiato');
   await page.locator('#furniture-shop-modal').waitFor({ state: 'visible' });
   await page.evaluate(async () =>
     (await import('/src/game/render/primitives.ts')).closeModal('furniture-shop-modal'),

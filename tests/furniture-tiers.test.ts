@@ -69,3 +69,68 @@ describe('fasce dei mobili', () => {
     }
   });
 });
+
+describe('showroom del negozio di mobili', () => {
+  it('espone ogni mobile del catalogo, in tutte le fasce, più le versioni standard di casa', async () => {
+    const { STORE_FLOOR_FURNITURE } = await import('../src/game/data/catalogues.js');
+    const shown = Object.values(STORE_FLOOR_FURNITURE as Record<string, { showId?: string }>)
+      .map((it) => it.showId)
+      .filter(Boolean);
+    for (const def of catalog) expect(shown, def.id).toContain(def.id);
+    for (const id of ['bed_std', 'wardrobe_std', 'desk_std', 'safe_std'])
+      expect(shown, id).toContain(id);
+  });
+
+  it('le pedane non si sovrappongono, stanno nel negozio e lasciano libero il corridoio', async () => {
+    const { STORE_FLOOR_FURNITURE } = await import('../src/game/data/catalogues.js');
+    type It = { x: number; y: number; w: number; h: number; showId?: string };
+    const items = Object.entries(STORE_FLOOR_FURNITURE as Record<string, It>).filter(
+      ([k]) => k !== 'doorExit',
+    );
+    // la pedana è il mobile più 9 di margine per lato
+    const box = ([k, it]: [string, It]) => {
+      const pad = it.showId ? 9 : 0;
+      return {
+        k,
+        x0: it.x - it.w / 2 - pad,
+        x1: it.x + it.w / 2 + pad,
+        y0: it.y - it.h / 2 - pad,
+        y1: it.y + it.h / 2 + pad,
+      };
+    };
+    const boxes = items.map(box);
+    for (const b of boxes) {
+      expect(b.x0, b.k).toBeGreaterThan(-520);
+      expect(b.x1, b.k).toBeLessThan(520);
+      expect(b.y0, b.k).toBeGreaterThan(-360);
+      expect(b.y1, b.k).toBeLessThan(360);
+      // corridoio dall'ingresso al fondo
+      if (b.k !== 'shopCounter') expect(b.x1 < -100 || b.x0 > 100, b.k).toBe(true);
+    }
+    for (let i = 0; i < boxes.length; i++)
+      for (let j = i + 1; j < boxes.length; j++) {
+        const a = boxes[i],
+          b = boxes[j];
+        const overlap = a.x0 < b.x1 && b.x0 < a.x1 && a.y0 < b.y1 && b.y0 < a.y1;
+        expect(overlap, `${a.k} / ${b.k}`).toBe(false);
+      }
+  });
+
+  it('ogni modello dice cosa vuol dire per chi guarda', async () => {
+    const { showroomStatus } = await import('../src/game/furniture-tiers.js');
+    const st = (owned: Record<string, boolean>, id: string, category: string) =>
+      showroomStatus(catalog, owned, { id, category });
+    // nessun divano: si comincia dallo standard
+    expect(st({}, 'sofa_std', 'sofa')).toBe('next');
+    expect(st({}, 'sofa_pre', 'sofa')).toBe('locked');
+    expect(st({}, 'sofa_lux', 'sofa')).toBe('locked');
+    // col pregiato: lo standard è superato, il lusso è il prossimo
+    expect(st({ sofa_std: true, sofa_pre: true }, 'sofa_std', 'sofa')).toBe('better');
+    expect(st({ sofa_std: true, sofa_pre: true }, 'sofa_pre', 'sofa')).toBe('mine');
+    expect(st({ sofa_std: true, sofa_pre: true }, 'sofa_lux', 'sofa')).toBe('next');
+    // il letto standard ce l'hanno tutti in stanza
+    expect(st({}, 'bed_std', 'bed')).toBe('mine');
+    expect(st({}, 'bed_pre', 'bed')).toBe('next');
+    expect(st({ bed_pre: true }, 'bed_std', 'bed')).toBe('better');
+  });
+});

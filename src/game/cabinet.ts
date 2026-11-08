@@ -1,44 +1,68 @@
-// Cabinato dei minigiochi nella stanza: davanti allo schermo si sceglie uno dei tre giochi e si
-// gioca in una finestra a parte. Record personale, del condominio e mondiale; chi strappa il
-// record del condominio o quello mondiale a qualcun altro riceve un premio in cassaforte.
+// Cabinato dei minigiochi (nella stanza, o la console a gettone della sala giochi): si apre su un
+// menù con i tre giochi e le classifiche (i primi 10 del condominio e del mondo per ogni gioco);
+// si gioca a schermo intero, dentro una cornice da cabinato vero. Chi diventa primo in classifica
+// togliendo il posto a qualcun altro riceve un premio in cassaforte.
 import type { GameValue } from './context.js';
 import { game } from './context.js';
 import { toast } from './missions.js';
 import { sfx } from './audio.js';
-import { creditMoney } from './economy.js';
+import { creditMoney, spendMoney } from './economy.js';
 import { worldNode } from './world-db.js';
 import { rotateAround } from './render/primitives.js';
+import { currentWorldCode } from './world-select.js';
 import {
+  BOARD_SIZE,
+  type BoardEntry,
   CABINET_GAMES,
   CABINET_IDS,
   type CabinetGameId,
-  type CabinetRecord,
   RECORD_PRIZE,
-  beats,
+  boardLeader,
   decodeBest,
-  decodeRecord,
+  decodeBoard,
   recordPrize,
 } from './cabinet-rules.js';
-import { type MiniGame, type PadInput, SCREEN_H, SCREEN_W, newMiniGame } from './cabinet-games.js';
+import {
+  type MiniGame,
+  type PadInput,
+  SCREEN_H,
+  SCREEN_W,
+  drawCoinPrompt,
+  drawOverPanel,
+  newMiniGame,
+} from './cabinet-games.js';
 
-type RecordKind = keyof typeof RECORD_PRIZE;
+type BoardKind = keyof typeof RECORD_PRIZE;
+type View = 'menu' | 'scores' | 'play';
 
 interface CabinetState {
   item: GameValue;
+  view: View;
   id: CabinetGameId;
   mini: MiniGame;
   /** la partita è partita (si è premuto A): la sua ora è segnata nel database */
   started: boolean;
   /** la fine della partita è già stata registrata */
   finished: boolean;
+  /** quando è finita (per non tornare al menù con lo stesso tocco) */
+  overAt: number;
+  /** i record battuti, da scrivere sullo schermo di fine partita */
+  overLines: string[];
   frame: number;
   last: number;
+  /** prezzo di una partita (0 = gratis: il cabinato di casa) */
+  coin: number;
+  /** la moneta per la prossima partita è stata pagata */
+  paid: boolean;
+  paying: boolean;
+  /** il gioco di cui si guardano le classifiche */
+  boardId: CabinetGameId;
 }
 
 let state: CabinetState | null = null;
 const input: PadInput = { left: false, right: false, up: false, down: false, action: false };
 const personal: Partial<Record<CabinetGameId, number>> = {};
-const records: Record<RecordKind, Partial<Record<CabinetGameId, CabinetRecord | null>>> = {
+const boards: Record<BoardKind, Partial<Record<CabinetGameId, BoardEntry[]>>> = {
   world: {},
   global: {},
 };
@@ -50,7 +74,8 @@ let modal: HTMLElement | null = null;
 export const cabinetOpen = (): boolean => state !== null;
 
 /** Lo schermo del gioco in corso, da mostrare anche sul cabinato nella stanza. */
-export const cabinetScreen = (): HTMLCanvasElement | null => (state ? screen : null);
+export const cabinetScreen = (): HTMLCanvasElement | null =>
+  state?.view === 'play' ? screen : null;
 
 /** Rotazione (0-3) del cabinato: lo schermo guarda verso +y, +x, -y, -x. */
 const turn = (item: GameValue): number => (((item?.rot || 0) % 4) + 4) % 4;
@@ -81,31 +106,38 @@ export function cabinetPlayerPose(): { dir: { x: number; y: number }; back: bool
 const db = (): GameValue => game.session.db;
 const online = (): boolean => !game.session.OFFLINE && !!game.session.authUid;
 const stamp = (): GameValue => (online() ? { '.sv': 'timestamp' } : Date.now());
-const recordPath = (kind: RecordKind, id: CabinetGameId): string =>
-  (kind === 'world' ? worldNode('arcade_records') : 'sims_arcade_global') + '/' + id;
+/** La classifica di un gioco: del condominio (nodo del mondo) o del mondo intero. */
+const boardPath = (kind: BoardKind, id: CabinetGameId): string =>
+  (kind === 'world' ? worldNode('arcade_board') : 'sims_arcade_top') + '/' + id;
 
-async function loadRecords(): Promise<void> {
-  const pid = game.session.myPlayerId;
+async function readBoard(kind: BoardKind, id: CabinetGameId): Promise<BoardEntry[]> {
+  const snap: GameValue = await db()
+    .ref(boardPath(kind, id))
+    .orderByChild('score')
+    .limitToLast(BOARD_SIZE)
+    .get();
+  return decodeBoard(snap?.val());
+}
+
+/** Record personali e classifiche di tutti e tre i giochi. */
+async function loadBoards(): Promise<void> {
   try {
-    const [mine, world, global]: GameValue[] = await Promise.all([
-      db()
-        .ref('sims_arcade_best/' + pid)
-        .get(),
-      db().ref(worldNode('arcade_records')).get(),
-      db().ref('sims_arcade_global').get(),
-    ]);
-    const m = mine?.val() || {},
-      w = world?.val() || {},
-      g = global?.val() || {};
-    for (const id of CABINET_IDS) {
-      personal[id] = Math.max(personal[id] || 0, decodeBest(m[id]));
-      records.world[id] = decodeRecord(w[id]);
-      records.global[id] = decodeRecord(g[id]);
-    }
+    const mine: GameValue = await db()
+      .ref('sims_arcade_best/' + game.session.myPlayerId)
+      .get();
+    const m = mine?.val() || {};
+    for (const id of CABINET_IDS) personal[id] = Math.max(personal[id] || 0, decodeBest(m[id]));
+    await Promise.all(
+      CABINET_IDS.flatMap((id) =>
+        (['world', 'global'] as const).map(async (kind) => {
+          boards[kind][id] = await readBoard(kind, id);
+        }),
+      ),
+    );
   } catch (e) {
-    console.warn('[cabinato] record', e);
+    console.warn('[cabinato] classifiche', e);
   }
-  renderInfo();
+  render();
 }
 
 /** La partita comincia: l'ora la segna il server (le regole confrontano i punti col tempo). */
@@ -117,7 +149,10 @@ function startRun(id: CabinetGameId): void {
     .catch((e: unknown) => console.warn('[cabinato] partita', e));
 }
 
-/** A fine partita: record personale, del condominio e mondiale, con gli eventuali premi. */
+/**
+ * A fine partita: record personale e le due classifiche. Restituisce le righe da scrivere sullo
+ * schermo (maiuscole, senza accenti: il carattere a pixel non li ha).
+ */
 async function finishRun(id: CabinetGameId, score: number): Promise<string[]> {
   const lines: string[] = [];
   if (score <= 0) return lines;
@@ -127,37 +162,41 @@ async function finishRun(id: CabinetGameId, score: number): Promise<string[]> {
     try {
       await db().ref(`sims_arcade_best/${pid}/${id}`).set({ score, t: stamp() });
       personal[id] = score;
-      lines.push('🏅 Nuovo record personale!');
+      lines.push('RECORD PERSONALE!');
     } catch (e) {
       console.warn('[cabinato] record personale', e);
     }
   }
   for (const kind of ['world', 'global'] as const) {
-    const path = recordPath(kind, id);
-    let before: CabinetRecord | null = null;
+    const where = kind === 'world' ? 'CONDOMINIO' : 'MONDO';
+    let before: BoardEntry[];
     try {
-      before = decodeRecord((await db().ref(path).get()).val());
+      before = await readBoard(kind, id);
     } catch {
       continue;
     }
-    if (!beats(score, before)) {
-      records[kind][id] = before;
-      continue;
-    }
-    // il database accetta solo un punteggio più alto di quello che c'è (e credibile)
+    // il database tiene il proprio miglior punteggio: si scrive solo se lo migliora
     try {
-      await db().ref(path).set({ score, pid, nick, t: stamp() });
-    } catch (e) {
-      console.warn('[cabinato] record', kind, e);
+      await db()
+        .ref(`${boardPath(kind, id)}/${pid}`)
+        .set({ score, nick, t: stamp() });
+    } catch {
+      boards[kind][id] = before;
       continue;
     }
-    records[kind][id] = { score, pid, nick, t: Date.now() };
-    lines.push(kind === 'world' ? '🏢 Record del condominio!' : '🌍 Record mondiale!');
-    const prize = recordPrize(id, kind, score, before, pid);
-    if (prize && (await creditMoney(prize))) {
-      lines.push(`💰 Premio: +${prize} € in cassaforte`);
-      sfx('coin');
-    }
+    const after = await readBoard(kind, id).catch(() => before);
+    boards[kind][id] = after;
+    const place = after.findIndex((e) => e.pid === pid) + 1;
+    const leader = boardLeader(before);
+    if (place === 1 && (!leader || score > leader.score)) {
+      lines.push(`PRIMO NEL ${where}!`);
+      const prize = recordPrize(id, kind, score, leader, pid);
+      if (prize && (await creditMoney(prize))) {
+        lines.push(`PREMIO +${prize} EURO`);
+        sfx('coin');
+        toast(`🏆 Primo in classifica (${where.toLowerCase()}): +${prize} € in cassaforte!`, 5000);
+      }
+    } else if (place > 0) lines.push(`${place} POSTO NEL ${where}`);
   }
   return lines;
 }
@@ -171,38 +210,55 @@ function buildModal(): HTMLElement {
   el.id = 'cabinet-modal';
   el.className = 'fullscreen-modal hidden';
   el.innerHTML = `
-    <div class="cab-shell">
-      <div class="cab-marquee">🕹️ CABINATO CDC</div>
+    <div class="cab-shell cab-menu">
+      <div class="cab-marquee"></div>
+      <div class="cab-games"></div>
+      <p class="cab-coin"></p>
+      <div class="cab-actions">
+        <button type="button" data-cab="scores">🏆 Classifiche</button>
+        <button type="button" class="cab-close" data-cab="close">✖ Esci</button>
+      </div>
+    </div>
+    <div class="cab-shell cab-scores">
+      <div class="cab-marquee">🏆 CLASSIFICHE</div>
       <div class="cab-tabs">${CABINET_IDS.map(
         (id) =>
-          `<button type="button" data-cab-game="${id}">${CABINET_GAMES[id].emoji} ${CABINET_GAMES[id].name}</button>`,
+          `<button type="button" data-cab-board="${id}">${CABINET_GAMES[id].emoji} ${CABINET_GAMES[id].name}</button>`,
       ).join('')}</div>
-      <div class="cab-bezel"><canvas class="cab-screen" width="${SCREEN_W}" height="${SCREEN_H}"></canvas></div>
-      <div class="cab-info"></div>
-      <div class="cab-pad">
-        <div class="cab-arrows">
-          <button type="button" data-cab-key="up">▲</button>
-          <button type="button" data-cab-key="left">◀</button>
-          <button type="button" data-cab-key="down">▼</button>
-          <button type="button" data-cab-key="right">▶</button>
-        </div>
-        <button type="button" class="cab-a" data-cab-key="action">A</button>
+      <div class="cab-boards"></div>
+      <p class="cab-prize">Il primo di ogni classifica vince un premio quando qualcuno lo supera:
+        ${RECORD_PRIZE.world} € nel condominio, ${RECORD_PRIZE.global} € nel mondo.</p>
+      <div class="cab-actions"><button type="button" data-cab="menu">⬅ Menù</button></div>
+    </div>
+    <div class="cab-play">
+      <div class="cab-frame">
+        <div class="cab-glass"><canvas class="cab-screen" width="${SCREEN_W}" height="${SCREEN_H}"></canvas></div>
+        <button type="button" class="cab-x" data-cab="menu" title="Torna al menù">✕</button>
       </div>
-      <div class="cab-actions">
-        <button type="button" class="cab-again">🔄 Nuova partita</button>
-        <button type="button" class="cab-close">✖ Esci</button>
+      <div class="cab-arrows">
+        <button type="button" data-cab-key="up">▲</button>
+        <button type="button" data-cab-key="left">◀</button>
+        <button type="button" data-cab-key="down">▼</button>
+        <button type="button" data-cab-key="right">▶</button>
       </div>
+      <button type="button" class="cab-a" data-cab-key="action">A</button>
     </div>`;
   document.body.appendChild(el);
   screen = el.querySelector('canvas');
-  el.querySelectorAll<HTMLButtonElement>('[data-cab-game]').forEach((b) =>
-    b.addEventListener('click', () => {
-      sfx('click');
-      selectGame(b.dataset.cabGame as CabinetGameId);
-    }),
-  );
-  el.querySelector('.cab-again')!.addEventListener('click', () => state && selectGame(state.id));
-  el.querySelector('.cab-close')!.addEventListener('click', closeCabinet);
+  el.addEventListener('click', (e) => {
+    const t = (e.target as HTMLElement).closest<HTMLElement>(
+      '[data-cab],[data-cab-game],[data-cab-board]',
+    );
+    if (!t || !state) return;
+    if (t.dataset.cabGame) play(t.dataset.cabGame as CabinetGameId);
+    else if (t.dataset.cabBoard) {
+      state.boardId = t.dataset.cabBoard as CabinetGameId;
+      render();
+    } else if (t.dataset.cab === 'scores') show('scores');
+    else if (t.dataset.cab === 'menu') show('menu');
+    else if (t.dataset.cab === 'close') closeCabinet();
+    sfx('click');
+  });
   // pulsanti del telefono: premuti finché il dito resta giù
   el.querySelectorAll<HTMLButtonElement>('[data-cab-key]').forEach((b) => {
     const key = b.dataset.cabKey as keyof PadInput;
@@ -236,7 +292,7 @@ function buildModal(): HTMLElement {
   return el;
 }
 
-/** Tastiera: frecce o WASD, Spazio/Invio = A, Esc per uscire. */
+/** Tastiera: frecce o WASD, Spazio/Invio = A, Esc per tornare indietro (e poi uscire). */
 const KEYS: Record<string, keyof PadInput> = {
   ArrowLeft: 'left',
   KeyA: 'left',
@@ -253,9 +309,11 @@ const KEYS: Record<string, keyof PadInput> = {
 function onKey(e: KeyboardEvent): void {
   if (!state) return;
   if (e.code === 'Escape') {
-    if (e.type === 'keydown') closeCabinet();
+    if (e.type === 'keydown') state.view === 'menu' ? closeCabinet() : show('menu');
     return;
   }
+  // nel menù la tastiera serve ai pulsanti (Invio, Tab): solo mentre si gioca è del gioco
+  if (state.view !== 'play') return;
   const key = KEYS[e.code];
   if (!key) return;
   e.preventDefault();
@@ -263,32 +321,79 @@ function onKey(e: KeyboardEvent): void {
   (input as unknown as Record<string, boolean>)[key] = e.type === 'keydown';
 }
 
-function renderInfo(): void {
-  if (!modal || !state) return;
-  const id = state.id;
-  const rec = (r: CabinetRecord | null | undefined) =>
-    r ? `${r.score.toLocaleString('it-IT')} · ${esc(r.nick)}` : 'nessuno';
-  modal
-    .querySelectorAll<HTMLButtonElement>('[data-cab-game]')
-    .forEach((b) => b.classList.toggle('active', b.dataset.cabGame === id));
-  const info = modal.querySelector('.cab-info')!;
-  info.innerHTML = `
-    <p class="cab-how">${CABINET_GAMES[id].how}</p>
-    <ul class="cab-records">
-      <li>👤 Il tuo record: <b>${(personal[id] || 0).toLocaleString('it-IT')}</b></li>
-      <li>🏢 Condominio: <b>${rec(records.world[id])}</b> <span>premio ${RECORD_PRIZE.world} €</span></li>
-      <li>🌍 Mondiale: <b>${rec(records.global[id])}</b> <span>premio ${RECORD_PRIZE.global} €</span></li>
-    </ul>`;
+function clearInput(): void {
+  Object.assign(input, {
+    left: false,
+    right: false,
+    up: false,
+    down: false,
+    action: false,
+    pointerX: null,
+  });
 }
 
-function selectGame(id: CabinetGameId): void {
+/** Cambia schermata (menù, classifiche o gioco a schermo intero). */
+function show(view: View): void {
+  if (!state || !modal) return;
+  state.view = view;
+  modal.dataset.view = view;
+  clearInput();
+  render();
+}
+
+/** Dal menù: si comincia a giocare a un gioco, a schermo intero. */
+function play(id: CabinetGameId): void {
   if (!state) return;
   state.id = id;
   state.mini = newMiniGame(id);
+  // la moneta vale per una partita: cominciata quella, se ne serve un'altra
+  if (state.started) state.paid = false;
   state.started = false;
   state.finished = false;
+  state.overLines = [];
   modal?.classList.toggle('cab-pointer', id !== 'dog');
-  renderInfo();
+  show('play');
+}
+
+function boardHtml(list: BoardEntry[] | undefined): string {
+  if (!list) return '<p class="cab-empty">Caricamento…</p>';
+  if (!list.length)
+    return '<p class="cab-empty">Ancora nessun punteggio: il primo posto è tuo!</p>';
+  const me = game.session.myPlayerId;
+  return `<ol>${list
+    .map(
+      (e) =>
+        `<li class="${e.pid === me ? 'me' : ''}"><span>${esc(e.nick)}</span><b>${e.score.toLocaleString('it-IT')}</b></li>`,
+    )
+    .join('')}</ol>`;
+}
+
+function render(): void {
+  if (!modal || !state) return;
+  if (state.view === 'menu') {
+    modal.querySelector('.cab-menu .cab-marquee')!.textContent = state.coin
+      ? '🕹️ CONSOLE A GETTONE'
+      : '🕹️ CABINATO CDC';
+    modal.querySelector('.cab-games')!.innerHTML = CABINET_IDS.map(
+      (id) => `<button type="button" class="cab-game" data-cab-game="${id}">
+        <span class="cab-game-icon">${CABINET_GAMES[id].emoji}</span>
+        <span class="cab-game-name">${CABINET_GAMES[id].name}</span>
+        <span class="cab-game-how">${CABINET_GAMES[id].how}</span>
+        <span class="cab-game-best">👤 Il tuo record: <b>${(personal[id] || 0).toLocaleString('it-IT')}</b></span>
+      </button>`,
+    ).join('');
+    modal.querySelector('.cab-coin')!.textContent = state.coin
+      ? `🪙 ${state.coin} € a partita${state.paid ? ' · moneta già inserita ✅' : ''}`
+      : '';
+  } else if (state.view === 'scores') {
+    const id = state.boardId;
+    modal
+      .querySelectorAll<HTMLElement>('[data-cab-board]')
+      .forEach((b) => b.classList.toggle('active', b.dataset.cabBoard === id));
+    modal.querySelector('.cab-boards')!.innerHTML = `
+      <div><h4>🏢 Condominio ${esc(currentWorldCode())}</h4>${boardHtml(boards.world[id])}</div>
+      <div><h4>🌍 Mondo</h4>${boardHtml(boards.global[id])}</div>`;
+  }
 }
 
 function loop(now: number): void {
@@ -296,32 +401,55 @@ function loop(now: number): void {
   const dt = Math.min(0.05, Math.max(0, (now - state.last) / 1000));
   state.last = now;
   const s = state;
-  s.mini.update(dt, input);
+  s.frame = requestAnimationFrame(loop);
+  if (s.view !== 'play') return;
+  if (s.coin && !s.paid) {
+    // console a gettone: il gioco aspetta la moneta (A per pagare)
+    if ((input.action || input.up) && !s.paying) {
+      s.paying = true;
+      input.action = input.up = false;
+      void spendMoney(s.coin).then((ok) => {
+        s.paying = false;
+        if (ok) {
+          s.paid = true;
+          sfx('coin');
+        } else toast(`🪙 Ti servono ${s.coin} € in cassaforte per giocare.`, 3000);
+      });
+    }
+  } else if (!s.mini.over) s.mini.update(dt, input);
+  else {
+    // a fine partita (dopo un attimo, per non saltarla con lo stesso tocco) A torna al menù
+    s.mini.update(dt, input);
+    if (now - s.overAt > 900 && (input.action || input.up)) {
+      show('menu');
+      return;
+    }
+  }
   if (!s.started && !s.mini.waiting) {
     s.started = true;
     startRun(s.id);
   }
   if (s.mini.over && !s.finished) {
     s.finished = true;
+    s.overAt = now;
     sfx('error');
     const id = s.id,
       score = s.mini.score;
     void finishRun(id, score).then((lines) => {
-      if (lines.length) {
-        toast(`🕹️ ${CABINET_GAMES[id].name}: ${score} punti. ${lines.join(' ')}`, 6000);
-        sfx('success');
-      }
-      if (state?.id === id) renderInfo();
+      if (state && state.id === id) state.overLines = lines;
+      if (lines.length) sfx('success');
     });
   }
   const ctx = screen.getContext('2d')!;
   ctx.imageSmoothingEnabled = false;
   s.mini.draw(ctx, now / 1000);
-  s.frame = requestAnimationFrame(loop);
+  if (s.coin && !s.paid) drawCoinPrompt(ctx, s.coin, now / 1000);
+  if (s.mini.over) drawOverPanel(ctx, s.mini.score, s.overLines, now / 1000);
 }
 
-/** Davanti al cabinato: ci si mette in posizione e si apre lo schermo. */
-export function openCabinet(item: GameValue): void {
+/** Davanti al cabinato: ci si mette in posizione e si apre il menù. */
+/** `coin`: prezzo di una partita (la console della sala giochi); il cabinato di casa è gratis. */
+export function openCabinet(item: GameValue, coin = 0): void {
   if (state || !item) return;
   if (game.player.isSleeping || game.benchSit) {
     toast('🕹️ Prima alzati!');
@@ -334,30 +462,29 @@ export function openCabinet(item: GameValue): void {
   game.moveForward = 0;
   game.moveRight = 0;
   game.isWalking = false;
-  Object.assign(input, {
-    left: false,
-    right: false,
-    up: false,
-    down: false,
-    action: false,
-    pointerX: null,
-  });
   const first = CABINET_IDS[0];
   state = {
     item,
+    view: 'menu',
     id: first,
     mini: newMiniGame(first),
     started: false,
     finished: false,
+    overAt: 0,
+    overLines: [],
     frame: 0,
     last: performance.now(),
+    coin,
+    paid: false,
+    paying: false,
+    boardId: first,
   };
-  selectGame(first);
+  show('menu');
   modal.classList.remove('hidden');
   window.addEventListener('keydown', onKey, true);
   window.addEventListener('keyup', onKey, true);
   sfx('coin');
-  void loadRecords();
+  void loadBoards();
   state.frame = requestAnimationFrame(loop);
 }
 

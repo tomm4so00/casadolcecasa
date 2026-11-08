@@ -5,6 +5,7 @@ import { game } from '../context.js';
 import { isoProject, isoScale } from './primitives.js';
 import { box, onFace } from './objects.js';
 import { cabinetScreen } from '../cabinet.js';
+import { CONSOLE_COIN } from '../cabinet-rules.js';
 
 const BODY = '#1f2a6b';
 const TRIM = '#00d2ff';
@@ -40,6 +41,12 @@ export function drawCabinet(it: GameValue, t: number, lights?: GameValue[]): voi
     ctx.fillRect(W * 0.32, H * 0.3, W * 0.36, H * 0.42);
     ctx.fillStyle = '#ff4757';
     ctx.fillRect(W * 0.44, H * 0.4, W * 0.12, H * 0.08);
+    if (it.coin) {
+      ctx.fillStyle = '#fcfc54';
+      ctx.font = 'bold 5px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText(`${CONSOLE_COIN} €`, W / 2, H * 0.68);
+    }
     ctx.fillStyle = TRIM;
     ctx.fillRect(0, 0, W, 1.2);
   });

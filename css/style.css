@@ -3043,12 +3043,273 @@ canvas.shake {
   border-bottom: 1px solid rgba(255, 255, 255, 0.12);
 }
 
-/* ---------- Cabinato dei minigiochi ---------- */
+/* matita accanto al nome dell'animale, nel pannello dei bisogni: si tocca per dargli un nome */
+.pet-rename {
+  border: none;
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 6px;
+  padding: 0 4px;
+  margin-left: 2px;
+  font-size: 10px;
+  line-height: 16px;
+  cursor: pointer;
+}
+.pet-rename:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+/* ---------- Roulette della sala scommesse ---------- */
+#roulette-modal {
+  z-index: 520;
+}
+.rl-card {
+  width: min(96vw, 720px);
+  max-height: 96vh;
+  overflow-y: auto;
+  background: radial-gradient(circle at 30% 20%, #127a57, #0b4f39);
+  border: 4px solid #6d4c41;
+  border-radius: 18px;
+  padding: 10px 12px 12px;
+  color: #fff;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
+}
+.rl-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.rl-head h3 {
+  margin: 0;
+  font-size: 18px;
+  color: #f5c518;
+}
+.rl-close {
+  border: none;
+  background: rgba(0, 0, 0, 0.3);
+  color: #fff;
+  border-radius: 50%;
+  width: 30px;
+  height: 30px;
+  cursor: pointer;
+}
+.rl-top {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin: 6px 0 8px;
+}
+.rl-wheel {
+  width: 180px;
+  height: 180px;
+  flex: none;
+}
+.rl-side {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+}
+.rl-phase-txt {
+  font-weight: bold;
+  font-size: 14px;
+}
+.rl-bar {
+  height: 6px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 3px;
+  margin: 6px 0;
+  overflow: hidden;
+}
+.rl-bar > div {
+  height: 100%;
+  width: 0;
+  transition: width 0.25s linear;
+}
+.rl-history div {
+  display: flex;
+  gap: 3px;
+  flex-wrap: wrap;
+  margin: 2px 0 6px;
+}
+.rl-history span {
+  min-width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: bold;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+}
+.rl-players ul {
+  margin: 4px 0 0;
+  padding-left: 16px;
+  max-height: 90px;
+  overflow-y: auto;
+}
+.rl-players p {
+  margin: 4px 0 0;
+  opacity: 0.8;
+}
+.rl-win {
+  color: #7bed9f;
+  font-weight: bold;
+}
+.rl-lose {
+  color: #ff9f9f;
+}
+.rl-board {
+  display: grid;
+  grid-template-columns: 34px repeat(12, minmax(30px, 1fr)) 34px;
+  grid-template-rows: repeat(3, 34px) 30px 30px;
+  gap: 2px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+.rl-cell {
+  position: relative;
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: 4px;
+  background: transparent;
+  color: #fff;
+  font-weight: bold;
+  font-size: 13px;
+  cursor: pointer;
+  padding: 0;
+}
+.rl-cell:disabled {
+  cursor: default;
+  opacity: 0.85;
+}
+.rl-cell.rl-out {
+  font-size: 12px;
+}
+.rl-my,
+.rl-other {
+  position: absolute;
+  min-width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  font-size: 9px;
+  line-height: 14px;
+  border: 2px dashed #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+.rl-my {
+  background: #f5c518;
+  color: #2d3436;
+  bottom: -4px;
+  right: -4px;
+  z-index: 2;
+}
+.rl-other {
+  background: #0097e6;
+  top: -4px;
+  left: -4px;
+}
+.rl-chips {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin: 10px 0 6px;
+}
+.rl-chip {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  border: 3px dashed #fff;
+  background: #e84118;
+  color: #fff;
+  font-weight: bold;
+  cursor: pointer;
+  box-shadow: 0 3px 0 rgba(0, 0, 0, 0.35);
+}
+.rl-chip:nth-child(2) {
+  background: #0097e6;
+}
+.rl-chip:nth-child(3) {
+  background: #44bd32;
+}
+.rl-chip:nth-child(4) {
+  background: #8c7ae6;
+}
+.rl-chip:nth-child(5) {
+  background: #2d3436;
+}
+.rl-chip.active {
+  transform: translateY(-4px);
+  outline: 3px solid #f5c518;
+}
+.rl-foot {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  font-size: 12px;
+}
+.rl-mine {
+  flex: 1;
+  min-width: 180px;
+}
+.rl-foot button {
+  border: none;
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-weight: bold;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.35);
+  cursor: pointer;
+}
+@media (max-width: 560px) {
+  .rl-wheel {
+    width: 130px;
+    height: 130px;
+  }
+}
+/* telefono in orizzontale: ruota piccola accanto al tabellone */
+@media (pointer: coarse) and (orientation: landscape) {
+  .rl-card {
+    padding: 6px 8px;
+  }
+  .rl-wheel {
+    width: 110px;
+    height: 110px;
+  }
+  .rl-board {
+    grid-template-rows: repeat(3, 28px) 24px 24px;
+  }
+  .rl-chip {
+    width: 34px;
+    height: 34px;
+  }
+}
+
+/* ---------- Cabinato dei minigiochi (e console a gettone) ---------- */
 #cabinet-modal {
   z-index: 520;
 }
+/* una schermata alla volta: menù, classifiche o gioco */
+#cabinet-modal .cab-menu,
+#cabinet-modal .cab-scores,
+#cabinet-modal .cab-play {
+  display: none;
+}
+#cabinet-modal[data-view='menu'] .cab-menu,
+#cabinet-modal[data-view='scores'] .cab-scores {
+  display: block;
+}
+#cabinet-modal[data-view='play'] .cab-play {
+  display: flex;
+}
+#cabinet-modal[data-view='play'] {
+  background: #000;
+  backdrop-filter: none;
+}
 .cab-shell {
-  width: min(94vw, 560px);
+  width: min(94vw, 600px);
   max-height: 96vh;
   overflow-y: auto;
   background: linear-gradient(180deg, #27347f, #141a45);
@@ -3059,18 +3320,84 @@ canvas.shake {
     0 0 24px rgba(0, 210, 255, 0.35),
     inset 0 0 0 2px rgba(255, 255, 255, 0.08);
   color: #fff;
-  font-family: system-ui, sans-serif;
 }
 .cab-marquee {
   text-align: center;
   font: bold 18px monospace;
   letter-spacing: 3px;
   padding: 6px;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
   border-radius: 8px;
   background: linear-gradient(90deg, #ff4757, #ffa502, #ff4757);
   text-shadow: 0 2px 0 rgba(0, 0, 0, 0.35);
 }
+/* menù: una scheda per gioco */
+.cab-games {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+.cab-game {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 12px 8px;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  border-radius: 12px;
+  background: #0b0f2a;
+  color: #fff;
+  cursor: pointer;
+  text-align: center;
+}
+.cab-game:hover,
+.cab-game:focus-visible {
+  border-color: #fcfc54;
+  background: #1b2466;
+}
+.cab-game-icon {
+  font-size: 34px;
+}
+.cab-game-name {
+  font: bold 15px monospace;
+  color: #fcfc54;
+}
+.cab-game-how {
+  font-size: 11px;
+  opacity: 0.8;
+}
+.cab-game-best {
+  font-size: 12px;
+  margin-top: 2px;
+}
+.cab-coin {
+  margin: 8px 0 0;
+  text-align: center;
+  color: #fcfc54;
+  font-weight: bold;
+}
+.cab-coin:empty {
+  display: none;
+}
+.cab-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+.cab-actions button {
+  flex: 1;
+  padding: 10px;
+  border: none;
+  border-radius: 8px;
+  font-weight: bold;
+  color: #fff;
+  cursor: pointer;
+  background: #6c5ce7;
+}
+.cab-actions .cab-close {
+  background: #57606f;
+}
+/* classifiche */
 .cab-tabs {
   display: flex;
   gap: 6px;
@@ -3091,62 +3418,150 @@ canvas.shake {
   border-color: #fcfc54;
   background: #2f3c99;
 }
-.cab-bezel {
-  background: #05070f;
-  border-radius: 10px;
-  padding: 8px;
-  border: 2px solid #3d4652;
-}
-.cab-screen {
-  display: block;
-  width: 100%;
-  aspect-ratio: 192 / 120;
-  image-rendering: pixelated;
-  image-rendering: crisp-edges;
-  border-radius: 4px;
-  touch-action: none;
-}
-.cab-info {
-  font-size: 13px;
-  margin: 8px 2px 4px;
-}
-.cab-how {
-  margin: 0 0 6px;
-  opacity: 0.85;
-}
-.cab-records {
-  list-style: none;
-  padding: 0;
-  margin: 0;
+.cab-boards {
   display: grid;
-  gap: 3px;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
 }
-.cab-records span {
-  float: right;
+.cab-boards h4 {
+  margin: 0 0 6px;
+  font-size: 14px;
+}
+.cab-boards ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: pos;
+  font: 13px monospace;
+}
+.cab-boards li {
+  counter-increment: pos;
+  display: flex;
+  gap: 6px;
+  padding: 3px 6px;
+  border-radius: 6px;
+}
+.cab-boards li:nth-child(odd) {
+  background: rgba(255, 255, 255, 0.06);
+}
+.cab-boards li::before {
+  content: counter(pos) '.';
+  width: 22px;
+  color: #8395a7;
+}
+.cab-boards li:nth-child(1)::before {
+  content: '🥇';
+}
+.cab-boards li:nth-child(2)::before {
+  content: '🥈';
+}
+.cab-boards li:nth-child(3)::before {
+  content: '🥉';
+}
+.cab-boards li span {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cab-boards li b {
   color: #fcfc54;
-  font-size: 12px;
 }
-.cab-pad {
-  display: none;
-  justify-content: space-between;
+.cab-boards li.me {
+  outline: 2px solid #2ed573;
+}
+.cab-empty {
+  font-size: 12px;
+  opacity: 0.75;
+}
+.cab-prize {
+  font-size: 12px;
+  opacity: 0.85;
+  margin: 10px 0 0;
+}
+/* gioco: a schermo intero, dentro la cornice di un cabinato vero */
+.cab-play {
+  position: fixed;
+  inset: 0;
   align-items: center;
-  margin: 8px 6px 4px;
+  justify-content: center;
+  gap: 18px;
   user-select: none;
   -webkit-user-select: none;
 }
+.cab-frame {
+  position: relative;
+  padding: 10px;
+  border-radius: 14px;
+  background: linear-gradient(160deg, #2a2f4a, #11131f);
+  box-shadow:
+    0 0 0 3px #11131f,
+    0 0 0 6px transparent,
+    0 0 28px rgba(0, 210, 255, 0.25);
+  border-top: 4px solid #ff4757;
+  border-bottom: 4px solid #1e90ff;
+}
+.cab-frame::before {
+  /* la fascia arcobaleno delle fiancate */
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 16px;
+  padding: 3px;
+  background: linear-gradient(90deg, #ff4757, #ffa502, #2ed573, #1e90ff);
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+.cab-glass {
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: inset 0 0 0 2px #000;
+  background: #000;
+  line-height: 0;
+}
+.cab-screen {
+  display: block;
+  width: min(calc(100vw - 48px), calc((100vh - 48px) * 1.6));
+  aspect-ratio: 192 / 120;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  touch-action: none;
+}
+.cab-x {
+  position: absolute;
+  top: -12px;
+  right: -12px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 2px solid #11131f;
+  background: #57606f;
+  color: #fff;
+  font-size: 13px;
+  cursor: pointer;
+  opacity: 0.85;
+}
+/* frecce e A solo dove si gioca con le dita */
+.cab-arrows,
+.cab-a {
+  display: none;
+}
 .cab-arrows {
-  display: grid;
-  grid-template-columns: repeat(3, 46px);
-  grid-template-rows: repeat(2, 40px);
-  gap: 4px;
+  grid-template-columns: repeat(3, 50px);
+  grid-template-rows: repeat(2, 46px);
+  gap: 5px;
 }
 .cab-arrows button,
 .cab-a {
   border: none;
-  border-radius: 10px;
+  border-radius: 12px;
   background: #2f3640;
   color: #fff;
-  font-size: 18px;
+  font-size: 20px;
   touch-action: none;
 }
 .cab-arrows [data-cab-key='up'] {
@@ -3166,119 +3581,54 @@ canvas.shake {
   grid-row: 2;
 }
 .cab-a {
-  width: 72px;
-  height: 72px;
+  width: 78px;
+  height: 78px;
   border-radius: 50%;
   background: #e84118;
-  font: bold 24px monospace;
+  font: bold 26px monospace;
   box-shadow: 0 4px 0 #8c2a10;
 }
-.cab-actions {
-  display: flex;
-  gap: 8px;
-  margin-top: 8px;
-}
-.cab-actions button {
-  flex: 1;
-  padding: 9px;
-  border: none;
-  border-radius: 8px;
-  font-weight: bold;
-  color: #fff;
-  cursor: pointer;
-  background: #2ed573;
-}
-.cab-actions .cab-close {
-  background: #57606f;
-}
-/* sul telefono (dito) i pulsanti sotto lo schermo */
 @media (pointer: coarse) {
-  .cab-pad {
-    display: flex;
-  }
-}
-/* telefono in orizzontale: frecce a sinistra, schermo al centro, A a destra */
-@media (pointer: coarse) and (orientation: landscape) {
-  .cab-shell {
-    width: 98vw;
-    max-width: none;
-    max-height: 98vh;
-    padding: 6px 8px;
-    display: grid;
-    grid-template-columns: 150px 1fr 110px;
-    grid-template-areas:
-      'tabs tabs tabs'
-      'arrows screen a'
-      'arrows info a'
-      'act act act';
-    column-gap: 8px;
-  }
-  .cab-marquee {
-    display: none;
-  }
-  .cab-tabs {
-    grid-area: tabs;
-    margin-bottom: 4px;
-  }
-  .cab-tabs button {
-    padding: 4px;
-    font-size: 12px;
-  }
-  .cab-bezel {
-    grid-area: screen;
-    padding: 4px;
-    justify-self: center;
-  }
-  .cab-screen {
-    width: auto;
-    height: calc(98vh - 140px);
-  }
-  .cab-info {
-    grid-area: info;
-    margin: 2px;
-    font-size: 11px;
-  }
-  .cab-how {
-    display: none;
-  }
-  .cab-records {
-    grid-template-columns: repeat(3, auto);
-  }
-  .cab-records span {
-    display: none;
-  }
-  .cab-pad {
-    display: contents;
-  }
   .cab-arrows {
-    grid-area: arrows;
-    align-self: center;
+    display: grid;
   }
   .cab-a {
-    grid-area: a;
-    align-self: center;
-    justify-self: center;
+    display: block;
   }
-  .cab-actions {
-    grid-area: act;
-    margin-top: 4px;
+  /* in orizzontale: frecce a sinistra, schermo, A a destra */
+  .cab-play {
+    gap: 12px;
   }
-  .cab-actions button {
-    padding: 5px;
+  .cab-play .cab-arrows {
+    order: -1;
+  }
+  .cab-screen {
+    width: min(calc(100vw - 340px), calc((100vh - 40px) * 1.6));
   }
 }
-
-/* matita accanto al nome dell'animale, nel pannello dei bisogni: si tocca per dargli un nome */
-.pet-rename {
-  border: none;
-  background: rgba(255, 255, 255, 0.12);
-  border-radius: 6px;
-  padding: 0 4px;
-  margin-left: 2px;
-  font-size: 10px;
-  line-height: 16px;
-  cursor: pointer;
-}
-.pet-rename:hover {
-  background: rgba(255, 255, 255, 0.25);
+@media (pointer: coarse) and (orientation: portrait) {
+  /* in verticale: lo schermo in alto, sotto frecce e A */
+  .cab-play {
+    flex-wrap: wrap;
+    align-content: center;
+  }
+  .cab-frame {
+    flex-basis: 100%;
+    max-width: calc(100vw - 16px);
+  }
+  .cab-screen {
+    width: calc(100vw - 40px);
+  }
+  .cab-play .cab-arrows {
+    order: 1;
+  }
+  .cab-a {
+    order: 2;
+  }
+  .cab-games {
+    grid-template-columns: 1fr;
+  }
+  .cab-boards {
+    grid-template-columns: 1fr;
+  }
 }

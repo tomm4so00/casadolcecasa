@@ -1,5 +1,6 @@
 // Pulsanti degli oggetti di ogni ambiente: cosa c'è scritto quando ci si avvicina e cosa
 // succede premendolo. Per un posto nuovo basta aggiungere la sua voce in PLACES.
+import { openRoulette } from './roulette.js';
 import { facadeFootprint } from './render/facades.js';
 import { APERITIVO } from './bar-rules.js';
 import { DOOR_OPEN_RADIUS, resetDoors, setBlockedDoor } from './render/doors.js';
@@ -69,8 +70,9 @@ import {
   openCatalog,
   viewGalleryPiece,
 } from './gallery.js';
-import { nextUpgrade, tierOf } from './furniture-tiers.js';
+import { nextUpgrade, showroomStatus, tierOf } from './furniture-tiers.js';
 import { openCabinet } from './cabinet.js';
+import { CONSOLE_COIN } from './cabinet-rules.js';
 import {
   announceFurnitureBenefit,
   backToSaloon,
@@ -429,6 +431,22 @@ const FURNITURE_SHOP = shop(
   (key, item) => {
     if (key === 'shopCounter') return { text: '🛋️ Catalogo: compra e rivendi' };
     if (!item.category) return null;
+    if (item.showId) {
+      const status = showroomStatus(game.furnitureCatalog, game.player.ownedFurniture, {
+        id: item.showId,
+        category: item.category,
+      });
+      if (status === 'mine')
+        return {
+          text: item.price === null ? '🏠 Ce l’hai già nella tua stanza' : '✅ È già tuo',
+          locked: true,
+        };
+      if (status === 'better') return { text: '✅ Ne hai già uno migliore', locked: true };
+      if (status === 'locked') {
+        const need = nextUpgrade(game.furnitureCatalog, game.player.ownedFurniture, item.category);
+        return { text: `🔒 Prima compra ${need?.name || 'il modello precedente'}`, locked: true };
+      }
+    }
     // Progressione: standard → pregiato → lusso.
     const next: GameValue = nextUpgrade(
       game.furnitureCatalog,
@@ -451,6 +469,8 @@ const FURNITURE_SHOP = shop(
       item.category,
     );
     if (!next) return;
+    // nello showroom si compra il modello davanti a cui si è (se è il prossimo della serie)
+    if (item.showId && item.showId !== next.id) return;
     if (game.moneyLevel < next.price) {
       toast(`Non hai abbastanza soldi: ${next.name} costa ${next.price} €.`);
       return;
@@ -535,14 +555,17 @@ const BANK = shop(
 );
 
 const ARCADE = shop(
-  (_key, item) =>
-    isArcadeGame(item.game)
-      ? {
-          text: `${ARCADE_GAMES[item.game as ArcadeGame].emoji} Sfida qualcuno a ${ARCADE_GAMES[item.game as ArcadeGame].name}`,
-        }
-      : null,
-  async (_key, item) => {
-    if (isArcadeGame(item?.game)) await openArcadeStation(item.game);
+  (key, item) =>
+    key === 'arcadeConsole'
+      ? { text: `🕹️ Gioca alla console (${CONSOLE_COIN} € a partita)` }
+      : isArcadeGame(item.game)
+        ? {
+            text: `${ARCADE_GAMES[item.game as ArcadeGame].emoji} Sfida qualcuno a ${ARCADE_GAMES[item.game as ArcadeGame].name}`,
+          }
+        : null,
+  async (key, item) => {
+    if (key === 'arcadeConsole') openCabinet(item, CONSOLE_COIN);
+    else if (isArcadeGame(item?.game)) await openArcadeStation(item.game);
   },
 );
 
@@ -552,10 +575,13 @@ const BETTING = shop(
       ? { text: `🎰 Gioca alla slot (${SLOT_BET} €)` }
       : key === 'rpsTable'
         ? { text: '✊ Sfida qualcuno a morra cinese' }
-        : null,
+        : key === 'rouletteTable'
+          ? { text: '🎡 Gioca alla roulette' }
+          : null,
   (key) => {
     if (key.startsWith('slot')) openSlot();
     else if (key === 'rpsTable') openRpsTable();
+    else if (key === 'rouletteTable') openRoulette();
   },
 );
 

@@ -1,8 +1,12 @@
-// Sala giochi: dalla postazione di un gioco si sfida un giocatore online; la partita è un
-// documento condiviso (sims_games/<id>) che i due aggiornano a turno con delle transazioni.
+// Sala giochi: dalla postazione di un gioco si sfida un giocatore online, oppure si manda un
+// link a chi non c'è; la partita è un documento condiviso (sims_games/<id>) che i due
+// aggiornano a turno con delle transazioni.
 import type { GameValue } from './context.js';
 import { game } from './context.js';
-import { lifetime } from './runtime.js';
+import { browser, lifetime } from './runtime.js';
+import { currentWorldCode } from './world-select.js';
+import { inviteLink } from './invite-rules.js';
+import { worldNodePath } from '../../shared/worlds.js';
 import { openDialog } from './interface.js';
 import { toast } from './missions.js';
 import { sfx } from './audio.js';
@@ -16,12 +20,18 @@ import {
   BN_SIZE,
   C4_COLS,
   C4_ROWS,
+  CHALLENGE_PARAM,
   INVITE_TTL_MS,
+  OPEN_INVITE_TTL_MS,
   RX_TIMEOUT_MS,
   RX_TO_WIN,
   type Side,
+  challengeCode,
+  claimSeat,
   decodeMatch,
   isArcadeGame,
+  isOpenSeat,
+  parseChallenge,
   newMatch,
   other,
   playBN,
@@ -33,11 +43,15 @@ import { recordActivity } from './activity.js';
 import { worldNode } from './world-db.js';
 
 const serverNow = (): number => Date.now() + (game.session.serverOffset || 0);
-const ref = (gid: string): GameValue => game.session.db.ref(worldNode('games') + '/' + gid);
+/** La partita: di solito nel condominio in cui si è; quella di un link, nel condominio del link. */
+const ref = (gid: string, base = worldNode('games')): GameValue =>
+  game.session.db.ref(base + '/' + gid);
 
 /** Partita aperta adesso su questo dispositivo. */
 let current: {
   gid: string;
+  /** il nodo delle partite del condominio in cui sta la partita */
+  base: string;
   side: Side;
   match: ArcadeMatch | null;
   stop: () => void;
@@ -68,24 +82,28 @@ export async function openArcadeStation(kind: ArcadeGame): Promise<void> {
   }
   const g = ARCADE_GAMES[kind];
   const players = onlinePlayers();
-  if (!players.length) {
-    await openDialog({
-      title: `${g.emoji} ${g.name}`,
-      text: 'Al momento non c’è nessun altro giocatore online da sfidare. Riprova più tardi!',
-      buttons: [{ label: 'Ok', value: null, color: '#57606f' }],
-    });
-    return;
-  }
   const res = await openDialog({
     title: `${g.emoji} ${g.name}`,
-    text: `${RULES_TEXT[kind]}\n\nChi vuoi sfidare? Può accettare da qualsiasi posto del gioco.`,
+    text:
+      `${RULES_TEXT[kind]}\n\n` +
+      (players.length
+        ? 'Chi vuoi sfidare? Chi è online può accettare da qualsiasi posto del gioco.'
+        : 'Al momento non c’è nessun altro giocatore online.') +
+      '\n\n📤 Puoi anche mandare un link a un amico che non sta giocando: aprendolo entra nel gioco e la sfida comincia (vale mezz’ora).',
     buttons: [
       ...players
-        .slice(0, 11)
+        .slice(0, 10)
         .map((p) => ({ label: `🆚 ${p.name}`, value: p.id, color: '#6c5ce7' })),
+      ...(game.session.OFFLINE
+        ? []
+        : [{ label: '📤 Invita un amico (link)', value: 'share', color: '#2ed573', wide: true }]),
       { label: 'Annulla', value: null, color: '#57606f' },
     ],
   });
+  if (res.action === 'share') {
+    await shareChallenge(kind);
+    return;
+  }
   const opp = players.find((p) => p.id === res.action);
   if (opp) await challenge(kind, opp);
 }
@@ -122,6 +140,175 @@ async function challenge(kind: ArcadeGame, opp: { id: string; name: string }): P
       m && m.status === 'wait' ? { ...m, status: 'off' } : undefined,
     );
   }, INVITE_TTL_MS);
+}
+
+/** Il link della sfida: porta anche il mio invito, così un amico nuovo riceve il bonus. */
+function challengeLink(gid: string): string {
+  const url = new URL(inviteLink(game.session.myPlayerId));
+  url.searchParams.set(CHALLENGE_PARAM, challengeCode(currentWorldCode(), gid));
+  return url.toString();
+}
+
+/**
+ * Sfida con il link: la partita nasce con il posto dell'avversario vuoto e il primo che apre il
+ * link lo prende. Si condivide come gli inviti (app, WhatsApp, copia).
+ */
+async function shareChallenge(kind: ArcadeGame): Promise<void> {
+  const now = serverNow();
+  const gid = now.toString(36) + '_' + Math.random().toString(36).slice(2, 10);
+  const match = newMatch(
+    kind,
+    { id: game.session.myPlayerId, name: game.player.myData.nick },
+    { id: '', name: '' },
+    now,
+  );
+  try {
+    await ref(gid).set(match);
+  } catch (error) {
+    console.warn('[sala giochi]', error);
+    toast('Non sono riuscito a preparare la sfida. Riprova quando sei connesso.', 4000);
+    return;
+  }
+  recordActivity('games');
+  openMatch(gid, 'a');
+  await sendChallengeLink(kind, gid);
+  // se nessuno apre il link in tempo la sfida si annulla
+  lifetime.setTimeout(() => {
+    void ref(gid).transaction((m: GameValue) =>
+      m && m.status === 'wait' && m.b === '' ? { ...m, status: 'off' } : undefined,
+    );
+  }, OPEN_INVITE_TTL_MS);
+}
+
+/** Manda il link della sfida con l'app che si preferisce. */
+async function sendChallengeLink(kind: ArcadeGame, gid: string): Promise<void> {
+  const g = ARCADE_GAMES[kind];
+  const link = challengeLink(gid);
+  const text = `🕹️ Ti sfido a ${g.name} ${g.emoji} su Casa dolce casa! Apri il link entro mezz’ora e giochiamo:\n${link}`;
+  const canShare = typeof navigator.share === 'function';
+  const res = await openDialog({
+    title: `📤 Sfida un amico a ${g.name}`,
+    text: 'Manda il link a chi vuoi: il primo che lo apre gioca con te. Intanto aspetta qui.',
+    buttons: [
+      ...(canShare
+        ? [{ label: '📤 Condividi', value: 'share', color: '#2ed573', wide: true }]
+        : []),
+      { label: '💬 WhatsApp', value: 'whatsapp', color: '#25d366' },
+      { label: '📋 Copia link', value: 'copy', color: '#e67e22' },
+      { label: 'Chiudi', value: null, color: '#57606f' },
+    ],
+  });
+  if (res.action === 'share') {
+    try {
+      await navigator.share({ title: 'Casa dolce casa', text });
+      return;
+    } catch (e) {
+      if ((e as Error)?.name === 'AbortError') return;
+    }
+  }
+  if (res.action === 'whatsapp') {
+    browser.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+    return;
+  }
+  if (res.action === 'copy' || res.action === 'share') {
+    try {
+      await navigator.clipboard.writeText(text);
+      toast('📋 Link copiato: incollalo dove vuoi.');
+    } catch {
+      toast(link, 10000);
+    }
+  }
+}
+
+// ---------------------------------------------------------------- chi apre il link
+
+const CHALLENGE_KEY = 'sims_challenge_from';
+
+/** All'apertura della pagina: la sfida del link si ricorda (l'accesso può ricaricare la pagina). */
+export function rememberChallengeFromUrl(): void {
+  const raw = new URL(browser.location.href).searchParams.get(CHALLENGE_PARAM);
+  if (!parseChallenge(raw)) return;
+  try {
+    localStorage.setItem(CHALLENGE_KEY, JSON.stringify({ code: raw, t: Date.now() }));
+  } catch {
+    // senza memoria del browser la sfida vale solo se si entra subito
+  }
+}
+
+/** Usata (o non più valida): via dalla memoria e dall'indirizzo. */
+function forgetChallenge(): void {
+  try {
+    localStorage.removeItem(CHALLENGE_KEY);
+  } catch {
+    /* niente da togliere */
+  }
+  const url = new URL(browser.location.href);
+  if (!url.searchParams.has(CHALLENGE_PARAM)) return;
+  url.searchParams.delete(CHALLENGE_PARAM);
+  browser.history.replaceState(browser.history.state, '', url.pathname + url.search + url.hash);
+}
+
+/**
+ * Entrati nel gioco con il link di una sfida: si chiede se giocare e, accettando, si prende il
+ * posto vuoto della partita (nel condominio di chi ha sfidato, anche se si abita altrove).
+ */
+export async function joinSharedChallenge(): Promise<void> {
+  let saved: { code?: string; t?: number } | null = null;
+  try {
+    saved = JSON.parse(localStorage.getItem(CHALLENGE_KEY) || 'null');
+  } catch {
+    saved = null;
+  }
+  const ch = parseChallenge(saved?.code);
+  if (!ch || game.session.OFFLINE) return;
+  if (Date.now() - (saved?.t || 0) > OPEN_INVITE_TTL_MS) {
+    forgetChallenge();
+    return;
+  }
+  const base = worldNodePath(ch.world, 'games');
+  let m: ArcadeMatch | null = null;
+  try {
+    m = decodeMatch((await ref(ch.gid, base).get()).val());
+  } catch {
+    m = null;
+  }
+  forgetChallenge();
+  if (!m || m.a === game.session.myPlayerId) return;
+  if (m.status !== 'wait' || !isOpenSeat(m) || serverNow() - m.t > OPEN_INVITE_TTL_MS) {
+    toast('🕹️ La sfida del link non è più valida: qualcuno l’ha già presa, o è scaduta.', 5000);
+    return;
+  }
+  while (game.dialogResolve) await new Promise((r) => lifetime.setTimeout(r, 1200));
+  const g = ARCADE_GAMES[m.kind];
+  sfx('gossip');
+  const res = await openDialog({
+    title: `🕹️ ${g.emoji} ${m.na} ti sfida!`,
+    text: `${m.na} ti ha mandato una sfida a ${g.name}.\n\n${RULES_TEXT[m.kind]}`,
+    buttons: [
+      { label: 'No, grazie', value: null, color: '#57606f' },
+      { label: '🎮 Gioca', value: 'yes', color: '#2ed573' },
+    ],
+  });
+  if (res.action !== 'yes') return;
+  const me = { id: game.session.myPlayerId, name: game.player.myData.nick || 'Giocatore' };
+  let ok = false;
+  try {
+    const result = await ref(ch.gid, base).transaction((cur: GameValue) => {
+      if (cur === null) return null; // copia locale non ancora arrivata: riprova col server
+      const match = decodeMatch(cur);
+      return (match && claimSeat(match, me, serverNow(), rxDelay() + 1500)) || undefined;
+    });
+    ok = !!result?.committed && decodeMatch(result.snapshot?.val())?.b === me.id;
+  } catch (error) {
+    console.warn('[sala giochi]', error);
+  }
+  if (!ok) {
+    toast('🕹️ Troppo tardi: la sfida è già stata presa o è scaduta.', 4500);
+    return;
+  }
+  recordActivity('games');
+  if (current) closeMatch();
+  openMatch(ch.gid, 'b', base);
 }
 
 /** Arriva una sfida (dalla casella dei messaggi tra giocatori). */
@@ -170,17 +357,24 @@ export async function onGameInvite(m: GameValue, who: string): Promise<void> {
 
 // ---------------------------------------------------------------- partita
 
-function openMatch(gid: string, side: Side): void {
+function openMatch(gid: string, side: Side, base = worldNode('games')): void {
   if (current) closeMatch();
-  const r = ref(gid);
+  const r = ref(gid, base);
   const onValue = (snap: GameValue): void => {
     if (!current || current.gid !== gid) return;
+    const before = current.match;
     current.match = decodeMatch(snap.val());
+    // l'amico ha aperto il link: si comincia
+    if (before && isOpenSeat(before) && current.match?.status === 'play') {
+      sfx('success');
+      toast(`🎮 ${current.match.nb} ha accettato la sfida!`, 4000);
+    }
     render();
   };
   r.on('value', onValue);
   current = {
     gid,
+    base,
     side,
     match: null,
     stop: () => r.off?.('value', onValue),
@@ -210,7 +404,7 @@ function closeMatch(): void {
 async function move(change: (m: ArcadeMatch) => ArcadeMatch | null): Promise<boolean> {
   if (!current) return false;
   try {
-    const result = await ref(current.gid).transaction((cur: GameValue) => {
+    const result = await ref(current.gid, current.base).transaction((cur: GameValue) => {
       if (cur === null) return null; // copia locale non ancora arrivata: riprova col server
       const m = decodeMatch(cur);
       return (m && change(m)) || undefined;
@@ -275,9 +469,14 @@ function render(): void {
     return;
   }
   const g = ARCADE_GAMES[m.kind];
-  const oppName = esc(me === 'a' ? m.nb : m.na);
+  const open = isOpenSeat(m);
+  const oppName = open ? 'il tuo amico' : esc(me === 'a' ? m.nb : m.na);
   let status = '';
-  if (m.status === 'wait') status = `⏳ Aspetto che ${oppName} accetti la sfida…`;
+  if (m.status === 'wait' && open)
+    status = '📤 Aspetto che il tuo amico apra il link (vale mezz’ora)…';
+  else if (m.status === 'wait') status = `⏳ Aspetto che ${oppName} accetti la sfida…`;
+  else if (m.status === 'off' && open)
+    status = '⌛ Nessuno ha aperto il link in tempo: sfida annullata.';
   else if (m.status === 'no') status = `🙅 ${oppName} ha rifiutato la sfida.`;
   else if (m.status === 'off') status = `⌛ ${oppName} non ha risposto: sfida annullata.`;
   else if (m.status === 'done')
@@ -301,6 +500,9 @@ function render(): void {
     `<div class="arcade-status">${status}</div>` +
     board +
     `<div class="arcade-buttons">` +
+    (m.status === 'wait' && open && me === 'a'
+      ? `<button type="button" class="btn-primary" data-arcade="resend" style="background:#2ed573">📤 Manda di nuovo il link</button>`
+      : '') +
     (ended && (m.status === 'done' || me === 'a')
       ? `<button type="button" class="btn-primary" data-arcade="again" style="background:#6c5ce7">🔁 Rivincita</button>`
       : '') +
@@ -434,7 +636,11 @@ function wire(body: HTMLElement, m: ArcadeMatch): void {
     const opp = me === 'a' ? { id: m.b, name: m.nb } : { id: m.a, name: m.na };
     const kind = m.kind;
     closeMatch();
-    void challenge(kind, opp);
+    // con il link non preso non c'è un avversario: si manda un link nuovo
+    void (opp.id ? challenge(kind, opp) : shareChallenge(kind));
+  });
+  body.querySelector<HTMLElement>('[data-arcade="resend"]')?.addEventListener('click', () => {
+    if (current) void sendChallengeLink(m.kind, current.gid);
   });
 }
 

@@ -100,3 +100,45 @@ export function recordPrize(
   if (before && before.pid === me) return 0;
   return RECORD_PRIZE[kind];
 }
+
+/** Una partita alla console della sala giochi (a casa, con il proprio cabinato, si gioca gratis). */
+export const CONSOLE_COIN = 2;
+
+// ---------------------------------------------------------------- classifiche
+
+/** Quanti si vedono nelle classifiche (del condominio e del mondo). */
+export const BOARD_SIZE = 10;
+
+export interface BoardEntry {
+  pid: string;
+  nick: string;
+  score: number;
+}
+
+/**
+ * Una classifica letta dal database (giocatore → miglior punteggio): i primi BOARD_SIZE dal più
+ * alto, scartando le voci rovinate. A parità di punti viene prima chi li ha fatti prima.
+ */
+export function decodeBoard(value: unknown): BoardEntry[] {
+  if (!value || typeof value !== 'object') return [];
+  const out: (BoardEntry & { t: number })[] = [];
+  for (const [pid, v] of Object.entries(value as Record<string, unknown>)) {
+    if (!v || typeof v !== 'object') continue;
+    const { score, nick, t } = v as Record<string, unknown>;
+    if (!Number.isSafeInteger(score) || (score as number) <= 0) continue;
+    out.push({
+      pid,
+      nick: typeof nick === 'string' && nick ? nick.slice(0, 20) : 'Giocatore',
+      score: score as number,
+      t: typeof t === 'number' ? t : 0,
+    });
+  }
+  return out
+    .sort((a, b) => b.score - a.score || a.t - b.t)
+    .slice(0, BOARD_SIZE)
+    .map(({ pid, nick, score }) => ({ pid, nick, score }));
+}
+
+/** Il primo della classifica, come record da battere (per il premio). */
+export const boardLeader = (board: BoardEntry[]): CabinetRecord | null =>
+  board[0] ? { ...board[0], t: 0 } : null;

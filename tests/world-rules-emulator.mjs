@@ -148,6 +148,89 @@ await check('Ada non scrive un messaggio a nome di Bea', false, () =>
   put('worlds/CASA-2222/chat/m2', { id: 'p2', name: 'Bea', text: 'ciao', t: Date.now() }, 'u1'),
 );
 
+// roulette: puntate solo a giro aperto e a proprio nome, il numero una volta a puntate chiuse,
+// le vincite incassate una volta. Giri relativi: il prossimo è sempre aperto, uno di 5 fa chiuso.
+const RL = 'worlds/CASA-2222/roulette';
+const nowRound = Math.floor(Date.now() / 40000);
+const next = nowRound + 1,
+  past = nowRound - 5;
+const bet = (r, bets = { red: 25 }, nick = 'Ada') => ({ r, nick, bets });
+await check('Ada punta sul prossimo giro', true, () =>
+  put(`${RL}/bets/${next}/p1`, bet(next), 'u1'),
+);
+await check('Ada non punta su un giro già chiuso', false, () =>
+  put(`${RL}/bets/${past}/p1`, bet(past), 'u1'),
+);
+await check('Ada non punta a nome di Bea', false, () =>
+  put(`${RL}/bets/${next}/p2`, bet(next, { red: 25 }, 'Bea'), 'u1'),
+);
+await check('una casella che non esiste no', false, () =>
+  put(`${RL}/bets/${next}/p1`, bet(next, { n37: 25 }), 'u1'),
+);
+await check('una fiche da 7 € no', false, () =>
+  put(`${RL}/bets/${next}/p1`, bet(next, { red: 7 }), 'u1'),
+);
+await check('il giro nel nodo deve essere quello nei dati', false, () =>
+  put(`${RL}/bets/${next}/p1`, bet(next + 1), 'u1'),
+);
+await check('il numero non si estrae a puntate aperte', false, () =>
+  put(`${RL}/results/${next}`, { r: next, n: 17 }, 'u2'),
+);
+await check('a puntate chiuse il numero lo estrae il primo al tavolo', true, () =>
+  put(`${RL}/results/${past}`, { r: past, n: 17 }, 'u2'),
+);
+await check('e nessuno lo cambia dopo', false, () =>
+  put(`${RL}/results/${past}`, { r: past, n: 3 }, 'u1'),
+);
+await check('un numero oltre il 36 no', false, () =>
+  put(`${RL}/results/${past - 1}`, { r: past - 1, n: 37 }, 'u1'),
+);
+await check('Ada incassa la vincita del giro', true, () =>
+  put(`${RL}/paid/${past}/p1`, true, 'u1'),
+);
+await check('ma una volta sola', false, () => put(`${RL}/paid/${past}/p1`, true, 'u1'));
+await check('Bea non incassa al posto di Ada', false, () =>
+  put(`${RL}/paid/${past}/p3`, true, 'u2'),
+);
+await check('Bea vede le puntate del tavolo', true, () =>
+  call('GET', `${RL}/bets/${next}`, undefined, 'u2'),
+);
+
+// sala giochi: sfida con il link, il posto di Bea è vuoto finché qualcuno non lo prende
+assert(await put('sims_accounts/u3', { playerId: 'p3' }));
+const G = 'worlds/CASA-2222/games/lk3j2a_ab12cd34';
+const open = {
+  kind: 'c4',
+  a: 'p1',
+  b: '',
+  na: 'Ada',
+  nb: '',
+  status: 'wait',
+  t: Date.now(),
+  board: '0'.repeat(42),
+  turn: 'a',
+};
+await check('Ada crea una sfida con il posto vuoto', true, () => put(G, open, 'u1'));
+await check('Bea, col link, legge la sfida', true, () => call('GET', G, undefined, 'u2'));
+await check('Ada non prende il posto della sua sfida', false, () =>
+  put(G, { ...open, b: 'p1', nb: 'Ada', status: 'play' }, 'u1'),
+);
+await check('Bea non prende il posto a nome di Cri', false, () =>
+  put(G, { ...open, b: 'p3', nb: 'Cri', status: 'play' }, 'u2'),
+);
+await check('Bea prende il posto vuoto e si comincia', true, () =>
+  put(G, { ...open, b: 'p2', nb: 'Bea', status: 'play' }, 'u2'),
+);
+await check('Cri arriva tardi: il posto è preso', false, () =>
+  put(G, { ...open, b: 'p3', nb: 'Cri', status: 'play' }, 'u3'),
+);
+await check('Cri non legge più la partita', false, () => call('GET', G, undefined, 'u3'));
+const G2 = 'worlds/CASA-2222/games/lk3j2a_old00000';
+assert(await put(G2, { ...open, t: Date.now() - 31 * 60000 }));
+await check('una sfida di più di mezz’ora fa non si prende', false, () =>
+  put(G2, { ...open, t: Date.now() - 31 * 60000, b: 'p2', nb: 'Bea', status: 'play' }, 'u2'),
+);
+
 // cabinato: la partita la data il server, i record devono essere credibili e solo a proprio nome
 const sv = { '.sv': 'timestamp' };
 await check('Ada comincia una partita a Cane in fuga', true, () =>
@@ -198,8 +281,26 @@ await check('Bea non legge il record personale di Ada', false, () =>
 await check('Bea legge la classifica mondiale', true, () =>
   call('GET', 'sims_arcade_global', undefined, 'u2'),
 );
+// classifiche (top 10): una voce per giocatore, a proprio nome, solo se migliora
+const top = (score, nick = 'Ada') => ({ score, nick, t: sv });
+await check('Ada entra nella classifica del mondo', true, () =>
+  put('sims_arcade_top/dog/p1', top(1200), 'u1'),
+);
+await check('e in quella del suo condominio', true, () =>
+  put('worlds/CASA-2222/arcade_board/dog/p1', top(1200), 'u1'),
+);
+await check('ma non con un punteggio più basso del suo', false, () =>
+  put('sims_arcade_top/dog/p1', top(900), 'u1'),
+);
+await check('né con un punteggio impossibile per il tempo giocato', false, () =>
+  put('sims_arcade_top/dog/p1', top(9000), 'u1'),
+);
+await check('né a nome di Bea', false, () => put('sims_arcade_top/dog/p2', top(1300, 'Bea'), 'u1'));
+await check('Bea legge la top 10 ordinata per punti', true, () =>
+  call('GET', 'sims_arcade_top/dog', undefined, 'u2'),
+);
 
 console.log(results);
 console.log(
-  'PASS: world rules (rooms, world creation limit, world list, global leaderboard, chat, cabinet records).',
+  'PASS: world rules (rooms, world creation limit, world list, global leaderboard, chat, roulette, cabinet records).',
 );

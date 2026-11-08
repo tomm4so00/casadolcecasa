@@ -174,3 +174,37 @@ describe('Pioggia di meteore', () => {
     for (const id of CABINET_IDS) expect(newMiniGame(id).id).toBe(id);
   });
 });
+
+describe('classifiche del cabinato', () => {
+  it('i primi 10 dal più alto; a parità chi ha fatto i punti prima; voci rovinate scartate', async () => {
+    const { decodeBoard, boardLeader, BOARD_SIZE } = await import('../src/game/cabinet-rules.js');
+    const raw: Record<string, unknown> = {
+      p_bad: { score: -3, nick: 'X', t: 1 },
+      p_text: { score: 'tanti', nick: 'Y', t: 1 },
+    };
+    for (let i = 0; i < 14; i++) raw['p' + i] = { score: 100 + i * 10, nick: 'G' + i, t: i };
+    raw.p_tie = { score: 230, nick: 'Pari', t: 99 }; // pari con p13, ma dopo
+    const board = decodeBoard(raw);
+    expect(board).toHaveLength(BOARD_SIZE);
+    expect(board[0]).toEqual({ pid: 'p13', nick: 'G13', score: 230 });
+    expect(board[1].pid).toBe('p_tie');
+    expect(board.map((e) => e.score)).toEqual([...board.map((e) => e.score)].sort((a, b) => b - a));
+    expect(boardLeader(board)?.pid).toBe('p13');
+    expect(boardLeader([])).toBeNull();
+    expect(decodeBoard(null)).toEqual([]);
+  });
+
+  it('le classifiche del condominio e del mondo hanno le loro regole, con l’indice sui punti', () => {
+    const rules = JSON.parse(
+      fs.readFileSync('firebase/database.rules.proposed.json', 'utf8'),
+    ).rules;
+    for (const node of [
+      rules.sims_arcade_top,
+      rules.sims_arcade_board,
+      rules.worlds.$worldId.arcade_board,
+    ]) {
+      expect(node.$game['.indexOn']).toEqual(['score']);
+      expect(node.$game.$pid['.validate']).toContain('sims_arcade_runs');
+    }
+  });
+});

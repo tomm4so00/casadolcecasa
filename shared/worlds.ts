@@ -26,6 +26,8 @@ export const WORLD_NODES = [
   'leaderboard',
   'auctions',
   'arcade_records',
+  'roulette',
+  'arcade_board',
 ] as const;
 export type WorldNode = (typeof WORLD_NODES)[number];
 

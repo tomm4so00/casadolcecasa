@@ -1,4 +1,5 @@
 import { PANEL_DOOR, PORTONE, doorOpenAmount } from './doors.js';
+import { drawShowroomItem } from './showroom.js';
 import { clockText } from '../game-clock.js';
 import { drawBar } from './bar.js';
 import { type GameValue, game } from '../context.js';
@@ -1391,6 +1392,8 @@ export function drawMapItem(
     return drawBoutiqueItem(k, item, t);
   }
   if (k.startsWith('shelf')) return drawShelf(item, t);
+  // negozio di mobili: ogni modello sulla sua pedana, alla misura reale
+  if (item.showId) return drawShowroomItem(item, t, lights);
   // Piante e lampade sono uguali da ogni lato: la rotazione non cambia il loro aspetto.
   // Anche le casette degli animali (gabbie, teca, acquario) girano da sole il loro disegno.
   const symmetric =

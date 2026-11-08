@@ -1517,6 +1517,12 @@ export const INTRO_PAGES = [
 
 /** Cosa dicono i commessi, per negozio. */
 export const SHOP_CLERK_LINES: Record<string, string[]> = {
+  scommesse: [
+    'Fate il vostro gioco!',
+    'Rien ne va plus!',
+    'Rosso o nero? Il tavolo è aperto.',
+    'Il numero secco paga 35 volte!',
+  ],
   negozio_mobili: [
     "Benvenuto all'Arredo Casa!",
     'Il divano in vetrina è un affare.',
@@ -1564,10 +1570,19 @@ export const SIMULATION_BOTS = [
   // commessi dei negozi: fermi dietro il bancone, con le loro frasi (vedi SHOP_CLERK_LINES).
   // `lift`: stanno su una pedana, così sopra il bancone si vedono dalla vita in su
   {
+    name: 'Croupier Elena 🎡',
+    env: 'scommesse',
+    x: -50,
+    y: 51,
+    vx: 0,
+    vy: 0,
+    clerk: true,
+  },
+  {
     name: 'Commesso Marco 🛋️',
     env: 'negozio_mobili',
-    x: -28,
-    y: -120,
+    x: 312,
+    y: 202,
     vx: 0,
     vy: 0,
     clerk: true,
@@ -2248,11 +2263,12 @@ export const USED_SHOP_FURNITURE = {
   doorExit: { x: 0, y: 160, w: 60, h: 15, z: 110, name: 'Torna Fuori 🚪', moveable: false },
 };
 
-// Sala scommesse: tre slot lungo la parete di fondo, il tavolo della morra cinese e l'uscita.
+// Sala scommesse: tre slot lungo la parete di fondo, il tavolo della morra cinese a destra e,
+// davanti, il tavolo della roulette (con la croupier dietro), poi l'uscita.
 export const BETTING_FURNITURE = {
   slot1: {
-    x: -165,
-    y: -150,
+    x: -235,
+    y: -195,
     w: 40,
     h: 30,
     z: 92,
@@ -2261,8 +2277,8 @@ export const BETTING_FURNITURE = {
     moveable: false,
   },
   slot2: {
-    x: -105,
-    y: -150,
+    x: -175,
+    y: -195,
     w: 40,
     h: 30,
     z: 92,
@@ -2271,8 +2287,8 @@ export const BETTING_FURNITURE = {
     moveable: false,
   },
   slot3: {
-    x: -45,
-    y: -150,
+    x: -115,
+    y: -195,
     w: 40,
     h: 30,
     z: 92,
@@ -2281,15 +2297,24 @@ export const BETTING_FURNITURE = {
     moveable: false,
   },
   rpsTable: {
-    x: 70,
-    y: 30,
+    x: 160,
+    y: -70,
     w: 74,
     h: 54,
     z: 38,
     name: 'Tavolo della morra cinese ✊',
     moveable: false,
   },
-  doorExit: { x: 0, y: 160, w: 60, h: 15, z: 110, name: 'Torna Fuori 🚪', moveable: false },
+  rouletteTable: {
+    x: -50,
+    y: 95,
+    w: 200,
+    h: 86,
+    z: 36,
+    name: 'Tavolo della roulette 🎡',
+    moveable: false,
+  },
+  doorExit: { x: 0, y: 215, w: 60, h: 15, z: 110, name: 'Torna Fuori 🚪', moveable: false },
 };
 
 // Sala giochi: una postazione per ogni gioco a due. Avvicinandosi si sfida un giocatore online.
@@ -2322,6 +2347,17 @@ export const ARCADE_FURNITURE = {
     z: 110,
     name: 'Cabinato dei Riflessi ⚡',
     game: 'rx',
+    moveable: false,
+  },
+  // console a gettone per i giochi da soli (gli stessi del cabinato di casa), sotto il neon 🕹️
+  arcadeConsole: {
+    x: 150,
+    y: -150,
+    w: 36,
+    h: 30,
+    z: 84,
+    name: 'Console a gettone 🕹️',
+    coin: true,
     moveable: false,
   },
   doorExit: { x: 0, y: 160, w: 60, h: 15, z: 110, name: 'Torna Fuori 🚪', moveable: false },
@@ -2438,117 +2474,100 @@ export const GALLERY_FURNITURE = {
   },
 };
 
+/**
+ * Reparti dello showroom: per ogni mobile una fila di pedane, dalla versione standard a quella
+ * di lusso, con il mobile vero nella sua misura reale. In fondo i più grandi, davanti i piccoli;
+ * nel mezzo resta il corridoio dall'ingresso al fondo. `x0` = centro della prima pedana.
+ */
+export const SHOWROOM_ROWS: { category: string; label: string; x0: number; y: number }[] = [
+  { category: 'bed', label: 'LETTI', x0: -410, y: -258 },
+  { category: 'wardrobe', label: 'ARMADI', x0: 170, y: -270 },
+  { category: 'desk', label: 'SCRIVANIE', x0: -410, y: -112 },
+  { category: 'sofa', label: 'DIVANI', x0: 170, y: -118 },
+  { category: 'tv', label: 'TELEVISORI', x0: -410, y: 2 },
+  { category: 'nightstand', label: 'COMODINI', x0: 170, y: 2 },
+  { category: 'lamp', label: 'LAMPADE', x0: -410, y: 108 },
+  { category: 'plant', label: 'PIANTE', x0: 170, y: 108 },
+  { category: 'safe', label: 'CASSEFORTI', x0: -410, y: 214 },
+  { category: 'cabinet', label: 'GIOCHI', x0: -170, y: 214 },
+];
+/** Distanza fra i centri di due pedane della stessa fila. */
+export const SHOWROOM_SLOT = 120;
+
+/**
+ * I modelli esposti di un reparto, dal più semplice: quelli in vendita e, per i mobili che ogni
+ * stanza ha già (letto, armadio, scrivania, cassaforte), anche la versione standard di casa.
+ */
+export function showroomModels(category: string) {
+  const sold = FURNITURE_CATALOG.filter((f) => f.category === category);
+  const tierRank = (id: string) => (id.endsWith('_lux') ? 2 : id.endsWith('_pre') ? 1 : 0);
+  sold.sort((a, b) => tierRank(a.id) - tierRank(b.id));
+  const base = (PLAYER_ROOM_FURNITURE as Record<string, { name: string }>)[category];
+  const models: {
+    id: string;
+    name: string;
+    price: number | null;
+    propKey: string;
+    propData: Record<string, unknown>;
+  }[] = sold.map((f) => ({
+    id: f.id,
+    name: f.name,
+    price: f.price,
+    propKey: f.propKey,
+    propData: f.propData as Record<string, unknown>,
+  }));
+  if (base && !sold.some((f) => f.id.endsWith('_std')))
+    models.unshift({
+      id: category + '_std',
+      name: base.name,
+      price: null,
+      propKey: category,
+      propData: base as Record<string, unknown>,
+    });
+  return models;
+}
+
+/** I mobili in esposizione, uno per pedana (chiavi "show_<id>"). */
+function showroomFloor(): Record<string, Record<string, unknown>> {
+  const out: Record<string, Record<string, unknown>> = {};
+  for (const row of SHOWROOM_ROWS)
+    showroomModels(row.category).forEach((m, i) => {
+      const pd = m.propData;
+      out['show_' + m.id] = {
+        ...pd,
+        x: row.x0 + i * SHOWROOM_SLOT,
+        y: row.y,
+        rot: 0,
+        // la cassaforte è a muro: si espone su un pannellino, profonda come la pedana
+        ...(pd.wallItem ? { wallItem: false, wallShow: true, h: 24, z: 40 } : {}),
+        moveable: false,
+        // il nome completo del catalogo, con la fascia (e il riconoscimento del disegno)
+        name: m.name,
+        showId: m.id,
+        category: row.category,
+        propKey: m.propKey,
+        price: m.price,
+      };
+    });
+  return out;
+}
+
 export const STORE_FLOOR_FURNITURE = {
+  ...showroomFloor(),
   shopCounter: {
-    x: 0,
-    y: -90,
-    w: 110,
+    x: 330,
+    y: 236,
+    w: 130,
     h: 50,
     z: 65,
-    name: 'Bancone Showroom 🛋️',
+    name: 'Cassa · Catalogo e rivendita 🛋️',
     color: '#d35400',
     topColor: '#e67e22',
     moveable: false,
   },
-  shelfBeds: {
-    x: -100,
-    y: 50,
-    w: 50,
-    h: 50,
-    z: 50,
-    name: 'Reparto Letti 🛏️ (Acquista)',
-    category: 'bed',
-    color: '#5f27cd',
-    topColor: '#8854d0',
-    moveable: false,
-  },
-  shelfWardrobes: {
-    x: -30,
-    y: 50,
-    w: 50,
-    h: 50,
-    z: 50,
-    name: 'Reparto Armadi 🚪 (Acquista)',
-    category: 'wardrobe',
-    color: '#1e272e',
-    topColor: '#485460',
-    moveable: false,
-  },
-  shelfNightstands: {
-    x: 40,
-    y: 50,
-    w: 50,
-    h: 50,
-    z: 50,
-    name: 'Reparto Comodini 🗄️ (Acquista)',
-    category: 'nightstand',
-    color: '#718093',
-    topColor: '#a0aec0',
-    moveable: false,
-  },
-  shelfDesks: {
-    x: 110,
-    y: 50,
-    w: 50,
-    h: 50,
-    z: 50,
-    name: 'Reparto Scrivanie 💻 (Acquista)',
-    category: 'desk',
-    color: '#222f3e',
-    topColor: '#576574',
-    moveable: false,
-  },
-  shelfLamps: {
-    x: -100,
-    y: -10,
-    w: 50,
-    h: 50,
-    z: 50,
-    name: 'Reparto Lampade 💡 (Acquista)',
-    category: 'lamp',
-    color: '#7f8c8d',
-    topColor: '#f1c40f',
-    moveable: false,
-  },
-  shelfSofas: {
-    x: -30,
-    y: -10,
-    w: 50,
-    h: 50,
-    z: 50,
-    name: 'Reparto Divani 🛋️ (Acquista)',
-    category: 'sofa',
-    color: '#576574',
-    topColor: '#8395a7',
-    moveable: false,
-  },
-  shelfTVs: {
-    x: 40,
-    y: -10,
-    w: 50,
-    h: 50,
-    z: 50,
-    name: 'Reparto TV 📺 (Acquista)',
-    category: 'tv',
-    color: '#2d3436',
-    topColor: '#636e72',
-    moveable: false,
-  },
-  shelfPlants: {
-    x: 110,
-    y: -10,
-    w: 50,
-    h: 50,
-    z: 50,
-    name: 'Reparto Piante 🌿 (Acquista)',
-    category: 'plant',
-    color: '#8d6e63',
-    topColor: '#27ae60',
-    moveable: false,
-  },
   doorExit: {
     x: 0,
-    y: 160,
+    y: 345,
     w: 60,
     h: 15,
     z: 110,
@@ -3383,10 +3402,11 @@ export const ENV_DECOR = {
     { kind: 'balloonStand', x: 180, y: 240, w: 26, h: 26, z: 100, label: 'Palloncini 🎈' },
   ],
   scommesse: [
-    { kind: 'plant', x: 168, y: -160, w: 26, h: 26, z: 60 },
-    { kind: 'plant', x: -168, y: 150, w: 26, h: 26, z: 60 },
-    { kind: 'stool', x: 70, y: -6, w: 12, h: 12, z: 32 },
-    { kind: 'stool', x: 70, y: 66, w: 12, h: 12, z: 32 },
+    { kind: 'plant', x: 250, y: -200, w: 26, h: 26, z: 60 },
+    { kind: 'plant', x: -250, y: 200, w: 26, h: 26, z: 60 },
+    { kind: 'plant', x: 250, y: 200, w: 26, h: 26, z: 60 },
+    { kind: 'stool', x: 160, y: -106, w: 12, h: 12, z: 32 },
+    { kind: 'stool', x: 160, y: -34, w: 12, h: 12, z: 32 },
   ],
   ingegneria: [
     { kind: 'cooler', x: 160, y: 50, w: 22, h: 22, z: 70 },
@@ -3412,8 +3432,20 @@ export const ENV_DECOR = {
     { kind: 'plant', x: 168, y: 150, w: 26, h: 26, z: 60 },
   ],
   negozio_mobili: [
-    { kind: 'plant', x: -168, y: -160, w: 26, h: 26, z: 60 },
-    { kind: 'plant', x: 168, y: 150, w: 26, h: 26, z: 60 },
+    { kind: 'plant', x: -490, y: -335, w: 26, h: 26, z: 60 },
+    { kind: 'plant', x: 490, y: -335, w: 26, h: 26, z: 60 },
+    { kind: 'plant', x: -490, y: 300, w: 26, h: 26, z: 60 },
+    { kind: 'plant', x: 120, y: 300, w: 26, h: 26, z: 60 },
+    // un cartello per reparto, all'inizio della sua fila di pedane
+    ...SHOWROOM_ROWS.map((r) => ({
+      kind: 'showSign',
+      x: r.x0 - 80,
+      y: r.y,
+      w: 22,
+      h: 14,
+      z: 84,
+      label: r.label,
+    })),
   ],
 };
 
@@ -3716,6 +3748,7 @@ export const ENV_STYLE = {
       { x: -95, y: -10, z: 0, r: 170, color: '255,120,200' },
       { x: 95, y: 45, z: 0, r: 170, color: '90,200,255' },
       { x: 60, y: -150, z: 0, r: 150, color: '255,220,90' },
+      { x: 150, y: -120, z: 0, r: 130, color: '255,140,90' },
     ],
   },
   scommesse: {
@@ -3725,15 +3758,20 @@ export const ENV_STYLE = {
     wallStyle: 'plain',
     trim: '#d4ac0d',
     decor: {
-      back: [{ t: 'neon', u: 95, text: 'JACKPOT', color: '255,200,40' }],
+      // parete di fondo: u = x + 280 · parete sinistra: u = 230 - y
+      back: [
+        { t: 'neon', u: 105, text: 'JACKPOT', color: '255,200,40' },
+        { t: 'neon', u: 440, text: '✊✋✌️', color: '90,220,255' },
+      ],
       left: [
-        { t: 'neon', u: 120, text: '🎰', color: '255,70,120' },
-        { t: 'neon', u: 260, text: '✊✋✌️', color: '90,220,255' },
+        { t: 'neon', u: 135, text: 'ROULETTE', color: '255,70,120' },
+        { t: 'neon', u: 400, text: '🎰', color: '255,200,40' },
       ],
     },
     lights: [
-      { x: -105, y: -100, z: 0, r: 200, color: '255,190,90' },
-      { x: 70, y: 30, z: 0, r: 160, color: '120,255,160' },
+      { x: -175, y: -150, z: 0, r: 200, color: '255,190,90' },
+      { x: 160, y: -70, z: 0, r: 160, color: '120,255,160' },
+      { x: -50, y: 95, z: 0, r: 230, color: '255,230,180' },
     ],
   },
   // un'unica scena: il piazzale recintato della zona esterna con dentro il laboratorio (`lab`:
@@ -3808,16 +3846,26 @@ export const ENV_STYLE = {
     wallStyle: 'plain',
     trim: '#d35400',
     decor: {
+      // parete di fondo: u = x + 520 · parete sinistra: u = 360 - y
       back: [
-        { t: 'poster', u: 70, text: 'SALDI -30%', color: '#e74c3c' },
-        { t: 'window', u: 200, w: 120, h: 60 },
-        { t: 'poster', u: 335, text: 'NOVITÀ', color: '#27ae60' },
+        { t: 'poster', u: 90, text: 'SALDI -30%', color: '#e74c3c' },
+        { t: 'window', u: 300, w: 140, h: 60 },
+        { t: 'logo', u: 520, text: 'ARREDO CASA' },
+        { t: 'window', u: 740, w: 140, h: 60 },
+        { t: 'poster', u: 950, text: 'NOVITÀ', color: '#27ae60' },
       ],
-      left: [{ t: 'logo', u: 180, text: 'ARREDO CASA' }],
+      left: [
+        { t: 'poster', u: 140, text: 'LUSSO ✨', color: '#d4ac0d' },
+        { t: 'window', u: 360, w: 120, h: 60 },
+        { t: 'poster', u: 590, text: 'PREGIATO 💎', color: '#8e44ad' },
+      ],
     },
     lights: [
-      { x: -60, y: 0, z: 0, r: 200, color: '255,245,220' },
-      { x: 80, y: 40, z: 0, r: 200, color: '255,245,220' },
+      { x: -330, y: -200, z: 0, r: 260, color: '255,245,220' },
+      { x: 270, y: -200, z: 0, r: 260, color: '255,245,220' },
+      { x: -330, y: 80, z: 0, r: 260, color: '255,245,220' },
+      { x: 270, y: 80, z: 0, r: 260, color: '255,245,220' },
+      { x: 0, y: 260, z: 0, r: 240, color: '255,245,220' },
     ],
   },
   negozio_vestiti: {

@@ -17,6 +17,48 @@ export const other = (s: Side): Side => (s === 'a' ? 'b' : 'a');
 /** Un invito vale per questo tempo, poi la partita si annulla. */
 export const INVITE_TTL_MS = 60_000;
 
+// ---------------------------------------------------------------- sfida con il link
+
+/**
+ * Sfida mandata con un link (a chi non è online): il posto dell'avversario resta vuoto (b = '')
+ * finché qualcuno apre il link e lo prende. Vale mezz'ora: c'è tempo di entrare nel gioco, o
+ * di crearsi il personaggio. Le regole del database usano la stessa durata.
+ */
+export const OPEN_INVITE_TTL_MS = 30 * 60_000;
+/** Nome del parametro del link: ?sfida=<condominio>~<partita>. */
+export const CHALLENGE_PARAM = 'sfida';
+
+export const isOpenSeat = (m: ArcadeMatch): boolean => m.b === '';
+
+/** Il codice della sfida nel link: condominio e partita. */
+export function challengeCode(world: string, gid: string): string {
+  return `${world}~${gid}`;
+}
+
+/** Condominio e partita dal codice del link, o null se non è fatto bene. */
+export function parseChallenge(value: unknown): { world: string; gid: string } | null {
+  if (typeof value !== 'string') return null;
+  const m = /^(CASA-[0-9A-Z]{4})~([a-z0-9_]{6,40})$/.exec(value);
+  return m ? { world: m[1], gid: m[2] } : null;
+}
+
+/**
+ * Chi apre il link prende il posto vuoto e la partita comincia. null se non si può: già presa,
+ * annullata, scaduta, o è la propria sfida.
+ */
+export function claimSeat(
+  m: ArcadeMatch,
+  me: { id: string; name: string },
+  now: number,
+  rxStart = 0,
+): ArcadeMatch | null {
+  if (m.status !== 'wait' || !isOpenSeat(m) || !me.id || m.a === me.id) return null;
+  if (now - m.t > OPEN_INVITE_TTL_MS) return null;
+  const next: ArcadeMatch = { ...m, b: me.id, nb: me.name.slice(0, 20), status: 'play' };
+  if (m.kind === 'rx') next.goAt = now + rxStart;
+  return next;
+}
+
 // ---------------------------------------------------------------- Forza 4
 
 export const C4_COLS = 7;

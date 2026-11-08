@@ -9,6 +9,7 @@ import { mountCloudSetup } from './cloud-setup.js';
 import { OFFLINE_MARK } from './saves.js';
 import { offerInstall } from './install.js';
 import { rememberInviteFromUrl } from './invite.js';
+import { rememberChallengeFromUrl } from './arcade.js';
 import { worldNode } from './world-db.js';
 export function mountLatestGame() {
   resetLifetime();
@@ -21,6 +22,8 @@ export function mountLatestGame() {
   initializeGame();
   // Dopo initializeGame: serve la sessione per sapere dove ricordare l'invito
   rememberInviteFromUrl();
+  // e la sfida della sala giochi mandata con un link
+  rememberChallengeFromUrl();
   importRefactoredSave(localStorage, game.session.LS_PREFIX);
   if (!game.session.OFFLINE) mountCloudSetup(root);
   offerInstall();

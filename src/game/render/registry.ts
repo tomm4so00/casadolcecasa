@@ -29,6 +29,8 @@ import {
 } from './workplaces.js';
 import { MOONBASE_DRAW } from './moonbase.js';
 import { drawCabinet } from './cabinet.js';
+import { drawShowSign } from './showroom.js';
+import { drawRouletteTable } from './roulette-table.js';
 import {
   MOONBASE_INSIDE_DRAW,
   drawBaseConsole,
@@ -194,6 +196,7 @@ export function registerDrawers(): void {
     sofa: drawSofa,
     tv: drawTV,
     cabinet: drawCabinet,
+    arcadeConsole: drawCabinet,
     plant: drawPlant,
     safe: drawSafe,
     stove: drawStove,
@@ -209,6 +212,7 @@ export function registerDrawers(): void {
     slot2: drawSlotMachine,
     slot3: drawSlotMachine,
     rpsTable: drawRpsTable,
+    rouletteTable: drawRouletteTable,
     tableC4: drawC4Table,
     tableBN: drawBNTable,
     reflexCab: drawReflexCabinet,
@@ -302,6 +306,7 @@ export function registerDrawers(): void {
     moonRock: drawMoonRockProp,
     moonFlag: drawMoonFlagProp,
     moonBeacon: drawMoonBeacon,
+    showSign: drawShowSign,
     ...MOONBASE_DRAW,
     ...MOONBASE_INSIDE_DRAW,
     petShelf: drawPetShelf,

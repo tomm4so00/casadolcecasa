@@ -7,6 +7,7 @@ import { onLedgerChange, startLimited } from './limited.js';
 import { applyDailyPerks } from './personality.js';
 import { enablePush } from './push.js';
 import { claimInvite, openInvite, remindInvite, startInviteRewards } from './invite.js';
+import { joinSharedChallenge } from './arcade.js';
 import { openCryo, watchCryo } from './cryo.js';
 import { blockedByDeletion, requestDeletion } from './deletion.js';
 import { startPlayersHud } from './players-hud.js';
@@ -393,6 +394,8 @@ export async function startGame(..._args: GameValue[]): Promise<GameValue> {
   startPresence();
   if (game.notifyOn) void enablePush();
   startInviteRewards();
+  // entrati con il link di una sfida: si propone di giocarla (dopo le finestre dell'ingresso)
+  lifetime.setTimeout(() => void joinSharedChallenge(), 2500);
   watchCryo();
   remindInvite();
   // premi giornalieri delle personalità (dopo che le finestre d'avvio si sono chiuse)

@@ -862,7 +862,9 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
               pose,
               act === 'bench'
                 ? sofaBackOpts(map.sofa, s.x, s.y)
-                : act === 'arcade' && map.cabinet && cabinetFacesAway(map.cabinet)
+                : act === 'arcade' &&
+                    (map.cabinet || map.arcadeConsole) &&
+                    cabinetFacesAway(map.cabinet || map.arcadeConsole)
                   ? { back: true }
                   : null,
             ),

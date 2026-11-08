@@ -29,6 +29,10 @@ const ENV_HALF: Record<string, { x: number; y: number }> = {
   ingegneria: { x: 200, y: 380 },
   // parco: fontana al centro, area cani a destra, laghetto a sinistra, picnic in fondo
   passeggiata: { x: 440, y: 320 },
+  // sala scommesse: slot, morra cinese e il tavolo della roulette
+  scommesse: { x: 280, y: 230 },
+  // negozio di mobili: tutti i modelli in esposizione, ognuno alla sua misura reale
+  negozio_mobili: { x: 520, y: 360 },
   // galleria d'arte: pareti lunghe per dieci quadri ben distanziati
   galleria: GALLERY_HALF,
 };

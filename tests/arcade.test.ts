@@ -229,3 +229,41 @@ describe('sala giochi nel gioco', () => {
     expect(rules.sims_interactions.$pid.$key['.validate']).toContain('|gameInvite');
   });
 });
+
+describe('sfida con il link', () => {
+  it('il codice del link porta condominio e partita, e scarta quelli rovinati', async () => {
+    const { challengeCode, parseChallenge } = await import('../src/game/arcade-rules');
+    const code = challengeCode('CASA-2K9X', 'lk3j2a_ab12cd34');
+    expect(parseChallenge(code)).toEqual({ world: 'CASA-2K9X', gid: 'lk3j2a_ab12cd34' });
+    expect(parseChallenge('CASA-0001~abc')).toBeNull(); // partita troppo corta
+    expect(parseChallenge('casa-0001~lk3j2a_ab12')).toBeNull();
+    expect(parseChallenge('CASA-0001~../sims_saves')).toBeNull();
+    expect(parseChallenge(null)).toBeNull();
+  });
+
+  it('il primo che apre il link prende il posto vuoto, una volta sola e in tempo', async () => {
+    const { newMatch, claimSeat, OPEN_INVITE_TTL_MS } = await import('../src/game/arcade-rules');
+    const t = 1_000_000;
+    const open = newMatch('c4', { id: 'player_ada', name: 'Ada' }, { id: '', name: '' }, t);
+    const bea = { id: 'player_bea', name: 'Bea' };
+    const taken = claimSeat(open, bea, t + 60_000);
+    expect(taken).toMatchObject({ b: 'player_bea', nb: 'Bea', status: 'play' });
+    // già presa, la propria, scaduta
+    expect(claimSeat(taken!, { id: 'player_cri', name: 'Cri' }, t + 60_000)).toBeNull();
+    expect(claimSeat(open, { id: 'player_ada', name: 'Ada' }, t + 60_000)).toBeNull();
+    expect(claimSeat(open, bea, t + OPEN_INVITE_TTL_MS + 1)).toBeNull();
+    // ai Riflessi si fissa anche il VIA della prima manche
+    const rx = newMatch('rx', { id: 'player_ada', name: 'Ada' }, { id: '', name: '' }, t);
+    expect(claimSeat(rx, bea, t + 1000, 3000)?.goAt).toBe(t + 4000);
+  });
+
+  it('le regole del database usano la stessa mezz’ora', async () => {
+    const { OPEN_INVITE_TTL_MS } = await import('../src/game/arcade-rules');
+    const fs = await import('node:fs');
+    const rules = JSON.parse(
+      fs.readFileSync('firebase/database.rules.proposed.json', 'utf8'),
+    ).rules;
+    expect(rules.sims_games.$gid['.write']).toContain(`now - ${OPEN_INVITE_TTL_MS}`);
+    expect(rules.worlds.$worldId.games.$gid['.write']).toContain(`now - ${OPEN_INVITE_TTL_MS}`);
+  });
+});

@@ -1,4 +1,5 @@
 import { postGossip } from './gossip.js';
+import { watchRoulette } from './roulette.js';
 import {
   SAFE_LEVEL2_PRICE,
   isValidPin,
@@ -63,7 +64,14 @@ import {} from './bank.js';
 import { rocketFunded } from './projects.js';
 import { PROJECTS, projectGoal } from './project-rules.js';
 import { avoidWallSafe, pushOutOfCorridor } from './room-layout.js';
-import { bestOwnedByProp, TIER_LABEL, TIER_RANK, tierOf } from './furniture-tiers.js';
+import {
+  bestOwnedByProp,
+  nextUpgrade,
+  showroomStatus,
+  TIER_LABEL,
+  TIER_RANK,
+  tierOf,
+} from './furniture-tiers.js';
 import { furnitureBenefit } from './furniture-benefits.js';
 import {
   JOB_PAY_TIERS,
@@ -971,7 +979,9 @@ export async function doActivity(type?: GameValue): Promise<void> {
     game.view.activeEnvironment = 'scommesse';
     game.view.currentRoomTitle = 'Sala Scommesse 🎰';
     dom('btn-return-home').classList.add('hidden');
-    game.playerPos = { x: 0, y: 110 };
+    game.playerPos = { x: 0, y: 175 };
+    // la ruota nella sala gira con il tavolo condiviso del condominio
+    watchRoulette();
     return;
   } else if (type === 'engineering') {
     game.view.activeEnvironment = 'ingegneria';
@@ -989,7 +999,7 @@ export async function doActivity(type?: GameValue): Promise<void> {
     game.view.activeEnvironment = 'negozio_mobili';
     game.view.currentRoomTitle = 'Negozio di Mobili 🛋️';
     dom('btn-return-home').classList.add('hidden');
-    game.playerPos = { x: 0, y: 110 };
+    game.playerPos = { x: 0, y: 300 };
     return;
   }
   game.playerPos = { x: 0, y: 80 };
@@ -1059,6 +1069,12 @@ export function openFurnitureShopModal(..._args: GameValue[]): GameValue {
   }
   game.furnitureCatalog.forEach((item?: GameValue): GameValue => {
     const isOwned: GameValue = game.player.ownedFurniture[item.id];
+    // come nello showroom: si sale di una fascia alla volta (standard → pregiato → lusso)
+    const status = showroomStatus(game.furnitureCatalog, game.player.ownedFurniture, item);
+    const need: GameValue =
+      status === 'locked'
+        ? nextUpgrade(game.furnitureCatalog, game.player.ownedFurniture, item.category)
+        : null;
     const card: GameValue = document.createElement('div');
     card.className = 'shop-item-card';
     card.innerHTML = `
@@ -1070,7 +1086,11 @@ export function openFurnitureShopModal(..._args: GameValue[]): GameValue {
           ${
             isOwned
               ? `<button class="btn-buy btn-sell" data-action="sellFurnitureItem" data-arg="${item.id}">💸 Rivendi ${resaleValue(item.price)} €</button>`
-              : `<button class="btn-buy" data-action="buyFurnitureItem" data-arg="${item.id}">Acquista</button>`
+              : status === 'next'
+                ? `<button class="btn-buy" data-action="buyFurnitureItem" data-arg="${item.id}">Acquista</button>`
+                : status === 'better'
+                  ? '<button class="btn-buy owned" type="button" disabled>✓ Ne hai uno migliore</button>'
+                  : `<button class="btn-buy owned" type="button" disabled>🔒 Prima: ${need?.name || 'il modello precedente'}</button>`
           }
         `;
     container.appendChild(card);
@@ -1084,6 +1104,20 @@ export async function buyFurnitureItem(itemId: string): Promise<void> {
   const price: number = definition.price;
   if (game.player.ownedFurniture[itemId]) {
     toast('Hai già acquistato questo mobile!');
+    return;
+  }
+  // si sale di una fascia alla volta: standard → pregiato → lusso (come nello showroom)
+  const next: GameValue = nextUpgrade(
+    game.furnitureCatalog,
+    game.player.ownedFurniture,
+    definition.category,
+  );
+  if (!next || TIER_RANK[tierOf(definition)] < TIER_RANK[tierOf(next)]) {
+    toast('Hai già un modello migliore di questo!');
+    return;
+  }
+  if (next.id !== itemId) {
+    toast(`🔒 Prima devi comprare ${next.name}.`);
     return;
   }
   if (game.moneyLevel < price) {

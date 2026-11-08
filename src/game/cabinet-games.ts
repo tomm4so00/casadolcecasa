@@ -97,6 +97,7 @@ const FONT: Record<string, string> = {
   '!': '.#.|.#.|.#.|...|.#.',
   ':': '...|.#.|...|.#.|...',
   '-': '...|...|###|...|...',
+  '+': '...|.#.|###|.#.|...',
 };
 
 /** Testo col carattere a quadratini; `size` = grandezza di ogni quadratino. */
@@ -638,4 +639,37 @@ export class Meteors implements MiniGame {
 
 export function newMiniGame(id: CabinetGameId, rng: Rng = Math.random): MiniGame {
   return id === 'dog' ? new DogRun(rng) : id === 'bricks' ? new Bricks(rng) : new Meteors(rng);
+}
+
+/** Console a gettone: sopra il gioco fermo, la richiesta della moneta (lampeggia). */
+export function drawCoinPrompt(ctx: CanvasRenderingContext2D, price: number, t: number): void {
+  ctx.fillStyle = '#000000';
+  ctx.fillRect(0, SCREEN_H / 2 - 18, SCREEN_W, 36);
+  ctx.fillStyle = '#fcfc54';
+  ctx.fillRect(0, SCREEN_H / 2 - 18, SCREEN_W, 1);
+  ctx.fillRect(0, SCREEN_H / 2 + 17, SCREEN_W, 1);
+  text(ctx, `INSERISCI ${price} EURO`, SCREEN_W / 2, SCREEN_H / 2 - 12, '#fcfc54', 'center', 2);
+  if (Math.floor(t * 2) % 2)
+    text(ctx, 'PREMI A PER PAGARE', SCREEN_W / 2, SCREEN_H / 2 + 6, '#ffffff', 'center');
+}
+
+/**
+ * Fine partita, sotto la scritta del gioco: i punti, i record battuti (quando il database
+ * risponde) e l'invito a tornare al menù.
+ */
+export function drawOverPanel(
+  ctx: CanvasRenderingContext2D,
+  score: number,
+  lines: string[],
+  t: number,
+): void {
+  const h = 18 + lines.length * 8;
+  const y0 = SCREEN_H - h - 4;
+  ctx.fillStyle = 'rgba(0,0,0,0.85)';
+  ctx.fillRect(8, y0, SCREEN_W - 16, h);
+  ctx.fillStyle = '#fcfc54';
+  ctx.fillRect(8, y0, SCREEN_W - 16, 1);
+  text(ctx, 'PUNTI ' + score, SCREEN_W / 2, y0 + 3, '#ffffff', 'center');
+  lines.forEach((l, i) => text(ctx, l, SCREEN_W / 2, y0 + 11 + i * 8, '#fcfc54', 'center'));
+  if (Math.floor(t * 2) % 2) text(ctx, 'A: MENU', SCREEN_W / 2, y0 + h - 6, '#58d854', 'center');
 }

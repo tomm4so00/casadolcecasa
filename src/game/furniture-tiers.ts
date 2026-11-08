@@ -69,3 +69,29 @@ export function nextUpgrade<T extends FurnitureDef>(
   for (const def of list) if (owned[def.id]) bestRank = Math.max(bestRank, TIER_RANK[tierOf(def)]);
   return list.find((def) => TIER_RANK[tierOf(def)] > bestRank) ?? null;
 }
+
+/**
+ * Stato di un modello esposto nello showroom, per chi guarda:
+ * - 'mine': ce l'ha (anche la versione standard che ogni stanza ha già, se non ha di meglio);
+ * - 'better': ha già un modello di una fascia più alta;
+ * - 'next': è il prossimo da comprare (si sale di una fascia alla volta);
+ * - 'locked': prima va comprato il modello della fascia sotto.
+ */
+export type ShowroomStatus = 'mine' | 'better' | 'next' | 'locked';
+
+export function showroomStatus<T extends FurnitureDef>(
+  catalog: T[],
+  owned: Record<string, boolean>,
+  model: { id: string; category: string },
+): ShowroomStatus {
+  const rank = TIER_RANK[tierOf({ ...model, propKey: '' })];
+  let best = -1;
+  for (const def of tiersOf(catalog, model.category))
+    if (owned[def.id]) best = Math.max(best, TIER_RANK[tierOf(def)]);
+  // il modello di casa (non in vendita) lo hanno tutti
+  const sold = catalog.some((def) => def.id === model.id);
+  if (!sold) return best > rank ? 'better' : 'mine';
+  if (owned[model.id]) return best > rank ? 'better' : 'mine';
+  if (best > rank) return 'better';
+  return nextUpgrade(catalog, owned, model.category)?.id === model.id ? 'next' : 'locked';
+}

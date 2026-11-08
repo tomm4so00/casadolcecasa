@@ -21,6 +21,8 @@ export const WORLD_NODES = [
   'leaderboard',
   'auctions',
   'arcade_records',
+  'roulette',
+  'arcade_board',
 ];
 
 /** Ogni giocatore crea al massimo un mondo ogni 10 minuti (come WORLD_CREATE_EVERY_MS). */
@@ -89,6 +91,25 @@ function withArcadeRules(r, player) {
   };
   r.sims_arcade_records = { '.read': player, ...structuredClone(record) };
   r.sims_arcade_global = { '.read': player, ...structuredClone(record) };
+  // classifiche (la top 10): il miglior punteggio di ogni giocatore, a proprio nome e solo se
+  // migliora; del condominio (arcade_board, nodo del mondo) e del mondo intero (arcade_top)
+  const board = {
+    $game: {
+      '.indexOn': ['score'],
+      $pid: {
+        '.write': `${player} && $pid === ${me} && ${isGame('$game')}`,
+        '.validate':
+          `newData.hasChildren(['score','nick','t']) && ${better} && ` +
+          score("newData.child('score')"),
+        score: { '.validate': 'newData.isNumber()' },
+        nick: { '.validate': 'newData.isString() && newData.val().length <= 20' },
+        t: { '.validate': 'newData.val() === now' },
+        $other: { '.validate': false },
+      },
+    },
+  };
+  r.sims_arcade_board = { '.read': player, ...structuredClone(board) };
+  r.sims_arcade_top = { '.read': player, ...structuredClone(board) };
   // il record personale di ogni gioco
   r.sims_arcade_best = {
     $pid: {
@@ -128,12 +149,83 @@ function withArcadeRules(r, player) {
   }
 }
 
+/**
+ * Roulette della sala scommesse (come src/game/roulette-rules.ts): giri di ROULETTE_ROUND ms,
+ * puntate aperte per i primi ROULETTE_BET. Il giro è il numero nel nome del nodo e nel campo r.
+ */
+export const ROULETTE_ROUND = 40000;
+export const ROULETTE_BET = 25000;
+/** I giri più vecchi di così si possono cancellare (da chiunque: è solo pulizia). */
+const ROULETTE_KEEP = 3600000;
+
+function withRouletteRules(r, player) {
+  const me = "root.child('sims_accounts').child(auth.uid).child('playerId').val()";
+  const round = (d) => `${d}.child('r').val()`;
+  // il nodo del giro è proprio quello del campo r
+  const sameRound = `${round('newData')} + '' === $round`;
+  const old = `!newData.exists() && ${round('data')} * ${ROULETTE_ROUND} < now - ${ROULETTE_KEEP}`;
+  r.sims_roulette = {
+    '.read': player,
+    bets: {
+      $round: {
+        $pid: {
+          // le proprie puntate, finché sono aperte (cancellarle si può sempre); e la pulizia
+          '.write':
+            `${player} && (($pid === ${me} && (!newData.exists() || (${sameRound} && ` +
+            `${round('newData')} * ${ROULETTE_ROUND} + ${ROULETTE_BET} > now && ` +
+            `${round('newData')} * ${ROULETTE_ROUND} <= now + 60000))) || (${old}))`,
+          '.validate': "newData.hasChildren(['r','nick','bets'])",
+          r: { '.validate': 'newData.isNumber() && newData.val() % 1 === 0' },
+          nick: { '.validate': 'newData.isString() && newData.val().length <= 20' },
+          bets: {
+            $k: {
+              '.validate':
+                '$k.matches(/^(n([0-9]|[12][0-9]|3[0-6])|red|black|odd|even|low|high|d[123]|c[123])$/) && ' +
+                'newData.isNumber() && newData.val() >= 5 && newData.val() <= 500 && newData.val() % 5 === 0',
+            },
+          },
+          $other: { '.validate': false },
+        },
+      },
+    },
+    // il numero uscito: lo scrive una volta il primo al tavolo, a puntate chiuse
+    results: {
+      $round: {
+        '.write':
+          `${player} && ((!data.exists() && ${sameRound} && ` +
+          `now >= ${round('newData')} * ${ROULETTE_ROUND} + ${ROULETTE_BET}) || (${old}))`,
+        '.validate': "newData.hasChildren(['r','n'])",
+        r: { '.validate': 'newData.isNumber() && newData.val() % 1 === 0' },
+        n: {
+          '.validate':
+            'newData.isNumber() && newData.val() % 1 === 0 && newData.val() >= 0 && newData.val() <= 36',
+        },
+        $other: { '.validate': false },
+      },
+    },
+    // le vincite incassate: una volta per giro e per giocatore
+    paid: {
+      $round: {
+        $pid: {
+          // si cancella solo quando il numero del giro non c'è più (pulizia dei giri vecchi):
+          // così non si incassa due volte
+          '.write':
+            `${player} && (($pid === ${me} && !data.exists()) || ` +
+            `(!newData.exists() && !root.child('sims_roulette').child('results').child($round).exists()))`,
+          '.validate': 'newData.val() === true',
+        },
+      },
+    },
+  };
+}
+
 /** Le regole complete: quelle di oggi più mondi, elenco dei mondi e classifica globale. */
 export function withWorldRules(rules) {
   const r = { ...rules.rules };
   // chi ha un personaggio (stessa condizione della lettura della classifica)
   const player = r.sims_leaderboard['.read'];
   withArcadeRules(r, player);
+  withRouletteRules(r, player);
   const worlds = { $worldId: { '.validate': `$worldId.matches(${CODE})` } };
   for (const node of WORLD_NODES) worlds.$worldId[node] = intoWorld(r['sims_' + node]);
   r.worlds = worlds;
