@@ -160,6 +160,10 @@ export interface GoogleAccess {
   name: string;
   playerId: string | null;
   pendingPlayerId: string | null;
+  /** Il personaggio è nato da ospite e non è ancora stato salvato (segno "guest" nel database). */
+  guestMark: boolean;
+  /** Si è entrati come ospite (accesso anonimo): il database tratta l'account da ospite. */
+  anonymous: boolean;
 }
 
 // Signs in and reports whether this Google account already owns a Sim or is waiting for a link.
@@ -182,7 +186,125 @@ export async function accessFor(user: firebase.User): Promise<GoogleAccess> {
     name: user.displayName || usernameFromEmail(user.email) || user.email || 'Giocatore',
     playerId: binding?.playerId ?? null,
     pendingPlayerId,
+    guestMark: typeof binding?.guest === 'number',
+    anonymous: (await user.getIdTokenResult()).signInProvider === 'anonymous',
   };
+}
+
+// ---------------------------------------------------------------- ospiti (gioca subito)
+
+/**
+ * "Gioca subito": un account anonimo, senza nome, email né password. L'accesso resta ricordato
+ * sul dispositivo: chiudendo il browser l'ospite non deve perdere il personaggio.
+ */
+export async function signInAsGuest(): Promise<firebase.User> {
+  const auth = googleAuth();
+  await auth.setPersistence(firebaseClient.auth.Auth.Persistence.LOCAL);
+  localStorage.setItem(REMEMBER_KEY, '1');
+  let user: firebase.User | null;
+  try {
+    user = auth.currentUser?.isAnonymous ? auth.currentUser : (await auth.signInAnonymously()).user;
+  } catch (error) {
+    throw friendlyAuthError(error);
+  }
+  if (!user) throw new Error('Ingresso non riuscito: riprova.');
+  return user;
+}
+
+/**
+ * Il personaggio dell'ospite: come quello di un account Google (player_<uid>), con il segno
+ * "guest" (ora del server) che la manutenzione usa per cancellare gli ospiti spariti.
+ */
+export async function createGuestSim(uid: string): Promise<string> {
+  const ref = game.session.db.ref('sims_accounts/' + uid);
+  const binding = decodeAccountBinding((await ref.get()).val());
+  if (binding) return binding.playerId;
+  const playerId = googlePlayerId(uid);
+  await ref.set({ playerId, guest: { '.sv': 'timestamp' } });
+  return playerId;
+}
+
+/** Salvato il personaggio dell'ospite: il segno "guest" si toglie (l'account ora è pieno). */
+export async function clearGuestMark(uid: string, playerId: string): Promise<void> {
+  await game.session.db.ref('sims_accounts/' + uid).set({ playerId });
+}
+
+/**
+ * Collega Google all'ospite: l'account resta lo stesso (stesso uid, stesso personaggio). Poi si
+ * rientra con Google, così il database non lo tratta più da ospite.
+ * Se quel Google ha già un personaggio, restituisce la credenziale per entrare con quello.
+ */
+export async function saveGuestWithGoogle(): Promise<
+  { ok: true } | { ok: false; other: firebase.auth.AuthCredential }
+> {
+  const auth = googleAuth();
+  const user = auth.currentUser;
+  if (!user) throw new Error('Rientra nel gioco e riprova.');
+  try {
+    const result = await user.linkWithPopup(new firebaseClient.auth.GoogleAuthProvider());
+    if (result.credential) await auth.signInWithCredential(result.credential);
+    return { ok: true };
+  } catch (error) {
+    const e = error as { code?: string; credential?: firebase.auth.AuthCredential | null };
+    if (e.code === 'auth/credential-already-in-use' && e.credential)
+      return { ok: false, other: e.credential };
+    throw friendlyAuthError(error);
+  }
+}
+
+/** Lascia il personaggio ospite ed entra con l'account Google che ha già un personaggio. */
+export async function enterOtherGoogle(credential: firebase.auth.AuthCredential): Promise<void> {
+  sessionValid = false;
+  releaseTab?.();
+  releaseTab = null;
+  try {
+    await googleAuth().signInWithCredential(credential);
+  } catch (error) {
+    throw friendlyAuthError(error);
+  }
+}
+
+/**
+ * Collega email e password all'ospite e manda il link di conferma. Finché l'email non è
+ * confermata (e non si rientra con la password) l'account resta da ospite.
+ */
+export async function saveGuestWithEmail(email: string, password: string): Promise<void> {
+  const problem = emailError(email) || passwordError(password);
+  if (problem) throw new Error(problem);
+  const user = googleAuth().currentUser;
+  if (!user) throw new Error('Rientra nel gioco e riprova.');
+  try {
+    await user.linkWithCredential(
+      firebaseClient.auth.EmailAuthProvider.credential(email.trim(), password),
+    );
+  } catch (error) {
+    throw friendlyAuthError(error);
+  }
+  await sendAuthEmail((settings) => user.sendEmailVerification(settings));
+}
+
+/**
+ * Dopo il clic sul link: se l'email è confermata si rientra con la password (il database ora vede
+ * un account pieno) e si occupa la casella. Falso se non risulta ancora confermata.
+ */
+export async function finishGuestEmail(email: string, password: string): Promise<boolean> {
+  const fresh = await reloadConfirmed();
+  if (!fresh) return false;
+  await signInWithPassword(email, password);
+  await claimEmail();
+  return true;
+}
+
+/** L'ospite ha già collegato un'email ma non ha ancora finito: quella email (o null). */
+export function guestPendingEmail(): string | null {
+  try {
+    const user = googleAuth().currentUser;
+    const linked = (user?.providerData || []).some((p) => p?.providerId === 'password');
+    return linked ? user?.email || null : null;
+  } catch {
+    // accesso non ancora pronto: nessuna email in sospeso da mostrare
+    return null;
+  }
 }
 
 // Code of the Sim saved on this device before Google sign-in, if any.

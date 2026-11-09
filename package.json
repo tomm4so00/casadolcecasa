@@ -1,6 +1,6 @@
 {
   "name": "casa-dolce-casa",
-  "version": "0.17.0",
+  "version": "0.18.0",
   "private": true,
   "type": "module",
   "engines": {
@@ -21,7 +21,7 @@
     "test:invite": "firebase emulators:exec --only auth,database --project demo-casadolcecasa \"node tests/invite-cloud.mjs\"",
     "test:challenge": "firebase emulators:exec --only auth,database --project demo-casadolcecasa \"node tests/challenge-cloud.mjs\"",
     "test:roulette": "firebase emulators:exec --only auth,database --project demo-casadolcecasa \"node tests/roulette-cloud.mjs\"",
-    "test:rules": "firebase emulators:exec --only database --project demo-casadolcecasa \"node tests/world-rules-emulator.mjs && node tests/inventory-rules-emulator.mjs && node tests/weed-market-emulator.mjs\"",
+    "test:rules": "firebase emulators:exec --only database --project demo-casadolcecasa \"node tests/world-rules-emulator.mjs && node tests/guest-rules-emulator.mjs && node tests/inventory-rules-emulator.mjs && node tests/weed-market-emulator.mjs\"",
     "build:server": "npm --prefix server run build",
     "rules:check": "node firebase/rules.mjs check",
     "rules:deploy": "node firebase/rules.mjs deploy"

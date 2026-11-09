@@ -12,6 +12,7 @@ import {
   shouldOfferInstall,
 } from './install-rules.js';
 import { browser, dom, lifetime } from './runtime.js';
+import { isGuest } from './guest.js';
 
 /** Il vecchio "Più tardi" che rimandava di una settimana: si cancella. */
 const OLD_LATER_KEY = 'sims_install_later';
@@ -81,7 +82,12 @@ function showBanner(kind: 'apple' | 'mac' | 'prompt'): void {
   dom('install-now').classList.toggle('hidden', kind !== 'prompt');
   // Compare qualche secondo dopo l'apertura, anche se il browser avvisa prima o dopo.
   const wait = Math.max(0, SHOW_AFTER_MS - (Date.now() - mountedAt));
-  lifetime.setTimeout(() => banner.classList.remove('hidden'), wait);
+  lifetime.setTimeout(() => {
+    // Su iPhone, iPad e Mac l'app installata non vede i dati di Safari: un ospite lì dentro
+    // ripartirebbe da zero. Prima salva il personaggio (l'avviso torna alla prossima apertura).
+    if (kind !== 'prompt' && isGuest()) return;
+    banner.classList.remove('hidden');
+  }, wait);
 }
 
 function hideBanner(): void {

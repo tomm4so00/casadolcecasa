@@ -485,7 +485,11 @@
     <!-- Accesso online: un passo alla volta -->
     <div id="setup-online" class="hidden">
       <div class="setup-step" data-step="login">
-        <p class="setup-text">Accedi per entrare nel gioco.</p>
+        <button class="btn-primary btn-guest" id="setup-guest" type="button">
+          ▶️ Gioca subito
+        </button>
+        <p class="setup-hint">Senza account: salvi il personaggio quando vuoi.</p>
+        <div class="setup-divider"><span>hai già un personaggio?</span></div>
         <button class="btn-primary" id="cloud-game-btn" type="button">Accedi con Google</button>
         <div class="setup-divider"><span>oppure con email e password</span></div>
         <div class="input-group">
@@ -604,6 +608,26 @@
         </div>
         <button class="btn-primary" id="setup-add-email-send" type="button">Mandami il link</button>
         <button class="btn-link" id="setup-add-email-logout" type="button">← Esci</button>
+      </div>
+      <div class="setup-step hidden" data-step="guest">
+        <div class="input-group">
+          <label for="setup-guest-nick">Come si chiama il tuo personaggio?</label>
+          <input
+            type="text"
+            id="setup-guest-nick"
+            placeholder="Il tuo nome nel gioco"
+            maxlength="20"
+            autocomplete="nickname"
+          />
+        </div>
+        <button class="btn-primary btn-guest" id="setup-guest-start" type="button">
+          Inizia a giocare
+        </button>
+        <p class="setup-hint">
+          Il personaggio vive su questo dispositivo: dal profilo (🧑) puoi salvarlo con Google o con
+          l'email per non perderlo. Gli ospiti che non entrano per 7 giorni vengono cancellati.
+        </p>
+        <button class="btn-link" type="button" data-setup-login>← Indietro</button>
       </div>
       <div class="setup-step hidden" data-step="choice">
         <p class="setup-text">

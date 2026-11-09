@@ -11,6 +11,7 @@ import { myLine, notePersonality } from './personality.js';
 import { onArtAccept, onArtNo, onArtOffer, onArtSold } from './auctions.js';
 import { transferMoney, creditMoney } from './economy.js';
 import type { GameValue } from './context.js';
+import { requireAccount } from './guest.js';
 import { game } from './context.js';
 import { lifetime } from './runtime.js';
 import { toast } from './missions.js';
@@ -93,6 +94,7 @@ export async function socDo(act?: GameValue): Promise<GameValue> {
     notePersonality('giveFood');
     game.socKey = '';
   } else if (act === 'money') {
+    if (!(await requireAccount('regalare soldi'))) return;
     if (!game.roomsState.some((r?: GameValue): GameValue => r && r.ownerId === t.id)) {
       toast(`${t.name} non ha una stanza: non può ricevere soldi.`, 3500);
       return;

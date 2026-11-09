@@ -6,6 +6,7 @@
 // vendita all'usato uno dei suoi pezzi, o lo butta se il negozio dell'usato è pieno.
 // Le regole sono in collect-rules.ts.
 import type { GameValue } from './context.js';
+import { requireAccount } from './guest.js';
 import { game } from './context.js';
 import { openDialog } from './interface.js';
 import { toast } from './missions.js';
@@ -84,6 +85,7 @@ export function offerLabel(c: Collectible): string {
 
 /** Offerta per il pezzo `c` della mensola di `ownerId`. */
 export async function makeCollectOffer(c: Collectible, ownerId: string): Promise<void> {
+  if (!(await requireAccount('fare offerte agli altri giocatori'))) return;
   const state = collectState();
   const owner = state.owners[c.id];
   if (!owner || owner.o !== ownerId) {

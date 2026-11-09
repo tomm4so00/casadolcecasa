@@ -1,5 +1,7 @@
 interface AccountBinding {
   playerId: string;
+  /** Account ospite (accesso anonimo): quando è nato, in ms. Salvando il personaggio si toglie. */
+  guest?: number;
 }
 export function googlePlayerId(uid: string): string {
   if (!/^[A-Za-z0-9_-]{1,128}$/.test(uid)) throw new Error('Identità Google non valida.');
@@ -8,9 +10,11 @@ export function googlePlayerId(uid: string): string {
 export function decodeAccountBinding(value: unknown): AccountBinding | null {
   if (!value || typeof value !== 'object' || !('playerId' in value)) return null;
   const id = value.playerId;
-  return typeof id === 'string' && /^player_[A-Za-z0-9_-]{4,128}$/.test(id)
-    ? { playerId: id }
-    : null;
+  if (typeof id !== 'string' || !/^player_[A-Za-z0-9_-]{4,128}$/.test(id)) return null;
+  const guest = (value as { guest?: unknown }).guest;
+  return typeof guest === 'number' && Number.isFinite(guest)
+    ? { playerId: id, guest }
+    : { playerId: id };
 }
 export function onlineSaveKey(playerId: string): string {
   return 'sims_save_v1:' + playerId;
@@ -138,6 +142,9 @@ export function authErrorMessage(code: string): string {
     case 'auth/credential-already-in-use':
     case 'auth/account-exists-with-different-credential':
       return 'Questo account Google è già usato da un altro personaggio: scegline un altro.';
+    // l'accesso anonimo spento nella console di Firebase dà questo errore
+    case 'auth/admin-restricted-operation':
+      return 'Il gioco senza account non è ancora attivo: entra con Google o con la tua email.';
     case 'auth/provider-already-linked':
       return 'Il tuo account è già collegato a Google.';
     case 'auth/popup-closed-by-user':

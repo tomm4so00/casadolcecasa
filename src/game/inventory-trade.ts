@@ -1,5 +1,6 @@
 // Un solo modulo di scambio per qualunque oggetto impilabile dello zaino.
 import { game } from './context.js';
+import { requireAccount } from './guest.js';
 import { dom } from './runtime.js';
 import { toast } from './missions.js';
 import { inventoryItems } from './inventory-rules.js';
@@ -16,6 +17,7 @@ export function closeInventoryTrade(): void {
 }
 
 export async function openInventoryTrade(item = '', targetId = ''): Promise<void> {
+  if (!(await requireAccount('scambiare oggetti con gli altri'))) return;
   if (game.socBusy()) {
     toast('Finisci prima quello che stai facendo.');
     return;

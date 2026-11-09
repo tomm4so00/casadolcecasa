@@ -17,10 +17,18 @@ export function parseInviteCode(value: unknown): string | null {
   return typeof value === 'string' && CODE.test(value) ? value : null;
 }
 
-/** Il link da condividere. In modalità prova (nessun codice) è il link nudo del gioco. */
-export function inviteLink(playerId: string | null): string {
+/** Il condominio di chi invita: chi entra da ospite va ad abitare lì. */
+export const WORLD_PARAM = 'condominio';
+
+/**
+ * Il link da condividere. In modalità prova (nessun codice) è il link nudo del gioco. Con
+ * `world` porta anche il condominio di chi invita.
+ */
+export function inviteLink(playerId: string | null, world?: string): string {
   const code = parseInviteCode(playerId);
-  return code ? `${GAME_URL}?${INVITE_PARAM}=${encodeURIComponent(code)}` : GAME_URL;
+  if (!code) return GAME_URL;
+  const where = world ? `&${WORLD_PARAM}=${encodeURIComponent(world)}` : '';
+  return `${GAME_URL}?${INVITE_PARAM}=${encodeURIComponent(code)}${where}`;
 }
 
 /**

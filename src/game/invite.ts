@@ -9,6 +9,7 @@ import {
   INVITE_BONUS,
   INVITE_MAX_PAID,
   INVITE_PARAM,
+  WORLD_PARAM,
   canClaimInvite,
   decodeOwedBonuses,
   decodePendingInvite,
@@ -21,8 +22,10 @@ import { openDialog } from './interface.js';
 import { toast } from './missions.js';
 import { browser, lifetime } from './runtime.js';
 import { hasRoom } from './saves.js';
+import { isGuest, requireAccount } from './guest.js';
 
 const PENDING_KEY = 'sims_invite_from';
+const WORLD_KEY = 'sims_invite_world';
 const CLAIMED_KEY = 'sims_invite_claimed';
 /** Il promemoria arriva dopo gli avvisi dell'ingresso (stanza, modalità prova…). */
 const REMINDER_AFTER_MS = 9000;
@@ -50,7 +53,15 @@ function storage(key: string): string {
  * lascia accedere, passa al browser con «Apri nel browser» e l'invito deve venire con lui.
  */
 export function rememberInviteFromUrl(): void {
-  const raw = new URL(browser.location.href).searchParams.get(INVITE_PARAM);
+  const params = new URL(browser.location.href).searchParams;
+  // il condominio di chi invita: ci entra chi gioca da ospite (vedi enterFirstWorldAsGuest)
+  const world = params.get(WORLD_PARAM);
+  try {
+    if (world) localStorage.setItem(storage(WORLD_KEY), world);
+  } catch {
+    // senza memoria del browser si entra in un condominio con posti liberi
+  }
+  const raw = params.get(INVITE_PARAM);
   if (raw === null) return;
   const by = parseInviteCode(raw);
   try {
@@ -60,11 +71,23 @@ export function rememberInviteFromUrl(): void {
   }
 }
 
+/** Il condominio del link d'invito, una volta sola (poi si dimentica). */
+export function takeInvitedWorld(): string | null {
+  try {
+    const world = localStorage.getItem(storage(WORLD_KEY));
+    localStorage.removeItem(storage(WORLD_KEY));
+    return world;
+  } catch {
+    return null;
+  }
+}
+
 /** A invito usato (o inutile) il codice si toglie dall'indirizzo. */
 function forgetInviteInUrl(): void {
   const url = new URL(browser.location.href);
-  if (!url.searchParams.has(INVITE_PARAM)) return;
+  if (!url.searchParams.has(INVITE_PARAM) && !url.searchParams.has(WORLD_PARAM)) return;
   url.searchParams.delete(INVITE_PARAM);
+  url.searchParams.delete(WORLD_PARAM);
   browser.history.replaceState(browser.history.state, '', url.pathname + url.search + url.hash);
 }
 
@@ -155,6 +178,11 @@ function pendingInvite() {
  * database accetta un solo invito per account, quindi una seconda volta la scrittura fallisce.
  */
 export async function claimInvite(firstCharacter: boolean): Promise<void> {
+  // un ospite tiene l'invito sul dispositivo: il bonus arriva quando salva il personaggio
+  if (isGuest()) {
+    forgetInviteInUrl();
+    return;
+  }
   try {
     await registerInvite(firstCharacter);
   } finally {
@@ -266,7 +294,11 @@ async function copyLink(text: string): Promise<void> {
 
 /** Il pulsante "Invita amici" del profilo. */
 export async function openInvite(): Promise<void> {
-  const link = inviteLink(game.session.OFFLINE ? null : game.session.myPlayerId);
+  if (!(await requireAccount('invitare gli amici e ricevere il bonus'))) return;
+  const link = inviteLink(
+    game.session.OFFLINE ? null : game.session.myPlayerId,
+    game.session.OFFLINE ? undefined : currentWorldCode(),
+  );
   const nick = game.player.myData.nick || '';
   // il codice del condominio: chi arriva lo scrive alla prima schermata e abita vicino a te
   const world = `\n🌍 Il mio condominio: ${currentWorldCode()}`;

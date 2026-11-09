@@ -166,6 +166,10 @@ export interface CharacterState {
 }
 export interface SessionState {
   authUid: string | null;
+  /** Si gioca come ospite (accesso anonimo): niente chat, scambi né acquisti finché non salva. */
+  guest?: boolean;
+  /** L'ospite ha appena salvato il personaggio: ora gli spetta l'invito con cui era arrivato. */
+  guestSaved?: boolean;
   db: GameDatabase;
   OFFLINE: boolean;
   LS_PREFIX: string;

@@ -5,6 +5,7 @@
 // volta sola → se accetta, chi compra paga e prende la copia. Se chi compra spende i soldi e non può
 // più pagare, l'offerta si annulla da sola. Così nessuno perde soldi o oggetti a metà.
 import type { GameValue } from './context.js';
+import { requireAccount } from './guest.js';
 import { game } from './context.js';
 import { openDialog } from './interface.js';
 import { toast } from './missions.js';
@@ -167,6 +168,7 @@ export async function buyLimited(item: string, price: number): Promise<void> {
 
 /** Chi visita fa un'offerta per la copia `n` di `item`, posseduta da `owner`. */
 export async function makeOffer(item: string, n: number): Promise<void> {
+  if (!(await requireAccount('fare offerte agli altri giocatori'))) return;
   const entry = ledger[item]?.[String(n)];
   if (!entry) return;
   const res = await openDialog({

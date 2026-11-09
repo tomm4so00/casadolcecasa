@@ -11,6 +11,7 @@ import {
   decodeCryo,
 } from '../../shared/cryo-rules.js';
 import { game } from './context.js';
+import { requireAccount } from './guest.js';
 import type { GameValue } from './context.js';
 import { openDialog } from './interface.js';
 import { toast } from './missions.js';
@@ -134,6 +135,8 @@ export async function openCryo(): Promise<void> {
   }
   const link = res.action === 'month' ? monthLink : res.action === 'lifetime' ? lifetimeLink : '';
   if (!link || !game.session.authUid) return;
+  // il pass è dell'account: un ospite che perde il dispositivo lo perderebbe
+  if (!(await requireAccount('comprare la criogenesi'))) return;
   // Stripe ci rimanda l'account nel pagamento (client_reference_id): così sa chi ha pagato.
   const url = new URL(link);
   url.searchParams.set('client_reference_id', game.session.authUid);

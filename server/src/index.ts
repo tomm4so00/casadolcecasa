@@ -7,6 +7,7 @@ import { updateWeedMarket } from './street.js';
 import { getMessaging } from 'firebase-admin/messaging';
 import { getAuth } from 'firebase-admin/auth';
 import { processDeletionRequests } from './deletion.js';
+import { cleanupGuests } from './guests.js';
 import { expireAuctions } from './auctions.js';
 import {
   type PushSender,
@@ -108,18 +109,35 @@ async function main() {
       console.log('Weed market skipped:', (error as { code?: string }).code || String(error));
     }
     // Account da cancellare su richiesta del giocatore: dati di gioco e accesso.
+    const deleteLogin = async (uid: string) => {
+      try {
+        await getAuth(app).deleteUser(uid);
+      } catch (error) {
+        // già cancellato: va bene così
+        if ((error as { code?: string }).code !== 'auth/user-not-found') throw error;
+      }
+    };
     try {
-      const deleted = await processDeletionRequests(getDatabase(app), async (uid) => {
-        try {
-          await getAuth(app).deleteUser(uid);
-        } catch (error) {
-          // già cancellato: va bene così
-          if ((error as { code?: string }).code !== 'auth/user-not-found') throw error;
-        }
-      });
+      const deleted = await processDeletionRequests(getDatabase(app), deleteLogin);
       if (deleted) console.log(`Accounts deleted on request: ${deleted}`);
     } catch (error) {
       console.log('Account deletions skipped:', (error as { code?: string }).code || String(error));
+    }
+    // Ospiti che non entrano da 7 giorni senza aver salvato il personaggio.
+    try {
+      const stillGuest = async (uid: string) => {
+        try {
+          // ancora anonimo: nessun accesso collegato (Google, email)
+          return (await getAuth(app).getUser(uid)).providerData.length === 0;
+        } catch (error) {
+          if ((error as { code?: string }).code === 'auth/user-not-found') return true;
+          throw error;
+        }
+      };
+      const guests = await cleanupGuests(getDatabase(app), scheduledAt, stillGuest, deleteLogin);
+      if (guests) console.log(`Inactive guests deleted: ${guests}`);
+    } catch (error) {
+      console.log('Guest cleanup skipped:', (error as { code?: string }).code || String(error));
     }
     // pulizia dei contatori e rimborsi delle attività tolte: un errore qui non blocca la borsa
     try {

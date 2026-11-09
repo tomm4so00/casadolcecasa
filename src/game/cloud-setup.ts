@@ -8,7 +8,10 @@ import {
   accessFor,
   accountLogins,
   claimLegacySim,
+  clearGuestMark,
   createGoogleSim,
+  createGuestSim,
+  signInAsGuest,
   type GoogleAccess,
   LEGACY_SIM_CODE,
   localLegacySimCode,
@@ -29,7 +32,7 @@ import {
   useGoogleSim,
 } from './accounts.js';
 
-type Step = 'login' | 'register' | 'verify' | 'add-email' | 'choice' | 'code' | 'new';
+type Step = 'login' | 'register' | 'verify' | 'add-email' | 'choice' | 'code' | 'new' | 'guest';
 
 // Online setup: Google first, then (only on the first access) existing Sim or new Sim.
 export function mountCloudSetup(root: HTMLElement): void {
@@ -66,6 +69,16 @@ export function mountCloudSetup(root: HTMLElement): void {
 
   const play = async (playerId: string, nick: string) => {
     if (!access) return;
+    // L'ospite ha salvato il personaggio (Google o email collegati): via il segno "guest".
+    if (access.guestMark && !access.anonymous) {
+      await clearGuestMark(access.uid, playerId);
+      game.session.guestSaved = true;
+      toast(
+        '💾 Personaggio salvato! Ora lo ritrovi su ogni dispositivo e puoi scrivere in chat.',
+        7000,
+      );
+    }
+    game.session.guest = access.anonymous;
     useGoogleSim(access.uid, playerId);
     localStorage.setItem(game.session.LS_PREFIX + 'sims_player_nick', nick.slice(0, 20));
     await startGame();
@@ -113,9 +126,16 @@ export function mountCloudSetup(root: HTMLElement): void {
       return;
     }
     access = restored ? await accessFor(restored) : await signInWithGoogleAccount();
-    await setRememberMe(remember.checked);
+    // un ospite resta sempre ricordato: chiudendo il browser perderebbe il personaggio
+    if (!access.anonymous) await setRememberMe(remember.checked);
     if (access.playerId) {
       await play(access.playerId, savedNick());
+      return;
+    }
+    // ospite entrato ma senza personaggio (pagina chiusa a metà): si sceglie il nome
+    if (access.anonymous) {
+      guestNick.value ||= savedNick();
+      show('guest');
       return;
     }
     // First access: link by itself the Sim saved on this device, or the one requested
@@ -136,6 +156,28 @@ export function mountCloudSetup(root: HTMLElement): void {
 
   const loginButton = el<HTMLButtonElement>('cloud-game-btn');
   run(loginButton, () => signIn());
+
+  // ---- gioca subito, da ospite
+  const guestNick = el<HTMLInputElement>('setup-guest-nick');
+  run(el('setup-guest'), async () => {
+    guestNick.value ||= localStorage.getItem(game.session.LS_PREFIX + 'sims_player_nick') || '';
+    show('guest');
+    guestNick.focus();
+  });
+  run(el('setup-guest-start'), async () => {
+    const nick = guestNick.value.trim();
+    if (!nick) {
+      toast('Scegli un nome per il tuo personaggio!');
+      guestNick.focus();
+      return;
+    }
+    const user = await signInAsGuest();
+    access = await accessFor(user);
+    await play(access.playerId ?? (await createGuestSim(access.uid)), nick);
+  });
+  lifetime.listen(guestNick, 'keydown', (e: Event) => {
+    if ((e as KeyboardEvent).key === 'Enter') el<HTMLButtonElement>('setup-guest-start').click();
+  });
 
   // ---- nome giocatore e password
   const userInput = el<HTMLInputElement>('setup-username');

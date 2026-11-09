@@ -521,6 +521,16 @@ input:-webkit-autofill:focus {
   background: #57606f;
   box-shadow: none;
 }
+/* "Gioca subito": la strada più corta per entrare, la più in vista */
+.btn-primary.btn-guest {
+  background: #00b894;
+  font-size: 1.2rem;
+  padding: 17px;
+  box-shadow: 0 4px 18px rgba(0, 184, 148, 0.45);
+}
+.btn-primary.btn-guest:active {
+  background: #00d2a0;
+}
 .setup-text {
   margin: 14px 0 6px;
   color: #ddd;
@@ -3737,4 +3747,26 @@ canvas.shake {
   .cab-boards {
     grid-template-columns: 1fr;
   }
+}
+
+/* Salvare il personaggio dell'ospite con email e password */
+.guest-card {
+  max-width: 400px;
+  text-align: center;
+}
+.guest-sub {
+  font-size: 0.85rem;
+  color: #c8d6e5;
+  line-height: 1.4;
+  margin: 6px 0 12px;
+}
+.guest-card input {
+  width: 100%;
+  padding: 12px;
+  margin-top: 8px;
+  border-radius: 10px;
+  border: 1px solid #444;
+  background: #1e1e2a;
+  color: #fff;
+  font-size: 1rem;
 }

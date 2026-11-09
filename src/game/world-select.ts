@@ -6,6 +6,8 @@ import type { GameValue } from './context.js';
 import { game } from './context.js';
 import { toast } from './missions.js';
 import { moveAuctions } from './auctions.js';
+import { isGuest } from './guest.js';
+import { takeInvitedWorld } from './invite.js';
 import { START_MONEY, hasRoom, normalizeRooms, saveGame, withTimeout } from './saves.js';
 import {
   LEGACY_WORLD,
@@ -208,7 +210,10 @@ function showWorldChoice(mode: Mode): Promise<string | null> {
         : `Sei nel condominio <b>${here}</b>. Cambiando, la tua stanza viene con te: cassaforte, mobili, quadri e i tuoi quadri all'asta (le offerte dei vicini di adesso si annullano). Soldi e oggetti restano tuoi.`
     }</p>` +
     `<button type="button" class="btn-primary world-btn" data-w="public">🎲 Unisciti a un mondo già esistente</button>` +
-    `<button type="button" class="btn-primary world-btn world-create" data-w="create">🏗️ Crea un nuovo mondo</button>` +
+    // gli ospiti non creano mondi: li apre chi ha un account (vedi guest.ts)
+    (isGuest()
+      ? ''
+      : `<button type="button" class="btn-primary world-btn world-create" data-w="create">🏗️ Crea un nuovo mondo</button>`) +
     `<div class="world-code-label">🔑 Hai il codice di un amico?</div>` +
     `<div class="world-code"><input id="world-code-input" type="text" maxlength="12" autocomplete="off" autocapitalize="characters" placeholder="CASA-X92L">` +
     `<button type="button" class="btn-primary world-btn world-go" data-w="code">Entra</button></div>` +
@@ -274,8 +279,28 @@ function showWorldChoice(mode: Mode): Promise<string | null> {
 
 /** Primo ingresso di un giocatore nuovo: si sceglie il condominio prima di tutto il resto. */
 export async function chooseFirstWorld(): Promise<void> {
+  if (isGuest()) return enterFirstWorldAsGuest();
   const code = await showWorldChoice('first');
   if (code && code !== LEGACY_WORLD) toast(`🌍 Benvenuto nel condominio ${code}!`, 4000);
+}
+
+/**
+ * L'ospite non sceglie: entra nel condominio di chi l'ha invitato, se c'è posto, altrimenti in
+ * quello pubblico più pieno. Se qualcosa non va gli si mostra la scelta di sempre.
+ */
+async function enterFirstWorldAsGuest(): Promise<void> {
+  try {
+    const invited = normalizeWorldCode(takeInvitedWorld() || '');
+    if (invited && (await worldExists(invited)) && (await moveIntoWorld(invited, null)) === 'ok') {
+      toast(`🌍 Benvenuto nel condominio ${invited}, quello di chi ti ha invitato!`, 5000);
+      return;
+    }
+    const code = await joinPublic([]);
+    if (code !== LEGACY_WORLD) toast(`🌍 Benvenuto nel condominio ${code}!`, 4000);
+  } catch (error) {
+    console.warn('[mondi] ingresso automatico', error);
+    await showWorldChoice('first');
+  }
 }
 
 /** Dal profilo: cambiare condominio portandosi dietro la stanza. Poi si ricarica il gioco. */

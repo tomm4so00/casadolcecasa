@@ -8,6 +8,13 @@ import { applyDailyPerks } from './personality.js';
 import { enablePush } from './push.js';
 import { claimInvite, openInvite, remindInvite, startInviteRewards } from './invite.js';
 import { joinSharedChallenge } from './arcade.js';
+import {
+  guestProfileText,
+  isGuest,
+  offerSave,
+  requireAccount,
+  startGuestReminder,
+} from './guest.js';
 import { openCryo, watchCryo } from './cryo.js';
 import { blockedByDeletion, requestDeletion } from './deletion.js';
 import { startPlayersHud } from './players-hud.js';
@@ -105,6 +112,7 @@ export function openDialog({
 }
 
 export async function openChat(..._args: GameValue[]): Promise<GameValue> {
+  if (!(await requireAccount('scrivere nel fumetto'))) return;
   const res: GameValue = await openDialog({
     title: "💬 Di' qualcosa",
     text: 'Il messaggio appare sopra la tua testa per qualche secondo, visibile a chi è nella tua stessa stanza.',
@@ -170,14 +178,17 @@ function loginText(): string {
 }
 
 export async function openProfile(..._args: GameValue[]): Promise<GameValue> {
-  const logins = game.session.OFFLINE ? null : accountLogins();
+  const guest = isGuest();
+  const logins = game.session.OFFLINE || guest ? null : accountLogins();
   const canLink = !!(logins?.username || logins?.email) && !logins?.google;
   const res: GameValue = await openDialog({
     title: `🧑 ${game.player.myData.nick}`,
     text:
       (game.session.OFFLINE
         ? `Il tuo codice personaggio è:\n${game.session.myPlayerId}`
-        : loginText()) +
+        : guest
+          ? guestProfileText()
+          : loginText()) +
       `\n\n🌍 Condominio: ${currentWorldCode()} (dai il codice agli amici per giocare insieme)` +
       (hasRoom()
         ? `\nLa tua stanza: ${roomLabel(game.myAssignedRoomIdx ?? 0, game.ROOMS_PER_APT)}`
@@ -191,6 +202,9 @@ export async function openProfile(..._args: GameValue[]): Promise<GameValue> {
       : null,
     buttons: [
       { label: 'Chiudi', value: null, color: '#57606f' },
+      ...(guest
+        ? [{ label: '💾 Salva il personaggio', value: 'save', color: '#00b894', wide: true }]
+        : []),
       { label: '💌 Invita amici', value: 'invite', color: '#e84393', wide: true },
       { label: '🌍 Cambia condominio', value: 'world', color: '#16a085', wide: true },
       { label: '🧊 Criogenesi (pausa personaggio)', value: 'cryo', color: '#00a8ff', wide: true },
@@ -206,6 +220,7 @@ export async function openProfile(..._args: GameValue[]): Promise<GameValue> {
           ]),
     ],
   });
+  if (res.action === 'save') await offerSave();
   if (res.action === 'logout') await logOut();
   if (res.action === 'delete') await requestDeletion();
   if (res.action === 'google') {
@@ -228,7 +243,9 @@ export async function openProfile(..._args: GameValue[]): Promise<GameValue> {
 async function logOut(): Promise<void> {
   const ok: GameValue = await openDialog({
     title: "🚪 Esci dall'account",
-    text: 'Il tuo personaggio viene salvato. Per rientrare ti servirà di nuovo il tuo accesso.',
+    text: isGuest()
+      ? `⚠️ Sei un ospite: se esci senza salvare il personaggio, ${game.player.myData.nick} è perso per sempre. Prima salvalo dal profilo (💾).`
+      : 'Il tuo personaggio viene salvato. Per rientrare ti servirà di nuovo il tuo accesso.',
     buttons: [
       { label: 'Annulla', value: null, color: '#57606f' },
       { label: 'Esci', value: 'ok', color: '#c0392b' },
@@ -347,7 +364,8 @@ export async function startGame(..._args: GameValue[]): Promise<GameValue> {
   const firstCharacter = !game.bodyChosen;
   if (!game.bodyChosen) await openCharacterCreator(true);
   await claimRoom();
-  void claimInvite(firstCharacter);
+  // l'ospite che ha appena salvato riceve ora il bonus dell'invito con cui era arrivato
+  void claimInvite(firstCharacter || !!game.session.guestSaved);
   reapAbsentPlayers();
   game.currentApt = hasRoom() ? game.aptOfRoom(game.myAssignedRoomIdx) : 0;
   game.view.currentRoomTitle = game.saloonTitle();
@@ -397,7 +415,9 @@ export async function startGame(..._args: GameValue[]): Promise<GameValue> {
   // entrati con il link di una sfida: si propone di giocarla (dopo le finestre dell'ingresso)
   lifetime.setTimeout(() => void joinSharedChallenge(), 2500);
   watchCryo();
-  remindInvite();
+  // l'ospite non può invitare: al suo posto, dopo 20 minuti, l'invito a salvare
+  if (isGuest()) startGuestReminder();
+  else remindInvite();
   // premi giornalieri delle personalità (dopo che le finestre d'avvio si sono chiuse)
   lifetime.setTimeout(() => void applyDailyPerks(), 4000);
   lifetime.setInterval(() => void applyDailyPerks(), 60000);

@@ -8,6 +8,7 @@ import { closeModal } from './render/primitives.js';
 import { toast } from './missions.js';
 import { recordActivity } from './activity.js';
 import { worldNode } from './world-db.js';
+import { isGuest, requireAccount } from './guest.js';
 export function chatColor(name?: GameValue): GameValue {
   let h: GameValue = 0;
   for (const c of String(name)) h = (h * 31 + c.charCodeAt(0)) % 360;
@@ -93,6 +94,13 @@ export function openGlobalChat(..._args: GameValue[]): GameValue {
   const box: GameValue = dom('gchat-list');
   box.scrollTop = box.scrollHeight;
   markChatRead();
+  // l'ospite legge: per scrivere salva il personaggio (la tastiera non si apre da sola)
+  const guest = isGuest();
+  const input: GameValue = dom('gchat-input');
+  input.readOnly = guest;
+  input.placeholder = guest ? '💾 Salva per scrivere' : 'Scrivi a tutti…';
+  input.onclick = guest ? (): void => void requireAccount('scrivere in chat') : null;
+  if (guest) return;
   lifetime.setTimeout((): GameValue => {
     try {
       dom('gchat-input').focus();
@@ -105,6 +113,7 @@ export function closeGlobalChat(..._args: GameValue[]): GameValue {
 }
 
 export async function sendChat(..._args: GameValue[]): Promise<GameValue> {
+  if (!(await requireAccount('scrivere in chat'))) return;
   const inp: GameValue = dom('gchat-input');
   const text: GameValue = inp.value.trim().slice(0, game.CHAT_MAX_LEN);
   if (!text) return;
