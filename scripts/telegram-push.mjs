@@ -28,14 +28,11 @@ const body = (msg) =>
 const parts = commits.map((c) => {
   const [title, ...rest] = body(c.message).split('\n');
   const text = rest.join('\n').trim();
-  return (
-    `🔹 <a href="${c.url}">${esc(title)}</a>\n` +
-    `<i>${esc(c.author?.name ?? '')}</i>` +
-    (text ? `\n${esc(text)}` : '')
-  );
+  const who = c.author?.name ? `👤 <i>${esc(c.author.name)}</i>\n` : '';
+  return `${who}🔹 <a href="${c.url}">${esc(title)}</a>` + (text ? `\n${esc(text)}` : '');
 });
-const who = event.pusher?.name ?? event.sender?.login ?? '';
-let text = `🚀 <b>Nuova versione online</b>${who ? ` (push di ${esc(who)})` : ''}\n\n`;
+// chi ha scritto ogni commit compare già sotto il suo titolo
+let text = '🚀 <b>Nuova versione online</b>\n\n';
 for (const p of parts) {
   if (text.length + p.length > LIMIT) {
     text += `\n…e altri commit: <a href="${event.compare}">tutte le modifiche</a>`;
