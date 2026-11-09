@@ -955,17 +955,19 @@ export function drawSafe(it?: GameValue): GameValue {
 
 export function drawStove(it?: GameValue): GameValue {
   const ctx = game.view.ctx;
-  const cooking: GameValue = game.player.hasFoodInInventory || game.player.foodIsCooked;
-  drawSteelStove(it, game.player.foodIsCooked ? 0.6 : 0.1, !!cooking);
+  // pentola sul fuoco con del cibo nello zaino; pronta (fumante) se ci sono solo piatti cotti
+  const cooking: GameValue = game.player.rawFood > 0 || game.player.dishes > 0;
+  const cooked: boolean = game.player.dishes > 0 && game.player.rawFood <= 0;
+  drawSteelStove(it, cooked ? 0.6 : 0.1, !!cooking);
   if (cooking) {
     const pot: GameValue = box(it.x - it.w * 0.22, it.y + it.h * 0.22, 20, 20, 12, '#b2bec3', {
       z0: it.z,
     });
     onFace(pot, 'top', (W?: GameValue, H?: GameValue): GameValue => {
-      ctx.fillStyle = game.player.foodIsCooked ? '#e17055' : '#fdcb6e';
+      ctx.fillStyle = cooked ? '#e17055' : '#fdcb6e';
       ctx.fillRect(2, 2, W - 4, H - 4);
     });
-    if (game.player.foodIsCooked) {
+    if (cooked) {
       const p: GameValue = isoProject(it.x - it.w * 0.22, it.y + it.h * 0.22, it.z + 14),
         s: GameValue = isoScale(),
         tt: GameValue = performance.now() / 1000;

@@ -181,6 +181,12 @@
           },
           "foodCooked": {
             ".validate": "newData.isBoolean()"
+          },
+          "raw": {
+            ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 10 && newData.val() % 1 === 0"
+          },
+          "dishes": {
+            ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 10 && newData.val() % 1 === 0"
           }
         },
         "healthLevel": {
@@ -1138,7 +1144,7 @@
         ".read": "(auth != null && (auth.token.firebase.sign_in_provider === 'google.com' || auth.token.firebase.sign_in_provider === 'anonymous' || (auth.token.firebase.sign_in_provider === 'password' && auth.token.email_verified === true))) && root.child('sims_accounts').child(auth.uid).child('playerId').val() === $pid",
         "$key": {
           ".write": "((auth != null && (auth.token.firebase.sign_in_provider === 'google.com' || auth.token.firebase.sign_in_provider === 'anonymous' || (auth.token.firebase.sign_in_provider === 'password' && auth.token.email_verified === true))) && root.child('sims_accounts').child(auth.uid).child('playerId').isString()) && ((!newData.exists() && root.child('sims_accounts').child(auth.uid).child('playerId').val() === $pid) || (!data.exists() && newData.child('from').val() === root.child('sims_accounts').child(auth.uid).child('playerId').val()))",
-          ".validate": "newData.hasChildren(['type','from','fromName','t']) && newData.child('type').val().matches(/^(talk|praise|insult|punch|food|money_notice|drug|drugReturn|romance|kissAsk|kissYes|kissNo|artSold|weedOffer|weedPaid|weedNo|theft|gameInvite|ltdOffer|ltdAccept|ltdNo|ltdGone|usedSold|bizRetired|colOffer|colDone|colNo|artOffer|artAccept|artNo)$/)",
+          ".validate": "newData.hasChildren(['type','from','fromName','t']) && newData.child('type').val().matches(/^(talk|praise|insult|punch|food|money_notice|drug|drugReturn|romance|kissAsk|kissYes|kissNo|artSold|weedOffer|weedPaid|weedNo|theft|gameInvite|ltdOffer|ltdAccept|ltdNo|ltdGone|usedSold|bizRetired|colOffer|colDone|colNo|artOffer|artAccept|artNo|tasteComing|tasteThanks)$/)",
           "from": {
             ".validate": "newData.isString() && newData.val().length <= 140"
           },
@@ -1270,6 +1276,30 @@
           ".validate": "newData.hasChildren(['by','t'])",
           "by": {
             ".validate": "newData.val() === root.child('sims_accounts').child(auth.uid).child('playerId').val()"
+          },
+          "t": {
+            ".validate": "newData.isNumber() && newData.val() <= now + 60000"
+          },
+          "$other": {
+            ".validate": false
+          }
+        }
+      }
+    },
+    "sims_gifts": {
+      ".read": "(auth != null && (auth.token.firebase.sign_in_provider === 'google.com' || auth.token.firebase.sign_in_provider === 'anonymous' || (auth.token.firebase.sign_in_provider === 'password' && auth.token.email_verified === true))) && root.child('sims_accounts').child(auth.uid).child('playerId').isString()",
+      "$room": {
+        "$from": {
+          ".write": "(auth != null && (auth.token.firebase.sign_in_provider === 'google.com' || auth.token.firebase.sign_in_provider === 'anonymous' || (auth.token.firebase.sign_in_provider === 'password' && auth.token.email_verified === true))) && root.child('sims_accounts').child(auth.uid).child('playerId').isString() && ((!data.exists() && newData.exists() && $from === root.child('sims_accounts').child(auth.uid).child('playerId').val() && root.child('sims_rooms_state').child($room).child('ownerId').isString() && root.child('sims_rooms_state').child($room).child('ownerId').val() !== root.child('sims_accounts').child(auth.uid).child('playerId').val()) || (!newData.exists() && root.child('sims_rooms_state').child($room).child('ownerId').val() === root.child('sims_accounts').child(auth.uid).child('playerId').val()))",
+          ".validate": "newData.hasChildren(['name','x','y','t'])",
+          "name": {
+            ".validate": "newData.isString() && newData.val().length <= 20"
+          },
+          "x": {
+            ".validate": "newData.isNumber() && newData.val() >= -2000 && newData.val() <= 2000"
+          },
+          "y": {
+            ".validate": "newData.isNumber() && newData.val() >= -2000 && newData.val() <= 2000"
           },
           "t": {
             ".validate": "newData.isNumber() && newData.val() <= now + 60000"
@@ -2076,7 +2106,7 @@
             ".read": "(auth != null && (auth.token.firebase.sign_in_provider === 'google.com' || auth.token.firebase.sign_in_provider === 'anonymous' || (auth.token.firebase.sign_in_provider === 'password' && auth.token.email_verified === true))) && root.child('sims_accounts').child(auth.uid).child('playerId').val() === $pid",
             "$key": {
               ".write": "((auth != null && (auth.token.firebase.sign_in_provider === 'google.com' || auth.token.firebase.sign_in_provider === 'anonymous' || (auth.token.firebase.sign_in_provider === 'password' && auth.token.email_verified === true))) && root.child('sims_accounts').child(auth.uid).child('playerId').isString()) && ((!newData.exists() && root.child('sims_accounts').child(auth.uid).child('playerId').val() === $pid) || (!data.exists() && newData.child('from').val() === root.child('sims_accounts').child(auth.uid).child('playerId').val()))",
-              ".validate": "newData.hasChildren(['type','from','fromName','t']) && newData.child('type').val().matches(/^(talk|praise|insult|punch|food|money_notice|drug|drugReturn|romance|kissAsk|kissYes|kissNo|artSold|weedOffer|weedPaid|weedNo|theft|gameInvite|ltdOffer|ltdAccept|ltdNo|ltdGone|usedSold|bizRetired|colOffer|colDone|colNo|artOffer|artAccept|artNo)$/)",
+              ".validate": "newData.hasChildren(['type','from','fromName','t']) && newData.child('type').val().matches(/^(talk|praise|insult|punch|food|money_notice|drug|drugReturn|romance|kissAsk|kissYes|kissNo|artSold|weedOffer|weedPaid|weedNo|theft|gameInvite|ltdOffer|ltdAccept|ltdNo|ltdGone|usedSold|bizRetired|colOffer|colDone|colNo|artOffer|artAccept|artNo|tasteComing|tasteThanks)$/)",
               "from": {
                 ".validate": "newData.isString() && newData.val().length <= 140"
               },
@@ -2467,6 +2497,30 @@
               ".validate": "newData.hasChildren(['by','t'])",
               "by": {
                 ".validate": "newData.val() === root.child('sims_accounts').child(auth.uid).child('playerId').val()"
+              },
+              "t": {
+                ".validate": "newData.isNumber() && newData.val() <= now + 60000"
+              },
+              "$other": {
+                ".validate": false
+              }
+            }
+          }
+        },
+        "gifts": {
+          ".read": "(auth != null && (auth.token.firebase.sign_in_provider === 'google.com' || auth.token.firebase.sign_in_provider === 'anonymous' || (auth.token.firebase.sign_in_provider === 'password' && auth.token.email_verified === true))) && root.child('sims_accounts').child(auth.uid).child('playerId').isString()",
+          "$room": {
+            "$from": {
+              ".write": "(auth != null && (auth.token.firebase.sign_in_provider === 'google.com' || auth.token.firebase.sign_in_provider === 'anonymous' || (auth.token.firebase.sign_in_provider === 'password' && auth.token.email_verified === true))) && root.child('sims_accounts').child(auth.uid).child('playerId').isString() && ((!data.exists() && newData.exists() && $from === root.child('sims_accounts').child(auth.uid).child('playerId').val() && root.child('worlds').child($worldId).child('rooms_state').child($room).child('ownerId').isString() && root.child('worlds').child($worldId).child('rooms_state').child($room).child('ownerId').val() !== root.child('sims_accounts').child(auth.uid).child('playerId').val()) || (!newData.exists() && root.child('worlds').child($worldId).child('rooms_state').child($room).child('ownerId').val() === root.child('sims_accounts').child(auth.uid).child('playerId').val()))",
+              ".validate": "newData.hasChildren(['name','x','y','t'])",
+              "name": {
+                ".validate": "newData.isString() && newData.val().length <= 20"
+              },
+              "x": {
+                ".validate": "newData.isNumber() && newData.val() >= -2000 && newData.val() <= 2000"
+              },
+              "y": {
+                ".validate": "newData.isNumber() && newData.val() >= -2000 && newData.val() <= 2000"
               },
               "t": {
                 ".validate": "newData.isNumber() && newData.val() <= now + 60000"

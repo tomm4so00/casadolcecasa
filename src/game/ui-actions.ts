@@ -5,7 +5,9 @@ import {
   selectInventoryItem,
   smokeInventoryJoint,
   consumeInventoryDrug,
+  updateInventory,
 } from './inventory.js';
+import { eatDish, giveDishFromInventory } from './food.js';
 import {
   openInventoryTrade,
   closeInventoryTrade,
@@ -66,6 +68,14 @@ export const uiActions: Readonly<Record<string, UiAction>> = {
   submitInventoryTrade: () => submitInventoryTrade(),
   cancelInventoryTrade: () => cancelInventoryTrade(),
   smokeInventoryJoint: () => smokeInventoryJoint(),
+  eatInventoryDish: () => {
+    eatDish();
+    updateInventory();
+  },
+  giveInventoryDish: async () => {
+    closeInventory();
+    await giveDishFromInventory();
+  },
   closeInventory: () => closeInventory(),
   selectInventoryItem: ([id]) => selectInventoryItem(String(id)),
   openMissions: () => openMissions(),

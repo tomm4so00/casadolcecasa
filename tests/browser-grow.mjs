@@ -39,7 +39,10 @@ try {
     .locator('#creator-modal')
     .getByRole('button', { name: /Conferma/ })
     .click();
-  await page.locator('#dialog-buttons').getByRole('button', { name: 'Salta', exact: true }).click();
+  await page
+    .locator('#dialog-buttons')
+    .getByRole('button', { name: /^(Salta|Ho capito, si parte! ✅)$/ })
+    .click();
   await game(`
     await (await import('/src/game/economy.ts')).creditMoney(3000);
     game.player.welcome = { i: 5, status: 'off', base: 0, snoozeUntil: 0 };

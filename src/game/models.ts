@@ -114,8 +114,9 @@ export interface CharacterState {
   sleepGainedSinceLastHealthBoost: number;
   /** Da quando (ms) fame, sonno e igiene sono tutti a zero; 0 se non lo sono. */
   needsZeroSince?: number;
-  hasFoodInInventory: boolean;
-  foodIsCooked: boolean;
+  /** Cibo nello zaino: crudo (dal frigo) e piatti cucinati, a scorta (food-rules.ts). */
+  rawFood: number;
+  dishes: number;
   ownedItems: Record<string, boolean>;
   ownedFurniture: Record<string, boolean>;
   equipped: Record<string, string | null>;
@@ -201,8 +202,8 @@ export const createCharacterState = (): CharacterState => ({
   happinessLevel: 50,
   isSleeping: false,
   sleepGainedSinceLastHealthBoost: 0,
-  hasFoodInInventory: false,
-  foodIsCooked: false,
+  rawFood: 0,
+  dishes: 0,
   ownedItems: {},
   ownedFurniture: {},
   equipped: {},

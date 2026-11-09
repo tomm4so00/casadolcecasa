@@ -103,6 +103,7 @@ import { cabinetFacesAway, cabinetPlayerPose } from './cabinet.js';
 import { pillControlSign, updatePillVisuals } from './pill.js';
 import { dealerBotLines, dealerHere } from './dealers.js';
 import { CRACK_MS } from '../../shared/hacker-rules.js';
+import { giftDrawables } from './taste.js';
 
 /** Lo stesso aspetto con gli occhi rossi (dopo una canna). */
 const withStonedEyes = (look: GameValue, on: boolean): GameValue =>
@@ -647,6 +648,8 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
   }
   // cane e gatto nella stanza, e il cane al guinzaglio
   petDrawables(animTime, drawables, labels);
+  // assaggi di benvenuto lasciati in questa stanza
+  giftDrawables(drawables);
   game.simulationBots.forEach((bot?: GameValue): GameValue => {
     // lo spacciatore c'è solo nel suo orario e quando non c'è la polizia
     if (bot.env === game.view.activeEnvironment && (!bot.dealer || dealerHere(bot.env))) {

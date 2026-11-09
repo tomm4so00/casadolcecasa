@@ -6,8 +6,9 @@ import { toast } from './missions.js';
 import { sfx } from './audio.js';
 import { creditMoney } from './economy.js';
 import { saveGame } from './saves.js';
+import { tasteHint, tasteTarget } from './taste.js';
 import {
-  WELCOME_MISSIONS,
+  missionsOf,
   type WelcomeState,
   type WelcomeView,
   answerOffer,
@@ -25,6 +26,17 @@ let completing = false;
 
 const state = (): WelcomeState => (game.player.welcome ??= newWelcome());
 
+/**
+ * Il passo dell'assaggio (a chi portarlo): solo durante quella missione, perché sceglie il vicino
+ * e lo avvisa che sta arrivando.
+ */
+function tasteStep(): string {
+  const s = game.player.welcome;
+  if (!s || s.v !== 2 || s.status !== 'active' || missionsOf(s)[s.i]?.id !== 'taste_give')
+    return '';
+  return tasteHint(tasteTarget(true));
+}
+
 /** Quello che serve sapere del personaggio adesso. */
 function view(): WelcomeView {
   const p = game.player;
@@ -37,8 +49,12 @@ function view(): WelcomeView {
     shifts: p.stats.shifts || 0,
     sleeping: !!p.isSleeping,
     pinSet: !!game.hasSetSafePin,
-    hasFood: !!p.hasFoodInInventory,
-    foodCooked: !!p.foodIsCooked,
+    hasFood: p.rawFood + p.dishes > 0,
+    foodCooked: p.dishes > 0,
+    rawFood: p.rawFood,
+    dishes: p.dishes,
+    tastes: p.stats.tastes || 0,
+    tasteHint: tasteStep(),
     working: !!game.activeShift || env.startsWith('lavoro_'),
   };
 }
@@ -78,7 +94,7 @@ export async function tickWelcome(): Promise<void> {
 }
 
 async function finishMission(s: WelcomeState, next: WelcomeState): Promise<void> {
-  const m = WELCOME_MISSIONS[s.i];
+  const m = missionsOf(s)[s.i];
   if (!(await creditMoney(m.reward))) return; // si riprova al prossimo giro
   game.player.welcome = { ...next, snoozeUntil: Date.now() + 4000 };
   sfx('mission');
@@ -92,12 +108,12 @@ async function finishMission(s: WelcomeState, next: WelcomeState): Promise<void>
 async function offerMission(): Promise<void> {
   const s = state();
   if (welcomeFinished(s) || offering) return;
-  const m = WELCOME_MISSIONS[s.i];
+  const m = missionsOf(s)[s.i];
   offering = true;
   try {
     sfx('mission');
     const res = await openDialog({
-      title: `📋 Missione ${s.i + 1} di ${WELCOME_MISSIONS.length}: ${m.title}`,
+      title: `📋 Missione ${s.i + 1} di ${missionsOf(s).length}: ${m.title}`,
       text: `${m.intro}\n\n🎁 Premio: ${m.reward} Đ`,
       buttons: [
         { label: '🚫 Non seguire le missioni', value: 'no', color: '#57606f' },
@@ -134,7 +150,7 @@ export function welcomeTeachesPin(): boolean {
 function welcomeHudText(): string | null {
   const s = state();
   if (welcomeFinished(s)) return null;
-  const m = WELCOME_MISSIONS[s.i];
+  const m = missionsOf(s)[s.i];
   if (s.status === 'off') return '📋 Missioni di benvenuto (tocca per riattivarle)';
   if (s.status === 'offer') return `📋 ${m.title} · tocca per iniziare`;
   return `📋 ${m.title}: ${m.hint(view())} (+${m.reward} Đ)`;
@@ -143,18 +159,18 @@ function welcomeHudText(): string | null {
 /** Tocco sulla scritta delle missioni: elenco, e riattivazione o inizio della missione. */
 export async function openWelcomeList(): Promise<void> {
   const s = state();
-  const lines = WELCOME_MISSIONS.map(
-    (m, i) => `${i < s.i ? '✅' : i === s.i ? '👉' : '🔒'} ${m.title} · ${m.reward} Đ`,
-  ).join('\n');
+  const lines = missionsOf(s)
+    .map((m, i) => `${i < s.i ? '✅' : i === s.i ? '👉' : '🔒'} ${m.title} · ${m.reward} Đ`)
+    .join('\n');
   const finished = welcomeFinished(s);
   const res = await openDialog({
-    title: `📋 Missioni di benvenuto (${Math.min(s.i, WELCOME_MISSIONS.length)}/${WELCOME_MISSIONS.length})`,
+    title: `📋 Missioni di benvenuto (${Math.min(s.i, missionsOf(s).length)}/${missionsOf(s).length})`,
     text:
       lines +
       (finished
         ? '\n\n🎉 Le hai completate tutte!'
         : s.status === 'active'
-          ? `\n\nOra: ${WELCOME_MISSIONS[s.i].hint(view())}`
+          ? `\n\nOra: ${missionsOf(s)[s.i].hint(view())}`
           : '\n\nSi sbloccano una alla volta.'),
     buttons: [
       { label: 'Chiudi', value: null, color: '#57606f' },

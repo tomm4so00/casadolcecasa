@@ -152,8 +152,8 @@ export function initializeGame() {
   game.HUNGER_SLEEP_DEPLETION_SEC = NEEDS_RULES.hungerSleeping;
   game.HYGIENE_DEPLETION_SEC = NEEDS_RULES.hygieneDepletion;
   game.HEALTH_DAMAGE_SEC = NEEDS_RULES.healthDamage;
-  game.player.hasFoodInInventory = false;
-  game.player.foodIsCooked = false;
+  game.player.rawFood = 0;
+  game.player.dishes = 0;
   game.shopCatalog = structuredClone(SHOP_CATALOG);
   game.SLOTS = ['top', 'pants', 'shoes', 'hat', 'glasses', 'neck'];
   game.SLOT_INFO = structuredClone(SLOT_INFO);
@@ -410,7 +410,7 @@ export function initializeGame() {
       id: 'food',
       label: '🍽️ Dai cibo',
       color: '#e67e22',
-      show: (): GameValue => game.player.foodIsCooked,
+      show: (): GameValue => game.player.dishes > 0,
     },
     { id: 'money', label: '🪙 Regala soldi', color: '#27ae60', show: (): GameValue => hasRoom() },
     {

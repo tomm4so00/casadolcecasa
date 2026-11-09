@@ -421,7 +421,7 @@ export function drawFridge(it?: GameValue): GameValue {
     if (openK > 0.01) {
       ctx.save();
       ctx.translate(3, mainTop + 1.5);
-      drawFridgeInterior(ctx, W - 6, mainH - 3, light, !game.player.hasFoodInInventory);
+      drawFridgeInterior(ctx, W - 6, mainH - 3, light, game.player.rawFood <= 0);
       ctx.restore();
     }
     // zoccolo con griglia di aerazione

@@ -91,7 +91,10 @@ try {
     .locator('#creator-modal')
     .getByRole('button', { name: /Conferma/ })
     .click();
-  await page.locator('#dialog-buttons').getByRole('button', { name: 'Salta', exact: true }).click();
+  await page
+    .locator('#dialog-buttons')
+    .getByRole('button', { name: /^(Salta|Ho capito, si parte! ✅)$/ })
+    .click();
   await page.evaluate(async () => {
     const { game } = await import('/src/game/context.ts');
     game.pinPromptMoneyThreshold = 1e9;

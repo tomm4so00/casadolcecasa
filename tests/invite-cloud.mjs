@@ -86,7 +86,10 @@ async function finishNewSim(page) {
     .locator('#creator-modal')
     .getByRole('button', { name: /Conferma/ })
     .click();
-  await page.locator('#dialog-buttons').getByRole('button', { name: 'Salta', exact: true }).click();
+  await page
+    .locator('#dialog-buttons')
+    .getByRole('button', { name: /^(Salta|Ho capito, si parte! ✅)$/ })
+    .click();
   if (!(await until(page, hasRoomNow)))
     assert.fail(
       'stanza non assegnata: ' +

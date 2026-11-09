@@ -16,9 +16,29 @@ export interface InventoryItem {
 
 /** Qui si aggiungono gli altri oggetti che potranno essere portati nello zaino. */
 export function inventoryItems(
-  player: Pick<CharacterState, 'weed' | 'drugStock'>,
+  player: Pick<CharacterState, 'weed' | 'drugStock'> &
+    Partial<Pick<CharacterState, 'rawFood' | 'dishes'>>,
 ): InventoryItem[] {
   const items: InventoryItem[] = [];
+  // il cibo per primo: piatti pronti da mangiare o regalare, poi il cibo da cucinare
+  if ((player.dishes ?? 0) > 0)
+    items.push({
+      id: 'dish',
+      icon: '🍝',
+      name: 'Piatto cucinato',
+      quantity: player.dishes!,
+      unit: player.dishes === 1 ? 'piatto' : 'piatti',
+      description: 'Mangialo dove vuoi (+50% fame) o regalalo a chi ti sta vicino.',
+    });
+  if ((player.rawFood ?? 0) > 0)
+    items.push({
+      id: 'raw_food',
+      icon: '🍎',
+      name: 'Cibo crudo',
+      quantity: player.rawFood!,
+      unit: player.rawFood === 1 ? 'pezzo' : 'pezzi',
+      description: 'Cucinalo al fornello della cucina: diventa un piatto.',
+    });
   const weed = player.weed;
   if (weed && weed.grams > 0)
     items.push({

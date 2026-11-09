@@ -47,6 +47,7 @@ import { promptSetSafePin } from './needs.js';
 import { worldNode } from './world-db.js';
 import { cabinetOpen } from './cabinet.js';
 import { currentCrack } from './crack.js';
+import { decodeFood, encodeFood } from './food-rules.js';
 
 /** Segna la presenza come offline, con l'ora del server in cui il giocatore è uscito. */
 export const OFFLINE_MARK = { offline: true, offAt: { '.sv': 'timestamp' } };
@@ -153,10 +154,7 @@ export function buildSaveData(..._args: GameValue[]): SaveV8 {
   }
   data.sleepGainedSinceLastHealthBoost = game.player.sleepGainedSinceLastHealthBoost;
   if (game.player.needsZeroSince) data.needsZeroSince = game.player.needsZeroSince;
-  data.inventory = {
-    hasFood: !!game.player.hasFoodInInventory,
-    foodCooked: !!game.player.foodIsCooked,
-  };
+  data.inventory = encodeFood({ raw: game.player.rawFood, dishes: game.player.dishes });
   if (game.player.drugStock > 0) data.drugStock = game.player.drugStock;
   if (game.player.stonedUntil > Date.now()) data.stonedUntil = game.player.stonedUntil;
   if (game.player.jointReadyAt && game.player.jointReadyAt > Date.now())
@@ -229,8 +227,9 @@ export function applySave(value: unknown): void {
   );
   game.player.needsZeroSince = s.needsZeroSince ?? 0;
   if (s.inventory) {
-    game.player.hasFoodInInventory = s.inventory.hasFood === true;
-    game.player.foodIsCooked = s.inventory.foodCooked === true;
+    const food = decodeFood(s.inventory);
+    game.player.rawFood = food.raw;
+    game.player.dishes = food.dishes;
   }
   const num: GameValue = (v?: GameValue, d?: GameValue): GameValue =>
     typeof v === 'number' && isFinite(v) ? v : d;

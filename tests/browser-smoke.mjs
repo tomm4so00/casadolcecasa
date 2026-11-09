@@ -28,7 +28,10 @@ try {
       game.roomsState[game.myAssignedRoomIdx]?.ownerId === game.session.myPlayerId
     );
   });
-  await page.locator('#dialog-buttons').getByRole('button', { name: 'Salta', exact: true }).click();
+  await page
+    .locator('#dialog-buttons')
+    .getByRole('button', { name: /^(Salta|Ho capito, si parte! ✅)$/ })
+    .click();
   const catalog = await page.evaluate(async () => {
     const { game } = await import('/src/game/context.ts');
     game.pinPromptMoneyThreshold = 1e9;
@@ -350,6 +353,66 @@ try {
   assert.equal(moved.stillInOld, false);
   assert.equal(moved.free, 63);
   console.log('PASS: new world, room and vault moved, old room freed, 63 free rooms left.');
+
+  // Il cibo a scorta nello zaino e l'assaggio di benvenuto: in cucina si prende e si cucina, lo
+  // zaino lo mostra, si mangia ovunque, si lascia nella stanza di un vicino (che lo trova e lo
+  // mangia) e si regala a un personaggio del gioco.
+  const taste = await page.evaluate(async () => {
+    const { game } = await import('/src/game/context.ts');
+    const { worldNode } = await import('/src/game/world-db.ts');
+    const { interactWith } = await import('/src/game/interactions.ts');
+    const { handleSubAction } = await import('/src/game/character.ts');
+    const { eatDish } = await import('/src/game/food.ts');
+    const { inventoryItems } = await import('/src/game/inventory-rules.ts');
+    const { leaveDishHere, nearbyBots, tasteTarget } = await import('/src/game/taste.ts');
+    const out = {};
+    game.player.rawFood = 0;
+    game.player.dishes = 0;
+    game.moneyLevel = 500;
+    game.view.activeEnvironment = 'KITCHEN';
+    game.view.fridgeIsOpen = true;
+    game.activeTargetProp = 'fridge';
+    for (let i = 0; i < 3; i++) await handleSubAction();
+    out.raw = game.player.rawFood;
+    for (let i = 0; i < 3; i++) await interactWith('stove', {});
+    out.afterCook = [game.player.rawFood, game.player.dishes];
+    out.bag = inventoryItems(game.player).map((i) => `${i.id}:${i.quantity}`);
+    game.player.hungerLevel = 10;
+    out.ate = eatDish();
+    out.hunger = game.player.hungerLevel;
+    // un vicino che non è in casa: si lascia il piatto nella sua stanza
+    const idx = game.myAssignedRoomIdx === 2 ? 3 : 2;
+    const neighbour = { ...game.roomsState[idx], owner: 'Marco', ownerId: 'player_marco1' };
+    await game.session.db.ref(`${worldNode('rooms_state')}/${idx}`).set(neighbour);
+    game.roomsState[idx] = neighbour;
+    out.target = tasteTarget(false);
+    game.view.activeEnvironment = 'PLAYER_ROOM';
+    game.currentRoomIdx = idx;
+    out.left = await leaveDishHere();
+    out.gift = (await game.session.db.ref(`${worldNode('gifts')}/${idx}`).get()).val();
+    out.tastes = game.player.stats.tastes;
+    // un personaggio del gioco vicino accetta il piatto
+    const rosa = game.simulationBots.find((b) => b.name.startsWith('Signora Rosa'));
+    game.view.activeEnvironment = rosa.env;
+    game.playerPos = { x: rosa.x + 20, y: rosa.y };
+    out.bots = nearbyBots().map((b) => b.name);
+    out.dishesLeft = game.player.dishes;
+    game.currentRoomIdx = game.myAssignedRoomIdx;
+    game.view.activeEnvironment = 'PLAYER_ROOM';
+    return out;
+  });
+  assert.equal(taste.raw, 3);
+  assert.deepEqual(taste.afterCook, [0, 3]);
+  assert.deepEqual(taste.bag, ['dish:3']);
+  assert.equal(taste.ate, true);
+  assert.equal(taste.hunger, 60);
+  assert.equal(taste.target.mode, 'room');
+  assert.equal(taste.left, true);
+  assert.equal(Object.keys(taste.gift || {}).length, 1);
+  assert.equal(taste.tastes, 1);
+  assert.ok(taste.bots.some((n) => n.startsWith('Signora Rosa')));
+  assert.equal(taste.dishesLeft, 1);
+  console.log('PASS: food stock in the backpack, eat anywhere, welcome taste left in a room.');
   console.log('CATALOG', catalog);
   console.log('ERRORS', errors);
   assert.deepEqual(errors, []);

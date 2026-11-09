@@ -33,7 +33,9 @@ import { SLOT_BET } from './betting-rules.js';
 import { bedtimeThought, notePersonality } from './personality.js';
 import { purchaseItem } from './economy.js';
 import { type GameValue, game } from './context.js';
-import { hasRoom, isMyRoomNow } from './saves.js';
+import { hasRoom, isMyRoomNow, saveGame } from './saves.js';
+import { eatDish, food } from './food.js';
+import { canCook, canTakeRaw } from './food-rules.js';
 import { openRealtyBoard } from './realty.js';
 import { openGossipBoard } from './gossip.js';
 import {
@@ -201,13 +203,17 @@ const KITCHEN: Place = {
       if (!game.view.fridgeIsOpen) return { text: '🧊 Apri Frigorifero' };
       return {
         text: '🧊 Chiudi Frigorifero',
-        sub: game.player.hasFoodInInventory ? undefined : '🍎 Prendi Cibo (-5 Đ)',
+        sub: canTakeRaw(food()) ? '🍎 Prendi Cibo (-5 Đ)' : undefined,
       };
     }
     if (key === 'stove') {
-      if (game.player.hasFoodInInventory && !game.player.foodIsCooked)
-        return { text: '🍳 Cucina Cibo' };
-      return { text: game.player.foodIsCooked ? '🍽️ Mangia' : '🍳 Fornello (Serve Cibo)' };
+      // si cucina un pezzo alla volta; con dei piatti pronti si possono anche mangiare qui
+      if (canCook(food()))
+        return {
+          text: `🍳 Cucina (${game.player.rawFood} crudi)`,
+          sub: game.player.dishes > 0 ? '🍽️ Mangia' : undefined,
+        };
+      return { text: game.player.dishes > 0 ? '🍽️ Mangia' : '🍳 Fornello (Serve Cibo)' };
     }
     if (key === 'coffee') {
       const left: GameValue = coffeeLeftMs();
@@ -228,17 +234,12 @@ const KITCHEN: Place = {
       // il cibo preso resta in mano anche chiudendo il frigo: serve per il fornello
     } else if (key === 'coffee') useCoffee();
     else if (key === 'stove') {
-      if (game.player.hasFoodInInventory && !game.player.foodIsCooked) {
-        game.player.foodIsCooked = true;
-        toast('Hai cucinato il cibo! 🍽️');
-      } else if (game.player.foodIsCooked) {
-        game.player.hungerLevel = Math.min(100, game.player.hungerLevel + 50);
-        game.player.stats.meals++;
-        game.player.hasFoodInInventory = false;
-        game.player.foodIsCooked = false;
-        game.view.fridgeIsOpen = false;
-        toast('Gnam! Fame +50%');
-      }
+      if (canCook(food())) {
+        game.player.rawFood--;
+        game.player.dishes++;
+        toast(`Hai cucinato! 🍝 Il piatto è nello zaino (${game.player.dishes}).`);
+        saveGame(false);
+      } else if (game.player.dishes > 0) eatDish();
     } else if (key === 'doorExit') backToSaloon();
   },
 };

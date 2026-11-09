@@ -17,6 +17,7 @@ import {
 } from './guest.js';
 import { openCryo, watchCryo } from './cryo.js';
 import { startHacker } from './hacker.js';
+import { startTaste } from './taste.js';
 import { blockedByDeletion, requestDeletion } from './deletion.js';
 import { startPlayersHud } from './players-hud.js';
 import { dayNumber } from './game-clock.js';
@@ -146,7 +147,11 @@ export async function showIntro(force: GameValue = false): Promise<GameValue> {
     const pg: GameValue = game.INTRO_PAGES[i],
       last: GameValue = i === game.INTRO_PAGES.length - 1;
     const res: GameValue = await openDialog({
-      title: `${pg.title} (${i + 1}/${game.INTRO_PAGES.length})`,
+      // con una pagina sola niente "(1/1)"
+      title:
+        game.INTRO_PAGES.length > 1
+          ? `${pg.title} (${i + 1}/${game.INTRO_PAGES.length})`
+          : pg.title,
       text: pg.text,
       buttons: last
         ? [{ label: 'Ho capito, si parte! ✅', value: 'done', color: '#2ed573' }]
@@ -418,6 +423,8 @@ export async function startGame(..._args: GameValue[]): Promise<GameValue> {
   watchCryo();
   // Zero, lo scassinatore: riga sotto i parametri, annuncio delle 11:45, ladri alla mia cassaforte
   startHacker();
+  // assaggi di benvenuto lasciati nelle stanze
+  startTaste();
   // l'ospite non può invitare: al suo posto, dopo 20 minuti, l'invito a salvare
   if (isGuest()) startGuestReminder();
   else remindInvite();

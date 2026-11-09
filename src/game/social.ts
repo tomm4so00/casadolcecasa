@@ -13,6 +13,7 @@ import { transferMoney, creditMoney } from './economy.js';
 import type { GameValue } from './context.js';
 import { requireAccount } from './guest.js';
 import { catchThief, crackingMySafe } from './hacker.js';
+import { giveDishTo } from './food.js';
 import { game } from './context.js';
 import { lifetime } from './runtime.js';
 import { toast } from './missions.js';
@@ -93,14 +94,8 @@ export async function socDo(act?: GameValue): Promise<GameValue> {
     );
     notePersonality('punch');
   } else if (act === 'food') {
-    if (!game.player.foodIsCooked) return;
-    game.player.foodIsCooked = false;
-    game.player.hasFoodInInventory = false;
-    game.view.fridgeIsOpen = false;
-    saySocial(myLine('food'));
-    sendSocial(t.id, { type: 'food' });
-    toast(`🍽️ Hai dato il tuo piatto a ${t.name}`);
-    notePersonality('giveFood');
+    // un piatto dallo zaino (vedi food.ts): conta anche per l'assaggio di benvenuto
+    if (!giveDishTo(t.id, t.name)) return;
     game.socKey = '';
   } else if (act === 'money') {
     if (!(await requireAccount('regalare soldi'))) return;
@@ -256,6 +251,13 @@ export async function handleSocial(m?: GameValue): Promise<GameValue> {
     toast(`👊 ${who} ti ha picchiato! (−felicità, −salute)`, 4000);
     showHitEffect(who);
     remember(m, who, 'punch');
+  } else if (m.type === 'tasteComing') {
+    toast(`🍝 ${who}, il nuovo vicino, ti sta portando un assaggio di benvenuto!`, 7000);
+    sfx('success');
+  } else if (m.type === 'tasteThanks') {
+    toast(`💌 ${who} ha assaggiato il tuo piatto e ti ringrazia!`, 7000);
+    sfx('friend');
+    remember(m, who, 'praise');
   } else if (m.type === 'food') {
     game.player.hungerLevel = Math.min(100, game.player.hungerLevel + 50);
     toast(`🍽️ ${who} ti ha dato da mangiare! (+50% fame)`, 4000);

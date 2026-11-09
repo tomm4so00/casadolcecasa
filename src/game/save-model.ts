@@ -41,7 +41,7 @@ export interface SaveV8 {
   dead?: boolean;
   deadAt?: number;
   deathCause?: string;
-  inventory?: { hasFood: boolean; foodCooked: boolean };
+  inventory?: { hasFood: boolean; foodCooked: boolean; raw?: number; dishes?: number };
   romance?: unknown;
   relations?: unknown;
   personality?: unknown;

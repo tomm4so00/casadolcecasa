@@ -1,4 +1,6 @@
 import { openDialog } from './interface.js';
+import { eatDish } from './food.js';
+import { FOOD_STACK_MAX } from './food-rules.js';
 import { purchaseItem, sellItem, spendMoney } from './economy.js';
 import { resaleValue } from './resale-rules.js';
 import { PET_OF_KEY, renamePet, startDogWalk } from './pets.js';
@@ -491,21 +493,29 @@ export async function handleSubAction(which?: GameValue): Promise<void> {
     changeSafePin();
     return;
   }
+  // al fornello, con cibo da cucinare e piatti pronti: il secondo pulsante li mangia
+  if (game.view.activeEnvironment === 'KITCHEN' && game.activeTargetProp === 'stove') {
+    eatDish();
+    return;
+  }
   if (
     game.view.activeEnvironment === 'KITCHEN' &&
     game.activeTargetProp === 'fridge' &&
     game.view.fridgeIsOpen
   ) {
+    if (game.player.rawFood >= FOOD_STACK_MAX) {
+      toast(`🎒 Nello zaino hai già ${FOOD_STACK_MAX} pezzi di cibo crudo: cucinane un po'!`);
+      return;
+    }
     if (game.moneyLevel < 5) {
       toast('Non hai abbastanza soldi per prendere il cibo! Ti servono 5 Đ.');
       return;
     }
     if (!(await spendMoney(5))) return;
     recordActivity('pizza');
-    game.player.hasFoodInInventory = true;
-    game.player.foodIsCooked = false;
-    toast('Hai preso del cibo! (-5 Đ) 🍎');
-    dom('btn-act-sub').classList.add('hidden');
+    game.player.rawFood++;
+    toast(`Hai preso del cibo! (-5 Đ) 🍎 Nello zaino: ${game.player.rawFood}`);
+    saveGame(false);
   }
 }
 

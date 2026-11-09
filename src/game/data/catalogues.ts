@@ -1,4 +1,3 @@
-import { HACKER_GUIDE } from '../../../shared/hacker-rules.js';
 import { DOG_GATE, DOG_PARK, dogParkFence } from '../dog-park-rules.js';
 
 export const SHOP_CATALOG = [
@@ -1508,19 +1507,10 @@ export const MUSIC_TRACKS = {
 
 export const INTRO_PAGES = [
   {
-    title: '🏠 Benvenuto in Casa dolce casa',
-    text: 'Il tuo personaggio vive in tempo reale: fame, sonno, igiene e felicità cambiano anche quando il gioco è chiuso. Tieni d’occhio le barre e torna a prendertene cura ogni giorno.\n\nSe Fame, Sonno o Igiene si svuotano, la Salute scende. Anche la Felicità sotto il 10% la fa calare lentamente.\n\nA Salute zero il personaggio muore: puoi ricominciare con un nuovo personaggio, ripartendo da zero.',
-  },
-  {
-    title: '📋 I primi passi',
-    text: 'Avvicinati alle porte e agli oggetti: usa i pulsanti che compaiono per interagire.\n\n🪙 La valuta del gioco sono i Dindini (Đ): li guadagni lavorando e li usi per i tuoi acquisti.\n\nLe missioni di benvenuto ti guidano a cucinare, lavarti, dormire, lavorare e proteggere i tuoi soldi, con un premio per ogni missione. Trovi il prossimo passo sotto i parametri: tocca 📋 per aprire le missioni, anche se le hai rimandate o disattivate.\n\n😊 Per la felicità puoi iniziare dalla TV o dal divano del salone.\n\n🔔 Dal pulsante delle notifiche puoi attivare gli avvisi quando il personaggio sta male. Con ❓ puoi rileggere questa guida.',
-  },
-  {
-    title: '💻 Zero, lo scassinatore',
-    text: HACKER_GUIDE,
+    title: '🏠 Benvenuto nel condominio!',
+    text: 'Il tuo personaggio vive in tempo reale: fame, sonno, igiene e felicità calano anche a gioco chiuso. Se si svuotano scende la Salute, e a zero il personaggio muore.\n\n🍝 Da noi si usa così: quando arrivi, cucini qualcosa e lo porti ai vicini. Le missioni sotto i parametri ti guidano passo passo, con un premio in Dindini (Đ) per ognuna.\n\n💻 Ogni giorno alle 11:45 Zero, lo scassinatore, annuncia a che ora attaccherà le casseforti: se vedi qualcuno scassinare la tua, dagli un pugno!\n\nCon ❓ puoi rileggere questa guida.',
   },
 ];
-
 /** Cosa dicono i commessi, per negozio. */
 export const SHOP_CLERK_LINES: Record<string, string[]> = {
   scommesse: [

@@ -105,6 +105,9 @@ export function updateInventory(): void {
   smokeButton.classList.toggle('hidden', !showSmoke);
   smokeButton.disabled = !!error;
   smokeButton.title = error ?? 'Consuma 1 g · Felicità +10% · Velocità −10% per 10 minuti';
+  // il piatto: si mangia o si regala (vedi food.ts)
+  dom('inventory-eat').classList.toggle('hidden', selectedId !== 'dish');
+  dom('inventory-give').classList.toggle('hidden', selectedId !== 'dish');
   const drugButton = dom('inventory-drug') as HTMLButtonElement;
   drugButton.classList.toggle('hidden', selectedId !== 'drug');
   drugButton.disabled = usingDose || !!game.socBusy();
@@ -158,5 +161,5 @@ export function updateInventory(): void {
   const selected = items.find((item) => item.id === selectedId);
   dom('inventory-details').textContent = selected
     ? `${selected.icon} ${selected.name} · ${selected.quantity.toLocaleString('it-IT')} ${selected.unit}. ${selected.description}`
-    : 'Lo zaino è vuoto. Qui troverai le tue scorte di erba e le pillole.';
+    : 'Lo zaino è vuoto. Qui troverai il cibo preso dal frigo, i piatti che cucini, l’erba e le pillole.';
 }

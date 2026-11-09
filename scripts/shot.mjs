@@ -51,7 +51,10 @@ try {
     .locator('#creator-modal')
     .getByRole('button', { name: /Conferma/ })
     .click();
-  await page.locator('#dialog-buttons').getByRole('button', { name: 'Salta', exact: true }).click();
+  await page
+    .locator('#dialog-buttons')
+    .getByRole('button', { name: /^(Salta|Ho capito, si parte! ✅)$/ })
+    .click();
   for (const s of shots) {
     await page.evaluate(async (s) => {
       const { game } = await import('/src/game/context.ts');

@@ -3847,3 +3847,13 @@ body.hacker-glitch::after {
   background: linear-gradient(90deg, #e74c3c, #fdcb6e);
   transition: width 0.2s linear;
 }
+
+/* Il piatto nello zaino: mangiarlo o regalarlo */
+#inventory-eat {
+  background: #e67e22;
+  box-shadow: 0 4px 15px rgba(230, 126, 34, 0.35);
+}
+#inventory-give {
+  background: #00b894;
+  box-shadow: 0 4px 15px rgba(0, 184, 148, 0.35);
+}

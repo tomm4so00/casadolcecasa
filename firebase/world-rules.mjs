@@ -26,6 +26,7 @@ export const WORLD_NODES = [
   'roulette',
   'arcade_board',
   'theft_blocks',
+  'gifts',
 ];
 
 /** Ogni giocatore crea al massimo un mondo ogni 10 minuti (come WORLD_CREATE_EVERY_MS). */
