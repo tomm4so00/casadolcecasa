@@ -25,6 +25,9 @@ import {
   theftTriesLeft,
 } from './theft-rules.js';
 import { notePersonality } from './personality.js';
+import { CRACK_MS, HACKER_SHORT } from '../../shared/hacker-rules.js';
+import { hackerActive } from './hacker.js';
+import { setCrack } from './crack.js';
 import { purchaseItem, sellItem, spendMoney, creditMoney } from './economy.js';
 import type { GameValue } from './context.js';
 import type { SceneMap } from './models.js';
@@ -737,7 +740,8 @@ export async function handleSafeInteraction(..._args: GameValue[]): Promise<Game
         (level < 2
           ? `\n🔐 Con la cassaforte livello 2 (negozio di mobili, ${SAFE_LEVEL2_PRICE} Đ) puoi usare anche il 5: è più difficile da indovinare.`
           : '') +
-        (game.hasSetSafePin ? '' : '\n\n⚠️ La cassaforte non ha ancora un PIN.'),
+        (game.hasSetSafePin ? '' : '\n\n⚠️ La cassaforte non ha ancora un PIN.') +
+        `\n\n🛡️ Ogni scasso dura ${CRACK_MS / 1000} secondi: se vedi qualcuno davanti alla tua cassaforte, dagli un pugno 👊 e non potrà mai più aprirla.`,
       buttons,
     });
     if (res.action === 'pin') changeSafePin();
@@ -749,6 +753,25 @@ export async function handleSafeInteraction(..._args: GameValue[]): Promise<Game
   }
   if (!(room.vaultMoney > 0)) {
     toast("🚫 La cassaforte di questo giocatore è vuota! Non c'è nulla da rubare.");
+    return;
+  }
+  // Il proprietario ti ha beccato con un pugno: questa cassaforte per te è chiusa per sempre.
+  const roomIdx: number = game.currentRoomIdx ?? -1;
+  const blockRef = game.session.db.ref(
+    `${worldNode('theft_blocks')}/${roomIdx}/${game.session.myPlayerId}`,
+  );
+  const caught = async (): Promise<boolean> => {
+    try {
+      return (await withTimeout(blockRef.get(), 8000)).val()?.by === room.ownerId;
+    } catch {
+      return false;
+    }
+  };
+  if (room.ownerId && (await caught())) {
+    toast(
+      `👊 ${room.owner || 'Il proprietario'} ti ha beccato con le mani nel sacco: questa cassaforte per te è chiusa per sempre.`,
+      5000,
+    );
     return;
   }
   // I tentativi sono salvati online: ricaricare la pagina non li azzera.
@@ -780,19 +803,32 @@ export async function handleSafeInteraction(..._args: GameValue[]): Promise<Game
   }
   // la cassaforte livello 2 accetta combinazioni con le cifre fino a 5
   const level = safeLevel(room.economy?.ownedFurniture);
+  // durante l'attacco di Zero la prima cifra è già scoperta: se ne scrivono solo 2
+  const known = hackerActive() ? firstPinDigit(room.pin, room.id, level) : '';
+  const warning = `\n\n⚠️ Lo scasso dura ${CRACK_MS / 1000} secondi: se ${room.owner || 'il proprietario'} ti becca e ti dà un pugno, questa cassaforte per te resta chiusa per sempre.`;
   const res: GameValue = await openDialog({
     title: `🕵️ Tentativo di scasso · Cassaforte livello ${level}`,
-    text: `Inserisci la combinazione segreta di 3 cifre (da 1 a ${maxPinDigit(level)}).\nTentativi rimasti: ${maxTries - tries}`,
-    input: { placeholder: '???', numeric: true, maxLength: 3 },
+    text:
+      (known
+        ? `💻 ${HACKER_SHORT} ha già scoperto la prima cifra: ${known}\nScrivi le altre 2 cifre (da 1 a ${maxPinDigit(level)}).`
+        : `Inserisci la combinazione segreta di 3 cifre (da 1 a ${maxPinDigit(level)}).`) +
+      `\nTentativi rimasti: ${maxTries - tries}` +
+      warning,
+    input: { placeholder: known ? known + '??' : '???', numeric: true, maxLength: known ? 2 : 3 },
     buttons: [
       { label: 'Lascia stare', value: null, color: '#57606f' },
       { label: '🔓 Prova', value: 'try', color: '#e74c3c' },
     ],
   });
   if (res.action !== 'try' || !res.value) return;
+  const guess: string = known ? known + res.value : res.value;
   // un tentativo scritto male non conta
-  if (!isValidPin(res.value, level)) {
-    toast('❌ La combinazione è fatta di ' + pinHint(level) + '.');
+  if (!isValidPin(guess, level)) {
+    toast(
+      known
+        ? `❌ Scrivi solo le altre 2 cifre, da 1 a ${maxPinDigit(level)}.`
+        : '❌ La combinazione è fatta di ' + pinHint(level) + '.',
+    );
     return;
   }
   // il tentativo si registra online prima di sapere se la combinazione è giusta
@@ -815,7 +851,24 @@ export async function handleSafeInteraction(..._args: GameValue[]): Promise<Game
   }
   game.theftAttempts[room.id] = (saved as TheftRecord).n;
   notePersonality('theftAttempt');
-  if (room.pin === hashPin(res.value, room.id) || room.pin === res.value) {
+  // lo scasso dura CRACK_MS: il proprietario lo vede e può fermarlo con un pugno
+  const outcome = await crackFor(roomIdx, blockRef, room.ownerId);
+  if (outcome === 'moved') {
+    toast(
+      '🚶 Ti sei allontanato dalla cassaforte: scasso interrotto (il tentativo è perso).',
+      4000,
+    );
+    return;
+  }
+  if (outcome === 'caught' || (room.ownerId && (await caught()))) {
+    sfx('enemy');
+    toast(
+      `👊 ${room.owner || 'Il proprietario'} ti ha beccato con le mani nel sacco! Questa cassaforte per te è chiusa per sempre.`,
+      6000,
+    );
+    return;
+  }
+  if (room.pin === hashPin(guess, room.id) || room.pin === guess) {
     let stolen: GameValue = 0;
     const r: GameValue = await vaultRef.transaction((v?: GameValue): GameValue => {
       stolen = v || 0;
@@ -845,6 +898,67 @@ export async function handleSafeInteraction(..._args: GameValue[]): Promise<Game
         : '🚨 CODICE ERRATO! Allarme attivo: con questa cassaforte potrai riprovare tra 24 ore.',
       4500,
     );
+  }
+}
+
+/**
+ * La prima cifra della combinazione, scoperta da Zero durante l'attacco: con così poche
+ * combinazioni basta provarle tutte contro il codice salvato. '' se non si trova.
+ */
+function firstPinDigit(pin: unknown, roomId: unknown, level: number): string {
+  if (typeof pin !== 'string') return '';
+  const top = maxPinDigit(level);
+  for (let a = 1; a <= top; a++)
+    for (let b = 1; b <= top; b++)
+      for (let c = 1; c <= top; c++) {
+        const code = `${a}${b}${c}`;
+        if (pin === code || pin === hashPin(code, roomId)) return String(a);
+      }
+  return '';
+}
+
+/**
+ * I secondi dello scasso: la presenza dice a tutti chi sta scassinando cosa, una barra mostra il
+ * tempo. Finisce prima se ci si allontana o se il proprietario dà il pugno (blocco nel database).
+ */
+async function crackFor(
+  roomIdx: number,
+  blockRef: GameValue,
+  ownerId: unknown,
+): Promise<'done' | 'moved' | 'caught'> {
+  const start = { x: game.playerPos.x, y: game.playerPos.y };
+  const startAt = Date.now();
+  let caughtNow = false;
+  const onBlock = (snap?: GameValue): void => {
+    if (snap?.val()?.by && snap.val().by === ownerId) caughtNow = true;
+  };
+  blockRef.on('value', onBlock);
+  setCrack({ roomIdx, startAt });
+  let bar = document.getElementById('crack-bar');
+  if (!bar) {
+    bar = document.createElement('div');
+    bar.id = 'crack-bar';
+    bar.innerHTML =
+      '<div class="crack-text"></div><div class="crack-track"><div class="crack-fill"></div></div>';
+    document.body.appendChild(bar);
+  }
+  bar.classList.remove('hidden');
+  const text = bar.querySelector<HTMLElement>('.crack-text')!;
+  const fill = bar.querySelector<HTMLElement>('.crack-fill')!;
+  try {
+    for (;;) {
+      const left = CRACK_MS - (Date.now() - startAt);
+      if (caughtNow) return 'caught';
+      if (Math.hypot(game.playerPos.x - start.x, game.playerPos.y - start.y) > 40) return 'moved';
+      if (left <= 0) return 'done';
+      text.textContent = `🔧 Scasso in corso… ${Math.ceil(left / 1000)} s`;
+      fill.style.width = `${(100 * (CRACK_MS - left)) / CRACK_MS}%`;
+      await new Promise((r) => lifetime.setTimeout(r, 200));
+    }
+  } finally {
+    setCrack(null);
+    blockRef.off('value', onBlock);
+    bar.classList.add('hidden');
   }
 }
 

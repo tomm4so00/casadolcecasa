@@ -16,6 +16,7 @@ import {
   startGuestReminder,
 } from './guest.js';
 import { openCryo, watchCryo } from './cryo.js';
+import { startHacker } from './hacker.js';
 import { blockedByDeletion, requestDeletion } from './deletion.js';
 import { startPlayersHud } from './players-hud.js';
 import { dayNumber } from './game-clock.js';
@@ -415,6 +416,8 @@ export async function startGame(..._args: GameValue[]): Promise<GameValue> {
   // entrati con il link di una sfida: si propone di giocarla (dopo le finestre dell'ingresso)
   lifetime.setTimeout(() => void joinSharedChallenge(), 2500);
   watchCryo();
+  // Zero, lo scassinatore: riga sotto i parametri, annuncio delle 11:45, ladri alla mia cassaforte
+  startHacker();
   // l'ospite non può invitare: al suo posto, dopo 20 minuti, l'invito a salvare
   if (isGuest()) startGuestReminder();
   else remindInvite();

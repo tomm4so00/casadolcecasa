@@ -1,3 +1,4 @@
+import { HACKER_GUIDE } from '../../../shared/hacker-rules.js';
 import { DOG_GATE, DOG_PARK, dogParkFence } from '../dog-park-rules.js';
 
 export const SHOP_CATALOG = [
@@ -1513,6 +1514,10 @@ export const INTRO_PAGES = [
   {
     title: '📋 I primi passi',
     text: 'Avvicinati alle porte e agli oggetti: usa i pulsanti che compaiono per interagire.\n\n🪙 La valuta del gioco sono i Dindini (Đ): li guadagni lavorando e li usi per i tuoi acquisti.\n\nLe missioni di benvenuto ti guidano a cucinare, lavarti, dormire, lavorare e proteggere i tuoi soldi, con un premio per ogni missione. Trovi il prossimo passo sotto i parametri: tocca 📋 per aprire le missioni, anche se le hai rimandate o disattivate.\n\n😊 Per la felicità puoi iniziare dalla TV o dal divano del salone.\n\n🔔 Dal pulsante delle notifiche puoi attivare gli avvisi quando il personaggio sta male. Con ❓ puoi rileggere questa guida.',
+  },
+  {
+    title: '💻 Zero, lo scassinatore',
+    text: HACKER_GUIDE,
   },
 ];
 

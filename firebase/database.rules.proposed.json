@@ -248,7 +248,7 @@
           ".validate": "newData.isString() && newData.val().length <= 20"
         },
         "vaultMoney": {
-          ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1000000"
+          ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1000000 && (!data.exists() || newData.val() >= data.val() || auth.uid === 'market-publisher' || data.parent().child('ownerId').val() === root.child('sims_accounts').child(auth.uid).child('playerId').val() || root.child('sims_theft_blocks').child($room).child(root.child('sims_accounts').child(auth.uid).child('playerId').val()).child('by').val() !== data.parent().child('ownerId').val())"
         },
         "lastSeen": {
           ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 9007199254740991"
@@ -763,7 +763,7 @@
       ".validate": "(auth != null && auth.uid === 'market-publisher') || newData.hasChildren(['0','1','2','3','4','5','6','7','8','9','10','11','12','13','14','15','16','17','18','19','20','21','22','23','24','25','26','27','28','29','30','31','32','33','34','35','36','37','38','39','40','41','42','43','44','45','46','47','48','49','50','51','52','53','54','55','56','57','58','59','60','61','62','63'])"
     },
     "sims_meta": {
-      ".read": "auth != null && (auth.token.firebase.sign_in_provider === 'google.com' || (auth.token.firebase.sign_in_provider === 'password' && auth.token.email_verified === true))",
+      ".read": "auth != null && (auth.token.firebase.sign_in_provider === 'google.com' || auth.token.firebase.sign_in_provider === 'anonymous' || (auth.token.firebase.sign_in_provider === 'password' && auth.token.email_verified === true))",
       "version": {
         ".validate": "newData.isNumber() && (!data.exists() || newData.val() >= data.val())"
       }
@@ -1262,6 +1262,24 @@
         }
       }
     },
+    "sims_theft_blocks": {
+      ".read": "(auth != null && (auth.token.firebase.sign_in_provider === 'google.com' || auth.token.firebase.sign_in_provider === 'anonymous' || (auth.token.firebase.sign_in_provider === 'password' && auth.token.email_verified === true))) && root.child('sims_accounts').child(auth.uid).child('playerId').isString()",
+      "$room": {
+        "$thief": {
+          ".write": "(auth != null && (auth.token.firebase.sign_in_provider === 'google.com' || auth.token.firebase.sign_in_provider === 'anonymous' || (auth.token.firebase.sign_in_provider === 'password' && auth.token.email_verified === true))) && root.child('sims_accounts').child(auth.uid).child('playerId').isString() && !data.exists() && newData.exists() && root.child('sims_rooms_state').child($room).child('ownerId').val() === root.child('sims_accounts').child(auth.uid).child('playerId').val() && root.child('sims_online_players').child($thief).child('crack').val() === $room",
+          ".validate": "newData.hasChildren(['by','t'])",
+          "by": {
+            ".validate": "newData.val() === root.child('sims_accounts').child(auth.uid).child('playerId').val()"
+          },
+          "t": {
+            ".validate": "newData.isNumber() && newData.val() <= now + 60000"
+          },
+          "$other": {
+            ".validate": false
+          }
+        }
+      }
+    },
     "sims_invited": {
       "$uid": {
         ".read": "(auth != null && (auth.token.firebase.sign_in_provider === 'google.com' || auth.token.firebase.sign_in_provider === 'anonymous' || (auth.token.firebase.sign_in_provider === 'password' && auth.token.email_verified === true))) && auth.uid === $uid",
@@ -1455,7 +1473,7 @@
               ".validate": "newData.isString() && newData.val().length <= 20"
             },
             "vaultMoney": {
-              ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1000000"
+              ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1000000 && (!data.exists() || newData.val() >= data.val() || auth.uid === 'market-publisher' || data.parent().child('ownerId').val() === root.child('sims_accounts').child(auth.uid).child('playerId').val() || root.child('worlds').child($worldId).child('theft_blocks').child($room).child(root.child('sims_accounts').child(auth.uid).child('playerId').val()).child('by').val() !== data.parent().child('ownerId').val())"
             },
             "lastSeen": {
               ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 9007199254740991"
@@ -2434,6 +2452,24 @@
               },
               "t": {
                 ".validate": "newData.val() === now"
+              },
+              "$other": {
+                ".validate": false
+              }
+            }
+          }
+        },
+        "theft_blocks": {
+          ".read": "(auth != null && (auth.token.firebase.sign_in_provider === 'google.com' || auth.token.firebase.sign_in_provider === 'anonymous' || (auth.token.firebase.sign_in_provider === 'password' && auth.token.email_verified === true))) && root.child('sims_accounts').child(auth.uid).child('playerId').isString()",
+          "$room": {
+            "$thief": {
+              ".write": "(auth != null && (auth.token.firebase.sign_in_provider === 'google.com' || auth.token.firebase.sign_in_provider === 'anonymous' || (auth.token.firebase.sign_in_provider === 'password' && auth.token.email_verified === true))) && root.child('sims_accounts').child(auth.uid).child('playerId').isString() && !data.exists() && newData.exists() && root.child('worlds').child($worldId).child('rooms_state').child($room).child('ownerId').val() === root.child('sims_accounts').child(auth.uid).child('playerId').val() && root.child('worlds').child($worldId).child('online_players').child($thief).child('crack').val() === $room",
+              ".validate": "newData.hasChildren(['by','t'])",
+              "by": {
+                ".validate": "newData.val() === root.child('sims_accounts').child(auth.uid).child('playerId').val()"
+              },
+              "t": {
+                ".validate": "newData.isNumber() && newData.val() <= now + 60000"
               },
               "$other": {
                 ".validate": false

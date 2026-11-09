@@ -3742,6 +3742,25 @@ export function drawOfflineTag(x: number, y: number, z: number, name: string): v
   ctx.fillText('offline', left + nameW + 4 + offW / 2, top + 11.5);
 }
 
+// Chi sta scassinando una cassaforte: etichetta rossa che lampeggia sopra il nome, con i secondi
+// che restano. Così il proprietario lo riconosce e sa che ha ancora tempo per il pugno.
+export function drawCrackTag(x: number, y: number, z: number, secondsLeft: number): void {
+  const ctx: GameValue = game.view.ctx;
+  const p: GameValue = isoProject(x, y, z);
+  const text = `🔧 SCASSO · ${Math.max(0, secondsLeft)} s`;
+  ctx.font = 'bold 11px sans-serif';
+  const w = ctx.measureText(text).width + 16;
+  const top = p.y - 30;
+  const blink = Math.floor(performance.now() / 300) % 2 === 0;
+  ctx.fillStyle = blink ? 'rgba(231,76,60,0.95)' : 'rgba(192,57,43,0.95)';
+  ctx.beginPath();
+  ctx.roundRect ? ctx.roundRect(p.x - w / 2, top, w, 18, 9) : ctx.rect(p.x - w / 2, top, w, 18);
+  ctx.fill();
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#ffffff';
+  ctx.fillText(text, p.x, top + 13);
+}
+
 // Pensieri di chi dorme, raccolti mentre si disegna la scena e mostrati alla fine sopra tutto.
 const sleepThoughts: { x: number; y: number; s: number; text: string }[] = [];
 

@@ -46,6 +46,7 @@ import { noteFaintOnReturn } from './faint.js';
 import { promptSetSafePin } from './needs.js';
 import { worldNode } from './world-db.js';
 import { cabinetOpen } from './cabinet.js';
+import { currentCrack } from './crack.js';
 
 /** Segna la presenza come offline, con l'ora del server in cui il giocatore è uscito. */
 export const OFFLINE_MARK = { offline: true, offAt: { '.sv': 'timestamp' } };
@@ -774,6 +775,10 @@ export function startPresence(..._args: GameValue[]): GameValue {
       say: game.mySay,
       sayT: game.mySayT,
       ...(isSick(game.player.flu, Date.now()) ? { sick: 1 } : {}),
+      // scasso in corso: il proprietario lo vede e può fermarlo con un pugno (vedi hacker.ts)
+      ...(currentCrack()
+        ? { crack: String(currentCrack()!.roomIdx), crackT: currentCrack()!.startAt }
+        : {}),
       ...dogPresence(),
       // personalità ottenuta: la vedono gli altri nella scheda del giocatore
       ...(obtainedPersonality(game.player.personality)

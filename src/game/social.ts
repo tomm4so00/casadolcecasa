@@ -12,6 +12,7 @@ import { onArtAccept, onArtNo, onArtOffer, onArtSold } from './auctions.js';
 import { transferMoney, creditMoney } from './economy.js';
 import type { GameValue } from './context.js';
 import { requireAccount } from './guest.js';
+import { catchThief, crackingMySafe } from './hacker.js';
 import { game } from './context.js';
 import { lifetime } from './runtime.js';
 import { toast } from './missions.js';
@@ -44,6 +45,9 @@ export function saySocial(txt?: GameValue): GameValue {
 export async function socDo(act?: GameValue): Promise<GameValue> {
   const t: GameValue = game.socTarget;
   if (!t || game.socBusy()) return;
+  // il pugno a chi sta scassinando la mia cassaforte lo ferma, anche subito dopo un altro pugno
+  const thief = act === 'punch' && crackingMySafe(t.id);
+  if (thief) game.socCd[t.id + '|punch'] = 0;
   if (['talk', 'praise', 'insult', 'punch'].includes(act)) {
     const k: GameValue = t.id + '|' + act,
       left: GameValue = (game.socCd[k] || 0) + game.SOC_CD_MS - Date.now();
@@ -76,6 +80,11 @@ export async function socDo(act?: GameValue): Promise<GameValue> {
     game.player.happinessLevel = Math.max(0, game.player.happinessLevel - 2);
     saySocial(myLine('punch'));
     sendSocial(t.id, { type: 'punch' });
+    // ladro beccato: lo dice catchThief (avviso e gossip), al posto del pugno qualsiasi
+    if (thief && (await catchThief(t.id, t.name))) {
+      notePersonality('punch');
+      return;
+    }
     toast(`👊 Hai picchiato ${t.name}`);
     postGossip(
       `${game.player.myData.nick} ha preso a pugni ${t.name} 👊 Tira una brutta aria…`,

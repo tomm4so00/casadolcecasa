@@ -45,6 +45,7 @@ import {
 import {
   drawActor,
   drawFaintedAvatar,
+  drawCrackTag,
   drawNameTagWorld,
   drawOfflineTag,
   drawPlayerAvatar,
@@ -101,6 +102,7 @@ import { chairsOf, deskChair } from './chair-rules.js';
 import { cabinetFacesAway, cabinetPlayerPose } from './cabinet.js';
 import { pillControlSign, updatePillVisuals } from './pill.js';
 import { dealerBotLines, dealerHere } from './dealers.js';
+import { CRACK_MS } from '../../shared/hacker-rules.js';
 
 /** Lo stesso aspetto con gli occhi rossi (dopo una canna). */
 const withStonedEyes = (look: GameValue, on: boolean): GameValue =>
@@ -751,6 +753,11 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
     if (isOffline) {
       const lz = state === 'fainted' ? 34 : state === 'sleeping' ? 70 : 92;
       labels.push((): GameValue => drawOfflineTag(s.x, s.y, lz, op.name));
+    }
+    // sta scassinando una cassaforte: si vede da lontano, con i secondi che restano
+    if (!isOffline && op.crack !== undefined) {
+      const left = Math.ceil((CRACK_MS - (Date.now() - (Number(op.crackT) || Date.now()))) / 1000);
+      labels.push((): GameValue => drawCrackTag(s.x, s.y, 92, left));
     }
     const lk: GameValue = (op.look || `${op.outfit}${op.acc}`) + '|' + (op.body || '');
     if (s.lookKey !== lk) {
