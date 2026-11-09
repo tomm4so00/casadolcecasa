@@ -6,7 +6,14 @@ import { bodyFromName, currentBody, drawAvatarPreview, resolveLook } from '../ch
 import { sfx } from '../audio.js';
 import { saveGame } from '../saves.js';
 import { isoProject, isoScale, rnd, rotateAround, rotateVector, toRgb } from './primitives.js';
-import { CHAIR_SEAT_Z, box, onFace, withFurnitureRotation } from './objects.js';
+import {
+  CHAIR_SEAT_Z,
+  box,
+  onFace,
+  softBlanketSide,
+  softBlanketTop,
+  withFurnitureRotation,
+} from './objects.js';
 import { nameHash } from './scenes.js';
 // ---------- piccoli aiuti per il disegno dei vestiti ----------
 type Pt = { x: number; y: number };
@@ -1209,13 +1216,11 @@ export function drawAvatarSleeping(
       const bl: GameValue = box(bed.x, bed.y + bed.h * 0.22, bed.w - 8, bed.h * 0.5, 8, col, {
         z0: opts?.blanketZ ?? 23,
         top: bed.topColor || game.lighten(col, 0.15),
+        edge: 'rgba(0,0,0,0.12)',
       });
-      onFace(bl, 'top', (W?: GameValue, H?: GameValue): GameValue => {
-        ctx.fillStyle = 'rgba(255,255,255,0.13)';
-        for (let i: GameValue = 4; i < W; i += 14) ctx.fillRect(i, 0, 5, H);
-        ctx.fillStyle = 'rgba(255,255,255,0.55)';
-        ctx.fillRect(0, 0, W, 6);
-      });
+      onFace(bl, 'top', (W: number, H: number) => softBlanketTop(W, H, 6));
+      onFace(bl, 'left', softBlanketSide);
+      onFace(bl, 'right', softBlanketSide);
     });
     ctx.globalAlpha = 1;
   }
@@ -1957,6 +1962,23 @@ function drawHandGlass(hand: Pt, s: number, fill: number, sip: number): void {
   ctx.restore();
 }
 
+/**
+ * Gli assi del piede sopra la trasformazione `base`, invece di sostituirla: il personaggio può
+ * essere già ruotato, come chi dorme nel letto.
+ */
+function setLocal(
+  ctx: CanvasRenderingContext2D,
+  base: DOMMatrix,
+  a: number,
+  b: number,
+  c: number,
+  d: number,
+  e: number,
+  f: number,
+): void {
+  ctx.setTransform(base.multiply(new DOMMatrix([a, b, c, d, e, f])));
+}
+
 export function drawPlayerAvatar(
   x?: GameValue,
   y?: GameValue,
@@ -2122,7 +2144,8 @@ export function drawPlayerAvatar(
     // la caviglia (b) sta 2 unità sopra la suola
     const gx = b.x,
       gy = b.y + 2 * s;
-    const at = (z: number) => ctx.setTransform(F.x, F.y, R.x, R.y, gx, gy - z * s);
+    const base = ctx.getTransform();
+    const at = (z: number) => setLocal(ctx, base, F.x, F.y, R.x, R.y, gx, gy - z * s);
     const screenAt = (u: number, z: number): Pt => ({
       x: gx + F.x * u,
       y: gy + F.y * u - z * s,
@@ -2372,14 +2395,14 @@ export function drawPlayerAvatar(
     if (style === 'boots') shaft(2.6, 7.5, sc);
     else if (style === 'hightop') {
       shaft(2.4, 4.8, sc);
-      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.setTransform(base);
       // lacci sul davanti del gambale
       for (let i = 0; i < 3; i++) {
         const p = screenAt(1.3, 2.9 + i * 0.7);
         seg({ x: p.x - 0.9 * s, y: p.y }, { x: p.x + 0.9 * s, y: p.y }, '#ffffff', 0.45 * s);
       }
     }
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.setTransform(base);
     return style === 'boots' || style === 'hightop';
   };
   /** Il motivo dei pantaloni da a a end; `ankle`: il pezzo finisce alla caviglia (polsini). */
@@ -2528,12 +2551,13 @@ export function drawPlayerAvatar(
     const color = l.back ? game.darken(shoes.color, 0.18) : shoes.color;
     // la metà dell'anello che sullo schermo sta più in basso (più vicina)
     const phi = Math.atan2(R.y * 2, F.y * 2.1);
-    ctx.setTransform(F.x, F.y, R.x, R.y, g.x, g.y);
+    const base = ctx.getTransform();
+    setLocal(ctx, base, F.x, F.y, R.x, R.y, g.x, g.y);
     for (const [z, fill] of [
       [0.9, game.darken(color, 0.12)],
       [0, color],
     ] as const) {
-      ctx.setTransform(F.x, F.y, R.x, R.y, g.x, g.y + z * s);
+      setLocal(ctx, base, F.x, F.y, R.x, R.y, g.x, g.y + z * s);
       ctx.beginPath();
       ctx.ellipse(-0.4, 0, 2.1, 2, 0, phi - Math.PI / 2, phi + Math.PI / 2);
       ctx.ellipse(-0.4, 0, 1.6, 1.5, 0, phi + Math.PI / 2, phi - Math.PI / 2, true);
@@ -2541,13 +2565,13 @@ export function drawPlayerAvatar(
       ctx.fillStyle = fill;
       ctx.fill();
     }
-    ctx.setTransform(F.x, F.y, R.x, R.y, g.x, g.y);
+    setLocal(ctx, base, F.x, F.y, R.x, R.y, g.x, g.y);
     ctx.beginPath();
     ctx.ellipse(-0.4, 0, 2.1, 2, 0, phi - Math.PI / 2, phi + Math.PI / 2);
     ctx.strokeStyle = game.lighten(color, 0.3);
     ctx.lineWidth = 0.3;
     ctx.stroke();
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.setTransform(base);
   };
   /**
    * Ogni gamba con la sua scarpa, dal piede più lontano (più in alto sullo schermo) al più vicino:

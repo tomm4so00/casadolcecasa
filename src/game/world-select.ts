@@ -207,7 +207,7 @@ function showWorldChoice(mode: Mode): Promise<string | null> {
         ? `Ogni condominio ha ${WORLD_ROOMS} stanze. Entra dove c'è posto, creane uno tuo o raggiungi un amico con il suo codice.`
         : `Sei nel condominio <b>${here}</b>. Cambiando, la tua stanza viene con te: cassaforte, mobili, quadri e i tuoi quadri all'asta (le offerte dei vicini di adesso si annullano). Soldi e oggetti restano tuoi.`
     }</p>` +
-    `<button type="button" class="btn-primary world-btn" data-w="public">🎲 Unisciti a un mondo pubblico</button>` +
+    `<button type="button" class="btn-primary world-btn" data-w="public">🎲 Unisciti a un mondo già esistente</button>` +
     `<button type="button" class="btn-primary world-btn world-create" data-w="create">🏗️ Crea un nuovo mondo</button>` +
     `<div class="world-code-label">🔑 Hai il codice di un amico?</div>` +
     `<div class="world-code"><input id="world-code-input" type="text" maxlength="12" autocomplete="off" autocapitalize="characters" placeholder="CASA-X92L">` +

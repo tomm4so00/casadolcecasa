@@ -252,6 +252,100 @@ export function gameClockText(..._args: GameValue[]): GameValue {
 }
 
 // ---------------------------------------------------------------- MOBILI DELLA STANZA
+/** Una piega morbida della stoffa: ombra larga con un filo di luce appena sopra. */
+function softCrease(x0: number, y0: number, x1: number, y1: number, bend: number): void {
+  const ctx = game.view.ctx;
+  const mx = (x0 + x1) / 2,
+    my = (y0 + y1) / 2;
+  ctx.lineCap = 'round';
+  for (const [color, width, off] of [
+    ['rgba(0,0,0,0.11)', 2.6, 0],
+    ['rgba(255,255,255,0.13)', 1.2, -1.6],
+  ] as const) {
+    ctx.strokeStyle = color;
+    ctx.lineWidth = width;
+    ctx.beginPath();
+    ctx.moveTo(x0, y0 + off);
+    ctx.quadraticCurveTo(mx + bend, my + bend + off, x1, y1 + off);
+    ctx.stroke();
+  }
+}
+
+/**
+ * Il sopra della coperta, verso la testiera il risvolto del lenzuolo (alto `fold`). Al posto delle
+ * righe dritte: luce al centro, bordi in ombra e qualche piega, così sembra imbottita.
+ */
+export function softBlanketTop(W: number, H: number, fold = 7): void {
+  const ctx = game.view.ctx;
+  const g = ctx.createLinearGradient(0, 0, W, 0);
+  g.addColorStop(0, 'rgba(0,0,0,0.14)');
+  g.addColorStop(0.2, 'rgba(255,255,255,0.05)');
+  g.addColorStop(0.5, 'rgba(255,255,255,0.12)');
+  g.addColorStop(0.8, 'rgba(255,255,255,0.05)');
+  g.addColorStop(1, 'rgba(0,0,0,0.14)');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, W, H);
+  const n = Math.max(2, Math.round((H - fold) / 22));
+  for (let i = 1; i <= n; i++) {
+    const t = fold + ((H - fold) * i) / (n + 1);
+    softCrease(W * 0.1, t - 2, W * 0.9, t + 2, i % 2 ? 3 : -3);
+  }
+  // il risvolto gonfio, con la sua ombra sulla coperta
+  ctx.fillStyle = 'rgba(0,0,0,0.16)';
+  ctx.fillRect(0, fold - 0.5, W, 3);
+  const r = ctx.createLinearGradient(0, 0, 0, fold);
+  r.addColorStop(0, 'rgba(255,255,255,0.5)');
+  r.addColorStop(0.45, 'rgba(255,255,255,0.8)');
+  r.addColorStop(1, 'rgba(255,255,255,0.55)');
+  ctx.fillStyle = r;
+  ctx.beginPath();
+  ctx.roundRect(0, 0, W, fold, fold / 2);
+  ctx.fill();
+}
+
+/** Il fianco della coperta che ricade: luce sul bordo arrotondato in alto, ombra in basso. */
+export function softBlanketSide(W: number, H: number): void {
+  const ctx = game.view.ctx;
+  const g = ctx.createLinearGradient(0, 0, 0, H);
+  g.addColorStop(0, 'rgba(255,255,255,0.22)');
+  g.addColorStop(0.3, 'rgba(255,255,255,0)');
+  g.addColorStop(1, 'rgba(0,0,0,0.2)');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, W, H);
+  // la stoffa che ricade fa qualche piega verticale
+  ctx.fillStyle = 'rgba(0,0,0,0.08)';
+  for (let u = 9; u < W - 4; u += 17) {
+    ctx.beginPath();
+    ctx.moveTo(u, H * 0.25);
+    ctx.quadraticCurveTo(u + 2.5, H, u - 1, H);
+    ctx.quadraticCurveTo(u + 0.5, H * 0.6, u, H * 0.25);
+    ctx.fill();
+  }
+}
+
+/** Cuscino gonfio: più chiaro al centro, angoli in ombra e la cucitura nel mezzo. */
+function softPillowTop(W: number, H: number): void {
+  const ctx = game.view.ctx;
+  const g = ctx.createRadialGradient(W / 2, H / 2, 1, W / 2, H / 2, W * 0.6);
+  g.addColorStop(0, 'rgba(255,255,255,0.6)');
+  g.addColorStop(0.6, 'rgba(0,0,0,0.03)');
+  g.addColorStop(1, 'rgba(0,0,0,0.16)');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, W, H);
+  softCrease(W * 0.2, H * 0.52, W * 0.8, H * 0.48, 1);
+}
+
+/** Fianco di cuscino o materasso: bordo tondo in alto, ombra verso il basso. */
+function softSide(W: number, H: number): void {
+  const ctx = game.view.ctx;
+  const g = ctx.createLinearGradient(0, 0, 0, H);
+  g.addColorStop(0, 'rgba(255,255,255,0.35)');
+  g.addColorStop(0.35, 'rgba(255,255,255,0)');
+  g.addColorStop(1, 'rgba(0,0,0,0.14)');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, W, H);
+}
+
 export function drawBed(it?: GameValue): GameValue {
   const ctx = game.view.ctx;
   const Z: GameValue = it.zb || 0,
@@ -297,29 +391,32 @@ export function drawBed(it?: GameValue): GameValue {
     'right',
     (W?: GameValue, H?: GameValue): GameValue => woodGrain(W, H, 'rgba(0,0,0,0.18)', false, 3),
   );
-  box(x, y + 4, w - 6, h - 12, 9, '#f4f6f7', { z0: Z + 14, edge: 'rgba(0,0,0,0.12)' });
-  box(x - w * 0.22, y - h / 2 + 20, w * 0.36, 16, 7, '#ffffff', {
-    z0: Z + 23,
-    edge: 'rgba(0,0,0,0.15)',
+  // materasso, cuscini e coperta con bordi chiari e sfumature: devono sembrare morbidi
+  const mat: GameValue = box(x, y + 4, w - 6, h - 12, 9, '#f4f6f7', {
+    z0: Z + 14,
+    edge: 'rgba(0,0,0,0.07)',
   });
-  box(x + w * 0.22, y - h / 2 + 20, w * 0.36, 16, 7, '#ffffff', {
-    z0: Z + 23,
-    edge: 'rgba(0,0,0,0.15)',
-  });
+  onFace(mat, 'left', softSide);
+  onFace(mat, 'right', softSide);
+  for (const side of [-1, 1]) {
+    const pw: GameValue = box(x + side * w * 0.22, y - h / 2 + 20, w * 0.36, 16, 7, '#ffffff', {
+      z0: Z + 23,
+      edge: 'rgba(0,0,0,0.08)',
+      left: '#eef1f3',
+      right: '#dde2e6',
+    });
+    onFace(pw, 'top', softPillowTop);
+    onFace(pw, 'left', softSide);
+    onFace(pw, 'right', softSide);
+  }
   const bl: GameValue = box(x, y + h * 0.14, w - 2, h * 0.62, 11, it.color, {
     z0: Z + 15,
     top: it.topColor || game.lighten(it.color, 0.15),
+    edge: 'rgba(0,0,0,0.12)',
   });
-  const stripes: GameValue = (W?: GameValue, H?: GameValue): GameValue => {
-    game.view.ctx.fillStyle = 'rgba(255,255,255,0.13)';
-    for (let i: GameValue = 4; i < W; i += 14) game.view.ctx.fillRect(i, 0, 5, H);
-  };
-  onFace(bl, 'top', (W?: GameValue, H?: GameValue): GameValue => {
-    stripes(W, H);
-    ctx.fillStyle = 'rgba(255,255,255,0.55)';
-    ctx.fillRect(0, 0, W, 7);
-  });
-  onFace(bl, 'left', stripes);
+  onFace(bl, 'top', (W: number, H: number) => softBlanketTop(W, H, 7));
+  onFace(bl, 'left', softBlanketSide);
+  onFace(bl, 'right', softBlanketSide);
 }
 
 export function drawShirtShape(
