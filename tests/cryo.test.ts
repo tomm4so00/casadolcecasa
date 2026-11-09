@@ -2,10 +2,12 @@ import fs from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { applyCryoPayment } from '../worker/src/cryo-payment.js';
 import {
+  CRYO_FOREVER_UNTIL,
   CRYO_MS,
   awakeMs,
   awakeSpans,
   cryoActive,
+  cryoForever,
   decodeCryo,
   extendCryo,
   frozenMs,
@@ -40,6 +42,17 @@ describe('criogenesi: il pass', () => {
     // scaduto: si riparte da adesso
     const late = NOW + 40 * D;
     expect(extendCryo(first, late)).toEqual({ since: late, until: late + CRYO_MS });
+  });
+
+  it("il pass a vita scade nel 9999 e conta per tutta l'assenza", () => {
+    const life = extendCryo(null, NOW, 'lifetime');
+    expect(life).toEqual({ since: NOW, until: CRYO_FOREVER_UNTIL });
+    expect(cryoForever(life)).toBe(true);
+    expect(cryoForever(extendCryo(null, NOW))).toBe(false);
+    expect(cryoActive(life, NOW + 50 * 365 * D)).toBe(true);
+    expect(awakeMs(life, NOW + D, NOW + 400 * D)).toBe(0);
+    // la data resta valida: il gioco la può scrivere
+    expect(Number.isNaN(new Date(realTimeAfterAwake(life, NOW + D, 80 * H)).getTime())).toBe(false);
   });
 
   it('attivo solo fra inizio e scadenza; i dati rovinati non valgono', () => {
@@ -199,6 +212,8 @@ describe('criogenesi: il server', () => {
 describe('criogenesi: il pagamento da Stripe', () => {
   const uid = 'uidPagante01';
   const LINK = 'plink_criogenesi';
+  const LIFE = 'plink_a_vita';
+  const LINKS = { month: 'plink_vecchio, ' + LINK, lifetime: LIFE };
   const session = (id: string, extra: Record<string, unknown> = {}) => ({
     id,
     client_reference_id: uid,
@@ -212,13 +227,21 @@ describe('criogenesi: il pagamento da Stripe', () => {
 
   it('un pagamento attiva 30 giorni; lo stesso avviso ripetuto non aggiunge niente', async () => {
     const database = localDatabase(new Lifetime(), new MemoryStorage());
-    expect(await applyCryoPayment(database, session('cs_1'), LINK, NOW)).toBe('attivata');
-    expect(await applyCryoPayment(database, session('cs_1'), LINK, NOW + H)).toBe('già registrato');
+    expect(await applyCryoPayment(database, session('cs_1'), LINKS, NOW)).toBe('attivata');
+    expect(await applyCryoPayment(database, session('cs_1'), LINKS, NOW + H)).toBe(
+      'già registrato',
+    );
     const stored = (await database.ref('sims_cryo/' + uid).get()).val();
     expect(decodeCryo(stored)).toEqual({ since: NOW, until: NOW + CRYO_MS });
-    expect(stored.payments.cs_1).toEqual({ at: NOW, amount: 299, currency: 'eur', live: false });
+    expect(stored.payments.cs_1).toEqual({
+      at: NOW,
+      plan: 'month',
+      amount: 299,
+      currency: 'eur',
+      live: false,
+    });
     // secondo acquisto prima della scadenza: i giorni si sommano
-    expect(await applyCryoPayment(database, session('cs_2'), LINK, NOW + 5 * D)).toBe('attivata');
+    expect(await applyCryoPayment(database, session('cs_2'), LINKS, NOW + 5 * D)).toBe('attivata');
     const after = (await database.ref('sims_cryo/' + uid).get()).val();
     expect(decodeCryo(after)).toEqual({ since: NOW, until: NOW + 2 * CRYO_MS });
     expect(Object.keys(after.payments)).toEqual(['cs_1', 'cs_2']);
@@ -227,26 +250,52 @@ describe('criogenesi: il pagamento da Stripe', () => {
   it('ignora altri prodotti, pagamenti non riusciti e account mancanti', async () => {
     const database = localDatabase(new Lifetime(), new MemoryStorage());
     expect(
-      await applyCryoPayment(database, session('a', { payment_link: 'plink_altro' }), LINK, NOW),
+      await applyCryoPayment(database, session('a', { payment_link: 'plink_altro' }), LINKS, NOW),
     ).toBe('altro prodotto');
-    expect(await applyCryoPayment(database, session('b', { payment_link: null }), LINK, NOW)).toBe(
+    expect(await applyCryoPayment(database, session('b', { payment_link: null }), LINKS, NOW)).toBe(
       'altro prodotto',
     );
-    expect(await applyCryoPayment(database, session('c'), '', NOW)).toBe('altro prodotto');
+    expect(await applyCryoPayment(database, session('c'), { month: '', lifetime: '' }, NOW)).toBe(
+      'altro prodotto',
+    );
     expect(
-      await applyCryoPayment(database, session('d', { payment_status: 'unpaid' }), LINK, NOW),
+      await applyCryoPayment(database, session('d', { payment_status: 'unpaid' }), LINKS, NOW),
     ).toBe('non ancora pagato');
     expect(
-      await applyCryoPayment(database, session('e', { client_reference_id: null }), LINK, NOW),
+      await applyCryoPayment(database, session('e', { client_reference_id: null }), LINKS, NOW),
     ).toBe('account mancante');
     expect(
-      await applyCryoPayment(database, session('f', { client_reference_id: 'a/b' }), LINK, NOW),
+      await applyCryoPayment(database, session('f', { client_reference_id: 'a/b' }), LINKS, NOW),
     ).toBe('account mancante');
     expect((await database.ref('sims_cryo').get()).exists()).toBe(false);
     // Stripe a volte manda il link come oggetto
     expect(
-      await applyCryoPayment(database, session('g', { payment_link: { id: LINK } }), LINK, NOW),
+      await applyCryoPayment(database, session('g', { payment_link: { id: LINK } }), LINKS, NOW),
     ).toBe('attivata');
+  });
+
+  it('il pass a vita non scade più; il link vecchio dei 30 giorni vale ancora', async () => {
+    const database = localDatabase(new Lifetime(), new MemoryStorage());
+    const ref = database.ref('sims_cryo/' + uid);
+    expect(
+      await applyCryoPayment(
+        database,
+        session('m1', { payment_link: 'plink_vecchio' }),
+        LINKS,
+        NOW,
+      ),
+    ).toBe('attivata');
+    expect(
+      await applyCryoPayment(database, session('v1', { payment_link: LIFE }), LINKS, NOW + D),
+    ).toBe('attivata');
+    const life = decodeCryo((await ref.get()).val());
+    // il pass in corso resta, da adesso non scade più
+    expect(life).toEqual({ since: NOW, until: CRYO_FOREVER_UNTIL });
+    expect(cryoForever(life)).toBe(true);
+    expect((await ref.get()).val().payments.v1.plan).toBe('lifetime');
+    // altri 30 giorni comprati dopo non lo accorciano né lo allungano oltre
+    await applyCryoPayment(database, session('m2'), LINKS, NOW + 2 * D);
+    expect(decodeCryo((await ref.get()).val())).toEqual(life);
   });
 
   it('le regole: il pass lo legge solo il suo account e lo scrive solo il Worker', () => {

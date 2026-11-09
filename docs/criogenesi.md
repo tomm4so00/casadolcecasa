@@ -1,8 +1,10 @@
 # Criogenesi: come metterla in funzione
 
-La criogenesi è un pass da 30 giorni a 2,99€, pagato con Stripe. Mentre il pass è attivo, il
-personaggio va in capsula quando il giocatore esce dal gioco: bisogni, animali e conto alla
-rovescia delle 80 ore si fermano. Se si ricompra prima della scadenza, i giorni si sommano.
+La criogenesi si compra con Stripe: un pass da 30 giorni a 1,99€ oppure un pass a vita a 9,99€.
+Mentre il pass è attivo, il personaggio va in capsula quando il giocatore esce dal gioco:
+bisogni, animali e conto alla rovescia delle 80 ore si fermano. Se si ricomprano i 30 giorni
+prima della scadenza, i giorni si sommano. Il pass a vita è un pass che scade il 31/12/9999
+(`CRYO_FOREVER_UNTIL`): così gioco, server e regole del database non hanno casi speciali.
 
 ## Come funziona
 
@@ -40,7 +42,14 @@ npx wrangler login
 ### 2. Stripe: prodotto e Payment Link
 
 1. Catalogo prodotti → **Aggiungi prodotto**: "Criogenesi 30 giorni", **pagamento singolo**,
-   2,99 EUR.
+   1,99 EUR. Per il pass a vita un secondo prodotto, "Criogenesi a vita", 9,99 EUR, con il suo
+   Payment Link: si rifanno i punti 2 e 3 e l'id va in `STRIPE_CRYO_LIFETIME_LINK`, l'indirizzo
+   in `CRYO_LIFETIME_LINK`.
+
+   Il prezzo di un Payment Link non si cambia: per un prezzo nuovo si fa un link nuovo. Il link
+   vecchio si disattiva, ma il suo id resta in `wrangler.toml`, dopo una virgola: chi ha pagato
+   col vecchio ha comunque il suo pass.
+
 2. Payment Links → **Nuovo**, con quel prodotto. In "Dopo il pagamento" scegli **Non mostrare la
    pagina di conferma** → reindirizza a `https://tomm4so00.github.io/casadolcecasa/`.
 3. Salva e annota:

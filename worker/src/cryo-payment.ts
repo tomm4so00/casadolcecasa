@@ -1,7 +1,7 @@
 // Un pagamento confermato da Stripe diventa un pass di criogenesi. Niente Stripe qui dentro:
 // la firma del webhook la controlla index.ts, questo file si prova con un database finto.
 // Il database è quello REST del Worker (firebase-rest.ts) o, nei test, quello del gioco.
-import { decodeCryo, extendCryo } from '../../shared/cryo-rules.js';
+import { type CryoPlan, decodeCryo, extendCryo } from '../../shared/cryo-rules.js';
 
 /** I campi della sessione di Stripe Checkout che servono qui. */
 export interface CheckoutSession {
@@ -40,19 +40,43 @@ const record = (value: unknown): value is Record<string, unknown> =>
   !!value && typeof value === 'object';
 
 /**
+ * Gli id (plink_…) dei Payment Link di ogni pass. Più id separati da virgole: quando si cambia
+ * prezzo si fa un link nuovo, e chi ha pagato col vecchio deve avere lo stesso il suo pass.
+ */
+export interface CryoLinks {
+  month: string;
+  lifetime: string;
+}
+
+const ids = (list: string): string[] =>
+  list
+    .split(',')
+    .map((id) => id.trim())
+    .filter(Boolean);
+
+/** Quale pass si compra con quel link (null: un altro prodotto). */
+export function planOfLink(links: CryoLinks, link: string | undefined): CryoPlan | null {
+  if (!link) return null;
+  if (ids(links.lifetime).includes(link)) return 'lifetime';
+  if (ids(links.month).includes(link)) return 'month';
+  return null;
+}
+
+/**
  * Registra il pagamento e allunga il pass dell'account, nella stessa transazione: se Stripe
  * manda due volte lo stesso avviso (succede), la seconda trova la ricevuta e non aggiunge giorni.
  */
 export async function applyCryoPayment(
   database: CryoDatabase,
   session: CheckoutSession,
-  paymentLinkId: string,
+  links: CryoLinks,
   now: number,
 ): Promise<CryoOutcome> {
-  // Lo stesso account Stripe potrebbe vendere altro: vale solo il link della criogenesi.
+  // Lo stesso account Stripe potrebbe vendere altro: valgono solo i link della criogenesi.
   const link =
     typeof session.payment_link === 'string' ? session.payment_link : session.payment_link?.id;
-  if (!paymentLinkId || link !== paymentLinkId) return 'altro prodotto';
+  const plan = planOfLink(links, link);
+  if (!plan) return 'altro prodotto';
   // Bonifico o altri pagamenti lenti: arriverà checkout.session.async_payment_succeeded.
   if (session.payment_status !== 'paid') return 'non ancora pagato';
   const uid = session.client_reference_id;
@@ -71,13 +95,14 @@ export async function applyCryoPayment(
       const payments = record(current) && record(current.payments) ? current.payments : {};
       duplicate = session.id in payments;
       if (duplicate) return undefined;
-      const pass = extendCryo(decodeCryo(current), now);
+      const pass = extendCryo(decodeCryo(current), now, plan);
       return {
         ...pass,
         payments: {
           ...payments,
           [session.id]: {
             at: now,
+            plan,
             amount: session.amount_total ?? 0,
             currency: session.currency ?? '',
             live: session.livemode === true,

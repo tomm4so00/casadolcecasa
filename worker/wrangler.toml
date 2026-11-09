@@ -7,9 +7,13 @@ workers_dev = true
 
 [vars]
 FIREBASE_DATABASE_URL = "https://casadolcecasa-6d92a-default-rtdb.firebaseio.com"
-# id del Payment Link della criogenesi (plink_…), modalità live di Stripe.
+# id dei Payment Link della criogenesi (plink_…), modalità live di Stripe. Più id separati da
+# virgole: i link vecchi (prezzi di prima) restano validi per chi ha già pagato.
 # Quello di prova era plink_1UYmJ3ED0NNIO3xrYGARvqOI (sandbox).
-STRIPE_CRYO_PAYMENT_LINK = "plink_1UYontED0NNIO3xr0zR7q2O4"
+# 30 giorni: il link da 1,99 €, poi il vecchio da 2,99 € (disattivato il 9/11/2026).
+STRIPE_CRYO_PAYMENT_LINK = "plink_1UZxmBED0NNIO3xr3WIYCPFh,plink_1UYontED0NNIO3xr0zR7q2O4"
+# pass a vita (9,99 €)
+STRIPE_CRYO_LIFETIME_LINK = "plink_1UZxmCED0NNIO3xr17CItjl9"
 
 [observability]
 enabled = true

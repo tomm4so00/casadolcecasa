@@ -2,7 +2,8 @@
 // allunga il pass dell'account nel database di Firebase. Configurazione in docs/criogenesi.md:
 //   STRIPE_WEBHOOK_SECRET      segreto "whsec_…" del webhook               (wrangler secret put)
 //   FIREBASE_SERVICE_ACCOUNT   chiave JSON di un account di servizio        (wrangler secret put)
-//   STRIPE_CRYO_PAYMENT_LINK   id "plink_…" del Payment Link della criogenesi (wrangler.toml)
+//   STRIPE_CRYO_PAYMENT_LINK   id "plink_…" del Payment Link dei 30 giorni      (wrangler.toml)
+//   STRIPE_CRYO_LIFETIME_LINK  id "plink_…" del Payment Link del pass a vita    (wrangler.toml)
 //   FIREBASE_DATABASE_URL      indirizzo del database                        (wrangler.toml)
 import { type CheckoutSession, applyCryoPayment } from './cryo-payment.js';
 import { CRYO_WRITER, type ServiceAccount, accessToken, restDatabase } from './firebase-rest.js';
@@ -11,6 +12,7 @@ import { verifyStripeSignature } from './stripe-signature.js';
 export interface Env {
   STRIPE_WEBHOOK_SECRET: string;
   STRIPE_CRYO_PAYMENT_LINK: string;
+  STRIPE_CRYO_LIFETIME_LINK?: string;
   FIREBASE_SERVICE_ACCOUNT: string;
   FIREBASE_DATABASE_URL: string;
 }
@@ -48,7 +50,15 @@ export async function handleWebhook(
         token: await token(),
         uid: CRYO_WRITER,
       });
-      const outcome = await applyCryoPayment(database, session, env.STRIPE_CRYO_PAYMENT_LINK, now);
+      const outcome = await applyCryoPayment(
+        database,
+        session,
+        {
+          month: env.STRIPE_CRYO_PAYMENT_LINK || '',
+          lifetime: env.STRIPE_CRYO_LIFETIME_LINK || '',
+        },
+        now,
+      );
       console.log('Criogenesi', session.id, session.client_reference_id, outcome);
     } catch (error) {
       // Stripe riprova da solo nelle ore successive se la risposta non è 2xx.

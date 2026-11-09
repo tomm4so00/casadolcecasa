@@ -1,4 +1,4 @@
-// Criogenesi: un pass a pagamento (30 giorni) che mette il personaggio in capsula mentre il
+// Criogenesi: un pass a pagamento (30 giorni, oppure a vita) che mette il personaggio in capsula mentre il
 // giocatore è via. Durante la capsula il tempo non passa per lui: i bisogni non calano, gli
 // animali non hanno fame e il conto alla rovescia della morte per abbandono si ferma. Quando il
 // giocatore è in partita si gioca normalmente: la capsula vale solo per le assenze.
@@ -8,7 +8,17 @@
 
 export const CRYO_DAYS = 30;
 export const CRYO_MS = CRYO_DAYS * 24 * 3600000;
-export const CRYO_PRICE = '2,99€';
+export const CRYO_PRICE = '1,99€';
+export const CRYO_LIFETIME_PRICE = '9,99€';
+
+/**
+ * Il pass a vita è un pass come gli altri che scade il 31 dicembre 9999: così il tempo in capsula
+ * si calcola con le stesse regole ovunque, e le regole del database non cambiano.
+ */
+export const CRYO_FOREVER_UNTIL = Date.UTC(9999, 11, 31);
+
+/** Cosa si è comprato: 30 giorni in più o il pass a vita. */
+export type CryoPlan = 'month' | 'lifetime';
 
 /** Il pass: la capsula è disponibile da `since` a `until` (ms). */
 export interface CryoPass {
@@ -28,14 +38,19 @@ export function cryoActive(pass: CryoPass | null, now: number): boolean {
   return !!pass && pass.since <= now && now < pass.until;
 }
 
+/** Il pass non scade più. */
+export const cryoForever = (pass: CryoPass | null): boolean =>
+  !!pass && pass.until >= CRYO_FOREVER_UNTIL;
+
 /**
- * Un acquisto: 30 giorni in più. Con il pass ancora attivo i giorni si sommano; se è scaduto
- * (o non c'era) si riparte da adesso.
+ * Un acquisto. 30 giorni: con il pass ancora attivo i giorni si sommano; se è scaduto (o non
+ * c'era) si riparte da adesso. A vita: la scadenza diventa CRYO_FOREVER_UNTIL.
  */
-export function extendCryo(pass: CryoPass | null, now: number): CryoPass {
-  return pass && pass.until > now
-    ? { since: pass.since, until: pass.until + CRYO_MS }
-    : { since: now, until: now + CRYO_MS };
+export function extendCryo(pass: CryoPass | null, now: number, plan: CryoPlan = 'month'): CryoPass {
+  const since = pass && pass.until > now ? pass.since : now;
+  if (plan === 'lifetime') return { since, until: CRYO_FOREVER_UNTIL };
+  const until = pass && pass.until > now ? pass.until + CRYO_MS : now + CRYO_MS;
+  return { since, until: Math.min(CRYO_FOREVER_UNTIL, until) };
 }
 
 /** Quanto di un'assenza da `from` a `to` è passato in capsula (ms). */

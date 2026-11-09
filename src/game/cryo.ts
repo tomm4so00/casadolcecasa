@@ -3,9 +3,11 @@
 // pagamenti (il Worker in worker/src/index.ts): qui si legge e basta.
 import {
   CRYO_DAYS,
+  CRYO_LIFETIME_PRICE,
   CRYO_PRICE,
   type CryoPass,
   cryoActive,
+  cryoForever,
   decodeCryo,
 } from '../../shared/cryo-rules.js';
 import { game } from './context.js';
@@ -18,7 +20,10 @@ import { browser } from './runtime.js';
  * Il Payment Link di Stripe per il pass di 30 giorni (Stripe → Payment Links, modalità live).
  * Vuoto, il pulsante del profilo dice che la criogenesi arriva presto.
  */
-export const CRYO_PAYMENT_LINK = 'https://buy.stripe.com/9B69ATe9m87198k5Wh7N600';
+export const CRYO_PAYMENT_LINK = 'https://buy.stripe.com/eVq7sLaXadrl98kacx7N601';
+
+/** Il Payment Link del pass a vita. Vuoto, il pulsante non compare. */
+export const CRYO_LIFETIME_LINK = 'https://buy.stripe.com/aFa8wP9T672XesEbgB7N602';
 
 let current: CryoPass | null = null;
 
@@ -55,6 +60,11 @@ function dateText(ms: number): string {
   return new Date(ms).toLocaleDateString('it-IT', { day: 'numeric', month: 'long' });
 }
 
+/** "fino al 9 dicembre" o, con il pass a vita, "per sempre". */
+function untilText(pass: CryoPass): string {
+  return cryoForever(pass) ? 'per sempre' : 'fino al ' + dateText(pass.until);
+}
+
 /** Mentre si gioca: quando arriva un pagamento, il pass si allunga e lo diciamo subito. */
 export function watchCryo(): void {
   if (game.session.OFFLINE || !game.session.authUid) return;
@@ -64,7 +74,7 @@ export function watchCryo(): void {
     current = next;
     if (next && (!before || next.until > before.until) && cryoActive(next, Date.now()))
       toast(
-        `🧊 Criogenesi attiva fino al ${dateText(next.until)}: quando esci dal gioco, il tuo personaggio si mette in pausa.`,
+        `🧊 Criogenesi attiva ${untilText(next)}: quando esci dal gioco, il tuo personaggio si mette in pausa.`,
         7000,
       );
   });
@@ -74,8 +84,11 @@ export function watchCryo(): void {
 export async function openCryo(): Promise<void> {
   const now = Date.now();
   const active = cryoActive(current, now);
+  // con il pass a vita non c'è più niente da comprare
+  const forever = active && cryoForever(current);
   const offline = game.session.OFFLINE;
-  const ready = !!CRYO_PAYMENT_LINK && !offline;
+  const monthLink = !offline && !forever ? CRYO_PAYMENT_LINK : '';
+  const lifetimeLink = !offline && !forever ? CRYO_LIFETIME_LINK : '';
   const res = await openDialog({
     title: '🧊 Criogenesi',
     text:
@@ -83,25 +96,35 @@ export async function openCryo(): Promise<void> {
       'fame, sonno, igiene, felicità e salute non calano, i tuoi animali non hanno fame e il ' +
       'conto alla rovescia dei 3 giorni si ferma. Quando entri, giochi normalmente.' +
       `\n\n${CRYO_DAYS} giorni a ${CRYO_PRICE}: se ricompri prima della scadenza, i giorni si sommano.` +
-      (active ? `\n\n✅ Attiva fino al ${dateText(current!.until)}.` : '') +
-      (offline
-        ? '\n\n🧪 In modalità prova la criogenesi non si può comprare.'
-        : !CRYO_PAYMENT_LINK
-          ? '\n\n⏳ Arriva presto!'
-          : '\n\nIl pagamento avviene sulla pagina sicura di Stripe; la capsula si attiva da sola appena il pagamento è confermato. ' +
-            "Prima di pagare ti chiediamo di accettare le condizioni: l'attivazione è immediata e per questo non c'è il recesso di 14 giorni. " +
-            'Se hai meno di 18 anni chiedi prima a un genitore.'),
+      (CRYO_LIFETIME_LINK
+        ? `\n♾️ Pass a vita a ${CRYO_LIFETIME_PRICE}: la capsula non scade più.`
+        : '') +
+      (active ? `\n\n✅ Attiva ${untilText(current!)}.` : '') +
+      (forever
+        ? ''
+        : offline
+          ? '\n\n🧪 In modalità prova la criogenesi non si può comprare.'
+          : !CRYO_PAYMENT_LINK && !CRYO_LIFETIME_LINK
+            ? '\n\n⏳ Arriva presto!'
+            : '\n\nIl pagamento avviene sulla pagina sicura di Stripe; la capsula si attiva da sola appena il pagamento è confermato. ' +
+              "Prima di pagare ti chiediamo di accettare le condizioni: l'attivazione è immediata e per questo non c'è il recesso di 14 giorni. " +
+              'Se hai meno di 18 anni chiedi prima a un genitore.'),
     buttons: [
       { label: 'Chiudi', value: null, color: '#57606f' },
       { label: '📄 Condizioni', value: 'terms', color: '#636e72' },
-      ...(ready
+      ...(monthLink
         ? [
             {
-              label: active ? `🧊 Aggiungi ${CRYO_DAYS} giorni` : '🧊 Attiva criogenesi',
-              value: 'buy',
+              label: active
+                ? `🧊 Aggiungi ${CRYO_DAYS} giorni (${CRYO_PRICE})`
+                : `🧊 ${CRYO_DAYS} giorni (${CRYO_PRICE})`,
+              value: 'month',
               color: '#00a8ff',
             },
           ]
+        : []),
+      ...(lifetimeLink
+        ? [{ label: `♾️ A vita (${CRYO_LIFETIME_PRICE})`, value: 'lifetime', color: '#6c5ce7' }]
         : []),
     ],
   });
@@ -109,9 +132,10 @@ export async function openCryo(): Promise<void> {
     browser.open('./condizioni.html', '_blank');
     return;
   }
-  if (res.action !== 'buy' || !ready || !game.session.authUid) return;
+  const link = res.action === 'month' ? monthLink : res.action === 'lifetime' ? lifetimeLink : '';
+  if (!link || !game.session.authUid) return;
   // Stripe ci rimanda l'account nel pagamento (client_reference_id): così sa chi ha pagato.
-  const url = new URL(CRYO_PAYMENT_LINK);
+  const url = new URL(link);
   url.searchParams.set('client_reference_id', game.session.authUid);
   url.searchParams.set('locale', 'it');
   browser.open(url.toString(), '_blank');
