@@ -2040,13 +2040,14 @@ export function drawPlayerAvatar(
   const bob: GameValue = sitting
     ? -4
     : moving
-      ? Math.abs(Math.sin(phase)) * 1.8
+      ? // più in alto quando le gambe si incrociano, più in basso a passo aperto
+        (1 - Math.abs(Math.sin(phase))) * 1.6
       : mannequin
         ? 0
         : Math.sin(animTime * 2 + hsh) * 0.5;
-  // si alza il piede che sta andando avanti
-  const liftFront: number = moving ? Math.max(0, Math.cos(phase)) * 4 : 0,
-    liftBack: number = moving ? Math.max(0, -Math.cos(phase)) * 4 : 0;
+  // si alza il piede che sta andando avanti (di più a metà del passo, quando passa sotto il corpo)
+  const liftFront: number = moving ? Math.pow(Math.max(0, Math.cos(phase)), 2) * 4.5 : 0,
+    liftBack: number = moving ? Math.pow(Math.max(0, -Math.cos(phase)), 2) * 4.5 : 0;
   const lean: number = moving ? 1.3 : 0;
   const P: GameValue = (dx?: GameValue, dy?: GameValue, z?: GameValue): GameValue =>
     isoProject(x + dx, y + dy, z + lift);
@@ -2579,7 +2580,7 @@ export function drawPlayerAvatar(
         drawShoe(l.b, l.back, l.fwd);
         ctx.restore();
       } else {
-        if (bareFrom < 1 && !l.knee && OPEN_SHOES.has(shoes.style)) {
+        if (bareFrom < 1 && !sitting && OPEN_SHOES.has(shoes.style)) {
           // gamba nuda in una scarpa scollata: scende dritta fin sul collo del piede, che è
           // pelle anche lui (con la punta tonda la caviglia sembrerebbe stringersi)
           ctx.lineCap = 'butt';
@@ -2663,18 +2664,39 @@ export function drawPlayerAvatar(
       const [p, q] = [turn(spread), turn(-spread)];
       return side * (p[0] - p[1]) > side * (q[0] - q[1]) ? p : q;
     };
-    drawLeg(
-      P(3, -3, 22 + bob + crotchLift),
-      P(3 - swing * STRIDE * dX, -3 - swing * STRIDE * dY, 2 + liftBack),
-      true,
-      splay(1),
-    );
-    drawLeg(
-      P(-3, 3, 22 + bob + crotchLift),
-      P(-3 + swing * STRIDE * dX, 3 + swing * STRIDE * dY, 2 + liftFront),
-      false,
-      splay(-1),
-    );
+    // Camminando il ginocchio si piega in avanti: coscia e stinco hanno la loro lunghezza e il
+    // ginocchio si trova come in un braccio meccanico (più piegato quando il piede si alza).
+    // Da fermi le gambe restano dritte.
+    const SEG = 11;
+    const leg = (hx: number, hy: number, fx: number, fy: number, fz: number, back: boolean) => {
+      const hz = 22 + bob + crotchLift;
+      const a = P(hx, hy, hz),
+        b = P(fx, fy, fz);
+      if (!walkDir) return drawLeg(a, b, back, splay(back ? 1 : -1));
+      const ux = fx - hx,
+        uy = fy - hy,
+        uz = fz - hz;
+      const d = Math.min(2 * SEG - 0.05, Math.hypot(ux, uy, uz));
+      const n = Math.hypot(ux, uy, uz) || 1;
+      // la piega va in avanti: la parte della direzione di marcia perpendicolare alla gamba
+      const along = (dX * ux + dY * uy) / n;
+      let vx = dX - (along * ux) / n,
+        vy = dY - (along * uy) / n,
+        vz = -(along * uz) / n;
+      const vn = Math.hypot(vx, vy, vz) || 1;
+      vx /= vn;
+      vy /= vn;
+      vz /= vn;
+      const h = Math.sqrt(Math.max(0, SEG * SEG - (d / 2) * (d / 2)));
+      const knee = P(
+        hx + (ux / n) * (d / 2) + vx * h,
+        hy + (uy / n) * (d / 2) + vy * h,
+        hz + (uz / n) * (d / 2) + vz * h,
+      );
+      drawLeg(a, b, back, splay(back ? 1 : -1), knee);
+    };
+    leg(3, -3, 3 - swing * STRIDE * dX, -3 - swing * STRIDE * dY, 2 + liftBack, true);
+    leg(-3, 3, -3 + swing * STRIDE * dX, 3 + swing * STRIDE * dY, 2 + liftFront, false);
   }
   // Gambe e bacino. Seduti verso chi guarda le cosce vengono in avanti e passano davanti al
   // busto: si disegnano dopo (prima della vita, così la gonna resta sopra e le mani in grembo pure).
@@ -2803,6 +2825,18 @@ export function drawPlayerAvatar(
                       : { x: P(-3.5, 11, 20).x - 1 * s, y: P(-3.5, 11, 20).y - 1 * s }
                     : null;
   const drawArm = (from: Pt, to: Pt, back: boolean): void => {
+    if (swingArms.includes(to)) {
+      // il gomito resta un po' indietro, l'avambraccio va avanti nella direzione di marcia
+      const fx = (dX - dY) * 0.866 * s,
+        fy = (dX + dY) * 0.5 * s;
+      const mid = lerpPt(from, to, 0.5);
+      const elbow = { x: mid.x - fx * 1.3, y: mid.y - fy * 1.3 };
+      const hand = { x: to.x + fx * 1.4, y: to.y + fy * 1.4 - 1 * s };
+      armPiece(from, elbow, back, true);
+      armPiece(elbow, hand, back, false);
+      dot(hand.x, hand.y, 2.6 * s, armSkin(back));
+      return;
+    }
     if (lapOverTorso && !reading && !opts?.hands) {
       // seduti: le due braccia uguali, specchiate: scendono lungo i fianchi, il gomito si piega
       // e gli avambracci vanno in diagonale verso il bacino, con le mani in grembo
@@ -2873,6 +2907,11 @@ export function drawPlayerAvatar(
   }
   const backTo: Pt = handBack || { x: hip.x + 11 * s + armX, y: hip.y + 1 * s + armY },
     frontTo: Pt = handFront || { x: hip.x - 11 * s - armX, y: hip.y + 1 * s - armY };
+  // camminando le braccia libere oscillano col gomito appena piegato in avanti
+  const swingArms: Pt[] =
+    moving && !sitting && wl > 0.01
+      ? [handBack ? null : backTo, handFront ? null : frontTo].filter((q): q is Pt => !!q)
+      : [];
   if (handsAt.size > 200) handsAt.clear();
   handsAt.set(x + ',' + y, [backTo, frontTo]);
   // ---- dietro il busto: capelli che scendono (di spalle lunghi, coda e caschetto si disegnano
