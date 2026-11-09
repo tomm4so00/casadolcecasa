@@ -224,6 +224,8 @@ export function registerDrawers(): void {
     ltd_jukebox: drawJukebox,
     moonRocket: drawMoonRocket,
     weedPot: drawWeedPot,
+    weedPot2: drawWeedPot,
+    weedPot3: drawWeedPot,
     // schermo del laboratorio con la diretta dalla base lunare
     moonScreen: drawMoonScreen,
     // base lunare: ingresso sulla luna e pannello di controllo dentro

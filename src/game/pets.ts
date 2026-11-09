@@ -908,18 +908,11 @@ export function updatePetHud(): void {
     box.innerHTML = kinds
       .map(
         (k) => `<div class="need-row pet-row">
-      <div class="need-info"><span>${PETS[k].emoji} Fame (${shownName(k)}) <button type="button" class="pet-rename" data-pet="${k}" title="Dai un nome">✏️</button></span><span id="pet-text-${k}"></span></div>
+      <div class="need-info"><span>${PETS[k].emoji} Fame (${shownName(k)})</span><span id="pet-text-${k}"></span></div>
       <div class="bar-bg"><div id="pet-bar-${k}" class="bar-fill" style="width: 0%; background: #e1b12c"></div></div>
     </div>`,
       )
       .join('');
-    (box as HTMLElement).querySelectorAll<HTMLElement>('[data-pet]').forEach((btn) =>
-      btn.addEventListener('click', (e) => {
-        // solo la matita: il resto del pannello passa dalle percentuali alle barre
-        e.stopPropagation();
-        void renamePet(btn.dataset.pet as PetKind);
-      }),
-    );
   }
   for (const k of kinds) {
     const v = hungerOf(k);

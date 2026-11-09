@@ -6,6 +6,7 @@
 import { type NeedsRules, advanceNeeds } from './simulation.js';
 import type { CharacterState } from './models.js';
 import { decodeFlu } from './flu-rules.js';
+import { decodePillTimers } from './pill-rules.js';
 import { type CryoPass, awakeSpans } from '../../shared/cryo-rules.js';
 import { type DeathCause, deathCauses } from './death-cause-rules.js';
 
@@ -77,6 +78,7 @@ export function needsStateFromSave(
       crisisAt: active ? num(drug.crisisAt, 0) : 0,
     },
     flu: decodeFlu(save.flu),
+    pill: decodePillTimers(save.pill),
     gameMinutes: num(save.gameMinutes, 8 * 60),
     needsZeroSince: num(save.needsZeroSince, 0),
     isDead: false,

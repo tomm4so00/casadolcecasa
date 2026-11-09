@@ -9,6 +9,8 @@ import { toast } from './missions.js';
 import { openDialog } from './interface.js';
 import { sendSocial } from './social.js';
 import { InventoryLedger } from './inventory-ledger.js';
+import { recordActivity } from './activity.js';
+import { dayOf } from '../../shared/activity.js';
 import { TRADE_ITEMS, type TradeItem, type StockInventory } from './inventory-trade-rules.js';
 import type { RoomState } from './models.js';
 
@@ -155,6 +157,22 @@ export async function sendInventoryOffer(
   return true;
 }
 
+/**
+ * Uno scambio d'erba accettato è domanda e dice a quanto si vende l'erba in giro: lo scrive chi
+ * compra, per il mercato calcolato dal server (weed-market-rules.ts).
+ */
+function noteWeedTrade(
+  offer: { id: string; quantity: number; price: number },
+  seller: string,
+): void {
+  recordActivity('canapa');
+  const now = Date.now() + (game.session.serverOffset || 0);
+  void game.session.db
+    .ref(`sims_weed_trades/${dayOf(now)}/${offer.id}`)
+    .set({ g: offer.quantity, price: offer.price, seller, buyer: game.session.myPlayerId, t: now })
+    .catch((error: unknown) => console.warn('[mercato erba]', error));
+}
+
 export async function onInventoryOffer(
   message: { from: string; offerId: string; room: number },
   who: string,
@@ -206,6 +224,7 @@ export async function onInventoryOffer(
     ledger.answer(message.room, message.from, offer.id, accepted),
   );
   if (ok) {
+    if (accepted && offer.item === 'weed') noteWeedTrade(offer, message.from);
     await saveGame(true);
     toast(
       accepted ? `🎒 Ricevuti ${offer.quantity} ${item.unit} nello zaino.` : 'Offerta rifiutata.',

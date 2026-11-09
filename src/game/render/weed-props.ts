@@ -94,12 +94,78 @@ function drawWeedPlant(
   }
 }
 
-/** Vaso con la pianta che cresce nella camera (anche quella vista dai visitatori). */
+/**
+ * Vaso con la pianta che cresce nella camera (anche quello visto dai visitatori): terracotta,
+ * terra premium smaltata scura o idroponico bianco con il serbatoio d'acqua. Sopra, la lampada.
+ */
 export function drawWeedPot(it?: GameValue, t?: GameValue): GameValue {
   const g = it.grow || {};
-  box(it.x, it.y, 20, 20, 16, '#b5651d', { top: '#4e342e' });
-  box(it.x, it.y, 23, 23, 3, '#8d4a17', { z0: 14 });
-  drawWeedPlant(it.x, it.y, 17, g.s, growProgress(g.p, Date.now(), g.s), t || 0);
+  const kind: string = it.pot?.k || 'soil';
+  const lamp: number = it.pot?.l || 0;
+  let top = 17;
+  if (kind === 'hydro') {
+    // vasca bianca con l'acqua azzurra e il tubo della pompa
+    box(it.x, it.y, 24, 24, 12, '#eceff1', { top: '#4fc3f7' });
+    box(it.x, it.y, 14, 14, 6, '#cfd8dc', { z0: 12, top: '#90a4ae' });
+    box(it.x + 9, it.y - 9, 3, 3, 16, '#78909c', { z0: 4 });
+    top = 18;
+  } else if (kind === 'premium') {
+    box(it.x, it.y, 21, 21, 17, '#37474f', { top: '#3e2723' });
+    box(it.x, it.y, 24, 24, 3, '#c9a227', { z0: 14 });
+  } else {
+    box(it.x, it.y, 20, 20, 16, '#b5651d', { top: '#4e342e' });
+    box(it.x, it.y, 23, 23, 3, '#8d4a17', { z0: 14 });
+  }
+  drawWeedPlant(it.x, it.y, top, g.s, growProgress(g, Date.now()), t || 0);
+  if (lamp) drawGrowLamp(it.x, it.y, lamp, t || 0);
+  if (it.thirsty) drawThirstDrop(it.x, it.y, t || 0);
+}
+
+/** Lampada da coltivazione sopra il vaso: più è buona, più è larga e più è viola la luce. */
+function drawGrowLamp(x: number, y: number, level: number, t: number): void {
+  const ctx = game.view.ctx;
+  const s = isoScale();
+  const z = 78;
+  const w = 10 + level * 4;
+  // asta
+  box(x - 13, y + 13, 2, 2, z, '#455a64');
+  box(x - 13, y + 13, 2, 2, 2, '#455a64', { z0: z });
+  // pannello
+  const color = ['', '#fff59d', '#ce93d8', '#e040fb'][level];
+  box(x, y, w, w, 3, '#263238', { z0: z - 2, top: '#37474f' });
+  // il lato di sotto acceso: i LED
+  box(x, y, w - 2, w - 2, 1, color, { z0: z - 3, top: color });
+  const c = isoProject(x, y, z - 2);
+  const glow = ctx.createRadialGradient(c.x, c.y, 0, c.x, c.y, (24 + level * 6) * s);
+  const a = 0.38 + 0.06 * Math.sin(t * 3);
+  glow.addColorStop(
+    0,
+    color +
+      Math.round(a * 255)
+        .toString(16)
+        .padStart(2, '0'),
+  );
+  glow.addColorStop(1, color + '00');
+  ctx.fillStyle = glow;
+  ctx.beginPath();
+  ctx.ellipse(c.x, c.y + 20 * s, (22 + level * 5) * s, (34 + level * 4) * s, 0, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+/** Goccia sopra il vaso: la pianta ha sete. */
+function drawThirstDrop(x: number, y: number, t: number): void {
+  const ctx = game.view.ctx;
+  const s = isoScale();
+  const p = isoProject(x, y, 64 + Math.sin(t * 3) * 3);
+  ctx.fillStyle = '#29b6f6';
+  ctx.strokeStyle = '#fff';
+  ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  ctx.moveTo(p.x, p.y - 7 * s);
+  ctx.quadraticCurveTo(p.x + 5 * s, p.y, p.x, p.y + 3 * s);
+  ctx.quadraticCurveTo(p.x - 5 * s, p.y, p.x, p.y - 7 * s);
+  ctx.fill();
+  ctx.stroke();
 }
 
 /** Barattolo di vetro con l'erba dentro: più è pieno, più sale il verde. */

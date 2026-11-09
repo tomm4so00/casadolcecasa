@@ -14,7 +14,7 @@ describe('zaino', () => {
     expect(slots).toHaveLength(20);
     expect(items.map(({ id, quantity, unit }) => ({ id, quantity, unit }))).toEqual([
       { id: 'weed', quantity: 125, unit: 'g' },
-      { id: 'drug', quantity: 3, unit: 'dosi' },
+      { id: 'drug', quantity: 3, unit: 'pillole' },
     ]);
     expect(items[0].description).toContain('Purple Haze');
     expect(slots.filter(Boolean)).toHaveLength(2);
@@ -22,9 +22,23 @@ describe('zaino', () => {
   });
 
   it('libera lo spazio quando una scorta finisce e non mostra la pianta in crescita', () => {
-    const player = { drugStock: 0, weed: { grams: 0, strain: 'lemon' as const, plantedAt: 1 } };
+    const player = {
+      drugStock: 0,
+      weed: { grams: 0, pots: [{ kind: 'soil' as const, strain: 'lemon' as const, plantedAt: 1 }] },
+    };
     expect(inventoryItems(player)).toEqual([]);
     player.drugStock = 2;
     expect(inventoryItems(player).map((item) => item.id)).toEqual(['drug']);
+  });
+
+  it('i semi stanno nello zaino, una pila per varietà', () => {
+    const items = inventoryItems({
+      drugStock: 0,
+      weed: { grams: 0, seeds: { purple: 2, lemon: 1 } },
+    });
+    expect(items.map(({ id, quantity, unit }) => ({ id, quantity, unit }))).toEqual([
+      { id: 'seed_lemon', quantity: 1, unit: 'seme' },
+      { id: 'seed_purple', quantity: 2, unit: 'semi' },
+    ]);
   });
 });

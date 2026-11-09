@@ -137,6 +137,20 @@ export const BUSINESSES = [
     daily: 0.014,
     liquidity: 6000,
   },
+  {
+    id: 'canapa',
+    driver: 'erba comprata dagli spacciatori e scambiata tra giocatori',
+    name: 'Canapa Verde',
+    emoji: '🌿',
+    color: '#43a047',
+    risk: 'Rischio alto',
+    desc: 'Coltivazioni e negozi di canapa: sale quando la gente compra, scende quando smette.',
+    seed: 1111,
+    theta: 0.0004,
+    sigma: 0.004,
+    daily: 0.011,
+    liquidity: 10000,
+  },
 ] as const;
 /**
  * Attività tolte dalla borsa: la loro ultima quotazione resta ferma nel database e chi ci aveva

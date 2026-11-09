@@ -140,6 +140,7 @@ export function initializeGame() {
   game.frameShowerActors = [];
   game.frameChairSitters = [];
   game.frameDesk = null;
+  game.openExits = [];
   game.view.isOutsideMenuOpen = false;
   game.view.outsideSubmenu = '';
   game.view.fridgeIsOpen = false;
@@ -386,7 +387,7 @@ export function initializeGame() {
   ];
   game.DEALER_LINES = [
     'Psst… vuoi qualcosa?',
-    'Prima dose, prezzo speciale…',
+    'Pillole… non chiedermi cosa c’è dentro.',
     'Ho quello che ti serve.',
     'Niente domande 🤫',
   ];
@@ -424,7 +425,7 @@ export function initializeGame() {
     },
     {
       id: 'drug',
-      label: (): GameValue => `💊 Scambia dosi (${game.player.drugStock})`,
+      label: (): GameValue => `💊 Scambia pillole (${game.player.drugStock})`,
       color: '#8e44ad',
       show: (): GameValue => game.player.drugStock > 0,
     },

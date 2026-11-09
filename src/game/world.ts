@@ -430,6 +430,7 @@ export function checkProximity(..._args: GameValue[]): GameValue {
   const pop: GameValue = dom('pop-interaction');
   const btnMain: GameValue = dom('btn-act-main');
   const btnSub: GameValue = dom('btn-act-sub');
+  const btnSub2: GameValue = dom('btn-act-sub2');
   renderOutsideMenu();
   if (found) {
     game.activeTargetProp = found;
@@ -447,6 +448,10 @@ export function checkProximity(..._args: GameValue[]): GameValue {
       btnSub.innerText = p.sub;
       btnSub.classList.remove('hidden');
     } else btnSub.classList.add('hidden');
+    if (p.sub2) {
+      btnSub2.innerText = p.sub2;
+      btnSub2.classList.remove('hidden');
+    } else btnSub2.classList.add('hidden');
   } else {
     game.activeTargetProp = null;
     // lontano dall'uscita il menu dei posti si chiude da solo

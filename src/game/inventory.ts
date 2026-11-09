@@ -2,9 +2,10 @@
 import { game } from './context.js';
 import { dom, lifetime } from './runtime.js';
 import { inventoryItems, inventorySlots, INVENTORY_SIZE } from './inventory-rules.js';
+import { isTradeItem } from './inventory-trade-rules.js';
 import { smokeJoint, smokeJointError } from './weed.js';
 import { initializeInventory, inventoryChange } from './inventory-market.js';
-import { drugTake } from './needs.js';
+import { activePillText, takePill } from './pill.js';
 import { openDialog } from './interface.js';
 import { saveGame } from './saves.js';
 import { toast } from './missions.js';
@@ -69,11 +70,11 @@ export async function consumeInventoryDrug(): Promise<void> {
   closeInventory();
   try {
     const answer = await openDialog({
-      title: '💊 Assumere una dose?',
-      text: `Consumi 1 dose e recuperi ${game.DRUG_EUPHORIA} punti felicità. Crea dipendenza e fa calare la salute per giorni.`,
+      title: '💊 Prendere una pillola misteriosa?',
+      text: 'Nessuno sa cosa c’è dentro: può darti euforia, fame, insonnia, colori strani, fortuna… o niente. Di sicuro crea dipendenza, che fa calare la salute per giorni.',
       buttons: [
         { label: 'Annulla', value: null, color: '#57606f' },
-        { label: 'Assumi', value: 'yes', color: '#8e44ad' },
+        { label: 'Prendila', value: 'yes', color: '#8e44ad' },
       ],
     });
     if (answer.action !== 'yes') {
@@ -85,7 +86,7 @@ export async function consumeInventoryDrug(): Promise<void> {
       return;
     }
     if (!(await inventoryChange((ledger) => ledger.consume('drug')))) return;
-    drugTake();
+    takePill();
     await saveGame(true);
   } finally {
     usingDose = false;
@@ -108,10 +109,13 @@ export function updateInventory(): void {
   drugButton.classList.toggle('hidden', selectedId !== 'drug');
   drugButton.disabled = usingDose || !!game.socBusy();
   dom('inventory-trade').dataset.arg = selectedId ?? '';
+  // i semi (e quello che verrà) non si scambiano
+  dom('inventory-trade').classList.toggle('hidden', !selectedId || !isTradeItem(selectedId));
   const useHint = showSmoke
     ? (error ?? 'Felicità +10% · Occhi rossi e velocità −10% per 10 minuti. Una ogni 30 minuti.')
     : selectedId === 'drug'
-      ? 'Una dose dà +20 punti felicità, crea dipendenza e fa calare la salute per giorni. Puoi anche scambiarla.'
+      ? 'Effetto a sorpresa e dipendenza sicura. Puoi anche scambiarla.' +
+        (activePillText() ? ` Adesso: ${activePillText()}.` : '')
       : '';
   if (dom('inventory-use-hint').textContent !== useHint)
     dom('inventory-use-hint').textContent = useHint;
@@ -154,5 +158,5 @@ export function updateInventory(): void {
   const selected = items.find((item) => item.id === selectedId);
   dom('inventory-details').textContent = selected
     ? `${selected.icon} ${selected.name} · ${selected.quantity.toLocaleString('it-IT')} ${selected.unit}. ${selected.description}`
-    : 'Lo zaino è vuoto. Qui troverai le tue scorte di erba e le dosi.';
+    : 'Lo zaino è vuoto. Qui troverai le tue scorte di erba e le pillole.';
 }

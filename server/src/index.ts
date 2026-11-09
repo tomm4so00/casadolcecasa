@@ -3,6 +3,7 @@ import { cert, deleteApp, initializeApp } from 'firebase-admin/app';
 import { getDatabase } from 'firebase-admin/database';
 import { advanceMarket, BUSINESSES, holdingsFromRooms } from '../../shared/market.js';
 import { activityTarget, type ActivityLog } from '../../shared/activity.js';
+import { updateWeedMarket } from './street.js';
 import { getMessaging } from 'firebase-admin/messaging';
 import { getAuth } from 'firebase-admin/auth';
 import { processDeletionRequests } from './deletion.js';
@@ -99,6 +100,13 @@ async function main() {
     );
     reference.off('value', listener);
     await maintainGame(getDatabase(app), scheduledAt);
+    // prezzo dell'erba dallo spacciatore: un errore qui non blocca il resto
+    try {
+      const weed = await updateWeedMarket(getDatabase(app), scheduledAt, log);
+      console.log(`Weed market: ref ${weed.ref}, push ${weed.push}`);
+    } catch (error) {
+      console.log('Weed market skipped:', (error as { code?: string }).code || String(error));
+    }
     // Account da cancellare su richiesta del giocatore: dati di gioco e accesso.
     try {
       const deleted = await processDeletionRequests(getDatabase(app), async (uid) => {

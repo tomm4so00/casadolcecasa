@@ -1,7 +1,8 @@
 // Registro condiviso: quantità e pagamento cambiano insieme nella stessa transazione.
 export const TRADE_ITEMS = {
   weed: { name: 'Erba', unit: 'g', icon: '🌿' },
-  drug: { name: 'Dosi', unit: 'dosi', icon: '💊' },
+  // l'oggetto resta "drug" (zaino e regole del database): ora è la pillola misteriosa
+  drug: { name: 'Pillole', unit: 'pillole', icon: '💊' },
 } as const;
 export type TradeItem = keyof typeof TRADE_ITEMS;
 export const TRADE_TTL_MS = 2 * 60_000;

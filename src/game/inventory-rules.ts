@@ -1,10 +1,10 @@
 // Lo zaino legge le scorte esistenti: nessuna copia degli oggetti nei salvataggi.
 import type { CharacterState } from './models.js';
-import { STRAINS } from './weed-rules.js';
+import { STRAINS, STRAIN_IDS } from './weed-rules.js';
 
 export const INVENTORY_SIZE = 20;
 
-/** Una pila occupa uno spazio; la quantità indica grammi, dosi o altri pezzi. */
+/** Una pila occupa uno spazio; la quantità indica grammi, pillole o altri pezzi. */
 export interface InventoryItem {
   id: string;
   icon: string;
@@ -35,11 +35,25 @@ export function inventoryItems(
     items.push({
       id: 'drug',
       icon: '💊',
-      name: 'Dosi',
+      name: 'Pillole misteriose',
       quantity: player.drugStock,
-      unit: 'dosi',
-      description: 'Puoi conservarle, assumerle o scambiarle con altri giocatori.',
+      unit: 'pillole',
+      description: 'Nessuno sa cosa contengono. Puoi conservarle, prenderle o scambiarle.',
     });
+  // semi: si piantano nei vasi della stanza (per ora non si scambiano)
+  for (const id of STRAIN_IDS) {
+    const n = weed?.seeds?.[id] ?? 0;
+    if (n > 0)
+      items.push({
+        id: 'seed_' + id,
+        icon: '🌰',
+        name: `Semi di ${STRAINS[id].name}`,
+        quantity: n,
+        unit: n === 1 ? 'seme' : 'semi',
+        description:
+          'Piantali in un vaso vuoto nella tua stanza. I vasi li vende Rocco al grow shop.',
+      });
+  }
   return items;
 }
 

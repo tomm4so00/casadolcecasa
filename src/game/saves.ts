@@ -1,4 +1,6 @@
 import { decodeWeed } from './weed-rules.js';
+import { decodePillTimers, pruneTimers } from './pill-rules.js';
+import { decodeLoyalty } from './dealer-rules.js';
 import { jointReadyAt } from './joint-rules.js';
 import { syncInventoryFromRoom } from './inventory-market.js';
 import { LEGACY_WORLD, countFree, isWorldCode } from '../../shared/worlds.js';
@@ -176,13 +178,14 @@ export function buildSaveData(..._args: GameValue[]): SaveV8 {
     data.pets = game.player.pets;
   }
   syncWeedPot();
-  if (
-    game.player.weed &&
-    (game.player.weed.plantedAt || game.player.weed.grams || game.player.weed.potX !== undefined)
-  )
-    data.weed = game.player.weed;
+  const w = game.player.weed;
+  if (w && (w.grams || w.pots?.length || w.seeds || w.smokes?.length)) data.weed = w;
   if (game.player.coffeeAt) data.coffeeAt = game.player.coffeeAt;
   if (game.player.toiletAt) data.toiletAt = game.player.toiletAt;
+  const pill = pruneTimers(game.player.pill, Date.now());
+  if (Object.keys(pill).length) data.pill = pill;
+  if (game.player.dealers && Object.keys(game.player.dealers).length)
+    data.dealers = game.player.dealers;
   if (game.player.flu && (game.player.flu.nextAt || game.player.flu.sickAt))
     data.flu = { ...game.player.flu };
   if (Object.keys(game.player.invest).length) {
@@ -259,6 +262,8 @@ export function applySave(value: unknown): void {
     typeof s.worldId === 'string' && isWorldCode(s.worldId) ? s.worldId : LEGACY_WORLD;
   game.player.weed = decodeWeed(s.weed);
   game.player.flu = decodeFlu(s.flu);
+  game.player.pill = decodePillTimers(s.pill);
+  game.player.dealers = decodeLoyalty(s.dealers);
   game.player.coffeeAt = num(s.coffeeAt, 0);
   game.player.toiletAt = Math.max(0, num(s.toiletAt, 0));
   game.player.invest = {};

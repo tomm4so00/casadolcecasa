@@ -1,5 +1,7 @@
 import type { WeedState } from './weed-rules.js';
 import type { FluState } from './flu-rules.js';
+import type { PillTimers } from './pill-rules.js';
+import type { LoyaltyBook } from './dealer-rules.js';
 import type { DailyUses } from './daily-limits.js';
 import type { PetBook } from './pet-rules.js';
 import type { PersonalityState } from './personality-rules.js';
@@ -153,6 +155,10 @@ export interface CharacterState {
   weed?: WeedState;
   /** Influenza: in corso, in arrivo per contagio o la prossima spontanea. */
   flu?: FluState;
+  /** Acquisti dagli spacciatori, per lo sconto fedeltà (dealer-rules.ts). */
+  dealers?: LoyaltyBook;
+  /** Effetti della pillola misteriosa che durano (pill-rules.ts). */
+  pill?: PillTimers;
   /** Azioni con un massimo al giorno già fatte oggi (viaggio, WC). */
   daily?: DailyUses;
   /** Animali domestici: fame e posizione delle casette. */

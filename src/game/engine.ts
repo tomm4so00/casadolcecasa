@@ -92,6 +92,8 @@ import { checkWalkThrough, doorGapsHere, openGapsHere, roomBounds } from './inte
 import { clampToRoom, doorwayAt } from './door-walk-rules.js';
 import { chairsOf, deskChair } from './chair-rules.js';
 import { cabinetFacesAway, cabinetPlayerPose } from './cabinet.js';
+import { pillControlSign, updatePillVisuals } from './pill.js';
+import { dealerBotLines, dealerHere } from './dealers.js';
 
 /** Lo stesso aspetto con gli occhi rossi (dopo una canna). */
 const withStonedEyes = (look: GameValue, on: boolean): GameValue =>
@@ -288,6 +290,7 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
   if (game.iceCream) updateIceCream(animTime);
   updatePets(animTime);
   updateSpaceHelmet(Math.min(delta, 0.25), animTime);
+  updatePillVisuals(animTime);
   if (kissActive()) approachKissPartner(delta);
   if (
     !game.player.isSleeping &&
@@ -307,8 +310,8 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
     const stuck: GameValue = collidesAt(game.playerPos.x, game.playerPos.y, obstacles);
     // dentro la stanza; davanti alle porte che si attraversano il bordo si apre fino al loro filo
     const { x: nx, y: ny } = clampToRoom(
-      game.playerPos.x + game.moveRight * speed * delta,
-      game.playerPos.y - game.moveForward * speed * delta,
+      game.playerPos.x + game.moveRight * pillControlSign() * speed * delta,
+      game.playerPos.y - game.moveForward * pillControlSign() * speed * delta,
       roomBounds(),
       openGapsHere(),
     );
@@ -635,7 +638,8 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
   // cane e gatto nella stanza, e il cane al guinzaglio
   petDrawables(animTime, drawables, labels);
   game.simulationBots.forEach((bot?: GameValue): GameValue => {
-    if (bot.env === game.view.activeEnvironment) {
+    // lo spacciatore c'è solo nel suo orario e quando non c'è la polizia
+    if (bot.env === game.view.activeEnvironment && (!bot.dealer || dealerHere(bot.env))) {
       // frase chiesta da chi gli parla (i commessi al bancone)
       if (bot.talk) {
         bot.say = bot.talk;
@@ -647,7 +651,7 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
         const L: GameValue = bot.clerk
           ? clerkLines(bot.env)
           : bot.dealer
-            ? game.DEALER_LINES
+            ? dealerBotLines(bot.env)
             : bot.env === 'discoteca'
               ? game.DISCO_LINES
               : game.BOT_LINES;

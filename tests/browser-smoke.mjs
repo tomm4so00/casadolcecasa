@@ -50,7 +50,7 @@ try {
     catalog.clothes === 78 &&
       catalog.furniture === 23 &&
       catalog.jobs === 4 &&
-      catalog.business === 9,
+      catalog.business === 10,
   );
   await page.evaluate(async () => (await import('/src/game/character.ts')).openClothesShop('top'));
   await page.locator('#clothes-modal').waitFor({ state: 'visible' });
@@ -125,8 +125,8 @@ try {
   assert.match(await page.locator('#inventory-details').textContent(), /Lemon Haze/);
   assert.equal(await page.locator('#inventory-smoke').isDisabled(), true);
   assert.match(await page.locator('#inventory-use-hint').textContent(), /all’aperto/);
-  await page.getByRole('button', { name: 'Dosi: 3 dosi', exact: true }).click();
-  assert.match(await page.locator('#inventory-details').textContent(), /3 dosi/);
+  await page.getByRole('button', { name: 'Pillole misteriose: 3 pillole', exact: true }).click();
+  assert.match(await page.locator('#inventory-details').textContent(), /3 pillole/);
   assert.equal(await page.locator('#inventory-count').textContent(), '2/20 spazi occupati');
   await page.keyboard.press('Escape');
   await page.locator('#inventory-modal').waitFor({ state: 'hidden' });

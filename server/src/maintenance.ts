@@ -13,6 +13,7 @@ import { graveFromSave, releaseRoomsOf } from '../../shared/death-rules.js';
 import { type CryoPass, awakeMs, decodeCryo, realTimeAfterAwake } from '../../shared/cryo-rules.js';
 import { ACTIVE_MARGIN_MS, absentDeath } from '../../src/game/absent-death-rules.js';
 import { encodeDeathCauses } from '../../src/game/death-cause-rules.js';
+import { announceRaids } from './street.js';
 import { dayNumber } from '../../src/game/game-clock.js';
 import {
   LEGACY_WORLD,
@@ -182,6 +183,15 @@ export async function maintainWorld(
     }
   await markAbsentDeaths(database, now, cryo, world);
   await tidyDeadPlayers(database, now, world);
+  // retate: annuncio nei pettegolezzi (un errore qui non blocca il resto del mondo)
+  try {
+    await announceRaids(database, now, world);
+  } catch (error) {
+    console.log(
+      `World ${world}: raid gossip skipped:`,
+      (error as { code?: string }).code || String(error),
+    );
+  }
   // una stanza per giocatore: quelle in più tornano libere (le regole non possono contarle)
   let freed = 0;
   const fixed = await liveTransaction(rooms, (value) => {

@@ -10,6 +10,7 @@ import { creditMoney, spendMoney } from './economy.js';
 import { worldNode } from './world-db.js';
 import { rotateAround } from './render/primitives.js';
 import { currentWorldCode } from './world-select.js';
+import { pillPrizeFactor } from './pill.js';
 import {
   BOARD_SIZE,
   type BoardEntry,
@@ -190,7 +191,8 @@ async function finishRun(id: CabinetGameId, score: number): Promise<string[]> {
     const leader = boardLeader(before);
     if (place === 1 && (!leader || score > leader.score)) {
       lines.push(`PRIMO NEL ${where}!`);
-      const prize = recordPrize(id, kind, score, leader, pid);
+      // la pillola della fortuna raddoppia il premio
+      const prize = recordPrize(id, kind, score, leader, pid) * pillPrizeFactor();
       if (prize && (await creditMoney(prize))) {
         lines.push(`PREMIO +${prize} DINDINI`);
         sfx('coin');

@@ -5,9 +5,10 @@ import { isValidPin, pinHint } from './safe-pin.js';
 import { startNewLife } from './rebirth.js';
 import { clockText, dayNumber, isNight, realHour } from './game-clock.js';
 import { spendMoney } from './economy.js';
-import { inventoryChange, tickInventoryMarket } from './inventory-market.js';
+import { tickInventoryMarket } from './inventory-market.js';
 import { updateInventoryTrade } from './inventory-trade.js';
 import { advanceNeeds } from './simulation.js';
+import { openStreetDealer } from './dealers.js';
 import {
   decodeDeathCauses,
   deathCauseText,
@@ -25,7 +26,6 @@ import {
   hashPin,
   normalizeRooms,
   withTimeout,
-  saveGame,
 } from './saves.js';
 import { mgStop, updateShift } from './jobs.js';
 import { openDialog, writeGrave } from './interface.js';
@@ -311,27 +311,9 @@ export function updateDrugHud(..._args: GameValue[]): GameValue {
       : Math.round(v) + '%';
 }
 
+/** Lo spacciatore del posto in cui si è (bar o discoteca): vedi dealers.ts. */
 export async function openDealer(..._args: GameValue[]): Promise<GameValue> {
-  const v: GameValue = drugLevel();
-  const res: GameValue = await openDialog({
-    title: '🕴️ Lo spacciatore',
-    text:
-      `«Psst… cerchi qualcosa?»\n\nUna dose costa ${game.DRUG_PRICE} Đ e finisce nello zaino: puoi conservarla, scambiarla o assumerla da lì.\n\nSe la assumi dà +${game.DRUG_EUPHORIA}% felicità, ma crea dipendenza e fa scendere la salute per giorni. Più dosi assumi, più a lungo durano gli effetti negativi.` +
-      (game.player.drug.active ? `\n\nDipendenza attuale: ${Math.round(v)}%.` : '') +
-      (game.player.drugStock ? `\nDosi che hai con te: ${game.player.drugStock}.` : ''),
-    buttons: [
-      { label: 'Vai via', value: null, color: '#57606f' },
-      { label: `Compra (${game.DRUG_PRICE} Đ)`, value: 'buy', color: '#6c5ce7' },
-    ],
-  });
-  if (res.action !== 'buy') return;
-  if (game.moneyLevel < game.DRUG_PRICE) {
-    toast(`Non hai abbastanza soldi: servono ${game.DRUG_PRICE} Đ in cassaforte.`);
-    return;
-  }
-  if (!(await inventoryChange((ledger) => ledger.buy('drug', 1, game.DRUG_PRICE)))) return;
-  await saveGame(true);
-  toast(`💊 Hai comprato una dose: la trovi nello zaino (${game.player.drugStock} dosi).`, 4500);
+  await openStreetDealer(game.view.activeEnvironment);
 }
 
 export function drugTake(..._args: GameValue[]): GameValue {
@@ -343,11 +325,11 @@ export function drugTake(..._args: GameValue[]): GameValue {
   game.player.drug.dAtDose = d;
   game.player.drug.endAt = now + game.drugWindowMs();
   if (d >= 100) game.player.drug.crisisAt = now; // dipendenza a 100%: parte la crisi
-  game.player.happinessLevel = Math.min(100, game.player.happinessLevel + game.DRUG_EUPHORIA);
+  // l'euforia non è più sicura: è uno degli effetti della pillola (pill.ts)
   toast(
     d >= 100
       ? '☠️ Dipendenza al 100%: la tua salute sta crollando!'
-      : `💊 Hai assunto una dose… dipendenza ${Math.round(d)}%`,
+      : `💊 Hai preso una pillola… dipendenza ${Math.round(d)}%`,
     4500,
   );
   updateDrugHud();

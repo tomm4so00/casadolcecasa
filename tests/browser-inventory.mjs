@@ -1,4 +1,5 @@
-// Percorso completo: spacciatore, consumo, vendita, regalo e annullamento dallo stesso menu.
+// Percorso completo: spacciatori (pillola e bustina d'erba), consumo, vendita, regalo e
+// annullamento dallo stesso menu. L'orologio è fermo alle 23: ci sono sia Mirko sia il Biondo.
 import assert from 'node:assert/strict';
 import { chromium } from '@playwright/test';
 import { createServer } from 'vite';
@@ -9,7 +10,18 @@ const browser = await chromium.launch(process.platform === 'win32' ? { channel: 
 const page = await browser.newPage();
 const errors = [];
 page.on('pageerror', (e) => errors.push(e.message));
+/** Aspetta che la funzione (eseguita nella pagina, anche async) dia true. */
+async function until(fn, ms = 15000) {
+  const end = Date.now() + ms;
+  while (Date.now() < end) {
+    if (await page.evaluate(fn)) return;
+    await new Promise((r) => setTimeout(r, 100));
+  }
+  throw new Error('Tempo scaduto aspettando: ' + fn);
+}
 try {
+  const night = new Date(2026, 10, 10, 23, 0, 0);
+  await page.clock.setFixedTime(night);
   await page.goto(server.resolvedUrls.local[0] + '?offline=1');
   await page.locator('#nickname').fill('Prova zaino');
   await page.locator('#start-game-btn').click();
@@ -28,18 +40,20 @@ try {
     game.pinPromptMoneyThreshold = Number.MAX_SAFE_INTEGER;
     return { happiness: Math.round(game.player.happinessLevel), money: game.moneyLevel };
   });
+  // Mirko in discoteca: una pillola misteriosa al prezzo di strada
+  const buyButton = () =>
+    page.locator('#dialog-buttons').getByRole('button', { name: /^Compra \(\d+ Đ\)$/ });
   await page.evaluate(async () => {
+    const { game } = await import('/src/game/context.ts');
+    game.view.activeEnvironment = 'discoteca';
     void (await import('/src/game/needs.ts')).openDealer();
   });
   assert.equal(await page.locator('#dialog-buttons button').count(), 2);
-  assert.equal(
-    await page.getByRole('button', { name: /Compra e assumi|Compra da portare via/ }).count(),
-    0,
-  );
-  await page.getByRole('button', { name: 'Compra (30 Đ)', exact: true }).click();
-  await page.waitForFunction(
-    async () => (await import('/src/game/context.ts')).game.player.drugStock === 1,
-  );
+  assert.match(await page.locator('#dialog-title').innerText(), /Mirko/);
+  const pillPrice = Number((await buyButton().innerText()).match(/\d+/)[0]);
+  assert(pillPrice >= 15 && pillPrice <= 60, `prezzo di strada: ${pillPrice}`);
+  await buyButton().click();
+  await until(async () => (await import('/src/game/context.ts')).game.player.drugStock === 1);
   const bought = await page.evaluate(async () => {
     const { game } = await import('/src/game/context.ts');
     return {
@@ -50,21 +64,41 @@ try {
   });
   assert.equal(bought.active, false);
   assert.equal(bought.happiness, before.happiness);
-  assert.equal(bought.money, before.money - 30);
+  assert.equal(bought.money, before.money - pillPrice);
   await page.locator('#btn-inventory').click();
-  await page.getByRole('button', { name: 'Dosi: 1 dosi', exact: true }).click();
+  await page.getByRole('button', { name: 'Pillole misteriose: 1 pillole', exact: true }).click();
   await page.locator('#inventory-drug').click();
   await page.getByRole('button', { name: 'Annulla', exact: true }).click();
   await page.locator('#inventory-modal').waitFor({ state: 'visible' });
   await page.locator('#inventory-drug').click();
-  await page.getByRole('button', { name: 'Assumi', exact: true }).click();
-  await page.waitForFunction(
-    async () => (await import('/src/game/context.ts')).game.player.drugStock === 0,
-  );
+  await page.getByRole('button', { name: 'Prendila', exact: true }).click();
+  await until(async () => (await import('/src/game/context.ts')).game.player.drugStock === 0);
   assert.equal(
     await page.evaluate(async () => (await import('/src/game/context.ts')).game.player.drug.active),
     true,
   );
+  // il Biondo al bar: una bustina da 10 g al prezzo del mercato
+  await page.evaluate(async () => {
+    const { game } = await import('/src/game/context.ts');
+    game.view.activeEnvironment = 'bar';
+    void (await import('/src/game/needs.ts')).openDealer();
+  });
+  assert.match(await page.locator('#dialog-title').innerText(), /Biondo/);
+  const bagPrice = Number((await buyButton().innerText()).match(/\d+/)[0]);
+  const moneyBeforeBag = await page.evaluate(
+    async () => (await import('/src/game/context.ts')).game.moneyLevel,
+  );
+  await buyButton().click();
+  await until(async () => (await import('/src/game/context.ts')).game.player.weed?.grams === 10);
+  assert.equal(
+    await page.evaluate(async () => (await import('/src/game/context.ts')).game.moneyLevel),
+    moneyBeforeBag - bagPrice,
+  );
+  await page.evaluate(async () => {
+    const { inventoryChange } = await import('/src/game/inventory-market.ts');
+    await inventoryChange((ledger) => ledger.consume('weed'));
+    for (let i = 0; i < 9; i++) await inventoryChange((ledger) => ledger.consume('weed'));
+  });
 
   const buyerIndex = await page.evaluate(async () => {
     const { game } = await import('/src/game/context.ts');
@@ -87,11 +121,11 @@ try {
       .set({ name: 'Compratore', x: 20, y: 150, env: 'CORTILE', t: Date.now(), sleep: 100 });
     return index;
   });
-  await page.waitForFunction(async () =>
+  await until(async () =>
     (await import('/src/game/context.ts')).game.frameNear.some((p) => p.id === 'inventory_buyer'),
   );
   await page.locator('#btn-inventory').click();
-  await page.getByRole('button', { name: 'Dosi: 4 dosi', exact: true }).click();
+  await page.getByRole('button', { name: 'Pillole misteriose: 4 pillole', exact: true }).click();
   await page.locator('#inventory-trade').click();
   await page.locator('#inventory-trade-modal').waitFor({ state: 'visible' });
   await page.locator('#trade-item').selectOption('drug');
@@ -126,7 +160,7 @@ try {
   await page.locator('#trade-close').click();
   assert.equal(
     await page.evaluate(async () => (await import('/src/game/context.ts')).game.moneyLevel),
-    bought.money + 45,
+    moneyBeforeBag - bagPrice + 45,
   );
 
   await page.locator('#btn-inventory').click();
@@ -168,12 +202,10 @@ try {
     });
   }, buyerIndex);
   await page.getByRole('button', { name: 'Accetta regalo', exact: true }).click();
-  await page.waitForFunction(
-    async () => (await import('/src/game/context.ts')).game.player.drugStock === 3,
-  );
+  await until(async () => (await import('/src/game/context.ts')).game.player.drugStock === 3);
   assert.deepEqual(errors, []);
   console.log(
-    'PASS: acquisto nello zaino, consumo confermato, vendita di dosi, annullamento erba e regalo ricevuto.',
+    'PASS: pillola da Mirko, bustina dal Biondo, pillola presa, vendita di pillole, annullamento erba e regalo ricevuto.',
   );
 } finally {
   await browser.close();

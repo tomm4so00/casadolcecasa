@@ -50,6 +50,8 @@ export interface SaveV8 {
   /** ora dell'ultimo messaggio della chat letto (su qualsiasi dispositivo) */
   chatReadT?: unknown;
   weed?: unknown;
+  pill?: unknown;
+  dealers?: unknown;
   flu?: unknown;
   daily?: unknown;
   pets?: unknown;

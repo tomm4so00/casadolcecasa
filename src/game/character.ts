@@ -1,7 +1,7 @@
 import { openDialog } from './interface.js';
 import { purchaseItem, sellItem, spendMoney } from './economy.js';
 import { resaleValue } from './resale-rules.js';
-import { startDogWalk } from './pets.js';
+import { PET_OF_KEY, renamePet, startDogWalk } from './pets.js';
 import type { GameValue } from './context.js';
 import { game } from './context.js';
 import { lifetime, dom, browser } from './runtime.js';
@@ -464,14 +464,20 @@ export function returnHomeFromActivity(..._args: GameValue[]): GameValue {
   dom('btn-return-home').classList.add('hidden');
 }
 
-export async function handleSubAction(..._args: GameValue[]): Promise<void> {
+/** Il secondo pulsante vicino a un oggetto; `which` è '2' per il terzo (solo la cuccia del cane). */
+export async function handleSubAction(which?: GameValue): Promise<void> {
   if (
     game.view.activeEnvironment === 'PLAYER_ROOM' &&
-    game.activeTargetProp === 'petDog' &&
+    PET_OF_KEY[game.activeTargetProp] &&
     isMyRoomNow()
   ) {
-    startDogWalk();
-    dom('btn-act-sub').classList.add('hidden');
+    const kind = PET_OF_KEY[game.activeTargetProp];
+    // il cane ha due pulsanti in più: passeggiata e nome; gli altri solo il nome
+    if (kind === 'dog' && which !== '2') {
+      startDogWalk();
+      dom('btn-act-sub').classList.add('hidden');
+      dom('btn-act-sub2').classList.add('hidden');
+    } else await renamePet(kind);
     return;
   }
   if (

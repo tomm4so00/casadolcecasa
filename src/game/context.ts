@@ -65,6 +65,8 @@ interface GameContext {
   frameChairSitters: GameValue;
   /** La scrivania del PC della stanza in cui si è (per la sua sedia), o null. */
   frameDesk: GameValue;
+  /** Gli zerbini che in questo momento portano fuori camminandoci sopra (per la freccia). */
+  openExits: string[];
   SLEEP_DEPLETION_SEC: number;
   SLEEP_RECOVERY_SEC: number;
   HUNGER_AWAKE_DEPLETION_SEC: number;

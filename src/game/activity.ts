@@ -11,7 +11,7 @@ const full = new Set<string>();
 const serverNow = (): number => Date.now() + (game.session.serverOffset || 0);
 
 /** Il giocatore ha fatto qualcosa legato all'attività `business` (turno, acquisto, partita…). */
-export function recordActivity(business: BusinessId): void {
+export function recordActivity(business: BusinessId | 'raccolto'): void {
   const me = game.session.myPlayerId;
   if (!me || !game.session.db) return;
   const now = serverNow();

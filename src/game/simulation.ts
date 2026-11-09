@@ -1,6 +1,6 @@
 import { bedSleepSpeed, plantHappinessDecay } from './furniture-benefits.js';
 import type { CharacterState, DrugState } from './models.js';
-import { fluDamage, fluOnsetAt, updateFluOnset } from './flu-rules.js';
+import { fluDamage, fluOnsetAt, isSick, updateFluOnset } from './flu-rules.js';
 
 export interface NeedsRules {
   sleepDepletion: number;
@@ -20,6 +20,10 @@ export interface NeedsRules {
 const SAD_HAPPINESS = 10;
 /** …di tanti punti all'ora. */
 const SAD_HEALTH_PER_HOUR = 1;
+/** Con fame, sonno e igiene almeno a tanto (e senza tristezza, febbre o dipendenza)… */
+export const WELL_LEVEL = 50;
+/** …la salute torna su da sola, piano: da 0 a 100 in due giorni. */
+export const HEAL_PER_HOUR = 2;
 /**
  * Fame, sonno e igiene da soli non uccidono finché non sono tutti a zero da tanto: fino ad allora
  * la salute si ferma all'1%, così c'è sempre tempo per rientrare e rimediare.
@@ -66,20 +70,32 @@ export function advanceNeeds(
     if (!allZero) state.needsZeroSince = 0;
     else if (!state.needsZeroSince) state.needsZeroSince = now;
     const graceOver = allZero && now >= (state.needsZeroSince || 0) + NEEDS_ZERO_GRACE_MS;
-    const sleepRate = sleeping ? (100 * bed) / rules.sleepRecovery : -100 / rules.sleepDepletion;
+    // insonnia della pillola: da svegli il sonno non cala
+    const insomniaUntil = state.pill?.insomnia ?? 0;
+    const awakeLoss = insomniaUntil > now ? 0 : -100 / rules.sleepDepletion;
+    const sleepRate = sleeping ? (100 * bed) / rules.sleepRecovery : awakeLoss;
     const hungerRate = -100 / (sleeping ? rules.hungerSleeping : rules.hungerAwake);
     const hygieneRate = (-100 * (sleeping ? 0.5 : 1)) / rules.hygieneDepletion;
     let step = Math.min(remaining, 60);
     const boundary = (seconds: number) => {
       if (seconds > 1e-8) step = Math.min(step, seconds);
     };
-    boundary(sleeping ? (100 - state.sleepLevel) / sleepRate : state.sleepLevel / -sleepRate);
+    if (sleepRate !== 0)
+      boundary(sleeping ? (100 - state.sleepLevel) / sleepRate : state.sleepLevel / -sleepRate);
     boundary(state.hungerLevel / -hungerRate);
     boundary(state.hygieneLevel / -hygieneRate);
     const happinessRate = (100 * plant) / rules.happinessDepletion;
     if (state.happinessLevel > SAD_HAPPINESS + 1e-8)
       boundary((state.happinessLevel - SAD_HAPPINESS) / happinessRate);
     if (sleeping) boundary((20 - state.sleepGainedSinceLastHealthBoost) / sleepRate);
+    if (insomniaUntil > now) boundary((insomniaUntil - now) / 1000);
+    // il passo finisce quando un bisogno attraversa la soglia della guarigione
+    for (const [level, rate] of [
+      [state.sleepLevel, sleepRate],
+      [state.hungerLevel, hungerRate],
+      [state.hygieneLevel, hygieneRate],
+    ])
+      if (rate !== 0) boundary((WELL_LEVEL - level) / rate);
     const drug = state.drug;
     if (drug.active) {
       for (const time of [
@@ -99,6 +115,16 @@ export function advanceNeeds(
     // tristezza: si guarda la felicità a inizio passo (il passo finisce quando scende al 10%)
     const sadDamage =
       state.happinessLevel <= SAD_HAPPINESS + 1e-8 ? (SAD_HEALTH_PER_HOUR * step) / 3600 : 0;
+    // sulla soglia conta dove si va: chi scende sotto non guarisce più
+    const well = (level: number, rate: number) =>
+      rate >= 0 ? level >= WELL_LEVEL - 1e-8 : level > WELL_LEVEL + 1e-8;
+    const healing =
+      well(state.sleepLevel, sleepRate) &&
+      well(state.hungerLevel, hungerRate) &&
+      well(state.hygieneLevel, hygieneRate) &&
+      state.happinessLevel > SAD_HAPPINESS + 1e-8 &&
+      !state.drug.active &&
+      !isSick(flu, now);
     const healthRate =
       state.sleepLevel <= 1e-8 || state.hungerLevel <= 1e-8 || state.hygieneLevel <= 1e-8
         ? 100 / rules.healthDamage
@@ -117,6 +143,8 @@ export function advanceNeeds(
     const afterIllness = Math.max(0, state.healthLevel - drugDamage - sickDamage);
     const floor = graceOver ? 0 : Math.min(afterIllness, 1);
     state.healthLevel = Math.max(floor, afterIllness - healthRate * step - sadDamage);
+    if (healing && state.healthLevel > 0)
+      state.healthLevel = Math.min(100, state.healthLevel + (HEAL_PER_HOUR * step) / 3600);
     if (sleeping && state.healthLevel > 0) {
       state.sleepGainedSinceLastHealthBoost += sleepRate * step;
       if (state.sleepGainedSinceLastHealthBoost >= 20 - 1e-8) {

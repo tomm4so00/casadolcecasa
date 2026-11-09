@@ -1159,6 +1159,46 @@ export function drawExitMat(it?: GameValue, text?: GameValue): GameValue {
   });
 }
 
+// quanto si vede la freccia di ogni zerbino (0-1) e quando la si è disegnata l'ultima volta
+const exitArrowFade = new Map<string, { a: number; t: number }>();
+
+/**
+ * Freccia per terra oltre il bordo della stanza, davanti allo zerbino, che punta fuori: c'è solo
+ * quando lo zerbino porta fuori (appena arrivati è spento finché non ci si allontana). Compare e
+ * sparisce sfumando e ondeggia verso l'uscita. Gli zerbini stanno tutti sul bordo davanti (+y).
+ */
+function drawExitArrow(k: string, it: GameValue, t: number): void {
+  const key = game.view.activeEnvironment + ':' + k;
+  const on = (game.openExits as string[]).includes(k);
+  const prev = exitArrowFade.get(key);
+  // cambiando ambiente si riparte da spenta, senza sfumare dal valore vecchio
+  const fresh = !prev || t - prev.t > 0.5;
+  const dt = fresh ? 0 : t - prev.t;
+  const a = Math.max(0, Math.min(1, (fresh ? 0 : prev.a) + (on ? dt : -dt) * 4));
+  exitArrowFade.set(key, { a, t });
+  if (a <= 0) return;
+  const ctx = game.view.ctx;
+  // oltre il bordo davanti e oltre lo spessore del pavimento, che le passerebbe sopra
+  const y = Math.max(game.Y1, it.y + 4) + 34 + 5 * Math.sin(t * 5);
+  ctx.save();
+  ctx.globalAlpha = a * (0.85 + 0.15 * Math.sin(t * 5));
+  setPlane([it.x, y, 0.5], [1, 0, 0], [0, 1, 0]);
+  // punta verso +y (fuori), larga 40 e lunga 26 unità
+  ctx.beginPath();
+  ctx.moveTo(-20, 0);
+  ctx.lineTo(20, 0);
+  ctx.lineTo(0, 26);
+  ctx.closePath();
+  ctx.fillStyle = '#ffffff';
+  ctx.strokeStyle = 'rgba(0,0,0,0.55)';
+  ctx.lineWidth = 2.5;
+  ctx.lineJoin = 'round';
+  ctx.stroke();
+  ctx.fill();
+  resetPlane();
+  ctx.restore();
+}
+
 /**
  * Portone di casa verso il cortile: arco in pietra con vetrata, due ante in legno con pannelli e
  * maniglie in ottone, gradino davanti. È l'unica porta del salone che si apre da sola quando ci
@@ -1381,8 +1421,10 @@ export function drawMapItem(
     game.view.ctx.fillRect(-4, -4, fp.w + 8, fp.h + 8);
     resetPlane();
   }
-  if (k === 'doorExit' || k === 'exitHouse')
-    return drawExitMat(item, k === 'exitHouse' ? 'ESCI DI CASA' : 'USCITA');
+  if (k === 'doorExit' || k === 'exitHouse') {
+    drawExitMat(item, k === 'exitHouse' ? 'ESCI DI CASA' : 'USCITA');
+    return drawExitArrow(k, item, t);
+  }
   // Gli oggetti da parete (il quadro) si disegnano sulla parete, non sul pavimento.
   if (item.wallItem) return;
   if (game.view.activeEnvironment === 'CORTILE') return drawCourtyardDoor(k, item);
@@ -1397,7 +1439,7 @@ export function drawMapItem(
   // Piante e lampade sono uguali da ogni lato: la rotazione non cambia il loro aspetto.
   // Anche le casette degli animali (gabbie, teca, acquario) girano da sole il loro disegno.
   const symmetric =
-    k === 'plant' || k === 'lamp' || k === 'weedPot' || k === 'weedJar' || !!item.pet;
+    k === 'plant' || k === 'lamp' || k.startsWith('weedPot') || k === 'weedJar' || !!item.pet;
   withFurnitureRotation(symmetric ? { ...item, rot: 0 } : item, () => {
     softShadow(item.x, item.y, item.w, item.h);
     drawFurnitureByKind(k, item, t, lights);

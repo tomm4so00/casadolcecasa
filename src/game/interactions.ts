@@ -7,7 +7,7 @@ import { DOOR_OPEN_RADIUS, resetDoors, setBlockedDoor } from './render/doors.js'
 import { servicePrompt } from './restaurant.js';
 import { hospitalPrompt } from './hospital.js';
 import { officePrompt } from './office.js';
-import { buyPlant, plantLabel, isSmoking, tendPlant } from './weed.js';
+import { buySeeds, isSmoking, openGrowCounter, potIndex, potLabel, tendPot } from './weed.js';
 import { openInventory } from './inventory.js';
 import { PETS, PET_FOOD_PRICE, type PetKind, toPetCalled } from './pet-rules.js';
 import { PET_OF_KEY, buyPet, dogGatePrompt, feed, giveUpForAdoption, useDogGate } from './pets.js';
@@ -57,6 +57,9 @@ import { relaxWith, toast } from './missions.js';
 import { freeRoomsInApt, openClothesShop, openWardrobe } from './character.js';
 import { mgButtonText, mgInteract } from './jobs.js';
 import { coffeeLeftMs, openDealer, useCoffee } from './needs.js';
+import { pillSleepBlock } from './pill.js';
+import { dealerOf } from './dealers.js';
+import { DEALERS } from './dealer-rules.js';
 import { showGraveInfo } from './render/graveyard.js';
 import { startShower, startToilet, startWash } from './bathroom.js';
 import { sfx } from './audio.js';
@@ -90,11 +93,12 @@ import {
   workbenchMessage,
 } from './world.js';
 
-/** Il pulsante che compare vicino a un oggetto: testo, se è bloccato e l'eventuale secondo pulsante. */
+/** Il pulsante che compare vicino a un oggetto: testo, se è bloccato e gli eventuali altri due. */
 export interface Prompt {
   text: string;
   locked?: boolean;
   sub?: string;
+  sub2?: string;
 }
 
 /**
@@ -261,7 +265,8 @@ const BATHROOM: Place = {
 const PLAYER_ROOM: Place = {
   prompt(key, item) {
     const mine = isMyRoomNow();
-    if (key === 'weedPot') return { text: mine ? plantLabel() : `🌱 ${item.name}`, locked: !mine };
+    if (potIndex(key) >= 0)
+      return { text: mine ? potLabel(potIndex(key)) : `🌱 ${item.name}`, locked: !mine };
     if (key === 'weedJar')
       return {
         text: mine
@@ -282,7 +287,9 @@ const PLAYER_ROOM: Place = {
       const kind = item.pet as PetKind;
       return {
         text: `🍖 Dai da mangiare ${toPetCalled(kind, game.player.pets?.[kind])} (${PET_FOOD_PRICE} Đ)`,
-        sub: kind === 'dog' ? '🦮 Porta a spasso' : undefined,
+        // il nome si cambia dalla sua casetta; il cane qui ha anche la passeggiata
+        sub: kind === 'dog' ? '🦮 Porta a spasso' : '✏️ Cambia nome',
+        sub2: kind === 'dog' ? '✏️ Cambia nome' : undefined,
       };
     }
     // mobile in edizione limitata: il mio, o di un altro (offerta)
@@ -303,14 +310,19 @@ const PLAYER_ROOM: Place = {
   },
   async act(key, item) {
     if (key === 'doorExit') backToSaloon();
-    else if (key === 'weedPot') {
-      if (isMyRoomNow()) tendPlant();
+    else if (potIndex(key) >= 0) {
+      if (isMyRoomNow()) await tendPot(potIndex(key));
       else toast('🌱 Questa pianta non è tua!');
     } else if (key === 'weedJar') {
       if (isMyRoomNow()) openInventory();
       else toast('🚫 Questo barattolo non è tuo!');
     } else if (key === 'bed') {
       if (!game.player.isSleeping) {
+        const blocked = pillSleepBlock();
+        if (blocked) {
+          toast(blocked, 4000);
+          return;
+        }
         const slot = freeBedSlot();
         if (slot === null) {
           toast('🛏️ Letto pieno, prova un altro letto.');
@@ -539,11 +551,14 @@ const GROW_SHOP = shop(
   (key, item) =>
     item.strain
       ? {
-          text: `🌱 Compra ${STRAINS[item.strain as StrainId].name} (${STRAINS[item.strain as StrainId].price} Đ, cresce in ${growTimeText(item.strain as StrainId)})`,
+          text: `🌱 Semi di ${STRAINS[item.strain as StrainId].name} (${STRAINS[item.strain as StrainId].price} Đ, ${growTimeText(item.strain as StrainId)})`,
         }
-      : clerkPrompt(key),
+      : key === 'growCounter'
+        ? { text: '🪴 Vasi e lampade (Rocco)' }
+        : clerkPrompt(key),
   async (key, item) => {
-    if (item?.strain) await buyPlant(item.strain);
+    if (item?.strain) await buySeeds(item.strain);
+    else if (key === 'growCounter') await openGrowCounter();
     else if (CLERK_COUNTERS.has(key)) talkToClerk();
   },
 );
@@ -620,7 +635,10 @@ const GALLERY: Place = {
 };
 
 const DEALER: Place = {
-  prompt: () => ({ text: '🕴️ Parla con lo spacciatore' }),
+  prompt: () => {
+    const id = dealerOf(game.view.activeEnvironment);
+    return { text: id ? `🕴️ Parla con ${DEALERS[id].name}` : '🕴️ Parla con lo spacciatore' };
+  },
   act(_key, item) {
     if (item) openDealer();
   },
@@ -940,6 +958,12 @@ function walkStep(): void {
   }
   // la porta bloccata resta chiusa: si apre di nuovo avvicinandosi solo quando il blocco è tolto
   setBlockedDoor(blockedDoor ? doorDrawId(env, blockedDoor) : null);
+  // gli zerbini attraversabili adesso: davanti a loro compare la freccia verso l'uscita
+  game.openExits = busy
+    ? []
+    : zones
+        .map((z) => z.key)
+        .filter((k) => k !== blockedDoor && (k === 'doorExit' || k === 'exitHouse'));
   // salone: si passa la porta arrivando sul suo filo
   const gap = crossedDoor(
     x,

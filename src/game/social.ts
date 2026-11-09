@@ -311,13 +311,13 @@ export async function handleSocial(m?: GameValue): Promise<GameValue> {
   } else if (m.type === 'drugReturn') {
     if (!(await inventoryChange((ledger) => ledger.buy('drug', 1, 0)))) return;
     await saveGame(true);
-    toast(`${who} ha rifiutato la dose: ti è tornata.`, 3500);
+    toast(`${who} ha rifiutato la pillola: ti è tornata.`, 3500);
   } else if (m.type === 'drug') {
     while (game.dialogResolve)
       await new Promise((r?: GameValue): GameValue => lifetime.setTimeout(r, 1500));
     const res: GameValue = await openDialog({
-      title: '💊 Una dose in regalo',
-      text: `${who} vuole regalarti una dose. La troverai nello zaino: potrai conservarla, scambiarla o assumerla più tardi. Accetti?`,
+      title: '💊 Una pillola in regalo',
+      text: `${who} vuole regalarti una pillola misteriosa. La troverai nello zaino: potrai conservarla, scambiarla o prenderla più tardi. Accetti?`,
       buttons: [
         { label: 'Rifiuta', value: 'no', color: '#57606f' },
         { label: 'Accetta', value: 'yes', color: '#8e44ad' },
@@ -325,7 +325,7 @@ export async function handleSocial(m?: GameValue): Promise<GameValue> {
     });
     if (res.action === 'yes' && (await inventoryChange((ledger) => ledger.buy('drug', 1, 0)))) {
       await saveGame(true);
-      toast('💊 Dose ricevuta nello zaino.', 3500);
+      toast('💊 Pillola ricevuta nello zaino.', 3500);
     } else await sendSocial(m.from, { type: 'drugReturn' });
   }
 }
