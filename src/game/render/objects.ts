@@ -595,6 +595,14 @@ export function drawLamp(it?: GameValue, _t?: GameValue, lights?: GameValue): Ga
     });
 }
 
+/** Altezza dei cuscini del divano (dove si siede), come la disegna drawSofa. */
+export function sofaSeatZ(it: GameValue): number {
+  return (it.zb || 0) + (isPremium(it) ? 3 : 0) + it.z * 0.45;
+}
+
+/** Altezza della seduta delle sedie (tavolini, sala d'attesa, scrivania). */
+export const CHAIR_SEAT_Z = 14;
+
 export function drawSofa(it?: GameValue): GameValue {
   const ctx = game.view.ctx;
   const Z: GameValue = it.zb || 0,
@@ -2050,8 +2058,8 @@ export function drawChair(
   color?: GameValue,
   backSide: GameValue = 'y0',
 ): GameValue {
-  box(x, y, 14, 14, 16, game.darken(color, 0.3));
-  box(x, y, 16, 16, 3, color, { z0: 16 });
+  box(x, y, 14, 14, CHAIR_SEAT_Z - 3, game.darken(color, 0.3));
+  box(x, y, 16, 16, 3, color, { z0: CHAIR_SEAT_Z - 3 });
   // 'y0': sedia dietro il tavolo, schienale verso il fondo; 'x0': sedia sul lato sinistro del
   // tavolo, schienale dalla parte opposta al tavolo. Lo schienale sta dietro chi siede, che si
   // disegna subito dopo (e il piano del tavolo dopo ancora).
@@ -2059,12 +2067,12 @@ export function drawChair(
   // (di spalle) si disegna prima, poi lo schienale lo copre
   if (backSide === 'y1' || backSide === 'x1') {
     drawChairSitters(x, y);
-    if (backSide === 'x1') box(x + 7, y, 3, 16, 18, color, { z0: 19 });
-    else box(x, y + 7, 16, 3, 18, color, { z0: 19 });
+    if (backSide === 'x1') box(x + 7, y, 3, 16, 18, color, { z0: CHAIR_SEAT_Z });
+    else box(x, y + 7, 16, 3, 18, color, { z0: CHAIR_SEAT_Z });
     return;
   }
-  if (backSide === 'x0') box(x - 7, y, 3, 16, 18, color, { z0: 19 });
-  else box(x, y - 7, 16, 3, 18, color, { z0: 19 });
+  if (backSide === 'x0') box(x - 7, y, 3, 16, 18, color, { z0: CHAIR_SEAT_Z });
+  else box(x, y - 7, 16, 3, 18, color, { z0: CHAIR_SEAT_Z });
   drawChairSitters(x, y);
 }
 

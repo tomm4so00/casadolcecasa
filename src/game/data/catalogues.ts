@@ -695,6 +695,7 @@ export const SLOT_INFO = {
 };
 
 export const BODY_PARTS = {
+  gender: { label: 'Genere', opts: [{ n: 'Maschio' }, { n: 'Femmina' }] },
   skin: {
     label: 'Colore della pelle',
     color: true,
@@ -778,7 +779,7 @@ export const BODY_PARTS = {
 };
 
 export const CREATOR_TABS = [
-  { id: 'skin', label: '🧑 Pelle', parts: ['skin', 'freckles'] },
+  { id: 'skin', label: '🧑 Corpo', parts: ['gender', 'skin', 'freckles'] },
   { id: 'hair', label: '💇 Capelli', parts: ['hairStyle', 'hairColor'] },
   { id: 'eyes', label: '👁️ Occhi', parts: ['eyeColor', 'eyeShape'] },
   { id: 'face', label: '🙂 Volto', parts: ['mouth', 'beard'] },

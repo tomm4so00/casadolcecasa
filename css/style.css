@@ -472,6 +472,7 @@ label {
 }
 input[type='text'],
 input[type='password'],
+input[type='email'],
 input[type='number'] {
   width: 100%;
   padding: 12px;
@@ -480,6 +481,25 @@ input[type='number'] {
   background: #1a1a22;
   color: white;
   font-size: 1rem;
+  /* icone del browser (occhio della password, suggerimenti) chiare sul campo scuro */
+  color-scheme: dark;
+}
+input[type='text']:focus,
+input[type='password']:focus,
+input[type='email']:focus,
+input[type='number']:focus {
+  outline: none;
+  border-color: #ff6b81;
+  box-shadow: 0 0 0 2px rgba(255, 107, 129, 0.35);
+}
+/* email e password compilate dal browser: niente sfondo chiaro sopra il campo scuro */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus {
+  -webkit-text-fill-color: white;
+  -webkit-box-shadow: 0 0 0 1000px #1a1a22 inset;
+  caret-color: white;
+  transition: background-color 9999s;
 }
 .btn-primary {
   width: 100%;

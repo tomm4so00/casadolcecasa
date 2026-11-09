@@ -60,7 +60,14 @@ import {
   drawStaticScene,
   getEnvStyle,
 } from './render/scenes.js';
-import { box, drawChair, drawMapItem, drawSafeCorridor, softShadow } from './render/objects.js';
+import {
+  box,
+  drawChair,
+  drawMapItem,
+  drawSafeCorridor,
+  softShadow,
+  sofaSeatZ,
+} from './render/objects.js';
 import { tierOfPlaced } from './furniture-tiers.js';
 import { mgAddDrawables } from './jobs.js';
 import {
@@ -129,7 +136,8 @@ function sofaTurn(sofa: GameValue, x: number, y: number): number | null {
 /** Seduti su un divano che guarda dall'altra parte (rotazione 2 o 3) si vede la schiena. */
 function sofaBackOpts(sofa: GameValue, x: number, y: number): GameValue {
   const k = sofaTurn(sofa, x, y);
-  return k !== null && k >= 2 ? { back: true } : null;
+  // sul divano ci si siede sui cuscini, alla loro altezza (diversa per ogni modello)
+  return k === null ? null : { seatZ: sofaSeatZ(sofa), ...(k >= 2 ? { back: true } : {}) };
 }
 
 /**

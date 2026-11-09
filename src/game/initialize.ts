@@ -179,6 +179,8 @@ export function initializeGame() {
     'mouth',
     'freckles',
     'beard',
+    // in fondo: i codici salvati prima del genere hanno un numero in meno (vedi parseBody)
+    'gender',
   ];
   game.CREATOR_TABS = structuredClone(CREATOR_TABS);
   game.bodyString = (b?: GameValue): GameValue =>

@@ -90,6 +90,8 @@ export function botLook(name?: GameValue): GameValue {
 
 export function parseBody(str?: GameValue): GameValue {
   const p: GameValue = String(str || '').split('.');
+  // i personaggi creati prima della scelta del genere non hanno l'ultimo numero: maschi
+  if (p.length === game.BODY_KEYS.length - 1) p.push('0');
   if (p.length !== game.BODY_KEYS.length) return null;
   const b: GameValue = {};
   for (let i: GameValue = 0; i < game.BODY_KEYS.length; i++) {
@@ -111,6 +113,7 @@ export function bodyFromName(name?: GameValue): GameValue {
     mouth: 0,
     freckles: 0,
     beard: 0,
+    gender: 0,
   };
 }
 

@@ -6,10 +6,16 @@ import { bodyFromName, currentBody, drawAvatarPreview, resolveLook } from '../ch
 import { sfx } from '../audio.js';
 import { saveGame } from '../saves.js';
 import { isoProject, isoScale, rnd, rotateAround, rotateVector, toRgb } from './primitives.js';
-import { box, onFace, withFurnitureRotation } from './objects.js';
+import { CHAIR_SEAT_Z, box, onFace, withFurnitureRotation } from './objects.js';
 import { nameHash } from './scenes.js';
 // ---------- piccoli aiuti per il disegno dei vestiti ----------
 type Pt = { x: number; y: number };
+/** Una direzione nel piano del pavimento (x, y). */
+type Dir = [number, number];
+/** Altezza della seduta delle panchine (render/objects.ts, drawBenchProp). */
+const BENCH_SEAT_Z = 14.5;
+/** Scarpe che lasciano scoperto il collo del piede. */
+const OPEN_SHOES = new Set(['heels', 'sandals', 'barefoot']);
 /** Mani dell'ultimo disegno di ogni personaggio, per posizione a terra (servono al guinzaglio). */
 const handsAt = new Map<string, [Pt, Pt]>();
 export const handsOf = (x: number, y: number): [Pt, Pt] | undefined => handsAt.get(x + ',' + y);
@@ -1066,7 +1072,8 @@ export function randomizeCreator(..._args: GameValue[]): GameValue {
     game.creatorDraft[k] = Math.floor(Math.random() * game.BODY_PARTS[k].opts.length);
   });
   if (game.creatorDraft.freckles && Math.random() < 0.5) game.creatorDraft.freckles = 0;
-  if (game.creatorDraft.beard && Math.random() < 0.5) game.creatorDraft.beard = 0;
+  if (game.creatorDraft.beard && Math.random() < (game.creatorDraft.gender === 1 ? 0.95 : 0.5))
+    game.creatorDraft.beard = 0;
   sfx('click');
   renderCreator();
 }
@@ -1272,7 +1279,8 @@ export function undressedLook(look: GameValue, step: number): GameValue {
   const out: GameValue = { ...look, hat: null, glasses: null, neck: null };
   if (step >= 2) out.top = { id: '_bare', style: 'bare', color: '#000000' };
   if (step >= 3) out.shoes = { id: '_barefoot', style: 'barefoot', color: '#000000' };
-  if (step >= 4) out.pants = { id: '_briefs', style: 'briefs', color: '#74b9ff' };
+  // senza mutande: le gambe sono di pelle e le parti intime si coprono a pixel (drawCensor)
+  if (step >= 4) out.pants = { id: '_nude', style: 'briefs', color: '#000000' };
   return out;
 }
 
@@ -1367,28 +1375,171 @@ const BELT_PANTS = new Set(['jeans', 'ripped', 'cargo', 'plaid', 'camo']);
  * La testa vista da dietro: i capelli coprono la nuca (rasati appena un'ombra), e quelli lunghi,
  * la coda, il caschetto, lo chignon e l'afro ricadono sopra.
  */
-function drawHairFromBehind(head: Pt, s: number, style: number, hair: string): void {
+/**
+ * La testa vista da dietro: le orecchie ai lati (di tre quarti una sola, la disegna
+ * drawThreeQuarterSide: `side` ≠ 0), i capelli che coprono la nuca fino all'attaccatura con le
+ * ciocche che partono dalla corona, e sopra le acconciature che scendono sulla schiena.
+ */
+function drawHairFromBehind(
+  head: Pt,
+  s: number,
+  style: number,
+  hair: string,
+  skin: string,
+  side: number,
+): void {
   const ctx = game.view.ctx;
+  const hx = head.x,
+    hy = head.y;
+  if (side === 0 && ![2, 4, 6].includes(style))
+    for (const sd of [-1, 1]) {
+      ctx.fillStyle = skin;
+      ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+      ctx.lineWidth = 0.7 * s;
+      ctx.beginPath();
+      ctx.ellipse(hx + sd * 8.8 * s, hy + 1.6 * s, 1.7 * s, 2.7 * s, sd * 0.15, 0, 6.3);
+      ctx.fill();
+      ctx.stroke();
+      ctx.strokeStyle = game.darken(skin, 0.25);
+      ctx.beginPath();
+      ctx.arc(hx + sd * 8.8 * s, hy + 1.6 * s, 0.9 * s, Math.PI * 0.6, Math.PI * 1.4);
+      ctx.stroke();
+    }
+  // la calotta, fino all'attaccatura sulla nuca (rasati e cresta: solo un velo sui lati)
+  const nape = style === 1 ? 4.5 : 5.5;
   ctx.save();
   ctx.beginPath();
-  ctx.arc(head.x, head.y, 9 * s, 0, Math.PI * 2);
+  ctx.arc(hx, hy, 9 * s, 0, Math.PI * 2);
   ctx.clip();
-  ctx.globalAlpha = style === 1 ? 0.55 : 1;
-  ctx.fillStyle = hair;
+  const cap = ctx.createLinearGradient(0, hy - 9 * s, 0, hy + nape * s);
+  cap.addColorStop(0, game.lighten(hair, 0.12));
+  cap.addColorStop(1, game.darken(hair, 0.18));
+  ctx.globalAlpha = style === 1 ? 0.55 : style === 5 ? 0.4 : 1;
+  ctx.fillStyle = cap;
   ctx.beginPath();
-  ctx.moveTo(head.x - 10 * s, head.y - 10 * s);
-  ctx.lineTo(head.x + 10 * s, head.y - 10 * s);
-  ctx.lineTo(head.x + 10 * s, head.y + 3 * s);
-  ctx.quadraticCurveTo(head.x, head.y + 7 * s, head.x - 10 * s, head.y + 3 * s);
+  ctx.moveTo(hx - 10 * s, hy - 10 * s);
+  ctx.lineTo(hx + 10 * s, hy - 10 * s);
+  ctx.lineTo(hx + 10 * s, hy + (nape - 1) * s);
+  ctx.quadraticCurveTo(hx + 4 * s, hy + (nape + 0.4) * s, hx + 1.6 * s, hy + (nape + 2) * s);
+  ctx.quadraticCurveTo(hx, hy + (nape + 0.8) * s, hx - 1.6 * s, hy + (nape + 2) * s);
+  ctx.quadraticCurveTo(hx - 4 * s, hy + (nape + 0.4) * s, hx - 10 * s, hy + (nape - 1) * s);
   ctx.closePath();
   ctx.fill();
+  ctx.globalAlpha = 1;
+  if (style !== 1 && style !== 5) {
+    ctx.strokeStyle = game.darken(hair, 0.28);
+    ctx.lineWidth = 0.6 * s;
+    for (const a of [-0.9, -0.45, 0, 0.45, 0.9]) {
+      ctx.beginPath();
+      ctx.moveTo(hx + a * 1.5 * s, hy - 6 * s);
+      ctx.quadraticCurveTo(hx + a * 7.5 * s, hy - 1 * s, hx + a * 6.6 * s, hy + (nape - 0.3) * s);
+      ctx.stroke();
+    }
+    ctx.strokeStyle = 'rgba(255,255,255,0.22)';
+    ctx.lineWidth = 1.2 * s;
+    ctx.beginPath();
+    ctx.arc(hx, hy, 6.6 * s, Math.PI * 1.2, Math.PI * 1.55);
+    ctx.stroke();
+  }
   ctx.restore();
   ctx.strokeStyle = 'rgba(0,0,0,0.3)';
   ctx.lineWidth = 1;
   ctx.beginPath();
-  ctx.arc(head.x, head.y, 9 * s, 0, Math.PI * 2);
+  ctx.arc(hx, hy, 9 * s, 0, Math.PI * 2);
   ctx.stroke();
-  if ([2, 3, 4, 6, 7].includes(style)) drawHairBack(head, s, style, hair);
+  if (style === 5) {
+    // cresta: la striscia in mezzo, dalla fronte alla nuca
+    ctx.fillStyle = hair;
+    ctx.strokeStyle = 'rgba(0,0,0,0.28)';
+    ctx.lineWidth = 0.8;
+    ctx.beginPath();
+    ctx.roundRect
+      ? ctx.roundRect(hx - 2.2 * s, hy - 12 * s, 4.4 * s, 17.5 * s, 2.2 * s)
+      : ctx.rect(hx - 2.2 * s, hy - 12 * s, 4.4 * s, 17.5 * s);
+    ctx.fill();
+    ctx.stroke();
+  }
+  if (style === 2 || style === 6) hairCurtain(head, s, hair, style === 2 ? 19 : 9.5);
+  else if (style === 3) ponytailFromBehind(head, s, hair);
+  else if (style === 4 || style === 7) drawHairBack(head, s, style, hair);
+}
+
+/** Lunghi e caschetto da dietro: i capelli scendono dalla testa fino a `len` sotto il centro. */
+function hairCurtain(head: Pt, s: number, hair: string, len: number): void {
+  const ctx = game.view.ctx;
+  const hx = head.x,
+    hy = head.y;
+  const bot = hy + len * s;
+  const flare = len > 12 ? 11.2 : 10.4;
+  const g = ctx.createLinearGradient(0, hy - 10 * s, 0, bot);
+  g.addColorStop(0, game.lighten(hair, 0.12));
+  g.addColorStop(1, game.darken(hair, 0.22));
+  ctx.fillStyle = g;
+  ctx.strokeStyle = 'rgba(0,0,0,0.28)';
+  ctx.lineWidth = 0.8;
+  ctx.beginPath();
+  ctx.moveTo(hx - 9.4 * s, hy - 2 * s);
+  ctx.quadraticCurveTo(hx - flare * s, hy + len * 0.45 * s, hx - (flare - 0.6) * s, bot - 1 * s);
+  // il fondo: ciocche arrotondate (i lunghi) o un taglio dritto appena curvo (il caschetto)
+  const n = len > 12 ? 4 : 1;
+  const w = (2 * (flare - 0.6) * s) / n;
+  for (let k = 0; k < n; k++) {
+    const xa = hx - (flare - 0.6) * s + k * w;
+    ctx.quadraticCurveTo(
+      xa + w / 2,
+      bot + (n > 1 ? 2 : 1.4) * s,
+      xa + w,
+      bot - (n > 1 ? 1 : 1) * s,
+    );
+  }
+  ctx.quadraticCurveTo(hx + flare * s, hy + len * 0.45 * s, hx + 9.4 * s, hy - 2 * s);
+  ctx.arc(hx, hy - 0.5 * s, 9.5 * s, -0.16, Math.PI + 0.16, true);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+  ctx.strokeStyle = game.darken(hair, 0.28);
+  ctx.lineWidth = 0.6 * s;
+  for (const a of [-0.75, -0.38, 0, 0.38, 0.75]) {
+    ctx.beginPath();
+    ctx.moveTo(hx + a * 3 * s, hy - 6 * s);
+    ctx.quadraticCurveTo(hx + a * 9 * s, hy + len * 0.3 * s, hx + a * 9.4 * s, bot - 1.5 * s);
+    ctx.stroke();
+  }
+  ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+  ctx.lineWidth = 1.2 * s;
+  ctx.beginPath();
+  ctx.arc(hx, hy - 0.5 * s, 7 * s, Math.PI * 1.2, Math.PI * 1.55);
+  ctx.stroke();
+}
+
+/** La coda di cavallo vista da dietro: l'elastico sulla nuca e la coda che pende in mezzo. */
+function ponytailFromBehind(head: Pt, s: number, hair: string): void {
+  const ctx = game.view.ctx;
+  const hx = head.x,
+    hy = head.y;
+  const g = ctx.createLinearGradient(0, hy, 0, hy + 17 * s);
+  g.addColorStop(0, hair);
+  g.addColorStop(1, game.darken(hair, 0.22));
+  ctx.fillStyle = g;
+  ctx.strokeStyle = 'rgba(0,0,0,0.28)';
+  ctx.lineWidth = 0.8;
+  ctx.beginPath();
+  ctx.moveTo(hx - 2 * s, hy + 1.5 * s);
+  ctx.bezierCurveTo(hx - 4.5 * s, hy + 6 * s, hx - 3 * s, hy + 13 * s, hx + 0.6 * s, hy + 17 * s);
+  ctx.bezierCurveTo(hx + 3.2 * s, hy + 12 * s, hx + 4.2 * s, hy + 6 * s, hx + 2 * s, hy + 1.5 * s);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+  ctx.strokeStyle = game.darken(hair, 0.28);
+  ctx.lineWidth = 0.6 * s;
+  ctx.beginPath();
+  ctx.moveTo(hx, hy + 3 * s);
+  ctx.quadraticCurveTo(hx - 1.2 * s, hy + 9 * s, hx + 0.4 * s, hy + 15 * s);
+  ctx.stroke();
+  ctx.fillStyle = '#e74c3c';
+  ctx.beginPath();
+  ctx.ellipse(hx, hy + 1.8 * s, 2.2 * s, 1.3 * s, 0, 0, 6.3);
+  ctx.fill();
 }
 
 /**
@@ -1524,12 +1675,7 @@ function drawTorsoBack(
       }
       break;
     case 'tank':
-      // spalle scoperte, niente scollo davanti
-      ctx.fillStyle = skin;
-      ctx.fillRect(tx, tyTop - 1 * s, tW, 3 * s);
-      ctx.fillStyle = top.color;
-      ctx.fillRect(neck.x - 5.6 * s, tyTop - 1 * s, 1.8 * s, 3.4 * s);
-      ctx.fillRect(neck.x + 3.8 * s, tyTop - 1 * s, 1.8 * s, 3.4 * s);
+      tankCutouts(neck, tyTop, tH, tW / 2, s, skin, game.darken(top.color, 0.2), true);
       break;
     case 'bare':
       // spina dorsale e scapole
@@ -1575,8 +1721,220 @@ function drawTorsoBack(
       break;
     default:
       collar(game.darken(top.color, 0.22), 1.1);
-      seam(0.9);
+      shoulderBlades(neck, tyTop, tH, s);
   }
+}
+
+/**
+ * Canottiera: scollo tondo e giromanica larghi, così spalle e lati del petto restano scoperti e
+ * del capo restano le spalline. Davanti e dietro uguale (dietro lo scollo è più basso).
+ */
+function tankCutouts(
+  neck: Pt,
+  tyTop: number,
+  tH: number,
+  tw: number,
+  s: number,
+  skin: string,
+  trim: string,
+  back: boolean,
+): void {
+  const ctx = game.view.ctx;
+  ctx.fillStyle = skin;
+  ctx.beginPath();
+  ctx.ellipse(neck.x, tyTop - 0.5 * s, 3.5 * s, (back ? 4 : 3.3) * s, 0, 0, Math.PI * 2);
+  ctx.fill();
+  const strap = 5.3 * s;
+  const low = tyTop + tH * 0.46;
+  const armhole = (sd: number) => {
+    const ox = neck.x + sd * (tw + 2 * s);
+    ctx.beginPath();
+    ctx.moveTo(neck.x + sd * strap, tyTop - 3 * s);
+    ctx.lineTo(ox, tyTop - 3 * s);
+    ctx.lineTo(ox, low);
+    ctx.lineTo(neck.x + sd * (tw - 0.2 * s), low);
+    ctx.quadraticCurveTo(
+      neck.x + sd * strap,
+      low - tH * 0.08,
+      neck.x + sd * strap,
+      tyTop - 0.5 * s,
+    );
+    ctx.closePath();
+  };
+  for (const sd of [-1, 1]) {
+    armhole(sd);
+    ctx.fill();
+  }
+  // il bordino di scollo e giromanica
+  ctx.strokeStyle = trim;
+  ctx.lineWidth = 0.7 * s;
+  ctx.beginPath();
+  ctx.ellipse(neck.x, tyTop - 0.5 * s, 3.5 * s, (back ? 4 : 3.3) * s, 0, 0.1, Math.PI - 0.1);
+  ctx.stroke();
+  for (const sd of [-1, 1]) {
+    ctx.beginPath();
+    ctx.moveTo(neck.x + sd * (tw - 0.2 * s), low);
+    ctx.quadraticCurveTo(
+      neck.x + sd * strap,
+      low - tH * 0.08,
+      neck.x + sd * strap,
+      tyTop - 0.5 * s,
+    );
+    ctx.stroke();
+  }
+}
+
+/** Inviluppo convesso di alcuni punti (il contorno che li racchiude tutti). */
+function convexHull(pts: Pt[]): Pt[] {
+  const p = [...pts].sort((a, b) => a.x - b.x || a.y - b.y);
+  const cross = (o: Pt, a: Pt, b: Pt) => (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x);
+  const half = (list: Pt[]) => {
+    const out: Pt[] = [];
+    for (const q of list) {
+      while (out.length >= 2 && cross(out[out.length - 2], out[out.length - 1], q) <= 0) out.pop();
+      out.push(q);
+    }
+    out.pop();
+    return out;
+  };
+  return [...half(p), ...half([...p].reverse())];
+}
+
+/**
+ * Gonna: parte poco sopra l'orlo della maglia e si allarga con le pieghe e l'orlo curvo: in
+ * piedi fino a metà coscia, seduti (`fit` 'sit') più corta e larga, stesa sulla seduta con le
+ * cosce che escono da sotto; seduti di spalle ('back') solo il giro attorno alla seduta.
+ */
+function drawSkirt(
+  hip: Pt,
+  waistY: number,
+  s: number,
+  color: string,
+  fit: 'stand' | 'sit' | 'back',
+): void {
+  const ctx = game.view.ctx;
+  // poco sopra l'orlo della maglia, già con le pieghe (niente fascia di colore pieno)
+  const st = waistY - 0.5 * s;
+  const tw = 7.8 * s;
+  const sb = hip.y + (fit === 'stand' ? 10 : fit === 'sit' ? 6.5 : 5) * s;
+  const bw = (fit === 'stand' ? 11 : fit === 'sit' ? 11.5 : 9.5) * s;
+  const drop = (fit === 'back' ? 1.4 : 2.4) * s;
+  const shape = () => {
+    ctx.beginPath();
+    ctx.moveTo(hip.x - tw, st);
+    ctx.lineTo(hip.x + tw, st);
+    ctx.quadraticCurveTo(hip.x + bw * 0.9, hip.y + 3 * s, hip.x + bw, sb);
+    // l'orlo, visto un po' dall'alto, scende al centro
+    ctx.quadraticCurveTo(hip.x, sb + drop, hip.x - bw, sb);
+    ctx.quadraticCurveTo(hip.x - bw * 0.9, hip.y + 3 * s, hip.x - tw, st);
+    ctx.closePath();
+  };
+  const g = ctx.createLinearGradient(hip.x - bw, 0, hip.x + bw, 0);
+  g.addColorStop(0, game.lighten(color, 0.15));
+  g.addColorStop(1, game.darken(color, 0.25));
+  shape();
+  ctx.fillStyle = g;
+  ctx.fill();
+  ctx.save();
+  shape();
+  ctx.clip();
+  // pieghe che si aprono verso l'orlo, dalla vita in giù
+  ctx.strokeStyle = game.darken(color, 0.28);
+  ctx.lineWidth = 0.55 * s;
+  for (let n = -3; n <= 3; n++) {
+    ctx.beginPath();
+    ctx.moveTo(hip.x + n * 2.2 * s, st);
+    ctx.lineTo(hip.x + (n / 3) * bw * 1.02, sb + drop);
+    ctx.stroke();
+  }
+  ctx.restore();
+  shape();
+  ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+  ctx.lineWidth = 0.8;
+  ctx.stroke();
+  ctx.strokeStyle = game.lighten(color, 0.25);
+  ctx.lineWidth = 0.6 * s;
+  ctx.beginPath();
+  ctx.moveTo(hip.x + bw, sb);
+  ctx.quadraticCurveTo(hip.x, sb + drop, hip.x - bw, sb);
+  ctx.stroke();
+}
+
+/** Due pieghe morbide sulle scapole: la schiena di una maglietta liscia. */
+function shoulderBlades(neck: Pt, tyTop: number, tH: number, s: number): void {
+  const ctx = game.view.ctx;
+  ctx.strokeStyle = 'rgba(0,0,0,0.13)';
+  ctx.lineWidth = 0.7 * s;
+  for (const sd of [-1, 1]) {
+    ctx.beginPath();
+    ctx.moveTo(neck.x + sd * 2.2 * s, tyTop + tH * 0.22);
+    ctx.quadraticCurveTo(
+      neck.x + sd * 6.2 * s,
+      tyTop + tH * 0.26,
+      neck.x + sd * 6.4 * s,
+      tyTop + tH * 0.52,
+    );
+    ctx.stroke();
+  }
+}
+
+/** Il seno sul davanti del busto (vale per ogni capo e per la pelle): luce sopra, ombra sotto. */
+function drawBust(neck: Pt, tyTop: number, tH: number, s: number): void {
+  const ctx = game.view.ctx;
+  for (const sd of [-1, 1]) {
+    const cx = neck.x + sd * 3.6 * s,
+      cy = tyTop + tH * 0.29;
+    // ombra a mezzaluna sotto
+    ctx.fillStyle = 'rgba(0,0,0,0.16)';
+    ctx.beginPath();
+    ctx.arc(cx, cy, 3.4 * s, Math.PI * 0.08, Math.PI * 0.92);
+    ctx.arc(cx, cy - 1 * s, 3.4 * s, Math.PI * 0.92, Math.PI * 0.08, true);
+    ctx.fill();
+    // luce sopra (sfuma nel bianco trasparente: verso il nero farebbe un anello scuro)
+    const g = ctx.createRadialGradient(
+      cx - 0.6 * s,
+      cy - 1.3 * s,
+      0,
+      cx - 0.6 * s,
+      cy - 1.3 * s,
+      2.8 * s,
+    );
+    g.addColorStop(0, 'rgba(255,255,255,0.22)');
+    g.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(cx - 0.6 * s, cy - 1.3 * s, 2.8 * s, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+/**
+ * Riquadro a pixel che copre le parti intime nella doccia, come in TV: quadretti dei toni della
+ * pelle che cambiano piano.
+ */
+function drawCensor(
+  cx: number,
+  cy: number,
+  w: number,
+  h: number,
+  s: number,
+  skin: string,
+  t: number,
+): void {
+  const ctx = game.view.ctx;
+  const cell = 2 * s;
+  const nx = Math.ceil(w / cell),
+    ny = Math.ceil(h / cell);
+  const x0 = cx - (nx * cell) / 2,
+    y0 = cy - (ny * cell) / 2;
+  const tick = Math.floor((t || 0) * 3);
+  for (let i = 0; i < nx; i++)
+    for (let j = 0; j < ny; j++) {
+      const r = rnd(i * 7.13 + j * 3.71 + tick * 1.37);
+      ctx.fillStyle =
+        r < 0.5 ? game.darken(skin, 0.06 + r * 0.3) : game.lighten(skin, (r - 0.5) * 0.4);
+      ctx.fillRect(x0 + i * cell, y0 + j * cell, cell + 0.5, cell + 0.5);
+    }
 }
 
 /** Bicchiere da aperitivo in mano: arancione come uno spritz, inclinato mentre si beve. */
@@ -1615,10 +1973,13 @@ export function drawPlayerAvatar(
   const hsh: GameValue = nameHash(name);
   const mannequin: GameValue = !!look.mannequin;
   const bd: GameValue = look.body || bodyFromName(name);
+  // femmina: spalle un po' più strette e il seno (i manichini dei negozi sono neutri)
+  const female: boolean = bd.gender === 1 && !mannequin;
   const skin: GameValue = mannequin ? '#dfe4ea' : game.BODY_PARTS.skin.opts[bd.skin].c;
   const hair: GameValue = game.BODY_PARTS.hairColor.opts[bd.hairColor].c;
   const top: GameValue = look.top?.style === 'bare' ? { ...look.top, color: skin } : look.top,
-    pants: GameValue = look.pants,
+    nude: boolean = look.pants?.id === '_nude',
+    pants: GameValue = nude ? { ...look.pants, color: skin } : look.pants,
     shoes: GameValue = look.shoes,
     neckItem: GameValue = look.neck || null;
   const g0: GameValue = isoProject(x, y, 0);
@@ -1646,6 +2007,8 @@ export function drawPlayerAvatar(
   const onChair = pose === 'chair' || pose === 'chairSide' || chairAway;
   const chairSide = pose === 'chairSide';
   const sitting = pose === 'sit' || pose === 'bench' || onStool || onChair;
+  // seduti verso chi guarda: le cosce (e le mani in grembo) passano davanti al busto
+  const lapOverTorso = sitting && !chairAway && !onStool;
   // Direzione di marcia (a terra): il passo va avanti e indietro lungo questa.
   // Senza direzione resta il passo in diagonale di prima.
   const wd = opts && opts.walkDir;
@@ -1657,12 +2020,23 @@ export function drawPlayerAvatar(
   const walkingAway = !!moving && !sitting && wl > 0.01 && dX + dY < -0.3;
   // di spalle: al bancone, il barista girato verso le mensole, o chi si allontana
   const fromBehind = onStool || chairAway || !!(opts && opts.back) || walkingAway;
-  // da che parte dello schermo si va (1 = destra): lì punta la scarpa e, di spalle, si vede
+  // da che parte dello schermo si va (1 = destra): di spalle da quella parte si vede
   // l'orecchio (vista di tre quarti)
   const screenSide: number = dX - dY;
-  const toe: number = moving && wl > 0.01 && Math.abs(screenSide) > 0.2 ? Math.sign(screenSide) : 1;
   // la seduta della sedia è più alta di quella della panchina
-  const lift = onStool ? 13 : onChair ? 2 : 0;
+  // Seduti il sedere poggia sulla seduta: il bacino sta 2,5 sopra (opts.seatZ la dà il divano;
+  // le altre sedute hanno la loro altezza fissa). In piedi niente.
+  const seatZ: number =
+    opts && typeof opts.seatZ === 'number'
+      ? opts.seatZ
+      : onStool
+        ? 31.5
+        : onChair
+          ? CHAIR_SEAT_Z
+          : pose === 'bench'
+            ? BENCH_SEAT_Z
+            : 15.5;
+  const lift = sitting ? seatZ + 2.5 - 18 : 0;
   const bob: GameValue = sitting
     ? -4
     : moving
@@ -1682,9 +2056,17 @@ export function drawPlayerAvatar(
   // le braccia oscillano al contrario della gamba dello stesso lato
   const armX: number = (dX - dY) * 0.866 * s * 3.4 * swing,
     armY: number = (dX + dY) * 0.5 * s * 3.4 * swing;
-  const tw: GameValue = 9.5 * s;
+  const tw: GameValue = (female ? 8.6 : 9.5) * s;
+  // La vita dei pantaloni sta un po' sopra l'anca: busto più corto, gambe più lunghe. I capi
+  // lunghi (felpe, giacche…) scendono comunque fino all'anca e la coprono.
+  const longTop: boolean = LONG_TOPS.has(top.style);
+  const waistY: number = hip.y - (longTop ? 0 : 5) * s;
+  // in piedi le gambe si separano più in alto dell'anca (lo spacco); seduti no, le cosce vanno
+  // in avanti dalla seduta
+  const crotchLift: number = sitting ? 0 : 3.5;
+  const crotchY: number = hip.y + (3.5 - crotchLift) * s;
   const tyTop: GameValue = neck.y - 1 * s,
-    tyBot: GameValue = hip.y + 2 * s,
+    tyBot: GameValue = waistY + 2 * s,
     tH: GameValue = tyBot - tyTop;
   ctx.lineCap = 'round';
 
@@ -1702,181 +2084,305 @@ export function drawPlayerAvatar(
   const pStyle: GameValue = pants.style;
   const bareFrom: number =
     pStyle === 'shorts' ? 0.5 : pStyle === 'skirt' ? 0.12 : pStyle === 'briefs' ? 0.22 : 1;
-  const drawShoe = (b: Pt, back: boolean): void => {
-    const sc = back ? game.darken(shoes.color, 0.2) : shoes.color;
-    const sc2 = shoes.color2 || '#ffffff';
-    const fx = b.x + toe * 1.5 * s,
-      fy = b.y;
-    const outline = 'rgba(0,0,0,0.35)';
-    const body = (rx: number, ry: number, oy = 0) => {
+  // ---- scarpe: forme vere appoggiate a terra e girate dove punta il piede (`fwd`, nel piano del
+  // pavimento): suola e tomaia a strati, sopra i dettagli di ogni modello. Di spalle si vede il
+  // tallone. Si disegnano sopra la gamba; poi l'orlo dei pantaloni ricade sulla caviglia, tranne
+  // che su stivali e scarpe alte, il cui gambale sta sopra i pantaloni (restituisce true).
+  /** Le orecchie da coniglio delle pantofole, ritte sulla punta (a parte: vanno sopra l'orlo). */
+  const bunnyEars = (b: Pt, back: boolean, fwd: Dir): void => {
+    if (shoes.style !== 'slippers') return;
+    const sc = back ? game.darken(shoes.color, 0.18) : shoes.color;
+    const [fx, fy] = fwd;
+    const tip = {
+      x: b.x + (fx - fy) * 0.866 * s * 4.8,
+      y: b.y + 2 * s + (fx + fy) * 0.5 * s * 4.8 - 2.4 * s,
+    };
+    for (const side of [-1, 1]) {
       ctx.fillStyle = sc;
       ctx.beginPath();
-      ctx.ellipse(fx, fy + oy, rx * s, ry * s, 0, 0, 6.3);
+      ctx.ellipse(tip.x + side * 0.9 * s, tip.y - 1.9 * s, 0.75 * s, 1.9 * s, side * 0.3, 0, 6.3);
       ctx.fill();
-      ctx.strokeStyle = outline;
-      ctx.lineWidth = 0.8;
-      ctx.stroke();
-    };
-    const sole = (color: string, h = 0.95) => {
-      ctx.fillStyle = color;
+      ctx.fillStyle = '#ffeaa7';
       ctx.beginPath();
-      ctx.ellipse(fx, fy + 1.1 * s, 3.9 * s, h * s, 0, 0, 6.3);
+      ctx.ellipse(tip.x + side * 0.9 * s, tip.y - 1.8 * s, 0.33 * s, 1.2 * s, side * 0.3, 0, 6.3);
       ctx.fill();
-    };
-    const laces = () => {
-      seg(
-        { x: fx - 1.4 * s, y: fy - 1.3 * s },
-        { x: fx - 0.2 * s, y: fy - 1.6 * s },
-        '#ffffff',
-        0.5 * s,
-      );
-      seg(
-        { x: fx - 0.6 * s, y: fy - 0.6 * s },
-        { x: fx + 0.6 * s, y: fy - 0.9 * s },
-        '#ffffff',
-        0.5 * s,
-      );
-    };
-    switch (shoes.style) {
-      case 'boots':
-        ctx.fillStyle = sc;
-        ctx.fillRect(b.x - 2.4 * s, b.y - 7 * s, 4.8 * s, 7 * s);
-        ctx.fillStyle = game.lighten(sc, 0.15);
-        ctx.fillRect(b.x - 2.4 * s, b.y - 7 * s, 4.8 * s, 1 * s);
-        body(3.9, 2.2);
-        sole(game.darken(shoes.color, 0.5), 0.8);
-        break;
-      case 'hightop':
-        ctx.fillStyle = sc;
-        ctx.fillRect(b.x - 2.2 * s, b.y - 4.6 * s, 4.4 * s, 4.6 * s);
-        body(3.7, 2.1);
-        sole('#f5f6fa');
-        seg({ x: fx - 2 * s, y: fy - 0.2 * s }, { x: fx + 2 * s, y: fy - 1 * s }, sc2, 0.7 * s);
-        for (let i = 0; i < 3; i++)
-          seg(
-            { x: b.x - 1 * s, y: b.y - (1.2 + i * 1.3) * s },
-            { x: b.x + 1 * s, y: b.y - (1.2 + i * 1.3) * s },
-            '#ffffff',
-            0.45 * s,
-          );
-        break;
-      case 'formal':
-        body(4, 1.9);
-        sole('#0b0b0b', 0.6);
-        ctx.fillStyle = 'rgba(255,255,255,0.45)';
-        ctx.beginPath();
-        ctx.ellipse(fx + 0.8 * s, fy - 0.8 * s, 1.6 * s, 0.45 * s, -0.1, 0, 6.3);
-        ctx.fill();
-        break;
-      case 'heels':
-        ctx.fillStyle = game.darken(shoes.color, 0.3);
-        ctx.fillRect(b.x - 1.6 * s, fy - 0.2 * s, 1.1 * s, 2.8 * s);
-        body(3.2, 1.6, -0.4);
-        dot(fx + 1.2 * s, fy - 0.9 * s, 0.5 * s, 'rgba(255,255,255,0.6)');
-        break;
-      case 'sandals':
-        ctx.fillStyle = game.darken(shoes.color, 0.25);
-        ctx.beginPath();
-        ctx.ellipse(fx, fy + 0.8 * s, 3.9 * s, 1.3 * s, 0, 0, 6.3);
-        ctx.fill();
-        ctx.fillStyle = back ? game.darken(skin, 0.12) : skin;
-        ctx.beginPath();
-        ctx.ellipse(fx, fy, 3.2 * s, 1.7 * s, 0, 0, 6.3);
-        ctx.fill();
-        seg({ x: fx - 2 * s, y: fy - 0.6 * s }, { x: fx + 0.6 * s, y: fy + 0.8 * s }, sc, 0.9 * s);
-        seg(
-          { x: fx + 0.6 * s, y: fy - 0.9 * s },
-          { x: fx + 2.2 * s, y: fy + 0.6 * s },
-          sc,
-          0.9 * s,
-        );
-        break;
-      case 'slippers':
-        for (const side of [-1, 1]) {
-          ctx.fillStyle = sc;
-          ctx.beginPath();
-          ctx.ellipse(
-            fx + (1.6 + side * 0.9) * s,
-            fy - 2.4 * s,
-            0.8 * s,
-            2 * s,
-            side * 0.3,
-            0,
-            6.3,
-          );
-          ctx.fill();
-          ctx.fillStyle = '#ffeaa7';
-          ctx.beginPath();
-          ctx.ellipse(
-            fx + (1.6 + side * 0.9) * s,
-            fy - 2.3 * s,
-            0.35 * s,
-            1.3 * s,
-            side * 0.3,
-            0,
-            6.3,
-          );
-          ctx.fill();
-        }
-        body(4.3, 2.6);
-        ctx.fillStyle = game.lighten(shoes.color, 0.35);
-        ctx.beginPath();
-        ctx.ellipse(fx - 0.6 * s, fy + 0.2 * s, 2.4 * s, 1.3 * s, 0, 0, 6.3);
-        ctx.fill();
-        dot(fx + 1.2 * s, fy - 0.8 * s, 0.4 * s, '#2d3436');
-        dot(fx + 2.6 * s, fy - 0.8 * s, 0.4 * s, '#2d3436');
-        break;
-      case 'barefoot':
-        ctx.fillStyle = back ? game.darken(skin, 0.12) : skin;
-        ctx.beginPath();
-        ctx.ellipse(fx, fy, 3.2 * s, 1.6 * s, 0, 0, 6.3);
-        ctx.fill();
-        ctx.strokeStyle = 'rgba(0,0,0,0.25)';
-        ctx.lineWidth = 0.6;
-        ctx.stroke();
-        break;
-      case 'checker':
-        body(3.6, 2, -0.2);
-        ctx.save();
-        ctx.beginPath();
-        ctx.ellipse(fx, fy - 0.2 * s, 3.6 * s, 2 * s, 0, 0, 6.3);
-        ctx.clip();
-        ctx.fillStyle = sc2;
-        for (let i = 0; i < 6; i++)
-          for (let j = 0; j < 3; j++)
-            if ((i + j) % 2)
-              ctx.fillRect(fx + (i - 3) * 1.2 * s, fy + (j - 2) * 1.2 * s, 1.2 * s, 1.2 * s);
-        ctx.restore();
-        sole('#f5f6fa');
-        break;
-      default: {
-        // sneakers
-        body(3.6, 2, -0.2);
-        const white = toRgb(shoes.color).every((v: number) => v > 220);
-        sole(white ? '#ced6e0' : '#f5f6fa');
-        ctx.fillStyle = game.lighten(sc, 0.25);
-        ctx.beginPath();
-        ctx.ellipse(fx + 2 * s, fy - 0.1 * s, 1.4 * s, 1.2 * s, 0, 0, 6.3);
-        ctx.fill();
-        if (!white) laces();
-        else {
-          seg(
-            { x: fx - 1.4 * s, y: fy - 1.3 * s },
-            { x: fx - 0.2 * s, y: fy - 1.6 * s },
-            '#b2bec3',
-            0.5 * s,
-          );
-          seg(
-            { x: fx - 0.6 * s, y: fy - 0.6 * s },
-            { x: fx + 0.6 * s, y: fy - 0.9 * s },
-            '#b2bec3',
-            0.5 * s,
-          );
-        }
-      }
     }
   };
-  const drawPantsPattern = (a: Pt, end: Pt, pc: string): void => {
+  const drawShoe = (b: Pt, back: boolean, fwd: Dir): boolean => {
+    const style: string = shoes.style;
+    const tone = (c: string) => (back ? game.darken(c, 0.18) : c);
+    const sc = tone(shoes.color);
+    const sc2 = shoes.color2 || '#ffffff';
+    const sk = tone(skin);
+    const [fx, fy] = fwd;
+    // assi sullo schermo per un'unità: avanti lungo il piede, di lato, in su
+    const F = { x: (fx - fy) * 0.866 * s, y: (fx + fy) * 0.5 * s };
+    const R = { x: (-fy - fx) * 0.866 * s, y: (-fy + fx) * 0.5 * s };
+    // la caviglia (b) sta 2 unità sopra la suola
+    const gx = b.x,
+      gy = b.y + 2 * s;
+    const at = (z: number) => ctx.setTransform(F.x, F.y, R.x, R.y, gx, gy - z * s);
+    const screenAt = (u: number, z: number): Pt => ({
+      x: gx + F.x * u,
+      y: gy + F.y * u - z * s,
+    });
+    /** Sagoma del piede (u avanti, v di lato): tallone tondo, pianta più larga, punta tonda. */
+    const foot = (inset = 0, ball = 2.3, heel = -2.4, tip = 5.8): void => {
+      const h = Math.max(0.4, ball - 0.4 - inset),
+        w = Math.max(0.4, ball - inset);
+      const u0 = heel + inset,
+        u1 = tip - inset;
+      ctx.beginPath();
+      ctx.moveTo(u0, 0);
+      ctx.bezierCurveTo(u0, -h, 0, -w, 2.7, -w);
+      ctx.bezierCurveTo(u1 - 0.8, -w, u1, -w * 0.6, u1, 0);
+      ctx.bezierCurveTo(u1, w * 0.6, u1 - 0.8, w, 2.7, w);
+      ctx.bezierCurveTo(0, w, u0, h, u0, 0);
+      ctx.closePath();
+    };
+    /** Strati pieni da z0 a z1: il fianco della scarpa. */
+    const slab = (z0: number, z1: number, color: string, shape: () => void): void => {
+      ctx.fillStyle = color;
+      for (let z = z0; z <= z1 + 1e-6; z += 0.3) {
+        at(z);
+        shape();
+        ctx.fill();
+      }
+    };
+    /** Il sopra della scarpa a quota z, con i dettagli disegnati dentro la sua sagoma. */
+    const topFace = (z: number, color: string, shape: () => void, inside?: () => void): void => {
+      at(z);
+      shape();
+      ctx.fillStyle = color;
+      ctx.fill();
+      if (inside) {
+        ctx.save();
+        shape();
+        ctx.clip();
+        inside();
+        ctx.restore();
+      }
+      at(z);
+      shape();
+      ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+      ctx.lineWidth = 0.22;
+      ctx.stroke();
+    };
+    const band = (u0: number, u1: number, color: string) => {
+      ctx.fillStyle = color;
+      ctx.fillRect(u0, -3, u1 - u0, 6);
+    };
+    const laces = (color: string) => {
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 0.35;
+      for (const u of [0.5, 1.3, 2.1]) {
+        ctx.beginPath();
+        ctx.moveTo(u, -0.75);
+        ctx.lineTo(u + 0.25, 0.75);
+        ctx.stroke();
+      }
+    };
+    const toes = (u: number, color: string) => {
+      ctx.fillStyle = color;
+      for (const [v, r] of [
+        [-1.25, 0.42],
+        [-0.62, 0.4],
+        [0, 0.38],
+        [0.6, 0.35],
+        [1.12, 0.32],
+      ] as const) {
+        ctx.beginPath();
+        ctx.arc(u - Math.abs(v) * 0.35, v, r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    };
+    const shaft = (z0: number, z1: number, color: string) => {
+      const ring = () => {
+        ctx.beginPath();
+        ctx.ellipse(-0.4, 0, 2.1, 2, 0, 0, Math.PI * 2);
+      };
+      slab(z0, z1, game.darken(color, 0.12), ring);
+      topFace(z1, game.darken(color, 0.55), ring);
+    };
+    const plain = () => foot();
+    const top = () => foot(0.25);
+    switch (style) {
+      case 'boots':
+        slab(0, 0.7, game.darken(shoes.color, 0.5), plain);
+        slab(0.7, 2.6, game.darken(sc, 0.15), plain);
+        topFace(2.6, sc, top, () => band(4.1, 7, game.lighten(sc, 0.12)));
+        break;
+      case 'hightop':
+        slab(0, 0.8, '#f5f6fa', plain);
+        slab(0.8, 2.4, game.darken(sc, 0.15), plain);
+        topFace(2.4, sc, top, () => {
+          band(4, 7, '#f5f6fa');
+          band(-3, -1.5, game.darken(sc, 0.2));
+        });
+        break;
+      case 'formal': {
+        const pointy = (inset = 0) => foot(inset, 1.9, -2.4, 6.3);
+        slab(0, 0.5, '#0b0b0b', () => pointy());
+        slab(0.5, 1.9, game.darken(sc, 0.2), () => pointy());
+        topFace(
+          1.9,
+          sc,
+          () => pointy(0.22),
+          () => {
+            ctx.fillStyle = 'rgba(255,255,255,0.4)';
+            ctx.beginPath();
+            ctx.ellipse(4.5, -0.4, 1.2, 0.45, 0, 0, Math.PI * 2);
+            ctx.fill();
+          },
+        );
+        break;
+      }
+      case 'heels': {
+        const pump = (inset = 0) => foot(inset, 2.2, -2.4, 6.2);
+        // il tacco a spillo sotto il tallone
+        slab(0, 1.6, game.darken(shoes.color, 0.35), () => {
+          ctx.beginPath();
+          ctx.ellipse(-1.7, 0, 0.45, 0.45, 0, 0, Math.PI * 2);
+        });
+        slab(0, 1.4, game.darken(sc, 0.18), () => pump());
+        topFace(
+          1.4,
+          sc,
+          () => pump(0.2),
+          () => {
+            // scollata: si vede il collo del piede
+            ctx.fillStyle = sk;
+            ctx.beginPath();
+            ctx.ellipse(0.6, 0, 2.3, 1.6, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = 'rgba(255,255,255,0.45)';
+            ctx.beginPath();
+            ctx.ellipse(4.6, -0.3, 0.8, 0.3, 0, 0, Math.PI * 2);
+            ctx.fill();
+          },
+        );
+        break;
+      }
+      case 'sandals': {
+        const bare = (inset = 0) => foot(inset + 0.25, 2.15, -2.3, 5.6);
+        slab(0, 0.5, game.darken(shoes.color, 0.25), () => foot(0, 2.45, -2.5, 6));
+        slab(0.5, 1.4, game.darken(sk, 0.12), () => bare());
+        topFace(
+          1.4,
+          sk,
+          () => bare(0.15),
+          () => {
+            toes(5, game.lighten(sk, 0.08));
+            band(0.7, 1.4, sc);
+            band(3, 3.7, sc);
+          },
+        );
+        break;
+      }
+      case 'barefoot': {
+        // piede nudo: basso, tallone stretto e pianta larga, fianco appena più scuro della pelle
+        // (scuro sembrerebbe una pantofola) e cinque dita che sporgono dalla punta
+        const bare = (inset = 0) => foot(inset + 0.3, 2.15, -2.1, 5);
+        slab(0, 0.9, game.darken(sk, 0.07), () => bare());
+        at(0.9);
+        bare(0.1);
+        const tg = ctx.createLinearGradient(-2.2, 0, 5, 0);
+        tg.addColorStop(0, game.darken(sk, 0.04));
+        tg.addColorStop(1, game.lighten(sk, 0.06));
+        ctx.fillStyle = tg;
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(0,0,0,0.16)';
+        ctx.lineWidth = 0.2;
+        ctx.stroke();
+        // le dita: appoggiate a terra, spuntano dalla base della punta (non stanno sopra il
+        // piede); l'alluce più grosso, le altre via via più piccole e più indietro
+        for (const [v, r, back] of [
+          [-1.15, 0.72, 0.15],
+          [-0.25, 0.56, 0.3],
+          [0.5, 0.5, 0.55],
+          [1.15, 0.45, 0.85],
+          [1.65, 0.38, 1.2],
+        ] as const) {
+          for (const [z, color] of [
+            [0, game.darken(sk, 0.1)],
+            [0.25, game.darken(sk, 0.06)],
+            [0.55, sk],
+          ] as const) {
+            at(z);
+            ctx.beginPath();
+            ctx.ellipse(4.85 - back, v, r * 1.15, r, 0, 0, Math.PI * 2);
+            ctx.fillStyle = color;
+            ctx.fill();
+          }
+          ctx.strokeStyle = 'rgba(0,0,0,0.18)';
+          ctx.lineWidth = 0.15;
+          ctx.stroke();
+          // l'unghia
+          ctx.beginPath();
+          ctx.ellipse(4.95 - back, v, r * 0.5, r * 0.45, 0, 0, Math.PI * 2);
+          ctx.fillStyle = game.lighten(sk, 0.28);
+          ctx.fill();
+        }
+        break;
+      }
+      case 'slippers': {
+        const fluffy = (inset = 0) => foot(inset, 2.6, -2.6, 6.1);
+        slab(0, 2.4, game.darken(sc, 0.12), () => fluffy());
+        topFace(
+          2.4,
+          sc,
+          () => fluffy(0.2),
+          () => {
+            ctx.fillStyle = game.lighten(shoes.color, 0.35);
+            ctx.beginPath();
+            ctx.ellipse(-0.2, 0, 1.9, 1.4, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#2d3436';
+            for (const v of [-0.7, 0.7]) {
+              ctx.beginPath();
+              ctx.arc(4.7, v, 0.3, 0, Math.PI * 2);
+              ctx.fill();
+            }
+          },
+        );
+        break;
+      }
+      case 'checker':
+        slab(0, 0.8, '#f5f6fa', plain);
+        slab(0.8, 2.2, game.darken(sc, 0.15), plain);
+        topFace(2.2, sc, top, () => {
+          ctx.fillStyle = sc2;
+          for (let i = -3; i < 8; i++)
+            for (let j = -3; j < 3; j++) if ((i + j) % 2) ctx.fillRect(i * 1.1, j * 1.1, 1.1, 1.1);
+        });
+        break;
+      default: {
+        // sneakers: suola bianca, punta più chiara, lacci e il rinforzo del tallone
+        const white = toRgb(shoes.color).every((v: number) => v > 220);
+        slab(0, 0.8, white ? '#ced6e0' : '#f5f6fa', plain);
+        slab(0.8, 2.3, game.darken(sc, 0.15), plain);
+        topFace(2.3, sc, top, () => {
+          band(4.1, 7, game.lighten(sc, 0.25));
+          band(-3, -1.5, game.darken(sc, 0.18));
+          laces(white ? '#b2bec3' : '#ffffff');
+        });
+      }
+    }
+    if (style === 'boots') shaft(2.6, 7.5, sc);
+    else if (style === 'hightop') {
+      shaft(2.4, 4.8, sc);
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      // lacci sul davanti del gambale
+      for (let i = 0; i < 3; i++) {
+        const p = screenAt(1.3, 2.9 + i * 0.7);
+        seg({ x: p.x - 0.9 * s, y: p.y }, { x: p.x + 0.9 * s, y: p.y }, '#ffffff', 0.45 * s);
+      }
+    }
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    return style === 'boots' || style === 'hightop';
+  };
+  /** Il motivo dei pantaloni da a a end; `ankle`: il pezzo finisce alla caviglia (polsini). */
+  const drawPantsPattern = (a: Pt, end: Pt, pc: string, ankle = true): void => {
     const c2 = pants.color2 || game.darken(pants.color, 0.3);
     const knee = lerpPt(a, end, 0.5);
     switch (pStyle) {
@@ -1919,7 +2425,7 @@ export function drawPlayerAvatar(
       }
       case 'joggers':
         seg({ x: a.x + 1.6 * s, y: a.y }, { x: end.x + 1.6 * s, y: end.y - 1.2 * s }, c2, 0.7 * s);
-        seg(lerpPt(a, end, 0.9), end, game.darken(pc, 0.25), 5 * s);
+        if (ankle) seg(lerpPt(a, end, 0.9), end, game.darken(pc, 0.25), 5 * s);
         break;
       case 'cargo':
         ctx.fillStyle = c2;
@@ -1952,15 +2458,28 @@ export function drawPlayerAvatar(
         break;
     }
   };
-  const drawLeg = (a: Pt, b: Pt, back: boolean, knee?: Pt): void => {
-    const pc = back ? game.darken(pants.color, 0.18) : pants.color;
+  // Le gambe si raccolgono e si disegnano tutte insieme (renderLegs): le scarpe vanno in ordine
+  // di profondità, e quelle girate di spalle in parte dietro la gamba e in parte davanti.
+  type Leg = { a: Pt; b: Pt; back: boolean; fwd: Dir; knee?: Pt };
+  const legs: Leg[] = [];
+  const drawLeg = (a: Pt, b: Pt, back: boolean, fwd: Dir, knee?: Pt): void => {
+    legs.push({ a, b, back, fwd, knee });
+  };
+  const legPaint = (l: Leg) => {
+    const pc = l.back ? game.darken(pants.color, 0.18) : pants.color;
     const width =
       (pStyle === 'shorts' || pStyle === 'briefs'
         ? 5.4
         : pStyle === 'cargo' || pStyle === 'joggers'
           ? 5
           : 4.6) * s;
-    const sk = back ? game.darken(skin, 0.12) : skin;
+    const sk = l.back ? game.darken(skin, 0.12) : skin;
+    return { pc, width, sk };
+  };
+  /** Il tratto della gamba fino a `b` (di solito la caviglia; più su sopra scarpe e stivali). */
+  const legStroke = (l: Leg, b: Pt = l.b): void => {
+    const { a, knee } = l;
+    const { pc, width, sk } = legPaint(l);
     if (knee) {
       // seduto: coscia in avanti, stinco verso il pavimento
       if (bareFrom < 1) {
@@ -1971,8 +2490,10 @@ export function drawPlayerAvatar(
       } else {
         seg(a, knee, pc, width);
         seg(knee, b, pc, width);
+        // il motivo dei pantaloni anche da seduti, su coscia e stinco
+        drawPantsPattern(a, knee, pc, false);
+        drawPantsPattern(knee, b, pc);
       }
-      drawShoe(b, back);
       return;
     }
     const cut = lerpPt(a, b, bareFrom);
@@ -1981,7 +2502,96 @@ export function drawPlayerAvatar(
       seg(a, cut, pc, width);
       drawPantsPattern(a, cut, pc);
     }
-    drawShoe(b, back);
+  };
+  const tallShoes = shoes.style === 'boots' || shoes.style === 'hightop';
+  /** Quota della cima del gambale di stivali e scarpe alte (sopra la suola). */
+  const shaftTop = shoes.style === 'boots' ? 7.5 : 4.8;
+  /** Scarpa girata di spalle (la punta va dietro la gamba); stivali e scarpe alte no. */
+  const awayFoot = (l: Leg): boolean => l.fwd[0] + l.fwd[1] < -0.2 && !tallShoes;
+  /** Larghezza del tratto finale della gamba (pantaloni o pelle). */
+  const endWidth = (l: Leg): number => (bareFrom < 1 ? 3.8 * s : legPaint(l).width);
+  /** Il punto sullo schermo del piede (u avanti, quota z) per una gamba. */
+  const footPt = (l: Leg, u: number, z: number): Pt => ({
+    x: l.b.x + (l.fwd[0] - l.fwd[1]) * 0.866 * s * u,
+    y: l.b.y + 2 * s + (l.fwd[0] + l.fwd[1]) * 0.5 * s * u - z * s,
+  });
+  /**
+   * Il bordo del gambale verso chi guarda, sopra i pantaloni che entrano nello stivale: la metà
+   * davanti dell'anello in cima, col bordino chiaro.
+   */
+  const shaftFront = (l: Leg): void => {
+    const [fx, fy] = l.fwd;
+    const F = { x: (fx - fy) * 0.866 * s, y: (fx + fy) * 0.5 * s };
+    const R = { x: (-fy - fx) * 0.866 * s, y: (-fy + fx) * 0.5 * s };
+    const g = footPt(l, 0, shaftTop);
+    const color = l.back ? game.darken(shoes.color, 0.18) : shoes.color;
+    // la metà dell'anello che sullo schermo sta più in basso (più vicina)
+    const phi = Math.atan2(R.y * 2, F.y * 2.1);
+    ctx.setTransform(F.x, F.y, R.x, R.y, g.x, g.y);
+    for (const [z, fill] of [
+      [0.9, game.darken(color, 0.12)],
+      [0, color],
+    ] as const) {
+      ctx.setTransform(F.x, F.y, R.x, R.y, g.x, g.y + z * s);
+      ctx.beginPath();
+      ctx.ellipse(-0.4, 0, 2.1, 2, 0, phi - Math.PI / 2, phi + Math.PI / 2);
+      ctx.ellipse(-0.4, 0, 1.6, 1.5, 0, phi + Math.PI / 2, phi - Math.PI / 2, true);
+      ctx.closePath();
+      ctx.fillStyle = fill;
+      ctx.fill();
+    }
+    ctx.setTransform(F.x, F.y, R.x, R.y, g.x, g.y);
+    ctx.beginPath();
+    ctx.ellipse(-0.4, 0, 2.1, 2, 0, phi - Math.PI / 2, phi + Math.PI / 2);
+    ctx.strokeStyle = game.lighten(color, 0.3);
+    ctx.lineWidth = 0.3;
+    ctx.stroke();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+  };
+  /**
+   * Ogni gamba con la sua scarpa, dal piede più lontano (più in alto sullo schermo) al più vicino:
+   * così né la scarpa né il gambale dello stivale lontano passano sopra la gamba vicina.
+   * - verso chi guarda: la scarpa sotto, la gamba che finisce tonda poco sopra la caviglia (niente
+   *   orli posticci che taglierebbero le righe dei pantaloni), le orecchie del coniglio sopra;
+   * - di spalle: scarpa e orecchie dietro la gamba, poi sopra di nuovo solo il tallone;
+   * - stivali e scarpe alte: i pantaloni entrano nel gambale, il bordo davanti ci passa sopra.
+   */
+  const renderLegs = (): void => {
+    for (const l of [...legs].sort((p, q) => p.b.y - q.b.y)) {
+      const r = endWidth(l) / 2;
+      drawShoe(l.b, l.back, l.fwd);
+      if (tallShoes) {
+        const top = footPt(l, -0.4, shaftTop);
+        legStroke(l, { x: top.x, y: top.y - r });
+        shaftFront(l);
+      } else if (awayFoot(l)) {
+        bunnyEars(l.b, l.back, l.fwd);
+        legStroke(l);
+        // il tallone torna sopra la gamba sotto la caviglia, ma non sul fondo tondo della gamba
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(l.b.x - 30 * s, l.b.y - 0.2 * s, 60 * s, 30 * s);
+        ctx.clip();
+        ctx.beginPath();
+        ctx.rect(l.b.x - 30 * s, l.b.y - 30 * s, 60 * s, 60 * s);
+        ctx.arc(l.b.x, l.b.y, r, 0, Math.PI * 2);
+        ctx.clip('evenodd');
+        drawShoe(l.b, l.back, l.fwd);
+        ctx.restore();
+      } else {
+        if (bareFrom < 1 && !l.knee && OPEN_SHOES.has(shoes.style)) {
+          // gamba nuda in una scarpa scollata: scende dritta fin sul collo del piede, che è
+          // pelle anche lui (con la punta tonda la caviglia sembrerebbe stringersi)
+          ctx.lineCap = 'butt';
+          legStroke(l, { x: l.b.x, y: l.b.y + 0.8 * s });
+          ctx.lineCap = 'round';
+        } else {
+          // il fondo tondo della gamba arriva appena sotto la caviglia, sopra la tomaia
+          legStroke(l, { x: l.b.x, y: l.b.y - r + 0.6 * s });
+        }
+        bunnyEars(l.b, l.back, l.fwd);
+      }
+    }
   };
   if (onStool) {
     // le ginocchia vanno sotto il bancone, i piedi sul poggiapiedi dello sgabello
@@ -1989,69 +2599,147 @@ export function drawPlayerAvatar(
       [1, true],
       [-1, false],
     ] as const)
-      drawLeg(P(side * 3.5, 0, 22 + bob), P(side * 3.5, -9, -6), back, P(side * 3.5, -11, 17));
+      drawLeg(
+        P(side * 3.5, 0, 22 + bob),
+        P(side * 3.5, -9, -6),
+        back,
+        [0, -1],
+        P(side * 3.5, -11, 17),
+      );
   } else if (chairSide) {
     // ginocchia e piedi verso il tavolo; la gamba più lontana da chi guarda va dietro
     for (const [side, back] of [
       [-1, true],
       [1, false],
     ] as const)
-      drawLeg(P(0, side * 3.5, 22 + bob), P(13, side * 3.5, 2 - lift), back, P(11, side * 3.5, 19));
+      drawLeg(
+        P(0, side * 3.5, 22 + bob),
+        P(13, side * 3.5, 2 - lift),
+        back,
+        [1, 0],
+        P(11, side * 3.5, 19),
+      );
   } else if (chairAway) {
     // ginocchia e piedi sotto la scrivania, dalla parte opposta a chi guarda (il busto li copre)
     const sideways = pose === 'chairAwaySide';
     for (const side of [-1, 1]) {
       const at = (a: number, b: number, z: number) =>
         sideways ? P(-b, side * 3.5 + a, z) : P(side * 3.5 + a, -b, z);
-      drawLeg(at(0, 0, 22 + bob), at(0, 13, 2 - lift), true, at(0, 11, 19));
+      drawLeg(
+        at(0, 0, 22 + bob),
+        at(0, 13, 2 - lift),
+        true,
+        sideways ? [-1, 0] : [0, -1],
+        at(0, 11, 19),
+      );
     }
   } else if (sitting) {
     for (const [side, back] of [
       [1, true],
       [-1, false],
     ] as const)
-      drawLeg(P(side * 3.5, 0, 22 + bob), P(side * 3.5, 13, 2 - lift), back, P(side * 3.5, 11, 19));
+      drawLeg(
+        P(side * 3.5, 0, 22 + bob),
+        P(side * 3.5, 14, 2 - lift),
+        back,
+        [0, 1],
+        P(side * 3.5, 11, 19),
+      );
   } else {
+    // in piedi i piedi guardano dove va (o verso chi guarda, o di spalle), un po' aperti
+    const walkDir = moving && wl > 0.01;
+    const face: Dir = walkDir
+      ? [dX, dY]
+      : fromBehind
+        ? [-Math.SQRT1_2, -Math.SQRT1_2]
+        : [Math.SQRT1_2, Math.SQRT1_2];
+    const spread = walkDir ? 0.12 : 0.32;
+    /** Gira il piede verso l'esterno: `side` è il lato dello schermo (1 = destra). */
+    const splay = (side: number): Dir => {
+      const turn = (a: number): Dir => [
+        face[0] * Math.cos(a) + face[1] * Math.sin(a),
+        -face[0] * Math.sin(a) + face[1] * Math.cos(a),
+      ];
+      const [p, q] = [turn(spread), turn(-spread)];
+      return side * (p[0] - p[1]) > side * (q[0] - q[1]) ? p : q;
+    };
     drawLeg(
-      P(3, -3, 22 + bob),
+      P(3, -3, 22 + bob + crotchLift),
       P(3 - swing * STRIDE * dX, -3 - swing * STRIDE * dY, 2 + liftBack),
       true,
+      splay(1),
     );
     drawLeg(
-      P(-3, 3, 22 + bob),
+      P(-3, 3, 22 + bob + crotchLift),
       P(-3 + swing * STRIDE * dX, 3 + swing * STRIDE * dY, 2 + liftFront),
       false,
+      splay(-1),
     );
   }
-  if (pStyle === 'skirt') {
-    const st = hip.y - 1 * s,
-      sb = hip.y + 9.5 * s;
-    const g = ctx.createLinearGradient(hip.x - 10 * s, 0, hip.x + 10 * s, 0);
-    g.addColorStop(0, game.lighten(pants.color, 0.15));
-    g.addColorStop(1, game.darken(pants.color, 0.25));
-    ctx.fillStyle = g;
+  // Gambe e bacino. Seduti verso chi guarda le cosce vengono in avanti e passano davanti al
+  // busto: si disegnano dopo (prima della vita, così la gonna resta sopra e le mani in grembo pure).
+  // Il bacino dei pantaloni (la gonna lascia le gambe). In piedi: dalla vita all'attacco delle
+  // gambe, con la V in mezzo, sopra le gambe. Seduti verso chi guarda: sotto le cosce, e segue la
+  // loro direzione (dalla vita fino a un terzo della coscia), così le cosce ne escono senza
+  // scalini invece di sbucare da sotto una scatola.
+  const pelvis = (): void => {
+    if (pStyle === 'skirt' || waistY >= crotchY) return;
+    // dallo stesso colore della gamba vicina (a sinistra) a quello della lontana (a destra)
+    const pg = ctx.createLinearGradient(hip.x - 6 * s, 0, hip.x + 6 * s, 0);
+    pg.addColorStop(0, pants.color);
+    pg.addColorStop(1, game.darken(pants.color, 0.18));
+    ctx.fillStyle = pg;
     ctx.beginPath();
-    ctx.moveTo(hip.x - 7.5 * s, st);
-    ctx.lineTo(hip.x + 7.5 * s, st);
-    ctx.lineTo(hip.x + 10.5 * s, sb);
-    ctx.lineTo(hip.x - 10.5 * s, sb);
+    if (lapOverTorso) {
+      const pts: Pt[] = [
+        { x: hip.x - 7.5 * s, y: waistY },
+        { x: hip.x + 7.5 * s, y: waistY },
+      ];
+      for (const l of legs) {
+        const end = lerpPt(l.a, l.knee || l.b, 0.35);
+        const half = legPaint(l).width / 2;
+        for (const q of [l.a, end])
+          for (const [dx, dy] of [
+            [half, 0],
+            [-half, 0],
+            [0, half],
+            [0, -half],
+          ])
+            pts.push({ x: q.x + dx, y: q.y + dy });
+      }
+      convexHull(pts).forEach((q, n) => (n ? ctx.lineTo(q.x, q.y) : ctx.moveTo(q.x, q.y)));
+    } else {
+      ctx.moveTo(hip.x - 7.5 * s, waistY);
+      ctx.lineTo(hip.x + 7.5 * s, waistY);
+      ctx.lineTo(hip.x + 7.6 * s, crotchY - 1 * s);
+      ctx.lineTo(hip.x, crotchY);
+      ctx.lineTo(hip.x - 7.6 * s, crotchY - 1 * s);
+    }
     ctx.closePath();
     ctx.fill();
-    for (let i = -3; i <= 3; i++)
-      seg(
-        { x: hip.x + i * 2 * s, y: st + 1 * s },
-        { x: hip.x + i * 2.9 * s, y: sb },
-        game.darken(pants.color, 0.25),
-        0.5 * s,
-      );
-    seg(
-      { x: hip.x - 10.5 * s, y: sb },
-      { x: hip.x + 10.5 * s, y: sb },
-      game.lighten(pants.color, 0.25),
-      0.6 * s,
-    );
-  }
-
+    // i motivi che coprono tutta la stoffa continuano anche qui, come sulle gambe
+    if (pStyle === 'camo' || pStyle === 'plaid' || pStyle === 'sequin') {
+      ctx.save();
+      ctx.clip();
+      for (const dx of [-3.6, 3.6])
+        drawPantsPattern(
+          { x: hip.x + dx * s, y: waistY - 1 * s },
+          { x: hip.x + dx * s, y: hip.y + 5 * s },
+          pants.color,
+        );
+      ctx.restore();
+    }
+  };
+  const lowerBody = (): void => {
+    if (lapOverTorso) {
+      pelvis();
+      renderLegs();
+    } else {
+      renderLegs();
+      pelvis();
+    }
+  };
+  if (!lapOverTorso) lowerBody();
   // ---- braccia: manica lunga, corta o niente
   const sleeveKind =
     top.style === 'tank' || top.style === 'bare'
@@ -2073,11 +2761,11 @@ export function drawPlayerAvatar(
       : null;
   // al bancone le mani stanno sul piano; per bere una sale col bicchiere fino alla bocca
   const sip: number = (opts && opts.sip) || 0;
-  const stoolBack: Pt | null = onStool ? lerpPt(P(4, -14, 35), P(5, -5, 56), sip) : null;
+  const stoolBack: Pt | null = onStool ? lerpPt(P(5, -10, 32), P(5, -5, 53), sip) : null;
   const handBack: Pt | null = opts?.hands
     ? opts.hands.back
     : chairSide
-      ? P(10, -3.5, 21)
+      ? P(10, -3.5, 24.5)
       : stoolBack
         ? stoolBack
         : pose === 'panic'
@@ -2089,16 +2777,18 @@ export function drawPlayerAvatar(
               : reading
                 ? { x: neck.x + 9 * s, y: neck.y + 11 * s }
                 : sitting
-                  ? { x: P(3.5, 11, 20).x + 1 * s, y: P(3.5, 11, 20).y - 1 * s }
+                  ? lapOverTorso
+                    ? { x: hip.x + 3.5 * s, y: hip.y + 3 * s }
+                    : { x: P(3.5, 11, 20).x + 1 * s, y: P(3.5, 11, 20).y - 1 * s }
                   : null;
   const handFront: Pt | null = smokingHand
     ? smokingHand
     : opts?.hands
       ? opts.hands.front
       : chairSide
-        ? P(10, 3.5, 21)
+        ? P(10, 3.5, 24.5)
         : onStool
-          ? P(-4, -14, 35)
+          ? P(-4, -12, 32)
           : pose === 'panic'
             ? { x: neck.x - 9 * s, y: neck.y - 15 * s - flap }
             : tap
@@ -2108,9 +2798,21 @@ export function drawPlayerAvatar(
                 : reading
                   ? { x: neck.x - 9 * s, y: neck.y + 11 * s }
                   : sitting
-                    ? { x: P(-3.5, 11, 20).x - 1 * s, y: P(-3.5, 11, 20).y - 1 * s }
+                    ? lapOverTorso
+                      ? { x: hip.x - 3.5 * s, y: hip.y + 3 * s }
+                      : { x: P(-3.5, 11, 20).x - 1 * s, y: P(-3.5, 11, 20).y - 1 * s }
                     : null;
   const drawArm = (from: Pt, to: Pt, back: boolean): void => {
+    if (lapOverTorso && !reading && !opts?.hands) {
+      // seduti: le due braccia uguali, specchiate: scendono lungo i fianchi, il gomito si piega
+      // e gli avambracci vanno in diagonale verso il bacino, con le mani in grembo
+      // il gomito all'altezza giusta: poco più di metà tra spalla e anca, appena in fuori
+      const elbow = { x: from.x + (back ? 1.2 : -1.2) * s, y: from.y + (hip.y - from.y) * 0.58 };
+      armPiece(from, elbow, back, true);
+      armPiece(elbow, to, back, false);
+      dot(to.x, to.y, 2.6 * s, armSkin(back));
+      return;
+    }
     if (reading || (pose === 'smoke' && !back)) {
       // gomito sotto la spalla, un po' in fuori: il braccio sale di nuovo verso il giornale
       const elbow = { x: from.x + (back ? 2.5 : -2.5) * s, y: neck.y + 16 * s };
@@ -2173,7 +2875,19 @@ export function drawPlayerAvatar(
     frontTo: Pt = handFront || { x: hip.x - 11 * s - armX, y: hip.y + 1 * s - armY };
   if (handsAt.size > 200) handsAt.clear();
   handsAt.set(x + ',' + y, [backTo, frontTo]);
-  drawArm({ x: neck.x + tw - 1 * s, y: neck.y + 3 * s }, backTo, true);
+  // ---- dietro il busto: capelli che scendono (di spalle lunghi, coda e caschetto si disegnano
+  // sopra, in drawHairFromBehind) e il collo, che così entra nello scollo invece di coprirlo
+  if (!mannequin && !(fromBehind && [2, 3, 6].includes(bd.hairStyle)))
+    drawHairBack(head, s, bd.hairStyle, hair);
+  ctx.fillStyle = skin;
+  ctx.fillRect(neck.x - 2.5 * s, neck.y - 5 * s, 5 * s, 7 * s);
+  // ombra del mento sul collo
+  ctx.fillStyle = 'rgba(0,0,0,0.12)';
+  ctx.fillRect(neck.x - 2.5 * s, neck.y - 5 * s, 5 * s, 2 * s);
+  // al bancone il braccio verso lo schermo si disegna dopo il busto, piegato (vedi stoolArm)
+  // seduti verso chi guarda si disegna dopo le gambe (sopra la coscia), vedi più sotto
+  if (!onStool && !lapOverTorso)
+    drawArm({ x: neck.x + tw - 1 * s, y: neck.y + 3 * s }, backTo, true);
   // di spalle anche l'altro braccio va in avanti, dietro il busto
   if (fromBehind) drawArm({ x: neck.x - tw + 1 * s, y: neck.y + 3 * s }, frontTo, false);
 
@@ -2187,8 +2901,8 @@ export function drawPlayerAvatar(
   // ---- busto con il motivo del capo
   const torsoPath = (): void => {
     ctx.beginPath();
-    ctx.moveTo(hip.x - 7.5 * s, hip.y + 2 * s);
-    ctx.lineTo(hip.x + 7.5 * s, hip.y + 2 * s);
+    ctx.moveTo(hip.x - 7.5 * s, tyBot);
+    ctx.lineTo(hip.x + 7.5 * s, tyBot);
     ctx.lineTo(neck.x + tw, neck.y + 4 * s);
     ctx.quadraticCurveTo(neck.x + tw, neck.y - 1 * s, neck.x + tw - 4 * s, neck.y - 1 * s);
     ctx.lineTo(neck.x - tw + 4 * s, neck.y - 1 * s);
@@ -2215,11 +2929,20 @@ export function drawPlayerAvatar(
     ctx.lineTo(neck.x, tyTop + tH * depth);
     ctx.fill();
   };
+  // girocollo: la pelle dello scollo, poi il bordino
   const crewNeck = (color: string) => {
+    ctx.fillStyle = skin;
+    ctx.beginPath();
+    ctx.ellipse(neck.x, tyTop, 3.4 * s, 2.4 * s, 0, 0, Math.PI);
+    ctx.fill();
+    ctx.fillStyle = 'rgba(0,0,0,0.1)';
+    ctx.beginPath();
+    ctx.ellipse(neck.x, tyTop, 2.5 * s, 1.2 * s, 0, 0, Math.PI);
+    ctx.fill();
     ctx.strokeStyle = color;
     ctx.lineWidth = 1.1 * s;
     ctx.beginPath();
-    ctx.arc(neck.x, tyTop, 3.4 * s, 0.15, Math.PI - 0.15);
+    ctx.ellipse(neck.x, tyTop, 3.4 * s, 2.4 * s, 0, 0.05, Math.PI - 0.05);
     ctx.stroke();
   };
   const buttons = (from: number, to: number, n: number, color = 'rgba(0,0,0,0.45)') => {
@@ -2388,27 +3111,7 @@ export function drawPlayerAvatar(
         );
         break;
       case 'tank':
-        // spalle e scollo scoperti
-        ctx.fillStyle = skin;
-        ctx.fillRect(tx, tyTop - 1 * s, tW, 3.2 * s);
-        ctx.beginPath();
-        ctx.arc(neck.x, tyTop + 1.5 * s, 3.4 * s, 0, Math.PI);
-        ctx.fill();
-        ctx.fillStyle = top.color;
-        ctx.fillRect(neck.x - 5.6 * s, tyTop - 1 * s, 1.8 * s, 3.4 * s);
-        ctx.fillRect(neck.x + 3.8 * s, tyTop - 1 * s, 1.8 * s, 3.4 * s);
-        seg(
-          { x: tx, y: tyTop + 2.6 * s },
-          { x: neck.x - 5.6 * s, y: tyTop + 2.6 * s },
-          c2,
-          0.6 * s,
-        );
-        seg(
-          { x: neck.x + 5.6 * s, y: tyTop + 2.6 * s },
-          { x: tx + tW, y: tyTop + 2.6 * s },
-          c2,
-          0.6 * s,
-        );
+        tankCutouts(neck, tyTop, tH, tw, s, skin, c2, false);
         break;
       case 'polo':
         ctx.fillStyle = game.lighten(top.color, 0.12);
@@ -2496,6 +3199,7 @@ export function drawPlayerAvatar(
       default:
         crewNeck(game.darken(top.color, 0.22));
     }
+  if (female && !fromBehind) drawBust(neck, tyTop, tH, s);
   // pieghe e ombra verso il basso
   const fold = ctx.createLinearGradient(0, tyTop, 0, tyBot);
   fold.addColorStop(0, 'rgba(255,255,255,0.08)');
@@ -2507,6 +3211,15 @@ export function drawPlayerAvatar(
   ctx.strokeStyle = 'rgba(0,0,0,0.3)';
   ctx.lineWidth = 1;
   ctx.stroke();
+  if (onStool) {
+    // di spalle al bancone: il braccio scende lungo il fianco e il gomito si piega verso il
+    // piano, così si vede attaccato alla spalla invece di spuntare da dietro la schiena
+    const shoulder = { x: neck.x + tw - 1.5 * s, y: neck.y + 3 * s };
+    const elbow = { x: shoulder.x + 2.5 * s, y: shoulder.y + 9 * s };
+    armPiece(shoulder, elbow, true, true);
+    armPiece(elbow, backTo, true, false);
+    dot(backTo.x, backTo.y, 2.6 * s, armSkin(true));
+  }
   if (fromBehind && top.style === 'hoodie') {
     ctx.fillStyle = game.darken(top.color, 0.15);
     ctx.beginPath();
@@ -2528,30 +3241,42 @@ export function drawPlayerAvatar(
     ctx.fill();
   }
 
+  if (lapOverTorso) lowerBody();
+
   // ---- vita: orlo del capo lungo, oppure elastico e cintura dei pantaloni
-  if (LONG_TOPS.has(top.style) || pStyle === 'skirt') {
+  if (nude) {
+    // niente elastico né cintura
+  } else if (pStyle === 'skirt') {
+    drawSkirt(
+      hip,
+      waistY,
+      s,
+      pants.color,
+      chairAway || onStool ? 'back' : sitting ? 'sit' : 'stand',
+    );
+  } else if (LONG_TOPS.has(top.style)) {
     ctx.fillStyle = 'rgba(0,0,0,0.28)';
     ctx.fillRect(hip.x - 7.5 * s, hip.y - 1 * s, 15 * s, 3 * s);
   } else {
     ctx.fillStyle = game.darken(pants.color, 0.08);
-    ctx.fillRect(hip.x - 7.5 * s, hip.y - 0.5 * s, 15 * s, 2.6 * s);
+    ctx.fillRect(hip.x - 7.5 * s, waistY - 0.5 * s, 15 * s, 2.6 * s);
     if (BELT_PANTS.has(pStyle)) {
       ctx.fillStyle = '#3e2723';
-      ctx.fillRect(hip.x - 7.5 * s, hip.y + 0.1 * s, 15 * s, 1.4 * s);
+      ctx.fillRect(hip.x - 7.5 * s, waistY + 0.1 * s, 15 * s, 1.4 * s);
       ctx.fillStyle = '#d4af37';
-      ctx.fillRect(hip.x - 1.2 * s, hip.y - 0.2 * s, 2.4 * s, 2 * s);
+      ctx.fillRect(hip.x - 1.2 * s, waistY - 0.2 * s, 2.4 * s, 2 * s);
       ctx.fillStyle = '#3e2723';
-      ctx.fillRect(hip.x - 0.5 * s, hip.y + 0.3 * s, 1 * s, 1 * s);
+      ctx.fillRect(hip.x - 0.5 * s, waistY + 0.3 * s, 1 * s, 1 * s);
     } else if (pStyle === 'joggers') {
       seg(
-        { x: hip.x - 0.6 * s, y: hip.y + 1.5 * s },
-        { x: hip.x - 1 * s, y: hip.y + 4 * s },
+        { x: hip.x - 0.6 * s, y: waistY + 1.5 * s },
+        { x: hip.x - 1 * s, y: waistY + 4 * s },
         '#ffffff',
         0.4 * s,
       );
       seg(
-        { x: hip.x + 0.6 * s, y: hip.y + 1.5 * s },
-        { x: hip.x + 1 * s, y: hip.y + 4 * s },
+        { x: hip.x + 0.6 * s, y: waistY + 1.5 * s },
+        { x: hip.x + 1 * s, y: waistY + 4 * s },
         '#ffffff',
         0.4 * s,
       );
@@ -2562,6 +3287,7 @@ export function drawPlayerAvatar(
   if (neckItem && !fromBehind) drawNeckFront(neckItem, neck, tyTop, tH, tw, s);
 
   // ---- braccio davanti
+  if (lapOverTorso) drawArm({ x: neck.x + tw - 1 * s, y: neck.y + 3 * s }, backTo, true);
   if (!fromBehind) drawArm({ x: neck.x - tw + 1 * s, y: neck.y + 3 * s }, frontTo, false);
   // schiuma del sapone tra le mani, sotto il getto
   if (pose === 'wash')
@@ -2608,10 +3334,13 @@ export function drawPlayerAvatar(
     dot(nx + 9 * s, ny + 6 * s, 2.2 * s, skin);
   }
 
+  // ---- nella doccia: i pixel sulle parti intime (sopra le mani, sotto la testa)
+  if (nude && !fromBehind) {
+    drawCensor(hip.x, crotchY + 0.5 * s, 15 * s, 7 * s, s, skin, animTime);
+    if (female) drawCensor(neck.x, tyTop + tH * 0.27, 16.5 * s, 6 * s, s, skin, animTime);
+  }
+
   // ---- testa
-  if (!mannequin) drawHairBack(head, s, bd.hairStyle, hair);
-  ctx.fillStyle = skin;
-  ctx.fillRect(neck.x - 2.5 * s, neck.y - 4 * s, 5 * s, 5 * s);
   if (top.style === 'sweater') {
     ctx.fillStyle = game.darken(top.color, 0.08);
     ctx.fillRect(neck.x - 3.4 * s, neck.y - 4.4 * s, 6.8 * s, 5.4 * s);
@@ -2642,9 +3371,10 @@ export function drawPlayerAvatar(
   ctx.lineWidth = 1;
   ctx.stroke();
   if (fromBehind && !mannequin) {
-    drawHairFromBehind(head, s, bd.hairStyle, hair);
-    if (walkingAway && Math.abs(screenSide) > 0.3)
-      drawThreeQuarterSide(head, s, skin, Math.sign(screenSide));
+    const side = walkingAway && Math.abs(screenSide) > 0.3 ? Math.sign(screenSide) : 0;
+    drawHairFromBehind(head, s, bd.hairStyle, hair, skin, side);
+    // con i capelli lunghi, il caschetto o l'afro l'orecchio resta coperto
+    if (side && ![2, 4, 6].includes(bd.hairStyle)) drawThreeQuarterSide(head, s, skin, side);
   } else if (!mannequin) {
     drawFace(head, s, bd, hair, animTime, hsh, look.stoned ? skin : null);
     drawHairFront(head, s, bd.hairStyle, hair);

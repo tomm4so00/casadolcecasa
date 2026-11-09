@@ -32,7 +32,10 @@ const parts = commits.map((c) => {
   return `${who}🔹 <a href="${c.url}">${esc(title)}</a>` + (text ? `\n${esc(text)}` : '');
 });
 // chi ha scritto ogni commit compare già sotto il suo titolo
-let text = '🚀 <b>Nuova versione online</b>\n\n';
+// un'emoji diversa ogni volta, così i messaggi non sembrano tutti uguali
+const EMOJI = ['🚀', '✨', '🎉', '🏠', '🌈', '🍕', '🎈', '🐣', '🌟', '🍀', '🦄', '🎮', '🧁', '🌻'];
+const emoji = EMOJI[Math.floor(Math.random() * EMOJI.length)];
+let text = `${emoji} <b>Nuova versione online</b>\n\n`;
 for (const p of parts) {
   if (text.length + p.length > LIMIT) {
     text += `\n…e altri commit: <a href="${event.compare}">tutte le modifiche</a>`;
