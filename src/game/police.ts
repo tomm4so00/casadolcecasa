@@ -7,6 +7,7 @@ import { openDialog } from './interface.js';
 import { toast } from './missions.js';
 import { sfx } from './audio.js';
 import { gossipEntries } from './gossip.js';
+import { denounceAll, policeFund, proofLines } from './trash.js';
 import {
   peopleAhead,
   servingNumber,
@@ -32,11 +33,13 @@ export function policePrompt(key: string): { text: string } | null {
   if (key === 'ticketMachine') return { text: '🎫 Prendi il numero' };
   if (key === 'cell') return { text: '🔒 Guarda nella camera di sicurezza' };
   if (key === 'noticeBoard') return { text: '📌 Leggi gli avvisi ai cittadini' };
+  if (key === 'policeSafe') return { text: '💰 Guarda la cassa della polizia' };
   return null;
 }
 
 export async function policeAct(key: string): Promise<void> {
-  if (key === 'policeCounter') await talkToOfficer();
+  if (key === 'policeSafe') lookAtSafe();
+  else if (key === 'policeCounter') await talkToOfficer();
   else if (key === 'ticketMachine') takeTicket();
   else if (key === 'cell') toast('🔒 La camera di sicurezza è vuota… per ora. 👀', 3500);
   else if (key === 'noticeBoard') await readNotices();
@@ -69,14 +72,35 @@ async function talkToOfficer(): Promise<void> {
   const register = thefts.length
     ? '📋 Furti denunciati nel condominio, ancora senza colpevole:\n\n' + thefts.join('\n\n')
     : '📋 Nessun furto denunciato di recente nel condominio. Meglio così!';
-  await openDialog({
+  // le prove trovate nei cestini: con queste si può denunciare
+  const proofs = proofLines();
+  const res = await openDialog({
     title: '👮 Ufficio Denunce',
-    text:
-      `L'agente alza gli occhi dal monitor: «${hello}, mi dica.»\n\n${register}\n\n` +
-      '«Se le hanno svuotato la cassaforte, cambi subito la combinazione e porti i risparmi in ' +
-      'banca: lì i ladri non arrivano.»',
-    buttons: [{ label: 'Grazie, arrivederci', value: null, color: '#1f3a68' }],
+    text: proofs.length
+      ? `L'agente alza gli occhi dal monitor: «${hello}, mi dica.»\n\n` +
+        `Le mostri quello che hai trovato nei cestini:\n\n${proofs.join('\n')}\n\n` +
+        '«Sono prove valide. Vuole sporgere denuncia? Metà della multa spetta a lei.»'
+      : `L'agente alza gli occhi dal monitor: «${hello}, mi dica.»\n\n${register}\n\n` +
+        '«Se le hanno svuotato la cassaforte, cambi subito la combinazione e porti i risparmi in ' +
+        'banca: lì i ladri non arrivano. E se trova qualcosa di sospetto nel cestino di ' +
+        'qualcuno, me lo porti.»',
+    buttons: proofs.length
+      ? [
+          { label: 'Non ora', value: null, color: '#57606f' },
+          { label: '👮 Sporgi denuncia', value: 'report', color: '#1f3a68' },
+        ]
+      : [{ label: 'Grazie, arrivederci', value: null, color: '#1f3a68' }],
   });
+  if (res.action === 'report') await denounceAll();
+}
+
+function lookAtSafe(): void {
+  const fund = policeFund();
+  toast(
+    `💰 Nella cassa della polizia ci sono ${fund.toLocaleString('it-IT')} Đ di multe. ` +
+      'È blindata: nessuno la può scassinare.',
+    4500,
+  );
 }
 
 async function readNotices(): Promise<void> {

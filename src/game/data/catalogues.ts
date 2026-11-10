@@ -1721,6 +1721,18 @@ export const PLAYER_ROOM_FURNITURE = {
     topColor: '#576574',
     moveable: true,
   },
+  // cestino: chi entra nella stanza può frugarci (trash.ts); parte accanto all'ingresso
+  trashBin: {
+    x: 60,
+    y: 150,
+    w: 16,
+    h: 16,
+    z: 28,
+    name: 'Cestino 🗑️',
+    color: '#7f8c8d',
+    topColor: '#95a5a6',
+    moveable: true,
+  },
   // zerbino sul bordo davanti della stanza
   doorExit: {
     x: 0,
@@ -2423,6 +2435,18 @@ export const POLICE_FURNITURE = {
     h: 76,
     z: 96,
     name: 'Avvisi ai cittadini 📌',
+    moveable: false,
+    wallItem: true,
+  },
+  // la cassa della polizia sul muro di fondo (si disegna con ENV_STYLE): solo da guardare
+  policeSafe: {
+    x: 180,
+    y: -234,
+    w: 46,
+    h: 8,
+    // il nome sta sotto la cassaforte: più in alto coprirebbe il contatore
+    z: 22,
+    name: 'Cassa della Polizia 💰',
     moveable: false,
     wallItem: true,
   },
@@ -3498,7 +3522,7 @@ export const ENV_DECOR = {
     { kind: 'copDesk', x: 240, y: 60, w: 70, h: 76, z: 40, officer: 3 },
     { kind: 'coatRack', x: 300, y: -205, w: 14, h: 14, z: 70 },
     { kind: 'plant', x: 300, y: 205, w: 26, h: 26, z: 60 },
-    { kind: 'plant', x: 168, y: -222, w: 22, h: 22, z: 55 },
+    { kind: 'plant', x: 300, y: -150, w: 22, h: 22, z: 55 },
     // l'angolo tra la cella e il divisore: la bandiera sull'asta
     { kind: 'flagPole', x: -190, y: -222, w: 14, h: 14, z: 120 },
     // sala d'attesa lungo il muro di sinistra, con l'acqua
@@ -3929,8 +3953,8 @@ export const ENV_STYLE = {
       back: [
         { t: 'policeDoor', u: 248 },
         { t: 'policeCrest', u: 335 },
-        // oltre il divisorio di destra, dove l'armadio non lo copre
-        { t: 'poster', u: 505, text: 'EMERGENZE 112', color: '#c0392b', w: 70, top: 30 },
+        // oltre il divisorio di destra: la cassa della polizia (trash.ts), col contatore sopra
+        { t: 'policeSafe', u: 500 },
         { t: 'clock', u: 568 },
         { t: 'window', u: 612, w: 44, h: 50 },
       ],

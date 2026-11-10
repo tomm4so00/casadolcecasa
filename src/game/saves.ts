@@ -12,6 +12,7 @@ import { myBenchPose } from './courtyard-fun.js';
 import { decodeDailyUses } from './daily-limits.js';
 import { decodePets } from './pet-rules.js';
 import { freePetsForLayout, petRoomItems, syncPetHomes } from './pets.js';
+import { decodeTrashSave } from './trash-rules.js';
 import { isStoned, syncWeedPot, weedRoomItems } from './weed.js';
 import { publishVitals } from './players-hud-rules.js';
 import { needsRules } from './needs-rules.js';
@@ -175,6 +176,7 @@ export function buildSaveData(..._args: GameValue[]): SaveV8 {
   data.prefs = collectPrefs();
   data.worldId = game.session.worldId;
   if (game.player.daily) data.daily = game.player.daily;
+  if (game.player.trash && Object.keys(game.player.trash).length) data.trash = game.player.trash;
   if (game.player.pets && Object.keys(game.player.pets).length) {
     syncPetHomes();
     data.pets = game.player.pets;
@@ -263,6 +265,7 @@ export function applySave(value: unknown): void {
   }
   game.player.daily = decodeDailyUses(s.daily);
   game.player.pets = decodePets(s.pets);
+  game.player.trash = decodeTrashSave(s.trash);
   applyPrefs(s.prefs);
   // chi giocava prima dei mondi abita nel condominio di sempre
   game.session.worldId =

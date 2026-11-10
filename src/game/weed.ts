@@ -10,6 +10,7 @@ import { spendMoney, transferMoney } from './economy.js';
 import { sendSocial } from './social.js';
 import { inventoryChange } from './inventory-market.js';
 import { recordActivity } from './activity.js';
+import { dropInTrash } from './trash.js';
 import { openInventoryTrade } from './inventory-trade.js';
 import { trainingHoldsOwner } from './dog-training.js';
 import { LAB_WALL_Y } from './data/catalogues.js';
@@ -478,6 +479,7 @@ export async function onJointOffer(m: GameValue, who: string): Promise<void> {
 
 export function onJointPaid(who: string): void {
   sfx('coin');
+  dropInTrash('bag');
   toast(`🪙 ${who} ha comprato la tua canna: +${dindini(JOINT_PRICE)} in cassaforte!`, 4500);
 }
 

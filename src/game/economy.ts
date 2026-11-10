@@ -121,6 +121,23 @@ export async function transferMoney(targetPlayerId: string, amount: number): Pro
   }
 }
 
+/**
+ * Riscuote una multa dalla cassaforte di un altro giocatore: si prende fin dove arriva (al
+ * massimo `amount`) e a me va `share(preso)`. Restituisce quanto si è preso.
+ */
+export async function seizeMoneyFrom(
+  fromPlayerId: string,
+  amount: number,
+  share: (taken: number) => number,
+): Promise<number> {
+  try {
+    return (await getWallet()?.seize(fromPlayerId, amount, share)) ?? 0;
+  } catch (error) {
+    console.warn('[multa]', error);
+    return 0;
+  }
+}
+
 /** Incassa da un altro giocatore (un'offerta accettata): false se non ha più abbastanza soldi. */
 export async function collectMoneyFrom(fromPlayerId: string, amount: number): Promise<boolean> {
   try {

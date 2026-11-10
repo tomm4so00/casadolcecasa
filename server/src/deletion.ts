@@ -72,6 +72,8 @@ const PER_PLAYER = [
   'sims_leaderboard_global',
   'sims_arcade_best',
   'sims_couples',
+  'sims_trash',
+  'sims_fines',
 ];
 
 /**

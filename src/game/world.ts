@@ -29,6 +29,7 @@ import { CRACK_MS, HACKER_SHORT } from '../../shared/hacker-rules.js';
 import { hackerActive } from './hacker.js';
 import { setCrack } from './crack.js';
 import { enterPolice } from './police.js';
+import { dropInTrash } from './trash.js';
 import { purchaseItem, sellItem, spendMoney, creditMoney } from './economy.js';
 import type { GameValue } from './context.js';
 import type { SceneMap } from './models.js';
@@ -882,6 +883,8 @@ export async function handleSafeInteraction(..._args: GameValue[]): Promise<Game
       saveGame(true);
       sfx('theft');
       toast(`🎉 COLPO RIUSCITO! Hai rubato ${stolen} Đ dalla cassaforte! 💰`, 4000);
+      // la graffetta con cui si è scassinato finisce nel proprio cestino
+      dropInTrash('clip');
       // la vittima scopre chi è stato (e il ladro diventa suo nemico)
       if (room.ownerId) void sendSocial(room.ownerId, { type: 'theft', amt: stolen });
       // per tutti gli altri il ladro resta misterioso: si sa solo di chi era la cassaforte

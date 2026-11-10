@@ -18,6 +18,7 @@ import {
 import { openCryo, watchCryo } from './cryo.js';
 import { startHacker } from './hacker.js';
 import { leavePartner, myPartner, startCouples } from './couples.js';
+import { startTrash } from './trash.js';
 import { startTaste } from './taste.js';
 import { blockedByDeletion, requestDeletion } from './deletion.js';
 import { startPlayersHud } from './players-hud.js';
@@ -462,6 +463,8 @@ export async function startGame(..._args: GameValue[]): Promise<GameValue> {
   startHacker();
   // coppie: cuori accanto ai nomi, insieme, anniversari
   startCouples();
+  // il cestino della stanza, le multe da pagare e la cassa della polizia
+  startTrash();
   // assaggi di benvenuto lasciati nelle stanze
   startTaste();
   // l'ospite non può invitare: al suo posto, dopo 20 minuti, l'invito a salvare

@@ -1332,6 +1332,60 @@
         }
       }
     },
+    "sims_trash": {
+      ".read": "(auth != null && (auth.token.firebase.sign_in_provider === 'google.com' || auth.token.firebase.sign_in_provider === 'anonymous' || (auth.token.firebase.sign_in_provider === 'password' && auth.token.email_verified === true))) && root.child('sims_accounts').child(auth.uid).child('playerId').isString()",
+      "$pid": {
+        ".write": "(auth != null && (auth.token.firebase.sign_in_provider === 'google.com' || auth.token.firebase.sign_in_provider === 'anonymous' || (auth.token.firebase.sign_in_provider === 'password' && auth.token.email_verified === true))) && root.child('sims_accounts').child(auth.uid).child('playerId').isString() && root.child('sims_accounts').child(auth.uid).child('playerId').val() === $pid",
+        "$id": {
+          ".write": "(auth != null && (auth.token.firebase.sign_in_provider === 'google.com' || auth.token.firebase.sign_in_provider === 'anonymous' || (auth.token.firebase.sign_in_provider === 'password' && auth.token.email_verified === true))) && root.child('sims_accounts').child(auth.uid).child('playerId').isString() && !newData.exists()",
+          ".validate": "newData.hasChildren(['k','t'])",
+          "k": {
+            ".validate": "newData.isString() && newData.val().matches(/^(bag|clip)$/)"
+          },
+          "t": {
+            ".validate": "newData.isNumber() && newData.val() <= now + 60000"
+          },
+          "$other": {
+            ".validate": false
+          }
+        }
+      }
+    },
+    "sims_fines": {
+      "$pid": {
+        ".read": "(auth != null && (auth.token.firebase.sign_in_provider === 'google.com' || auth.token.firebase.sign_in_provider === 'anonymous' || (auth.token.firebase.sign_in_provider === 'password' && auth.token.email_verified === true))) && root.child('sims_accounts').child(auth.uid).child('playerId').isString() && root.child('sims_accounts').child(auth.uid).child('playerId').val() === $pid",
+        "$id": {
+          ".write": "(auth != null && (auth.token.firebase.sign_in_provider === 'google.com' || auth.token.firebase.sign_in_provider === 'anonymous' || (auth.token.firebase.sign_in_provider === 'password' && auth.token.email_verified === true))) && root.child('sims_accounts').child(auth.uid).child('playerId').isString() && ((!data.exists() && newData.exists() && root.child('sims_accounts').child(auth.uid).child('playerId').val() !== $pid && newData.child('to').val() === root.child('sims_accounts').child(auth.uid).child('playerId').val()) || (data.exists() && root.child('sims_accounts').child(auth.uid).child('playerId').val() === $pid))",
+          ".validate": "newData.hasChildren(['k','n','amt','paid','to','t']) && ((newData.child('k').val() === 'bag' && newData.child('amt').val() === newData.child('n').val() * 50) || (newData.child('k').val() === 'clip' && newData.child('amt').val() === newData.child('n').val() * 100)) && newData.child('paid').val() <= newData.child('amt').val()",
+          "k": {
+            ".validate": "newData.isString() && newData.val().matches(/^(bag|clip)$/)"
+          },
+          "n": {
+            ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 100 && newData.val() % 1 === 0"
+          },
+          "amt": {
+            ".validate": "newData.isNumber()"
+          },
+          "paid": {
+            ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() % 1 === 0"
+          },
+          "to": {
+            ".validate": "newData.isString() && newData.val().matches(/^player_[A-Za-z0-9_-]{4,128}$/)"
+          },
+          "t": {
+            ".validate": "newData.isNumber() && newData.val() <= now + 60000"
+          },
+          "$other": {
+            ".validate": false
+          }
+        }
+      }
+    },
+    "sims_police_fund": {
+      ".read": "(auth != null && (auth.token.firebase.sign_in_provider === 'google.com' || auth.token.firebase.sign_in_provider === 'anonymous' || (auth.token.firebase.sign_in_provider === 'password' && auth.token.email_verified === true))) && root.child('sims_accounts').child(auth.uid).child('playerId').isString()",
+      ".write": "(auth != null && (auth.token.firebase.sign_in_provider === 'google.com' || auth.token.firebase.sign_in_provider === 'anonymous' || (auth.token.firebase.sign_in_provider === 'password' && auth.token.email_verified === true))) && root.child('sims_accounts').child(auth.uid).child('playerId').isString()",
+      ".validate": "newData.isNumber() && newData.val() % 1 === 0 && ((!data.exists() && newData.val() >= 0 && newData.val() <= 5000) || (data.exists() && newData.val() >= data.val() && newData.val() <= data.val() + 5000))"
+    },
     "sims_invited": {
       "$uid": {
         ".read": "(auth != null && (auth.token.firebase.sign_in_provider === 'google.com' || auth.token.firebase.sign_in_provider === 'anonymous' || (auth.token.firebase.sign_in_provider === 'password' && auth.token.email_verified === true))) && auth.uid === $uid",
@@ -2552,6 +2606,60 @@
               }
             }
           }
+        },
+        "trash": {
+          ".read": "(auth != null && (auth.token.firebase.sign_in_provider === 'google.com' || auth.token.firebase.sign_in_provider === 'anonymous' || (auth.token.firebase.sign_in_provider === 'password' && auth.token.email_verified === true))) && root.child('sims_accounts').child(auth.uid).child('playerId').isString()",
+          "$pid": {
+            ".write": "(auth != null && (auth.token.firebase.sign_in_provider === 'google.com' || auth.token.firebase.sign_in_provider === 'anonymous' || (auth.token.firebase.sign_in_provider === 'password' && auth.token.email_verified === true))) && root.child('sims_accounts').child(auth.uid).child('playerId').isString() && root.child('sims_accounts').child(auth.uid).child('playerId').val() === $pid",
+            "$id": {
+              ".write": "(auth != null && (auth.token.firebase.sign_in_provider === 'google.com' || auth.token.firebase.sign_in_provider === 'anonymous' || (auth.token.firebase.sign_in_provider === 'password' && auth.token.email_verified === true))) && root.child('sims_accounts').child(auth.uid).child('playerId').isString() && !newData.exists()",
+              ".validate": "newData.hasChildren(['k','t'])",
+              "k": {
+                ".validate": "newData.isString() && newData.val().matches(/^(bag|clip)$/)"
+              },
+              "t": {
+                ".validate": "newData.isNumber() && newData.val() <= now + 60000"
+              },
+              "$other": {
+                ".validate": false
+              }
+            }
+          }
+        },
+        "fines": {
+          "$pid": {
+            ".read": "(auth != null && (auth.token.firebase.sign_in_provider === 'google.com' || auth.token.firebase.sign_in_provider === 'anonymous' || (auth.token.firebase.sign_in_provider === 'password' && auth.token.email_verified === true))) && root.child('sims_accounts').child(auth.uid).child('playerId').isString() && root.child('sims_accounts').child(auth.uid).child('playerId').val() === $pid",
+            "$id": {
+              ".write": "(auth != null && (auth.token.firebase.sign_in_provider === 'google.com' || auth.token.firebase.sign_in_provider === 'anonymous' || (auth.token.firebase.sign_in_provider === 'password' && auth.token.email_verified === true))) && root.child('sims_accounts').child(auth.uid).child('playerId').isString() && ((!data.exists() && newData.exists() && root.child('sims_accounts').child(auth.uid).child('playerId').val() !== $pid && newData.child('to').val() === root.child('sims_accounts').child(auth.uid).child('playerId').val()) || (data.exists() && root.child('sims_accounts').child(auth.uid).child('playerId').val() === $pid))",
+              ".validate": "newData.hasChildren(['k','n','amt','paid','to','t']) && ((newData.child('k').val() === 'bag' && newData.child('amt').val() === newData.child('n').val() * 50) || (newData.child('k').val() === 'clip' && newData.child('amt').val() === newData.child('n').val() * 100)) && newData.child('paid').val() <= newData.child('amt').val()",
+              "k": {
+                ".validate": "newData.isString() && newData.val().matches(/^(bag|clip)$/)"
+              },
+              "n": {
+                ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 100 && newData.val() % 1 === 0"
+              },
+              "amt": {
+                ".validate": "newData.isNumber()"
+              },
+              "paid": {
+                ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() % 1 === 0"
+              },
+              "to": {
+                ".validate": "newData.isString() && newData.val().matches(/^player_[A-Za-z0-9_-]{4,128}$/)"
+              },
+              "t": {
+                ".validate": "newData.isNumber() && newData.val() <= now + 60000"
+              },
+              "$other": {
+                ".validate": false
+              }
+            }
+          }
+        },
+        "police_fund": {
+          ".read": "(auth != null && (auth.token.firebase.sign_in_provider === 'google.com' || auth.token.firebase.sign_in_provider === 'anonymous' || (auth.token.firebase.sign_in_provider === 'password' && auth.token.email_verified === true))) && root.child('sims_accounts').child(auth.uid).child('playerId').isString()",
+          ".write": "(auth != null && (auth.token.firebase.sign_in_provider === 'google.com' || auth.token.firebase.sign_in_provider === 'anonymous' || (auth.token.firebase.sign_in_provider === 'password' && auth.token.email_verified === true))) && root.child('sims_accounts').child(auth.uid).child('playerId').isString()",
+          ".validate": "newData.isNumber() && newData.val() % 1 === 0 && ((!data.exists() && newData.val() >= 0 && newData.val() <= 5000) || (data.exists() && newData.val() >= data.val() && newData.val() <= data.val() + 5000))"
         }
       }
     },

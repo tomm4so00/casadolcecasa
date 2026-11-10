@@ -6,6 +6,8 @@ import { parseLook, resolveLook } from '../character.js';
 import { drawPlayerAvatar } from './avatars.js';
 import { box, drawChair, onFace, resetPlane } from './objects.js';
 import { servingNumber } from '../police-rules.js';
+import { policeFund } from '../trash.js';
+import { wallPlane } from './scenes.js';
 
 const NAVY = '#1f3a68';
 const NAVY_DARK = '#16294a';
@@ -574,4 +576,87 @@ export function wallPoliceDoor(d: GameValue, info: GameValue): void {
   ctx.font = 'bold 4.6px sans-serif';
   ctx.textAlign = 'center';
   ctx.fillText('COMMISSARIO', d.u, v0 + 15);
+}
+
+/**
+ * La cassa della polizia: cassaforte blindata che sporge dal muro di fondo, con il contatore a
+ * led dei soldi delle multe. Non si scassina: ha solo il pulsante per guardarla.
+ */
+export function wallPoliceSafe(d: GameValue): void {
+  if (d.side !== 'back') return;
+  const ctx: GameValue = game.view.ctx;
+  const H: number = game.ENV_STYLE.commissariato?.wallH || 130;
+  const x = game.X0 + d.u,
+    y = game.Y0 + 5;
+  const size = 40,
+    z0 = 34;
+  resetPlane();
+  try {
+    // ombra sul muro e corpo d'acciaio
+    const body: GameValue = box(x, y, size + 6, 10, size + 6, '#4d5b6a', {
+      z0: z0 - 3,
+      top: '#6c7a89',
+    });
+    onFace(body, 'left', (W: number, Hf: number): void => {
+      const g = ctx.createLinearGradient(0, 0, W, Hf);
+      g.addColorStop(0, '#8395a7');
+      g.addColorStop(1, '#576574');
+      ctx.fillStyle = g;
+      ctx.fillRect(3, 3, W - 6, Hf - 6);
+      ctx.strokeStyle = 'rgba(0,0,0,0.45)';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(3, 3, W - 6, Hf - 6);
+      // la ruota della combinazione e la maniglia a tre razze
+      ctx.fillStyle = '#2d3436';
+      ctx.beginPath();
+      ctx.arc(W * 0.38, Hf * 0.48, 7, 0, 6.3);
+      ctx.fill();
+      ctx.fillStyle = '#b2bec3';
+      ctx.beginPath();
+      ctx.arc(W * 0.38, Hf * 0.48, 5, 0, 6.3);
+      ctx.fill();
+      ctx.strokeStyle = '#2d3436';
+      for (let k = 0; k < 12; k++) {
+        const a = (k / 12) * Math.PI * 2;
+        ctx.beginPath();
+        ctx.moveTo(W * 0.38 + Math.cos(a) * 3.6, Hf * 0.48 + Math.sin(a) * 3.6);
+        ctx.lineTo(W * 0.38 + Math.cos(a) * 5, Hf * 0.48 + Math.sin(a) * 5);
+        ctx.stroke();
+      }
+      ctx.strokeStyle = '#dfe6e9';
+      ctx.lineWidth = 1.6;
+      for (let k = 0; k < 3; k++) {
+        const a = -Math.PI / 2 + (k * Math.PI * 2) / 3;
+        ctx.beginPath();
+        ctx.moveTo(W * 0.72, Hf * 0.48);
+        ctx.lineTo(W * 0.72 + Math.cos(a) * 6, Hf * 0.48 + Math.sin(a) * 6);
+        ctx.stroke();
+      }
+      // cerniere e targa
+      ctx.fillStyle = '#2d3436';
+      ctx.fillRect(4, Hf * 0.2, 2, 5);
+      ctx.fillRect(4, Hf * 0.7, 2, 5);
+      ctx.fillStyle = NAVY;
+      ctx.fillRect(W / 2 - 13, Hf - 11, 26, 6);
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 4px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('POLIZIA', W / 2, Hf - 6.6);
+    });
+    // il contatore a led sopra la cassaforte
+    const disp: GameValue = box(x, game.Y0 + 3, 62, 6, 16, '#111418', { z0: z0 + size + 10 });
+    onFace(disp, 'left', (W: number, Hf: number): void => {
+      ctx.fillStyle = '#05080a';
+      ctx.fillRect(2, 2, W - 4, Hf - 4);
+      ctx.fillStyle = '#7f8c8d';
+      ctx.font = 'bold 3.6px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('CASSA DELLA POLIZIA', W / 2, 6.5);
+      ctx.fillStyle = '#ff3b30';
+      ctx.font = 'bold 7px monospace';
+      ctx.fillText(`${policeFund().toLocaleString('it-IT')} Đ`, W / 2, Hf - 3.5);
+    });
+  } finally {
+    wallPlane('back', H);
+  }
 }

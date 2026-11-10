@@ -539,6 +539,101 @@ try {
   assert.equal(couple.noMore, false);
   assert.equal(couple.together, true);
   console.log('PASS: 5 kisses unlock the proposal, confirmed couples, together in the same place.');
+  // cestino: le prove nel proprio, il vicino che spaccia, la denuncia e la multa divisa a metà
+  const otto = await page.evaluate(async () => {
+    const { game } = await import('/src/game/context.ts');
+    const { worldNode } = await import('/src/game/world-db.ts');
+    const t = await import('/src/game/trash.ts');
+    game.player.trash = { placed: true };
+    t.dropInTrash('bag');
+    t.dropInTrash('clip');
+    const idx = (game.myAssignedRoomIdx + 1) % 64;
+    const room = {
+      id: idx + 1,
+      owner: 'Otto',
+      ownerId: 'player_otto1',
+      vaultMoney: 120,
+      lastSeen: Date.now(),
+    };
+    await game.session.db.ref(`${worldNode('rooms_state')}/${idx}`).set(room);
+    game.roomsState[idx] = room;
+    const now = Date.now();
+    await game.session.db.ref(`${worldNode('trash')}/player_otto1`).set({
+      a: { k: 'bag', t: now },
+      b: { k: 'bag', t: now },
+      // passato lo spazzino: non c'è più
+      c: { k: 'clip', t: now - 30 * 86400000 },
+    });
+    game.view.activeEnvironment = 'PLAYER_ROOM';
+    game.currentRoomIdx = idx;
+    void t.trashAct();
+    return { idx, mine: t.myTrashCount(), vault: game.moneyLevel };
+  });
+  await page
+    .locator('#dialog-buttons')
+    .getByRole('button', { name: /Prendi le prove/ })
+    .click();
+  await page.waitForFunction(
+    async () => (await import('/src/game/context.ts')).game.player.trash?.proofs?.length === 2,
+  );
+  await page.evaluate(async () => {
+    const { enterPolice, policeAct } = await import('/src/game/police.ts');
+    enterPolice();
+    void policeAct('policeCounter');
+  });
+  await page
+    .locator('#dialog-buttons')
+    .getByRole('button', { name: /Sporgi denuncia/ })
+    .click();
+  await page.locator('#dialog-title').filter({ hasText: 'Denuncia registrata' }).waitFor();
+  await page
+    .locator('#dialog-buttons')
+    .getByRole('button', { name: /Grazie/ })
+    .click();
+  const fined = await page.evaluate(async (idx) => {
+    const { game } = await import('/src/game/context.ts');
+    const { worldNode } = await import('/src/game/world-db.ts');
+    const t = await import('/src/game/trash.ts');
+    const get = async (p) => (await game.session.db.ref(p).get()).val();
+    const fines = Object.values((await get(`${worldNode('fines')}/player_otto1`)) || {});
+    return {
+      ottoVault: (await get(`${worldNode('rooms_state')}/${idx}`)).vaultMoney,
+      myVault: game.moneyLevel,
+      fund: t.policeFund(),
+      fine: fines[0] && { amt: fines[0].amt, paid: fines[0].paid, n: fines[0].n },
+      leftInBin: Object.keys((await get(`${worldNode('trash')}/player_otto1`)) || {}),
+      proofs: game.player.trash.proofs.length,
+    };
+  }, otto.idx);
+  assert.deepEqual(otto.mine, { bag: 1, clip: 1 });
+  assert.deepEqual(fined, {
+    ottoVault: 20,
+    myVault: otto.vault + 50,
+    fund: 50,
+    fine: { amt: 100, paid: 100, n: 2 },
+    leftInBin: ['c'],
+    proofs: 0,
+  });
+  // ora la multa è per me: 100 Đ, 20 già presi; il resto lo pago io (metà a Otto, metà alla cassa)
+  const debt = await page.evaluate(async (idx) => {
+    const { game } = await import('/src/game/context.ts');
+    const { worldNode } = await import('/src/game/world-db.ts');
+    const t = await import('/src/game/trash.ts');
+    const before = game.moneyLevel;
+    const ref = game.session.db.ref(`${worldNode('fines')}/${game.session.myPlayerId}/d1`);
+    await ref.set({ k: 'clip', n: 1, amt: 100, paid: 20, to: 'player_otto1', t: Date.now() });
+    for (let i = 0; i < 100 && (await ref.get()).val(); i++)
+      await new Promise((r) => setTimeout(r, 300));
+    const otto = (await game.session.db.ref(`${worldNode('rooms_state')}/${idx}`).get()).val();
+    return {
+      paid: before - game.moneyLevel,
+      ottoVault: otto.vaultMoney,
+      fund: t.policeFund(),
+      open: !!(await ref.get()).val(),
+    };
+  }, otto.idx);
+  assert.deepEqual(debt, { paid: 80, ottoVault: 60, fund: 90, open: false });
+  console.log('PASS: trash bin evidence, rummaging, police report, fine split and debt paid.');
   console.log('CATALOG', catalog);
   console.log('ERRORS', errors);
   assert.deepEqual(errors, []);

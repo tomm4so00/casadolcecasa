@@ -10,6 +10,7 @@ import { openDialog } from './interface.js';
 import { sendSocial } from './social.js';
 import { InventoryLedger } from './inventory-ledger.js';
 import { recordActivity } from './activity.js';
+import { dropInTrash } from './trash.js';
 import { dayOf } from '../../shared/activity.js';
 import { TRADE_ITEMS, type TradeItem, type StockInventory } from './inventory-trade-rules.js';
 import type { RoomState } from './models.js';
@@ -35,6 +36,8 @@ export function syncInventoryFromRoom(room: RoomState): void {
   const offer = room.inventory.offer;
   const key = offer ? `${offer.id}:${offer.status}` : '';
   if (offer && lastOffer === `${offer.id}:pending` && offer.status !== 'pending') {
+    // una vendita lascia la bustina vuota nel cestino (i regali no)
+    if (offer.status === 'accepted' && offer.price > 0) dropInTrash('bag');
     toast(
       offer.status === 'accepted'
         ? `🤝 Scambio concluso: ${offer.quantity} ${TRADE_ITEMS[offer.item].unit} · +${offer.price} Đ.`

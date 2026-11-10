@@ -171,7 +171,9 @@ import {
   drawTicketMachine,
   wallPoliceCrest,
   wallPoliceDoor,
+  wallPoliceSafe,
 } from './police.js';
+import { drawTrashBin } from './trash-bin.js';
 import { drawEasel, drawPaintTableProp } from './studio.js';
 import { drawGraveProp, drawMemorialProp } from './graveyard.js';
 import {
@@ -217,6 +219,8 @@ export function registerDrawers(): void {
     // commissariato
     policeCounter: drawPoliceCounter,
     cell: drawHoldingCell,
+    // il cestino della stanza (trash.ts)
+    trashBin: drawTrashBin,
     ticketMachine: drawTicketMachine,
     easel1: drawEasel,
     easel2: drawEasel,
@@ -438,6 +442,8 @@ export function registerDrawers(): void {
     collectShelf: wallCollectShelf,
     // i quadri della mostra cambiano mentre si guarda: si disegnano a ogni fotogramma
     galleryPainting: wallGalleryPainting,
+    // commissariato: la cassa della polizia, con il contatore che cambia
+    policeSafe: wallPoliceSafe,
     // base lunare: vetrata, schermi e oblò si muovono
     mbPanorama: wallPanorama,
     mbStatus: wallStatusScreen,

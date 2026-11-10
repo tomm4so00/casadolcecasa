@@ -67,6 +67,7 @@ import { startShower, startToilet, startWash } from './bathroom.js';
 import { sfx } from './audio.js';
 import { openBankCounter } from './bank.js';
 import { POLICE_ENV, policeAct, policePrompt } from './police.js';
+import { trashAct, trashPrompt } from './trash.js';
 import { openProjects, pressLaunchButton, rocketLaunch } from './projects.js';
 import { managePainting, openPaintStudio } from './paint-studio.js';
 import {
@@ -304,6 +305,7 @@ const PLAYER_ROOM: Place = {
       return { text: mine ? `🖼️ ${name || item.name}` : `🖼️ Ammira ${name || 'il quadro'}` };
     }
     if (key === 'collectShelf') return shelfPrompt(mine);
+    if (key === 'trashBin') return trashPrompt();
     if (key === 'tv') return { text: '📺 Guarda la TV' };
     if (key === 'cabinet') return { text: '🕹️ Gioca al cabinato' };
     if (key === 'desk' && mine) return { text: atDesk() ? '🧍 Alzati' : '💻 Usa il PC' };
@@ -312,6 +314,7 @@ const PLAYER_ROOM: Place = {
   },
   async act(key, item) {
     if (key === 'doorExit') backToSaloon();
+    else if (key === 'trashBin') await trashAct();
     else if (potIndex(key) >= 0) {
       if (isMyRoomNow()) await tendPot(potIndex(key));
       else toast('🌱 Questa pianta non è tua!');
