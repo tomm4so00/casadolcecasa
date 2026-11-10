@@ -104,6 +104,7 @@ import { pillControlSign, updatePillVisuals } from './pill.js';
 import { dealerBotLines, dealerHere } from './dealers.js';
 import { CRACK_MS } from '../../shared/hacker-rules.js';
 import { giftDrawables } from './taste.js';
+import { heartFor } from './couples.js';
 
 /** Lo stesso aspetto con gli occhi rossi (dopo una canna). */
 const withStonedEyes = (look: GameValue, on: boolean): GameValue =>
@@ -602,7 +603,7 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
           : drawActor(
               game.playerPos.x,
               game.playerPos.y,
-              game.player.myData.nick,
+              game.player.myData.nick + heartFor(game.session.myPlayerId),
               animTime,
               withStonedEyes(myShownLook(), isStoned()),
               game.isWalking,
@@ -752,7 +753,8 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
       if (op.sick && dd < game.SOC_RANGE) nearSickPlayer(op.name || 'Qualcuno');
     }
     let moving: GameValue = !isOffline && stepping;
-    const shownName: string = isOffline ? '' : op.name;
+    // 💞 accanto al nome di chi è fidanzato
+    const shownName: string = isOffline ? '' : op.name + heartFor(id);
     if (isOffline) {
       const lz = state === 'fainted' ? 34 : state === 'sleeping' ? 70 : 92;
       labels.push((): GameValue => drawOfflineTag(s.x, s.y, lz, op.name));

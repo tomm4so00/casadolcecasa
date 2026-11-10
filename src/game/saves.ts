@@ -155,6 +155,9 @@ export function buildSaveData(..._args: GameValue[]): SaveV8 {
   data.sleepGainedSinceLastHealthBoost = game.player.sleepGainedSinceLastHealthBoost;
   if (game.player.needsZeroSince) data.needsZeroSince = game.player.needsZeroSince;
   data.inventory = encodeFood({ raw: game.player.rawFood, dishes: game.player.dishes });
+  if ((game.player.coupleCooldownUntil || 0) > Date.now())
+    data.coupleCooldownUntil = game.player.coupleCooldownUntil;
+  if (game.player.sleptTogetherSince) data.sleptTogetherSince = game.player.sleptTogetherSince;
   if (game.player.drugStock > 0) data.drugStock = game.player.drugStock;
   if (game.player.stonedUntil > Date.now()) data.stonedUntil = game.player.stonedUntil;
   if (game.player.jointReadyAt && game.player.jointReadyAt > Date.now())
@@ -231,6 +234,10 @@ export function applySave(value: unknown): void {
     game.player.rawFood = food.raw;
     game.player.dishes = food.dishes;
   }
+  const moment = (v: unknown): number =>
+    typeof v === 'number' && Number.isFinite(v) && v > 0 ? v : 0;
+  game.player.coupleCooldownUntil = moment(s.coupleCooldownUntil);
+  game.player.sleptTogetherSince = moment(s.sleptTogetherSince);
   const num: GameValue = (v?: GameValue, d?: GameValue): GameValue =>
     typeof v === 'number' && isFinite(v) ? v : d;
   game.player.healthLevel = num(s.healthLevel, game.player.healthLevel);

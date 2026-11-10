@@ -71,6 +71,7 @@ const PER_PLAYER = [
   'sims_invites',
   'sims_leaderboard_global',
   'sims_arcade_best',
+  'sims_couples',
 ];
 
 /**

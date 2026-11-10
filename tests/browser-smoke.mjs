@@ -413,6 +413,54 @@ try {
   assert.ok(taste.bots.some((n) => n.startsWith('Signora Rosa')));
   assert.equal(taste.dishesLeft, 1);
   console.log('PASS: food stock in the backpack, eat anywhere, welcome taste left in a room.');
+
+  // Il fidanzamento: dopo 5 baci compare 💍; una coppia confermata da tutti e due ha il 💞 e,
+  // insieme nello stesso posto, la felicità non cala.
+  const couple = await page.evaluate(async () => {
+    const { game } = await import('/src/game/context.ts');
+    const { canProposeTo } = await import('/src/game/romance.ts');
+    const { noteKiss } = await import('/src/game/romance-rules.ts');
+    const { heartFor, myPartner, togetherWithPartner } = await import('/src/game/couples.ts');
+    const { worldNode } = await import('/src/game/world-db.ts');
+    const giulia = 'player_giulia1';
+    const out = {};
+    game.player.romance = {};
+    for (let i = 0; i < 4; i++) noteKiss(game.player.romance, giulia, 'Giulia', Date.now());
+    out.before = canProposeTo(giulia);
+    noteKiss(game.player.romance, giulia, 'Giulia', Date.now());
+    out.after = canProposeTo(giulia);
+    const me = game.session.myPlayerId;
+    await game.session.db.ref('/').update({
+      ['sims_couples/' + me]: { with: giulia, name: 'Giulia', since: Date.now() },
+      ['sims_couples/' + giulia]: { with: me, name: 'Io', since: Date.now() },
+    });
+    await new Promise((r) => setTimeout(r, 300));
+    out.partner = myPartner()?.name;
+    out.heart = heartFor(me);
+    out.noMore = canProposeTo(giulia);
+    // Giulia è qui, nello stesso posto
+    game.view.activeEnvironment = 'CORTILE';
+    await game.session.db.ref(`${worldNode('online_players')}/${giulia}`).set({
+      name: 'Giulia',
+      x: 0,
+      y: 0,
+      env: 'CORTILE',
+      t: Date.now() + (game.session.serverOffset || 0),
+    });
+    await new Promise((r) => setTimeout(r, 300));
+    out.together = togetherWithPartner();
+    await game.session.db.ref('sims_couples/' + me).remove();
+    await game.session.db.ref('sims_couples/' + giulia).remove();
+    game.view.activeEnvironment = 'PLAYER_ROOM';
+    return out;
+  });
+  assert.equal(couple.before, false);
+  assert.equal(couple.after, true);
+  assert.equal(couple.partner, 'Giulia');
+  assert.equal(couple.heart, ' 💞');
+  assert.equal(couple.noMore, false);
+  assert.equal(couple.together, true);
+  console.log('PASS: 5 kisses unlock the proposal, confirmed couples, together in the same place.');
   console.log('CATALOG', catalog);
   console.log('ERRORS', errors);
   assert.deepEqual(errors, []);

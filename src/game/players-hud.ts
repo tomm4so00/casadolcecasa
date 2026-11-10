@@ -10,6 +10,7 @@ import type { OnlinePlayer } from './network-model.js';
 import { onlineVitals, type VitalKey } from './players-hud-rules.js';
 import { roomLabel } from './realty-rules.js';
 import { relationKind } from './relations-rules.js';
+import { coupleText } from './couples.js';
 import {
   PERSONALITY_BADGE,
   type PersonalityId,
@@ -115,7 +116,7 @@ function updatePersonalityTag(hudHidden: boolean): void {
   tag.classList.toggle('hidden', !text);
 }
 
-function renderCard(op: OnlinePlayer, icon: HTMLElement): void {
+function renderCard(op: OnlinePlayer, icon: HTMLElement, id: string): void {
   const card = dom('player-card');
   const v = onlineVitals(op);
   const status =
@@ -131,7 +132,8 @@ function renderCard(op: OnlinePlayer, icon: HTMLElement): void {
     `<div class="pc-head"><span class="pc-name">${escapeHtmlSafe(String(op.name))}${status}</span><button type="button" class="pc-close" title="Chiudi">✕</button></div>` +
     `<div class="pc-place">📍 ${escapeHtmlSafe(placeFor(op, v.place) || 'Posizione sconosciuta')}</div>` +
     rows +
-    personalityTag(op.pers, op.persLv);
+    personalityTag(op.pers, op.persLv) +
+    (coupleText(id) ? `<div class="pc-couple">${escapeHtmlSafe(coupleText(id))}</div>` : '');
   const list: HTMLElement = dom('players-online');
   card.style.left = list.offsetLeft + list.offsetWidth + 6 + 'px';
   card.style.top = Math.max(0, icon.offsetTop - list.scrollTop) + 'px';
@@ -207,7 +209,7 @@ function refresh(): void {
   if (openId) {
     const op = ids.has(openId) ? game.onlinePlayers[openId] : null;
     const icon = list.querySelector<HTMLElement>(`.po-icon[data-pid="${CSS.escape(openId)}"]`);
-    if (op && icon) renderCard(op, icon);
+    if (op && icon) renderCard(op, icon, openId);
     else closeCard();
   }
 }

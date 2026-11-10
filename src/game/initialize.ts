@@ -2,7 +2,7 @@ import { MOONBASE_PARTS } from './render/moonbase.js';
 import { LEGACY_WORLD } from '../../shared/worlds.js';
 import { canSellJoint, isSmoking } from './weed.js';
 
-import { canKiss } from './romance.js';
+import { canKiss, canProposeTo } from './romance.js';
 import { registerDrawers } from './render/registry.js';
 import { applyRoomBounds, growSceneData } from './room-size.js';
 import { startMarket } from './market-client.js';
@@ -418,6 +418,13 @@ export function initializeGame() {
       label: '💋 Prova a baciare',
       color: '#ff6b81',
       show: (): GameValue => canKiss(game.socTarget?.id),
+    },
+    {
+      // dopo 5 baci con quella persona (vedi romance.ts)
+      id: 'engage',
+      label: '💍 Chiedi di fidanzarvi',
+      color: '#e84393',
+      show: (): GameValue => canProposeTo(game.socTarget?.id),
     },
     {
       id: 'weed',

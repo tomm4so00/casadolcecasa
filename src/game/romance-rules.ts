@@ -18,6 +18,8 @@ interface RomanceEntry {
   unlocked: boolean;
   /** Ultimo aggiornamento, per dimenticare le relazioni più vecchie. */
   t: number;
+  /** Baci accettati fra i due (per proporsi di fidanzarsi): dopo un no alla proposta si azzera. */
+  kisses?: number;
 }
 export type RomanceBook = Record<string, RomanceEntry>;
 
@@ -31,7 +33,15 @@ export function decodeRomance(value: unknown): RomanceBook {
     if (typeof e.name !== 'string' || typeof e.unlocked !== 'boolean') continue;
     const points = Number.isSafeInteger(e.points) && (e.points as number) >= 0 ? e.points : 0;
     const t = Number.isFinite(e.t) && (e.t as number) >= 0 ? (e.t as number) : 0;
-    book[id] = { name: e.name.slice(0, 20), points: points as number, unlocked: e.unlocked, t };
+    const kisses =
+      Number.isSafeInteger(e.kisses) && (e.kisses as number) > 0 ? (e.kisses as number) : 0;
+    book[id] = {
+      name: e.name.slice(0, 20),
+      points: points as number,
+      unlocked: e.unlocked,
+      t,
+      ...(kisses ? { kisses: Math.min(1000, kisses) } : {}),
+    };
   }
   return trimRomance(book);
 }
@@ -85,4 +95,77 @@ export function endRomance(book: RomanceBook, id: string, now: number): void {
 
 export function canTryKiss(book: RomanceBook, id: string | undefined | null): boolean {
   return !!id && !!book[id]?.unlocked;
+}
+
+// ---------------------------------------------------------------- fidanzamento
+
+/** Baci fra i due prima di potersi proporre di fidanzarsi. */
+export const PROPOSE_AFTER_KISSES = 5;
+/** Dopo essersi lasciati, per tanto non ci si fidanza con nessuno. */
+export const BREAKUP_COOLDOWN_MS = 24 * 3600000;
+/** Dormire insieme almeno tanto dà il premio di salute al risveglio. */
+export const SLEEP_TOGETHER_MS = 3600000;
+export const SLEEP_TOGETHER_HEALTH = 15;
+
+/** Un bacio accettato con `id`: restituisce i baci della coppia. */
+export function noteKiss(book: RomanceBook, id: string, name: string, now: number): number {
+  const entry = (book[id] ??= { name, points: 0, unlocked: true, t: now });
+  entry.name = name.slice(0, 20) || entry.name;
+  entry.unlocked = true;
+  entry.t = now;
+  entry.kisses = (entry.kisses || 0) + 1;
+  return entry.kisses;
+}
+
+/** Proposta rifiutata: il conto dei baci riparte da zero, ma ci si può ancora baciare. */
+export function resetKisses(book: RomanceBook, id: string): void {
+  if (book[id]) book[id].kisses = 0;
+}
+
+/** Si può proporre di fidanzarsi a quella persona? */
+export function canPropose(state: {
+  kisses: number;
+  /** Il mio fidanzato (o null) e quello dell'altro. */
+  mine: string | null;
+  theirs: string | null;
+  cooldownUntil: number;
+  now: number;
+}): boolean {
+  return (
+    state.kisses >= PROPOSE_AFTER_KISSES &&
+    !state.mine &&
+    !state.theirs &&
+    state.now >= state.cooldownUntil
+  );
+}
+
+const ymd = (day: string) => day.split('-').map(Number) as [number, number, number];
+const daysBetween = (a: string, b: string) => {
+  const [y1, m1, d1] = ymd(a);
+  const [y2, m2, d2] = ymd(b);
+  return Math.round((Date.UTC(y2, m2 - 1, d2) - Date.UTC(y1, m1 - 1, d1)) / 86400000);
+};
+
+/**
+ * L'anniversario di oggi (giorni AAAA-MM-GG): dopo 7 giorni, poi ogni mese nello stesso giorno
+ * (nei mesi più corti l'ultimo). null se oggi non è un anniversario.
+ */
+export function anniversaryOn(since: string, today: string): { months: number } | null {
+  if (daysBetween(since, today) === 7) return { months: 0 };
+  const [y1, m1, d1] = ymd(since);
+  const [y2, m2, d2] = ymd(today);
+  const months = (y2 - y1) * 12 + (m2 - m1);
+  if (months < 1) return null;
+  const last = new Date(Date.UTC(y2, m2, 0)).getUTCDate();
+  return d2 === Math.min(d1, last) ? { months } : null;
+}
+
+/** Il testo dell'anniversario. */
+export function anniversaryText(name: string, a: { months: number }): string {
+  if (a.months === 0) return `💞 Oggi è una settimana con ${name}!`;
+  if (a.months % 12 === 0) {
+    const years = a.months / 12;
+    return `💞 Oggi sono ${years === 1 ? 'un anno' : years + ' anni'} con ${name}!`;
+  }
+  return `💞 Oggi ${a.months === 1 ? 'è un mese' : 'sono ' + a.months + ' mesi'} con ${name}!`;
 }

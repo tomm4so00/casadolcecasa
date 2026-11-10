@@ -17,6 +17,7 @@ import {
 } from './guest.js';
 import { openCryo, watchCryo } from './cryo.js';
 import { startHacker } from './hacker.js';
+import { leavePartner, myPartner, startCouples } from './couples.js';
 import { startTaste } from './taste.js';
 import { blockedByDeletion, requestDeletion } from './deletion.js';
 import { startPlayersHud } from './players-hud.js';
@@ -200,6 +201,7 @@ export async function openProfile(..._args: GameValue[]): Promise<GameValue> {
         ? `\nLa tua stanza: ${roomLabel(game.myAssignedRoomIdx ?? 0, game.ROOMS_PER_APT)}`
         : '') +
       `\n\n${personalityStatusText(game.player.personality)}` +
+      coupleStatus() +
       (game.session.OFFLINE
         ? '\n\n🧪 Sei in modalità prova: niente viene salvato sul server.'
         : ''),
@@ -214,6 +216,16 @@ export async function openProfile(..._args: GameValue[]): Promise<GameValue> {
       { label: '💌 Invita amici', value: 'invite', color: '#e84393', wide: true },
       { label: '🌍 Cambia condominio', value: 'world', color: '#16a085', wide: true },
       { label: '🧊 Criogenesi (pausa personaggio)', value: 'cryo', color: '#00a8ff', wide: true },
+      ...(myPartner()
+        ? [
+            {
+              label: `💔 Lascia ${myPartner()!.name}`,
+              value: 'breakup',
+              color: '#c0392b',
+              wide: true,
+            },
+          ]
+        : []),
       { label: '🎨 Aspetto', value: 'look', color: '#8e44ad' },
       { label: '⚰️ Epitaffio', value: 'epitaph', color: '#636e72' },
       ...(game.session.OFFLINE ? [{ label: 'Usa codice', value: 'switch', color: '#e67e22' }] : []),
@@ -227,6 +239,7 @@ export async function openProfile(..._args: GameValue[]): Promise<GameValue> {
     ],
   });
   if (res.action === 'save') await offerSave();
+  if (res.action === 'breakup') await confirmBreakup();
   if (res.action === 'logout') await logOut();
   if (res.action === 'delete') await requestDeletion();
   if (res.action === 'google') {
@@ -243,6 +256,30 @@ export async function openProfile(..._args: GameValue[]): Promise<GameValue> {
   if (res.action === 'look') openCharacterCreator(false);
   if (res.action === 'epitaph') openEpitaph();
   if (res.action === 'switch') switchToCode(res.value);
+}
+
+/** Nel profilo: con chi stai e da quanti giorni. */
+function coupleStatus(): string {
+  const p = myPartner();
+  if (!p) return '';
+  const days = Math.max(0, Math.floor((Date.now() - p.since) / 86400000));
+  const since = days === 0 ? 'da oggi' : days === 1 ? 'da 1 giorno' : `da ${days} giorni`;
+  return `\n\n💞 Stai con ${p.name} ${since}`;
+}
+
+/** Lasciarsi, dopo una conferma. */
+async function confirmBreakup(): Promise<void> {
+  const p = myPartner();
+  if (!p) return;
+  const ok: GameValue = await openDialog({
+    title: `💔 Lasciare ${p.name}?`,
+    text: 'Non sarete più fidanzati e per 24 ore non potrai fidanzarti con nessuno.',
+    buttons: [
+      { label: 'Annulla', value: null, color: '#57606f' },
+      { label: '💔 Lascia', value: 'ok', color: '#c0392b' },
+    ],
+  });
+  if (ok.action === 'ok') await leavePartner();
 }
 
 /** Salva, esce dall'account e torna alla schermata di accesso (dopo una conferma). */
@@ -423,6 +460,8 @@ export async function startGame(..._args: GameValue[]): Promise<GameValue> {
   watchCryo();
   // Zero, lo scassinatore: riga sotto i parametri, annuncio delle 11:45, ladri alla mia cassaforte
   startHacker();
+  // coppie: cuori accanto ai nomi, insieme, anniversari
+  startCouples();
   // assaggi di benvenuto lasciati nelle stanze
   startTaste();
   // l'ospite non può invitare: al suo posto, dopo 20 minuti, l'invito a salvare

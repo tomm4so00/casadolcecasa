@@ -43,6 +43,9 @@ export interface SaveV8 {
   deathCause?: string;
   inventory?: { hasFood: boolean; foodCooked: boolean; raw?: number; dishes?: number };
   romance?: unknown;
+  /** Coppie: attesa dopo essersi lasciati e sonno nello stesso letto (vedi couples.ts). */
+  coupleCooldownUntil?: number;
+  sleptTogetherSince?: number;
   relations?: unknown;
   personality?: unknown;
   welcome?: unknown;

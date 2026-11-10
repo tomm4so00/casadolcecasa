@@ -8,6 +8,7 @@ import { spendMoney } from './economy.js';
 import { tickInventoryMarket } from './inventory-market.js';
 import { updateInventoryTrade } from './inventory-trade.js';
 import { advanceNeeds } from './simulation.js';
+import { togetherWithPartner } from './couples.js';
 import { openStreetDealer } from './dealers.js';
 import {
   decodeDeathCauses,
@@ -537,7 +538,11 @@ export function checkAlerts(..._args: GameValue[]): GameValue {
 export function updateNeeds(delta?: GameValue): GameValue {
   if (game.player.isDead) return;
   if (!game.session.saveReady) return;
+  // insieme al fidanzato la felicità non cala (vedi couples.ts)
+  const happyBefore = game.player.happinessLevel;
   advanceNeeds(game.player, delta, Date.now(), needsRules());
+  if (game.player.happinessLevel < happyBefore && togetherWithPartner())
+    game.player.happinessLevel = happyBefore;
   // Suoni automatici: monete quando i soldi salgono, porta quando cambi ambiente
   if (game.lastMoneyForSound !== null && game.moneyLevel > game.lastMoneyForSound) sfx('coin');
   game.lastMoneyForSound = game.session.saveReady ? game.moneyLevel : null;

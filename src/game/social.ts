@@ -23,9 +23,13 @@ import { onInventoryOffer, inventoryChange } from './inventory-market.js';
 import { openInventoryTrade } from './inventory-trade.js';
 import {
   noteRomanticAttention,
+  onCheat,
+  onEngageAnswer,
+  onEngageAsk,
   onKissAnswer,
   onKissAsk,
   onRomanceUnlocked,
+  proposeEngagement,
   tryKiss,
 } from './romance.js';
 import { recordActivity } from './activity.js';
@@ -130,6 +134,8 @@ export async function socDo(act?: GameValue): Promise<GameValue> {
     toast(`🪙 Hai regalato ${amt} Đ a ${t.name}`);
   } else if (act === 'kiss') {
     await tryKiss(t);
+  } else if (act === 'engage') {
+    await proposeEngagement(t);
   } else if (act === 'weed') {
     await offerJoint(t);
   } else if (act === 'drug') {
@@ -315,6 +321,12 @@ export async function handleSocial(m?: GameValue): Promise<GameValue> {
     await onKissAsk(m, who);
   } else if (m.type === 'kissYes' || m.type === 'kissNo') {
     onKissAnswer(m, who, m.type === 'kissYes');
+  } else if (m.type === 'engageAsk' && !old) {
+    await onEngageAsk(m, who);
+  } else if (m.type === 'engageYes' || m.type === 'engageNo') {
+    await onEngageAnswer(m, who, m.type === 'engageYes');
+  } else if (m.type === 'cheat') {
+    await onCheat(m, who);
   } else if (m.type === 'weedOffer' && !old) {
     await onJointOffer(m, who);
   } else if (m.type === 'weedPaid') {

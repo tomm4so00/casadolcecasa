@@ -9,6 +9,7 @@ import { getAuth } from 'firebase-admin/auth';
 import { processDeletionRequests } from './deletion.js';
 import { cleanupGuests } from './guests.js';
 import { notifyHacker } from './hacker.js';
+import { notifyAnniversaries } from './couples.js';
 import { expireAuctions } from './auctions.js';
 import {
   type PushSender,
@@ -178,6 +179,9 @@ async function main() {
       // Zero, lo scassinatore: annuncio delle 11:45 e promemoria prima dell'attacco
       const hacker = await notifyHacker(getDatabase(app), scheduledAt, send);
       if (hacker >= 0) console.log(`Hacker notifications sent: ${hacker}`);
+      // anniversari delle coppie, la mattina
+      const anniversaries = await notifyAnniversaries(getDatabase(app), scheduledAt, send);
+      if (anniversaries >= 0) console.log(`Anniversary notifications sent: ${anniversaries}`);
       const rocket = await notifyRocketAlmostReady(getDatabase(app), scheduledAt, send);
       if (rocket >= 0) console.log(`Rocket almost ready, notifications sent: ${rocket}`);
       const warned = await sendDeathWarnings(getDatabase(app), scheduledAt, send);

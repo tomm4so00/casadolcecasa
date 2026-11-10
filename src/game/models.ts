@@ -117,6 +117,10 @@ export interface CharacterState {
   /** Cibo nello zaino: crudo (dal frigo) e piatti cucinati, a scorta (food-rules.ts). */
   rawFood: number;
   dishes: number;
+  /** Dopo essersi lasciati: fino a quando non ci si fidanza con nessuno (ms). */
+  coupleCooldownUntil?: number;
+  /** Da quando si dorme nello stesso letto del fidanzato (0 = no): per il premio al risveglio. */
+  sleptTogetherSince?: number;
   ownedItems: Record<string, boolean>;
   ownedFurniture: Record<string, boolean>;
   equipped: Record<string, string | null>;

@@ -8,11 +8,16 @@ import { openDialog } from './interface.js';
 import { saveGame } from './saves.js';
 import { sfx } from './audio.js';
 import { sendSocial } from './social.js';
+import { engageWith, leavePartner, myPartner, partnerOf } from './couples.js';
 import { isoProject, isoScale } from './render/primitives.js';
 import {
   KISS_DURATION_MS,
   KISS_REQUEST_TTL_MS,
+  PROPOSE_AFTER_KISSES,
+  canPropose,
   canTryKiss,
+  noteKiss,
+  resetKisses,
   endRomance,
   noteAttention,
   trimRomance,
@@ -85,7 +90,8 @@ export async function onKissAsk(m: GameValue, who: string): Promise<void> {
     postGossip(`${game.player.myData.nick} e ${who} si sono baciati 💋`, [m.from], 6 * 3600_000);
   } else {
     await send(m.from, { type: 'kissNo' });
-    endRomance(book(), m.from, Date.now());
+    // tra fidanzati un bacio rifiutato non chiude la storia
+    if (partnerOf(game.session.myPlayerId) !== m.from) endRomance(book(), m.from, Date.now());
     refreshSocialPanel();
     saveGame(false);
     toast(`Hai rifiutato il bacio di ${who}.`, 3500);
@@ -98,10 +104,16 @@ export function onKissAnswer(m: GameValue, who: string, accepted: boolean): void
     toast(`💕 ${who} ha accettato il tuo bacio!`, 4000);
     startKiss(m.from, who);
   } else {
-    endRomance(book(), m.from, Date.now());
+    const partners = partnerOf(game.session.myPlayerId) === m.from;
+    if (!partners) endRomance(book(), m.from, Date.now());
     refreshSocialPanel();
     saveGame(false);
-    toast(`💔 ${who} ha rifiutato il bacio.`, 4000);
+    toast(
+      partners
+        ? `💔 ${who} non ha voglia di baci adesso: riprova più tardi.`
+        : `💔 ${who} ha rifiutato il bacio.`,
+      4000,
+    );
   }
 }
 
@@ -112,7 +124,123 @@ function startKiss(partnerId: string, partnerName: string): void {
   game.player.stats.kisses = (game.player.stats.kisses || 0) + 1;
   notePersonality('kissAccepted');
   sfx('kiss');
+  // i baci della coppia: al quinto ci si può proporre di fidanzarsi
+  const kisses = noteKiss(book(), partnerId, partnerName, Date.now());
+  saveGame(false);
+  if (kisses === PROPOSE_AFTER_KISSES && canProposeTo(partnerId))
+    toast(
+      `💞 Tu e ${partnerName} vi siete baciati ${PROPOSE_AFTER_KISSES} volte: ora potete fidanzarvi! (💍 nel pannello vicino a lui o a lei)`,
+      8000,
+    );
+  // il tradimento: chi è fidanzato e bacia un altro lo fa sapere al fidanzato (e al gossip)
+  const mine = myPartner();
+  if (mine && mine.id !== partnerId) {
+    void send(mine.id, { type: 'cheat', who: partnerName.slice(0, 20) });
+    postGossip(
+      `👀 ${game.player.myData.nick} ha baciato ${partnerName}… ma non stava con ${mine.name}?`,
+      [mine.id, partnerId],
+    );
+  }
   refreshSocialPanel();
+}
+
+// ---------------------------------------------------------------- fidanzamento
+
+/** 💍 nel pannello: dopo 5 baci con quella persona, se nessuno dei due è fidanzato. */
+export function canProposeTo(id: string | undefined | null): boolean {
+  if (!id) return false;
+  return canPropose({
+    kisses: book()[id]?.kisses || 0,
+    mine: partnerOf(game.session.myPlayerId),
+    theirs: partnerOf(id),
+    cooldownUntil: game.player.coupleCooldownUntil || 0,
+    now: Date.now(),
+  });
+}
+
+/** Proposta in sospeso (una alla volta, come il bacio). */
+let proposal: { id: string; until: number } | null = null;
+
+export async function proposeEngagement(target: { id: string; name: string }): Promise<void> {
+  if (!canProposeTo(target.id)) return;
+  if (proposal && Date.now() < proposal.until) {
+    toast(`⏳ Aspetta la risposta di ${target.name}…`);
+    return;
+  }
+  proposal = { id: target.id, until: Date.now() + 60_000 };
+  await send(target.id, { type: 'engageAsk' });
+  sfx('kiss');
+  toast(`💍 Hai chiesto a ${target.name} di fidanzarvi… aspetta la risposta!`, 5000);
+}
+
+export async function onEngageAsk(m: GameValue, who: string): Promise<void> {
+  if (Date.now() - (m.t || 0) > KISS_REQUEST_TTL_MS) return;
+  while (game.dialogResolve) await new Promise((r) => lifetime.setTimeout(r, 1500));
+  // nel frattempo uno dei due si è fidanzato con qualcun altro
+  if (partnerOf(game.session.myPlayerId) || partnerOf(m.from)) {
+    await send(m.from, { type: 'engageNo' });
+    return;
+  }
+  sfx('kiss');
+  const res: GameValue = await openDialog({
+    title: '💍 Una proposta!',
+    text: `${who} ti chiede di fidanzarvi!\n\nSe dici di no, il conto dei vostri baci riparte da zero (ma potete ancora baciarvi).`,
+    buttons: [
+      { label: '❌ No', value: 'no', color: '#57606f' },
+      { label: '💞 Sì!', value: 'yes', color: '#ff6b81' },
+    ],
+  });
+  if (res.action === 'yes' && (await engageWith(m.from, who))) {
+    await send(m.from, { type: 'engageYes' });
+    celebrate(m.from, who);
+    // lo scrive solo chi accetta, così il fatto compare una volta sola
+    postGossip(`💍 ${game.player.myData.nick} e ${who} si sono fidanzati! 💞`, [m.from]);
+    return;
+  }
+  await send(m.from, { type: 'engageNo' });
+  resetKisses(book(), m.from);
+  saveGame(false);
+  refreshSocialPanel();
+  toast(`Hai detto di no a ${who}.`, 3500);
+}
+
+export async function onEngageAnswer(m: GameValue, who: string, yes: boolean): Promise<void> {
+  if (proposal?.id === m.from) proposal = null;
+  if (yes && (await engageWith(m.from, who))) {
+    celebrate(m.from, who);
+    return;
+  }
+  resetKisses(book(), m.from);
+  saveGame(false);
+  refreshSocialPanel();
+  toast(`💔 ${who} ha detto di no. Il conto dei vostri baci riparte da zero.`, 5000);
+}
+
+/** Fidanzati: cuori sopra tutti e due e un avviso. */
+function celebrate(partnerId: string, partnerName: string): void {
+  const now = performance.now();
+  game.kissAnim = { partnerId, partnerName, start: now, until: now + KISS_DURATION_MS };
+  sfx('levelUp');
+  toast(`💞 Ora stai con ${partnerName}! Insieme la felicità non cala.`, 7000);
+  refreshSocialPanel();
+}
+
+/** Il mio fidanzato ha baciato un'altra persona. */
+export async function onCheat(m: GameValue, who: string): Promise<void> {
+  if (partnerOf(game.session.myPlayerId) !== m.from) return;
+  while (game.dialogResolve) await new Promise((r) => lifetime.setTimeout(r, 1500));
+  sfx('enemy');
+  const other = typeof m.who === 'string' ? m.who.slice(0, 20) : 'qualcuno';
+  const res: GameValue = await openDialog({
+    title: '👀 Ma come…',
+    text: `${who} ha appena baciato ${other}…`,
+    buttons: [
+      { label: '🤝 Perdona', value: 'forgive', color: '#2e86de' },
+      { label: '💔 Lascia', value: 'leave', color: '#c0392b' },
+    ],
+  });
+  if (res.action === 'leave') await leavePartner();
+  else toast(`🤝 Hai perdonato ${who}.`, 3500);
 }
 
 export function kissActive(): boolean {
