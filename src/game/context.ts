@@ -148,6 +148,7 @@ interface GameContext {
   clothesStoreFurniture: SceneMap;
   storeFloorFurniture: SceneMap;
   bankFurniture: SceneMap;
+  policeFurniture: SceneMap;
   artStudioFurniture: SceneMap;
   engineeringFurniture: SceneMap;
   bettingFurniture: SceneMap;

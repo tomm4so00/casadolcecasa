@@ -3,7 +3,7 @@
 // salvato la disposizione dei mobili.
 import type { GameValue } from './context.js';
 import { game } from './context.js';
-import { GALLERY_HALF } from './data/catalogues.js';
+import { GALLERY_HALF, POLICE_HALF } from './data/catalogues.js';
 
 const BASE_X = 200;
 const BASE_Y = 180;
@@ -35,6 +35,8 @@ const ENV_HALF: Record<string, { x: number; y: number }> = {
   negozio_mobili: { x: 520, y: 360 },
   // galleria d'arte: pareti lunghe per dieci quadri ben distanziati
   galleria: GALLERY_HALF,
+  // commissariato: sportello, cella, sala d'attesa e l'ufficio aperto
+  commissariato: POLICE_HALF,
 };
 /** Chi sta più vicino di così a una parete (porte, piante d'angolo) resta attaccato alla parete. */
 const WALL_HUG = 45;

@@ -22,6 +22,7 @@ import {
   BATHROOM_FURNITURE,
   CLOTHES_STORE_FURNITURE,
   BANK_FURNITURE,
+  POLICE_FURNITURE,
   ART_STUDIO_FURNITURE,
   GALLERY_FURNITURE,
   ENGINEERING_FURNITURE,
@@ -302,6 +303,7 @@ export function initializeGame() {
   game.clothesStoreFurniture = structuredClone(CLOTHES_STORE_FURNITURE);
   game.storeFloorFurniture = structuredClone(STORE_FLOOR_FURNITURE);
   game.bankFurniture = structuredClone(BANK_FURNITURE);
+  game.policeFurniture = structuredClone(POLICE_FURNITURE);
   game.artStudioFurniture = structuredClone(ART_STUDIO_FURNITURE);
   game.engineeringFurniture = structuredClone(ENGINEERING_FURNITURE);
   game.bettingFurniture = structuredClone(BETTING_FURNITURE);

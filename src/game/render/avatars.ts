@@ -602,6 +602,34 @@ export function drawHat(head?: GameValue, s?: GameValue, hat?: GameValue): GameV
       }
       break;
     }
+    case 'police': {
+      // berretto rigido della divisa: fascia scura, cupola larga, visiera nera lucida e stemma
+      ctx.fillStyle = game.darken(c, 0.35);
+      ctx.fillRect(hx - 9 * s, hy - 9 * s, 18 * s, 4 * s);
+      ctx.fillStyle = c2;
+      ctx.fillRect(hx - 9 * s, hy - 9.4 * s, 18 * s, 0.8 * s);
+      ctx.fillStyle = c;
+      ctx.beginPath();
+      ctx.moveTo(hx - 9 * s, hy - 9 * s);
+      ctx.lineTo(hx - 11.5 * s, hy - 13.5 * s);
+      ctx.quadraticCurveTo(hx, hy - 17.5 * s, hx + 11.5 * s, hy - 13.5 * s);
+      ctx.lineTo(hx + 9 * s, hy - 9 * s);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.12)';
+      ctx.beginPath();
+      ctx.ellipse(hx - 3 * s, hy - 14.2 * s, 5 * s, 1.4 * s, -0.1, 0, 6.3);
+      ctx.fill();
+      ctx.fillStyle = '#0d0f12';
+      ctx.beginPath();
+      ctx.ellipse(hx, hy - 4.6 * s, 8.5 * s, 2.4 * s, 0, 0, Math.PI);
+      ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.25)';
+      ctx.fillRect(hx - 4 * s, hy - 4.4 * s, 5 * s, 0.6 * s);
+      dot(hx, hy - 11.5 * s, 1.9 * s, '#d4ac0d');
+      dot(hx, hy - 11.5 * s, 0.9 * s, '#f5f6fa');
+      break;
+    }
     case 'fedora':
       ctx.fillStyle = game.darken(c, 0.18);
       ctx.beginPath();

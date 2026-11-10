@@ -2374,6 +2374,61 @@ export const BANK_FURNITURE = {
   doorExit: { x: 0, y: 160, w: 60, h: 15, z: 110, name: 'Torna Fuori 🚪', moveable: false },
 };
 
+// ---------------------------------------------------------------- commissariato
+/** Metà larghezza e profondità del commissariato (vedi room-size.ts). */
+export const POLICE_HALF = { x: 320, y: 240 };
+
+// Commissariato: lo sportello delle denunce in fondo, la camera di sicurezza nell'angolo a
+// sinistra, l'eliminacode e la bacheca degli avvisi per chi aspetta, l'uscita davanti.
+export const POLICE_FURNITURE = {
+  // dietro c'è la zona degli agenti, chiusa ai lati dai divisori (ENV_DECOR)
+  policeCounter: {
+    x: 20,
+    y: -140,
+    w: 240,
+    h: 34,
+    z: 62,
+    name: 'Ufficio Denunce 👮',
+    moveable: false,
+    // lungo e stretto: chi gli sta davanti va disegnato sopra anche alle due estremità
+    depthCorner: 'frontLeft',
+  },
+  // nell'angolo di fondo a sinistra, chiusa dai due muri della stanza e dalle sbarre
+  cell: {
+    x: -270,
+    y: -170,
+    w: 100,
+    h: 140,
+    z: 118,
+    name: 'Camera di Sicurezza 🔒',
+    moveable: false,
+    reach: 40,
+    // attaccata a due muri: chi ci passa davanti o di lato le sta sempre davanti
+    depthCorner: 'backRight',
+  },
+  ticketMachine: {
+    x: -150,
+    y: -82,
+    w: 18,
+    h: 16,
+    z: 58,
+    name: 'Eliminacode 🎫',
+    moveable: false,
+  },
+  // appesa al muro di sinistra, sopra le sedie: non è un ostacolo
+  noticeBoard: {
+    x: -316,
+    y: -30,
+    w: 6,
+    h: 76,
+    z: 96,
+    name: 'Avvisi ai cittadini 📌',
+    moveable: false,
+    wallItem: true,
+  },
+  doorExit: { x: 0, y: 220, w: 60, h: 15, z: 110, name: 'Torna Fuori 🚪', moveable: false },
+};
+
 // Laboratorio artistico: tre postazioni da pittura e l'uscita.
 export const ART_STUDIO_FURNITURE = {
   easel1: {
@@ -3427,6 +3482,33 @@ export const ENV_DECOR = {
     { kind: 'cooler', x: 165, y: 60, w: 22, h: 22, z: 70 },
     { kind: 'plant', x: 168, y: 150, w: 26, h: 26, z: 60 },
   ],
+  commissariato: [
+    // divisori a vetri tra lo sportello e il muro di fondo: dietro il bancone non si passa.
+    // Quello di sinistra si raggiunge solo dalla sua sinistra (chi c'è gli sta dietro); quello
+    // di destra solo dalla sua destra (chi c'è gli sta davanti): tutti e due prima del bancone
+    { kind: 'policeRail', x: -103, y: -198, w: 6, h: 84, z: 50, depthCorner: 'frontRight' },
+    { kind: 'policeRail', x: 143, y: -198, w: 6, h: 84, z: 50, depth: -400 },
+    // la zona degli agenti, dove non si arriva: si disegna prima del bancone e del vetro.
+    // L'archivio lascia libera la porta del commissario, l'armadio la scritta sul muro
+    { kind: 'archive', x: -25, y: -228, w: 40, h: 22, z: 70, depth: -400 },
+    { kind: 'printer', x: 40, y: -225, w: 30, h: 22, z: 34, depth: -400 },
+    { kind: 'gunLocker', x: 118, y: -226, w: 40, h: 24, z: 72, depth: -400 },
+    // l'ufficio aperto a destra: due scrivanie con l'agente seduto e la sedia per chi denuncia
+    { kind: 'copDesk', x: 240, y: -100, w: 70, h: 76, z: 40, officer: 2 },
+    { kind: 'copDesk', x: 240, y: 60, w: 70, h: 76, z: 40, officer: 3 },
+    { kind: 'coatRack', x: 300, y: -205, w: 14, h: 14, z: 70 },
+    { kind: 'plant', x: 300, y: 205, w: 26, h: 26, z: 60 },
+    { kind: 'plant', x: 168, y: -222, w: 22, h: 22, z: 55 },
+    // l'angolo tra la cella e il divisore: la bandiera sull'asta
+    { kind: 'flagPole', x: -190, y: -222, w: 14, h: 14, z: 120 },
+    // sala d'attesa lungo il muro di sinistra, con l'acqua
+    { kind: 'waitingChairs', x: -270, y: 40, w: 80, h: 20, z: 35, label: "Sala d'attesa" },
+    { kind: 'waitingChairs', x: -270, y: 110, w: 80, h: 20, z: 35 },
+    { kind: 'cooler', x: -300, y: 190, w: 22, h: 22, z: 70 },
+    { kind: 'plant', x: -150, y: 205, w: 26, h: 26, z: 60 },
+    // la bacheca appesa al muro (il pulsante è quello di POLICE_FURNITURE.noticeBoard)
+    { kind: 'noticeBoard', x: -316, y: -30, w: 6, h: 76, z: 96, solid: false, flat: true },
+  ],
   negozio_mobili: [
     { kind: 'plant', x: -490, y: -335, w: 26, h: 26, z: 60 },
     { kind: 'plant', x: 490, y: -335, w: 26, h: 26, z: 60 },
@@ -3833,6 +3915,37 @@ export const ENV_STYLE = {
     lights: [
       { x: -80, y: -40, z: 0, r: 220, color: '255,240,210' },
       { x: 90, y: 20, z: 0, r: 220, color: '255,240,210' },
+    ],
+  },
+  // commissariato: linoleum grigio, pareti chiare con lo zoccolo blu della Polizia, neon freddi
+  commissariato: {
+    floor: 'tiles',
+    floorColor: '#c3cad1',
+    wall: '#e9edf0',
+    wallStyle: 'wainscot',
+    trim: '#1f3a68',
+    decor: {
+      // la porta del commissario sta nella zona degli agenti, dietro il bancone
+      back: [
+        { t: 'policeDoor', u: 248 },
+        { t: 'policeCrest', u: 335 },
+        // oltre il divisorio di destra, dove l'armadio non lo copre
+        { t: 'poster', u: 505, text: 'EMERGENZE 112', color: '#c0392b', w: 70, top: 30 },
+        { t: 'clock', u: 568 },
+        { t: 'window', u: 612, w: 44, h: 50 },
+      ],
+      // dal davanti (u = 0) verso il fondo: tra la finestra e la cella c'è la bacheca degli
+      // avvisi (u 232-308), la cella copre il pezzo dietro (u 340-480)
+      left: [
+        { t: 'poster', u: 70, text: 'VIETATO FUMARE', color: '#636e72', w: 74, top: 34 },
+        { t: 'window', u: 165, w: 46, h: 50 },
+      ],
+    },
+    lights: [
+      { x: 20, y: -110, z: 0, r: 230, color: '235,242,255' },
+      { x: -220, y: 60, z: 0, r: 200, color: '235,242,255' },
+      { x: 220, y: -20, z: 0, r: 220, color: '235,242,255' },
+      { x: 0, y: 150, z: 0, r: 180, color: '255,245,225' },
     ],
   },
   negozio_mobili: {

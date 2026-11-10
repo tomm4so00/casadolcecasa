@@ -28,6 +28,7 @@ import { notePersonality } from './personality.js';
 import { CRACK_MS, HACKER_SHORT } from '../../shared/hacker-rules.js';
 import { hackerActive } from './hacker.js';
 import { setCrack } from './crack.js';
+import { enterPolice } from './police.js';
 import { purchaseItem, sellItem, spendMoney, creditMoney } from './economy.js';
 import type { GameValue } from './context.js';
 import type { SceneMap } from './models.js';
@@ -327,6 +328,7 @@ const ENV_MAPS: Record<string, string> = {
   negozio_mobili: 'storeFloorFurniture',
   negozio_vestiti: 'clothesStoreFurniture',
   banca: 'bankFurniture',
+  commissariato: 'policeFurniture',
   laboratorio: 'artStudioFurniture',
   galleria: 'galleryFurniture',
   ingegneria: 'engineeringFurniture',
@@ -474,6 +476,7 @@ const OUTSIDE_MENU: Record<'' | 'fun', string[]> = {
     'btn-act-mall',
     'btn-act-work',
     'btn-act-bank',
+    'btn-act-police',
     'btn-act-art',
     'btn-act-eng',
     'btn-act-cemetery',
@@ -1109,6 +1112,9 @@ export async function doActivity(type?: GameValue): Promise<void> {
     game.view.currentRoomTitle = 'Laboratorio Ingegneristico 🔧';
     dom('btn-return-home').classList.add('hidden');
     game.playerPos = { x: 0, y: 310 };
+    return;
+  } else if (type === 'police') {
+    enterPolice();
     return;
   } else if (type === 'bank') {
     game.view.activeEnvironment = 'banca';

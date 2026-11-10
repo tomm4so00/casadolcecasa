@@ -164,6 +164,7 @@ function benchDepth(p: GameValue): number {
  * (anche sul lato) è disegnato sopra di lei e non dentro il muro.
  */
 function buildingDepth(item: GameValue): number {
+  if (item.depthCorner || typeof item.depth === 'number') return cornerDepth(item);
   // porte del salone sui muri di fondo e di sinistra: stanno nel muro, dietro chi passa nel vano
   if (game.view.activeEnvironment === 'SALOON' && item.targetEnv)
     return (item.w < item.h ? item.x : item.y) < 0 ? -1e4 : 0;
@@ -172,6 +173,21 @@ function buildingDepth(item: GameValue): number {
   const fp = facadeFootprint(item);
   return fp.x - fp.w / 2 + fp.y - fp.h / 2 - item.x - item.y;
 }
+/**
+ * Oggetti lunghi o chiusi contro i muri si ordinano da un angolo invece che dal centro:
+ * 'frontLeft' (il bancone del bar e dello sportello: chi sta davanti o ai lati va sopra) e
+ * 'backRight' (la cella attaccata a due muri: chi può raggiungerla le sta sempre davanti),
+ * 'frontRight' (un divisorio che si raggiunge solo dalla sua sinistra). Con `depth` la profondità
+ * è fissa: le cose dietro un bancone, dove non si arriva, vanno disegnate prima di lui.
+ */
+function cornerDepth(p: GameValue): number {
+  if (typeof p.depth === 'number') return p.depth - (p.x + p.y);
+  if (p.depthCorner === 'frontLeft') return (p.h - p.w) / 2;
+  if (p.depthCorner === 'frontRight') return (p.w + p.h) / 2;
+  if (p.depthCorner === 'backRight') return (p.w - p.h) / 2;
+  return 0;
+}
+
 /** I pezzi della base lunare si vedono solo dalla loro fase in poi (gli altri oggetti sempre). */
 const shownPart = (p: GameValue): boolean =>
   p.stage === undefined || partVisible(p, game.moonBaseStage || 0);
@@ -334,6 +350,9 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
   // porte che si attraversano camminando (portone del salone, palazzine, uscita del condominio):
   // se si è cambiato ambiente, i suoi bordi valgono già per questo fotogramma
   checkWalkThrough();
+  // e anche i suoi mobili: quelli di prima (lo sportello della banca) finirebbero disegnati come
+  // palazzine del cortile
+  map = getCurrentFurnitureMap();
   applyRoomBounds(game.view.activeEnvironment);
   fadeOnRoomChange();
   // laboratorio ingegneristico: il titolo dice se si è dentro o nella zona esterna
@@ -477,11 +496,8 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
           ? -1e5
           : p.kind === 'bench'
             ? benchDepth(p) - (p.x + p.y)
-            : // oggetti lunghi chiusi fino alla parete (il bancone del bar): conta l'angolo davanti a
-              // sinistra, così chi sta davanti o ai lati si disegna nell'ordine giusto
-              p.depthCorner === 'frontLeft'
-              ? (p.h - p.w) / 2
-              : 0,
+            : // oggetti lunghi chiusi fino alla parete (il bancone del bar): vedi cornerDepth
+              cornerDepth(p),
         () => someoneSeatedAt(p),
       );
     });

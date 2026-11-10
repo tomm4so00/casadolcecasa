@@ -24,6 +24,9 @@ const recent: Record<string, number> = {};
 
 const serverNow = (): number => Date.now() + (game.session.serverOffset || 0);
 
+/** Gli ultimi fatti della bacheca, dal più vecchio (li legge anche il commissariato). */
+export const gossipEntries = (): readonly GossipEntry[] => entries;
+
 /** Fatti arrivati dopo l'ultima lettura della bacheca (per la scritta "NUOVO"). */
 export function unreadGossip(): number {
   const read = Number(localStorage.getItem(game.session.LS_PREFIX + READ_KEY)) || 0;

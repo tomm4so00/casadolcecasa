@@ -160,6 +160,18 @@ import {
 } from './weed-props.js';
 import { drawFridge } from './fridge.js';
 import { drawBankCounter, drawBankRail, drawBankVault } from './bank.js';
+import {
+  drawCopDesk,
+  drawFlagPole,
+  drawGunLocker,
+  drawHoldingCell,
+  drawNoticeBoard,
+  drawPoliceCounter,
+  drawPoliceRail,
+  drawTicketMachine,
+  wallPoliceCrest,
+  wallPoliceDoor,
+} from './police.js';
 import { drawEasel, drawPaintTableProp } from './studio.js';
 import { drawGraveProp, drawMemorialProp } from './graveyard.js';
 import {
@@ -202,6 +214,10 @@ export function registerDrawers(): void {
     stove: drawStove,
     fridge: drawFridge,
     bankCounter: drawBankCounter,
+    // commissariato
+    policeCounter: drawPoliceCounter,
+    cell: drawHoldingCell,
+    ticketMachine: drawTicketMachine,
     easel1: drawEasel,
     easel2: drawEasel,
     easel3: drawEasel,
@@ -282,6 +298,13 @@ export function registerDrawers(): void {
     // banca: caveau in 3D e divisori della zona del personale
     bankVault: drawBankVault,
     bankRail: drawBankRail,
+    // commissariato: divisori, armadio blindato, scrivanie con gli agenti e la bandiera
+    policeRail: drawPoliceRail,
+    gunLocker: drawGunLocker,
+    copDesk: drawCopDesk,
+    flagPole: drawFlagPole,
+    // la bacheca appesa al muro (il pulsante sta nella mappa dei mobili)
+    noticeBoard: drawNoticeBoard,
     grave: drawGraveProp,
     memorial: drawMemorialProp,
     tree: drawTreeProp,
@@ -397,6 +420,8 @@ export function registerDrawers(): void {
     galleryTrack: wallGalleryTrack,
     galleryLettering: wallGalleryLettering,
     gallerySign: wallGallerySign,
+    policeCrest: wallPoliceCrest,
+    policeDoor: wallPoliceDoor,
   };
   game.WALL_DECOR_DYNAMIC = {
     clock: wallClock,

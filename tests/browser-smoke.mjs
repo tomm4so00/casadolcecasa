@@ -230,6 +230,83 @@ try {
     frontAccess: false,
     leftPassage: false,
   });
+  // commissariato: dietro il bancone e nella cella non si entra, il resto si gira tutto
+  const policeCollision = await page.evaluate(async () => {
+    const { game } = await import('/src/game/context.ts');
+    const { getSolidObstacles, collidesAt } = await import('/src/game/engine.ts');
+    game.view.activeEnvironment = 'commissariato';
+    const obstacles = getSolidObstacles();
+    const at = (x, y) => collidesAt(x, y, obstacles);
+    // dall'ingresso, a passi di 4: tutto quello che si raggiunge camminando
+    const half = { x: 320, y: 240 };
+    const STEP = 4;
+    const seen = new Set();
+    const queue = [[0, 176]];
+    const key = (x, y) => x + ',' + y;
+    seen.add(key(0, 176));
+    while (queue.length) {
+      const [x, y] = queue.pop();
+      for (const [dx, dy] of [
+        [STEP, 0],
+        [-STEP, 0],
+        [0, STEP],
+        [0, -STEP],
+      ]) {
+        const nx = x + dx,
+          ny = y + dy;
+        if (Math.abs(nx) > half.x - 10 || Math.abs(ny) > half.y - 10) continue;
+        if (seen.has(key(nx, ny)) || at(nx, ny)) continue;
+        seen.add(key(nx, ny));
+        queue.push([nx, ny]);
+      }
+    }
+    const reach = (x, y) => seen.has(key(Math.round(x / STEP) * STEP, Math.round(y / STEP) * STEP));
+    return {
+      entrance: at(0, 175),
+      exitMat: at(0, 220),
+      atCounter: at(20, -110),
+      intoCounter: at(20, -135),
+      staffZone: [-60, 0, 60, 120].some((x) => [-220, -190].some((y) => reach(x, y))),
+      cellReached: reach(-270, -170) || reach(-290, -120),
+      allCorners: [
+        [-160, -220],
+        [200, -220],
+        [300, 0],
+        [-300, 0],
+        [0, 120],
+        [-150, -40],
+      ].every(([x, y]) => reach(x, y)),
+      leftRailGap: at(-103, -230) && at(-103, -170),
+      rightRailGap: at(143, -230) && at(143, -170),
+      cellInside: at(-270, -170),
+      cellBars: at(-260, -95),
+      besideCell: at(-160, -200),
+      ticketMachine: at(-150, -82),
+      noticeBoard: at(-305, -30),
+      deskA: at(240, -100),
+      behindDeskA: at(240, -150),
+      betweenDesks: at(240, -20),
+    };
+  });
+  assert.deepEqual(policeCollision, {
+    entrance: false,
+    exitMat: false,
+    atCounter: false,
+    intoCounter: true,
+    staffZone: false,
+    cellReached: false,
+    allCorners: true,
+    leftRailGap: true,
+    rightRailGap: true,
+    cellInside: true,
+    cellBars: true,
+    besideCell: false,
+    ticketMachine: true,
+    noticeBoard: false,
+    deskA: true,
+    behindDeskA: false,
+    betweenDesks: false,
+  });
   await page.evaluate(async () => {
     const { game } = await import('/src/game/context.ts');
     for (const env of [
@@ -245,6 +322,7 @@ try {
       'negozio_vestiti',
       'negozio_mobili',
       'banca',
+      'commissariato',
       'laboratorio',
       'CIMITERO',
       'lavoro_cantiere',
