@@ -25,7 +25,7 @@ import {
   spendMoney,
   transferMoney,
 } from './economy.js';
-import { todayKey } from './personality-rules.js';
+import { levelOf, reporterShare, todayKey } from './personality-rules.js';
 import {
   MAX_PROOFS,
   MAX_TRASH,
@@ -44,6 +44,7 @@ import {
   splitFine,
   sweptKeys,
 } from './trash-rules.js';
+import { notePersonality } from './personality.js';
 
 const me = (): string => game.session.myPlayerId;
 const serverNow = (): number => Date.now() + (game.session.serverOffset || 0);
@@ -222,6 +223,7 @@ async function rummage(): Promise<void> {
       t: now,
     });
   state().proofs = proofs.slice(-MAX_PROOFS);
+  notePersonality('findProof');
   saveGame(true);
   toast(
     `🫳 Hai preso ${describeKinds(countKinds(taken))}. Portale allo sportello del commissariato!`,
@@ -253,6 +255,8 @@ export async function denounceAll(): Promise<void> {
   const lines: string[] = [];
   let gained = 0;
   const done = new Set<string>();
+  // la quota di chi denuncia: la metà, di più per il Giustiziere
+  const pct = reporterShare(levelOf(game.player.personality, 'vigilante'));
   for (const g of groups) {
     const key = g.who + '|' + g.k;
     if (g.who === me()) {
@@ -266,11 +270,19 @@ export async function denounceAll(): Promise<void> {
       continue;
     }
     // dalla sua cassaforte quello che c'è (fino alla multa): metà a me, metà alla cassa
-    const taken = await seizeMoneyFrom(g.who, g.amount, (t) => splitFine(t).reporter);
-    if (taken > 0) await addToFund(splitFine(taken).police);
+    const taken = await seizeMoneyFrom(g.who, g.amount, (t) => splitFine(t, pct).reporter);
+    if (taken > 0) await addToFund(splitFine(taken, pct).police);
     try {
       const id = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-      const fine: Fine = { k: g.k, n: g.n, amt: g.amount, paid: taken, to: me(), t: serverNow() };
+      const fine: Fine = {
+        k: g.k,
+        n: g.n,
+        amt: g.amount,
+        paid: taken,
+        to: me(),
+        t: serverNow(),
+        pct,
+      };
       await game.session.db.ref(`${worldNode('fines')}/${g.who}/${id}`).set(fine);
     } catch (e) {
       console.warn('[multa]', e);
@@ -281,7 +293,8 @@ export async function denounceAll(): Promise<void> {
       }
     }
     done.add(key);
-    const mineShare = splitFine(taken).reporter;
+    notePersonality('denounce');
+    const mineShare = splitFine(taken, pct).reporter;
     gained += mineShare;
     lines.push(
       `• ${g.name}: multa di ${dindini(g.amount)} per ${TRASH[g.k].why}` +
@@ -306,7 +319,7 @@ export async function denounceAll(): Promise<void> {
     title: '👮 Denuncia registrata',
     text:
       `L'agente batte il verbale al computer e timbra le prove.\n\n${lines.join('\n\n')}\n\n` +
-      'La metà di ogni multa che ti spetta arriva nella tua cassaforte; l’altra metà va nella ' +
+      `La tua parte di ogni multa (il ${pct}%) arriva nella tua cassaforte; il resto va nella ` +
       'cassa della polizia.',
     buttons: [{ label: 'Grazie', value: null, color: '#1f3a68' }],
   });
@@ -357,7 +370,7 @@ async function payFines(): Promise<void> {
         const { pay, fromBank } = payable(rest, game.moneyLevel, game.bankBalance || 0);
         if (pay <= 0) continue;
         if (fromBank > 0 && !(await bankWithdraw(fromBank))) continue;
-        const share = splitFine(pay);
+        const share = splitFine(pay, fine.pct);
         // metà a chi ha denunciato; se non abita più qui va tutta alla cassa
         const toReporter = share.reporter > 0 && (await transferMoney(fine.to, share.reporter));
         const toPolice = pay - (toReporter ? share.reporter : 0);

@@ -52,6 +52,8 @@ import {
   water,
   waterDueIn,
 } from './weed-rules.js';
+import { addictHappiness, levelOf } from './personality-rules.js';
+import { notePersonality } from './personality.js';
 
 /** Dove compaiono i vasi nella camera (davanti a destra, fuori dal passaggio), uno accanto all'altro. */
 const POT_SPOTS = [
@@ -354,6 +356,7 @@ async function harvestNow(index: number): Promise<void> {
   if (!(await inventoryChange((ledger) => ledger.harvest(done.grams, done.plantedAt)))) return;
   // il raccolto è offerta: fa scendere il prezzo dell'erba dallo spacciatore
   recordActivity('raccolto');
+  notePersonality('harvestWeed');
   done.state.grams = weed().grams;
   // il primo raccolto fa comparire il barattolo accanto al vaso
   const item = potItems[index];
@@ -405,6 +408,7 @@ export async function smokeJoint(): Promise<boolean> {
   try {
     if (!(await inventoryChange((ledger) => ledger.consume('weed')))) return false;
     const gain = enjoyJoint();
+    notePersonality('smokeJoint');
     await saveGame(true);
     publishRoomLayout();
     const tolerance = gain < JOINT_HAPPY ? ' (fai l’abitudine: oggi ne hai fumate parecchie)' : '';
@@ -428,7 +432,11 @@ export const isStoned = (): boolean => game.player.stonedUntil > Date.now();
 function enjoyJoint(): number {
   const now = Date.now();
   const w = weed();
-  const gain = jointHappiness(w.smokes, now);
+  // il Tossico se la gode di più
+  const gain = addictHappiness(
+    jointHappiness(w.smokes, now),
+    levelOf(game.player.personality, 'addict'),
+  );
   w.smokes = afterSmoke(w.smokes, now);
   game.player.happinessLevel = Math.min(100, game.player.happinessLevel + gain);
   game.smokeUntil = performance.now() + JOINT_ANIMATION_MS;
@@ -480,6 +488,7 @@ export async function onJointOffer(m: GameValue, who: string): Promise<void> {
 export function onJointPaid(who: string): void {
   sfx('coin');
   dropInTrash('bag');
+  notePersonality('sellDrug');
   toast(`🪙 ${who} ha comprato la tua canna: +${dindini(JOINT_PRICE)} in cassaforte!`, 4500);
 }
 

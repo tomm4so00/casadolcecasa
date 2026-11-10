@@ -17,6 +17,8 @@ import {
 } from './project-rules.js';
 import { recordActivity } from './activity.js';
 import { worldNode } from './world-db.js';
+import { notePersonality } from './personality.js';
+import { levelOf, moonTripPrice } from './personality-rules.js';
 
 const serverNow = (): number => Date.now() + (game.session.serverOffset || 0);
 
@@ -57,6 +59,10 @@ function busyTraveler(): boolean {
   return false;
 }
 
+/** Il biglietto per la luna, con lo sconto dello Scienziato. */
+export const myMoonPrice = (): number =>
+  moonTripPrice(MOON_TRIP_PRICE, levelOf(game.player.personality, 'scientist'));
+
 export async function travelToMoon(): Promise<void> {
   if (busyTraveler()) return;
   if (!moonOpen()) {
@@ -74,26 +80,34 @@ export async function travelToMoon(): Promise<void> {
     );
     return;
   }
-  if (game.moneyLevel < MOON_TRIP_PRICE) {
+  // lo Scienziato vola con lo sconto
+  const price = myMoonPrice();
+  if (game.moneyLevel < price) {
     toast(
-      `🌙 Il biglietto per la luna costa ${MOON_TRIP_PRICE} Đ: non hai abbastanza soldi in cassaforte.`,
+      `🌙 Il biglietto per la luna costa ${price} Đ: non hai abbastanza soldi in cassaforte.`,
       5000,
     );
     return;
   }
   const res: GameValue = await openDialog({
     title: '🌙 Viaggio sulla luna',
-    text: `Il biglietto costa ${MOON_TRIP_PRICE} Đ (andata e ritorno).\nSali sul razzo e parti?`,
+    text:
+      `Il biglietto costa ${price} Đ (andata e ritorno)` +
+      (price < MOON_TRIP_PRICE ? ` invece di ${MOON_TRIP_PRICE} Đ: sconto da Scienziato` : '') +
+      '.\nSali sul razzo e parti?',
     buttons: [
       { label: 'Resto qui', value: null, color: '#57606f' },
-      { label: `🚀 Parto (${MOON_TRIP_PRICE} Đ)`, value: 'ok', color: '#0984e3' },
+      { label: `🚀 Parto (${price} Đ)`, value: 'ok', color: '#0984e3' },
     ],
   });
-  if (res.action !== 'ok' || !(await spendMoney(MOON_TRIP_PRICE))) return;
+  if (res.action !== 'ok' || !(await spendMoney(price))) return;
   const at = await book('trip');
-  if (at) recordActivity('space');
+  if (at) {
+    recordActivity('space');
+    notePersonality('moonTrip', price);
+  }
   if (!at) {
-    await creditMoney(MOON_TRIP_PRICE);
+    await creditMoney(price);
     toast(
       '🚀 Qualcun altro è appena partito: i tuoi soldi sono tornati in cassaforte. Riprova tra poco.',
       5000,

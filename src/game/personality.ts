@@ -15,7 +15,7 @@ import {
   LEVEL_PREVAIL,
   PERSONALITY_TITLES,
   PERSONALITY_BADGE,
-  ROMANTIC_DAILY_BONUS,
+  romanticBonus,
   type PersonalityLevel,
   answerSwitchOffer,
   levelOf,
@@ -25,7 +25,6 @@ import {
   personalityTitle,
   settlePersonalityDay,
   bankInterest,
-  hasPersonality,
   todayKey,
   type PersonalityAction,
   type PersonalityId,
@@ -96,10 +95,10 @@ async function proposeSwitch(): Promise<void> {
   const res = await openDialog({
     title: '🔀 Cambiare personalità?',
     text:
-      `Il tuo lato da ${PERSONALITIES[id].name} ha prevalso per ${PREVAIL_TO_BECOME} giornate.\n\n` +
+      `Il tuo lato da ${PERSONALITIES[id].name} ha prevalso per ${state.prevail?.[id] || PREVAIL_TO_BECOME} giornate.\n\n` +
       `Ora sei ${personalityTitle(state)} (livello ${personalityLevel(state)}). Vuoi diventare ${PERSONALITIES[id].name}?\n\n` +
-      `Se cambi riparti dal livello 1 e il premio diventa: ${personalityPerk(id, 1)}\n` +
-      `Se resti, il lato da ${PERSONALITIES[id].name} riparte da zero.`,
+      `Se cambi, il premio diventa: ${personalityPerk(id, 1)} ${PERSONALITIES[got].name} resta come secondo tratto, con un premio più leggero.\n` +
+      `Se resti, ${PERSONALITIES[id].name} diventa il tuo secondo tratto e te lo richiederò più avanti.`,
     buttons: [
       { label: `Resto ${PERSONALITIES[got].name}`, value: 'stay', color: '#57606f' },
       { label: `Divento ${PERSONALITIES[id].name}`, value: 'switch', color: '#6c5ce7' },
@@ -140,12 +139,12 @@ async function announceLevel(level: PersonalityLevel): Promise<void> {
   });
 }
 
-/** Registra un'azione che fa crescere una personalità. */
-export function notePersonality(action: PersonalityAction): void {
+/** Registra un'azione che fa crescere una personalità (`cost`: i soldi spesi davvero). */
+export function notePersonality(action: PersonalityAction, cost?: number): void {
   if (game.player.isDead) return;
   settlePersonality();
   const state = (game.player.personality ??= emptyPersonality());
-  const reached = addPersonalityPoints(state, action, new Date());
+  const reached = addPersonalityPoints(state, action, new Date(), cost);
   saveGame(false);
   if (reached) void announcePersonality(reached);
 }
@@ -203,18 +202,19 @@ export async function applyDailyPerks(): Promise<void> {
     const today = todayKey(new Date());
     const perks = (state.perks ??= {});
     let changed = false;
-    if (hasPersonality(state, 'romantic') && perks.romanceDay !== today) {
+    // anche come secondo tratto, con un premio più leggero
+    if (levelOf(state, 'romantic') > 0 && perks.romanceDay !== today) {
       perks.romanceDay = today;
       changed = true;
-      const bonus = ROMANTIC_DAILY_BONUS[levelOf(state, 'romantic') - 1] ?? ROMANTIC_DAILY_BONUS[0];
+      const bonus = romanticBonus(levelOf(state, 'romantic'));
       game.player.healthLevel = Math.min(100, game.player.healthLevel + bonus);
       game.player.happinessLevel = Math.min(100, game.player.happinessLevel + bonus);
       toast(
-        `💘 Il tuo cuore da ${personalityTitle(state)} ti dà il buongiorno: +${bonus}% salute e +${bonus}% felicità!`,
+        `💘 Il tuo lato romantico ti dà il buongiorno: +${bonus}% salute e +${bonus}% felicità!`,
         5500,
       );
     }
-    if (hasPersonality(state, 'business') && perks.interestDay !== today && hasRoom()) {
+    if (levelOf(state, 'business') > 0 && perks.interestDay !== today && hasRoom()) {
       const interest = bankInterest(
         game.bankBalance || 0,
         perks.interestDay,
@@ -228,7 +228,7 @@ export async function applyDailyPerks(): Promise<void> {
         });
         if (!ok) return; // si riprova al prossimo giro
         toast(
-          `💼 Interessi da ${personalityTitle(state)}: +${interest} Đ sul tuo conto in banca.`,
+          `💼 Interessi del tuo lato da Imprenditore: +${interest} Đ sul tuo conto in banca.`,
           5500,
         );
       }

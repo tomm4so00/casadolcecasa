@@ -171,9 +171,14 @@ export function newPet(now: number, spot?: { x: number; y: number }): PetState {
   return { hunger: 100, at: now, ...(spot ? { x: spot.x, y: spot.y } : {}) };
 }
 
-/** Dà da mangiare: la fame sale del 50% (al massimo 100). */
-export function feedPet(p: PetState, now: number, depletionSec: number): PetState {
-  return { ...p, hunger: Math.min(100, petHunger(p, now, depletionSec) + PET_FOOD_GAIN), at: now };
+/** Dà da mangiare: la fame sale del 50% (al massimo 100); `gain` per chi li sazia di più. */
+export function feedPet(
+  p: PetState,
+  now: number,
+  depletionSec: number,
+  gain = PET_FOOD_GAIN,
+): PetState {
+  return { ...p, hunger: Math.min(100, petHunger(p, now, depletionSec) + gain), at: now };
 }
 
 /** Errore che impedisce di comprare l'animale, oppure null. */

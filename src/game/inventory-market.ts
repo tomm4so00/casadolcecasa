@@ -14,6 +14,7 @@ import { dropInTrash } from './trash.js';
 import { dayOf } from '../../shared/activity.js';
 import { TRADE_ITEMS, type TradeItem, type StockInventory } from './inventory-trade-rules.js';
 import type { RoomState } from './models.js';
+import { notePersonality } from './personality.js';
 
 let market: InventoryLedger | null = null;
 let marketKey = '';
@@ -37,7 +38,10 @@ export function syncInventoryFromRoom(room: RoomState): void {
   const key = offer ? `${offer.id}:${offer.status}` : '';
   if (offer && lastOffer === `${offer.id}:pending` && offer.status !== 'pending') {
     // una vendita lascia la bustina vuota nel cestino (i regali no)
-    if (offer.status === 'accepted' && offer.price > 0) dropInTrash('bag');
+    if (offer.status === 'accepted' && offer.price > 0) {
+      dropInTrash('bag');
+      notePersonality('sellDrug');
+    }
     toast(
       offer.status === 'accepted'
         ? `🤝 Scambio concluso: ${offer.quantity} ${TRADE_ITEMS[offer.item].unit} · +${offer.price} Đ.`

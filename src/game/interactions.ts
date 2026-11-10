@@ -26,11 +26,17 @@ import {
   tossCoin,
 } from './courtyard-fun.js';
 import { STRAINS, type StrainId, growTimeText } from './weed-rules.js';
-import { earthFlight, moonFlight, moonOpen, returnToEarth, travelToMoon } from './moon.js';
-import { MOON_TRIP_PRICE } from './project-rules.js';
+import {
+  earthFlight,
+  moonFlight,
+  moonOpen,
+  myMoonPrice,
+  returnToEarth,
+  travelToMoon,
+} from './moon.js';
 import { openRpsTable, openSlot } from './betting.js';
 import { SLOT_BET } from './betting-rules.js';
-import { bedtimeThought, notePersonality } from './personality.js';
+import { bedtimeThought } from './personality.js';
 import { purchaseItem } from './economy.js';
 import { type GameValue, game } from './context.js';
 import { hasRoom, isMyRoomNow, saveGame } from './saves.js';
@@ -186,7 +192,6 @@ async function goThroughSaloonDoor(key: string, item: GameValue, wait: boolean):
         gi === game.myAssignedRoomIdx ? `La tua stanza 🏠` : `Stanza di ${room.owner}`;
       game.currentRoomIdx = gi;
       game.view.activeEnvironment = 'PLAYER_ROOM';
-      if (gi !== game.myAssignedRoomIdx) notePersonality('enterOtherRoom');
       spawnAtDoor(getCurrentFurnitureMap().doorExit);
     } else {
       if (wait) await throughDoor('saloon:' + key);
@@ -678,7 +683,7 @@ const ENGINEERING = shop(
       return {
         text:
           flight.phase === 'idle'
-            ? `🌙 Vola sulla luna (${MOON_TRIP_PRICE} Đ)`
+            ? `🌙 Vola sulla luna (${myMoonPrice()} Đ)`
             : '🚀 Il razzo è in viaggio…',
         locked: flight.phase !== 'idle',
       };

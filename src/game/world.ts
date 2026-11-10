@@ -15,7 +15,8 @@ import { DAILY_LIMITS, recordUse, usesLeftToday } from './daily-limits.js';
 import { funSpots, onSofa, othersHere } from './courtyard-fun.js';
 import {} from './project-rules.js';
 import {} from './betting-rules.js';
-import { levelOf, theftTriesFor } from './personality-rules.js';
+import { discoPrice, levelOf, theftTriesFor } from './personality-rules.js';
+import { TRIP_PRICE } from './prices.js';
 import {
   THEFT_TRIES,
   type TheftRecord,
@@ -486,8 +487,15 @@ const OUTSIDE_MENU: Record<'' | 'fun', string[]> = {
 };
 const OUTSIDE_BUTTONS = [...new Set(Object.values(OUTSIDE_MENU).flat())];
 
+/** L'ingresso in discoteca, con lo sconto del Festaiolo. */
+export const myDiscoPrice = (): number =>
+  discoPrice(game.DISCO_PRICE, levelOf(game.player.personality, 'partier'));
+
 /** Mostra i pulsanti del menu di uscita giusti (nessuno se il menu è chiuso). */
 export function renderOutsideMenu(): void {
+  const disco = dom('btn-act-disco');
+  if (disco)
+    disco.textContent = `🕺 Discoteca (${myDiscoPrice() ? `-${myDiscoPrice()} Đ` : 'gratis'}, +${game.DISCO_HAPPY}% Felicità, -${game.DISCO_SLEEP}% Sonno, 2 al giorno)`;
   const shown = game.view.isOutsideMenuOpen ? OUTSIDE_MENU[game.view.outsideSubmenu || ''] : [];
   for (const id of OUTSIDE_BUTTONS) dom(id)?.classList.toggle('hidden', !shown.includes(id));
 }
@@ -611,7 +619,6 @@ export function backToCourtyardGate(): void {
 // ---------------------------------------------------------------- viaggio
 
 /** Viaggio: uno al giorno, a prezzo fisso. */
-const TRIP_PRICE = 100;
 const TRIP_HAPPY = 50;
 const TRIP_HEALTH = 15;
 
@@ -999,6 +1006,7 @@ export async function doActivity(type?: GameValue): Promise<void> {
     // al bar si entra gratis: si paga solo l'aperitivo al bancone
     game.player.daily = recordUse(game.player.daily, 'bar', new Date());
     recordActivity('pizza');
+    notePersonality('bar');
     saveGame();
     game.player.happinessLevel = Math.min(100, game.player.happinessLevel + 15);
     game.player.hungerLevel = Math.min(100, game.player.hungerLevel + 15);
@@ -1010,12 +1018,14 @@ export async function doActivity(type?: GameValue): Promise<void> {
       returnHomeFromActivity();
       return;
     }
-    if (game.moneyLevel < game.DISCO_PRICE) {
-      toast(`Non hai abbastanza soldi! L'ingresso costa ${game.DISCO_PRICE} Đ.`);
+    // il Festaiolo entra con lo sconto (al livello 3 gratis)
+    const price = myDiscoPrice();
+    if (game.moneyLevel < price) {
+      toast(`Non hai abbastanza soldi! L'ingresso costa ${price} Đ.`);
       returnHomeFromActivity();
       return;
     }
-    if (!(await spendMoney(game.DISCO_PRICE))) {
+    if (price > 0 && !(await spendMoney(price))) {
       returnHomeFromActivity();
       return;
     }
@@ -1023,6 +1033,7 @@ export async function doActivity(type?: GameValue): Promise<void> {
     saveGame();
     game.player.happinessLevel = Math.min(100, game.player.happinessLevel + game.DISCO_HAPPY);
     game.player.sleepLevel = Math.max(0, game.player.sleepLevel - game.DISCO_SLEEP);
+    notePersonality('disco', price);
     game.view.activeEnvironment = 'discoteca';
     game.view.currentRoomTitle = 'Discoteca 🕺';
     toast(`🕺 Si balla! Felicità +${game.DISCO_HAPPY}%, sonno −${game.DISCO_SLEEP}%`, 3500);
@@ -1053,6 +1064,7 @@ export async function doActivity(type?: GameValue): Promise<void> {
       4000,
     );
     saveGame();
+    notePersonality('trip', TRIP_PRICE);
     game.view.activeEnvironment = 'viaggio';
     game.view.currentRoomTitle = 'Viaggio ✈️';
   } else if (type === 'clothesshop') {
@@ -1157,7 +1169,11 @@ export function goToLaunchSite(): void {
 }
 
 /** Al bancone si vede a che punto sono i lavori del razzo. */
+// Lavoro al bancone: chi resta lì un minuto fa crescere lo Scienziato.
+let benchUntil = 0;
+
 export function workbenchMessage(): void {
+  startBenchWork();
   const stage = game.rocketStage || 0;
   const left = (projectGoal(PROJECTS.rocket) - rocketFunded()).toLocaleString('it-IT');
   toast(
@@ -1168,6 +1184,31 @@ export function workbenchMessage(): void {
         : '🔧 Sul bancone ci sono i disegni del razzo: per iniziare i lavori servono 5.000 Đ versati alla bacheca.',
     5500,
   );
+}
+
+/** Si lavora al bancone per un minuto, restandoci vicino. */
+function startBenchWork(): void {
+  if (Date.now() < benchUntil) {
+    toast('🔧 Stai già lavorando al bancone: resta qui ancora un po’.', 3000);
+    return;
+  }
+  const bench: GameValue = game.engineeringFurniture?.workbench;
+  if (!bench) return;
+  benchUntil = Date.now() + 60_000;
+  lifetime.setTimeout(() => toast('🔧 Al lavoro! Resta al bancone per un minuto.', 3500), 5800);
+  lifetime.setTimeout(() => {
+    benchUntil = 0;
+    const p = game.playerPos;
+    if (
+      game.view.activeEnvironment !== 'ingegneria' ||
+      Math.hypot(p.x - bench.x, p.y - bench.y) > 90
+    ) {
+      toast('🔧 Ti sei allontanato dal bancone: il lavoro è rimasto a metà.', 4000);
+      return;
+    }
+    notePersonality('labWork');
+    toast('🔧 Ottimo lavoro al bancone: un passo avanti verso la luna!', 4000);
+  }, 60_000);
 }
 
 // Dopo un acquisto spiega al giocatore cosa fa il mobile.

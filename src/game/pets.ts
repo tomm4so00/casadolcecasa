@@ -36,6 +36,7 @@ import {
   petNameError,
   toPetCalled,
   cleanPetName,
+  PET_FOOD_GAIN,
   PET_FOOD_PRICE,
   PET_HUNGRY,
   PET_KINDS,
@@ -54,6 +55,8 @@ import {
   PET_DYING_WARN_MS,
   PET_HUNGER_DEPLETION_SEC,
 } from './pet-rules.js';
+import { notePersonality } from './personality.js';
+import { levelOf, petFoodGain } from './personality-rules.js';
 
 /** Ambienti in cui si può portare il cane al guinzaglio (l'appartamento, il cortile e il parco). */
 const WALK_ENVS = new Set([
@@ -209,6 +212,7 @@ export async function buyPet(kind: PetKind): Promise<void> {
   if (spot && info.w && info.h)
     pos = pushOutOfCorridor({ x: spot.x, y: spot.y, w: info.w, h: info.h });
   book()[kind] = newPet(Date.now(), pos);
+  notePersonality('buyPet', info.price);
   homes.delete(kind);
   sfx('success');
   saveGame(true);
@@ -481,7 +485,10 @@ export async function feed(kind: PetKind): Promise<void> {
     toast('Pagamento non riuscito, riprova.');
     return;
   }
-  book()[kind] = { ...feedPet(st, Date.now(), depletion()), ...pick(st) };
+  // l'Amico degli animali li sazia di più
+  const gain = petFoodGain(PET_FOOD_GAIN, levelOf(game.player.personality, 'animals'));
+  book()[kind] = { ...feedPet(st, Date.now(), depletion(), gain), ...pick(st) };
+  notePersonality('feedPet', PET_FOOD_PRICE);
   sfx('coin');
   toast(`${PETS[kind].emoji} Hai dato da mangiare ${toPet(kind)} (Fame +50%)`, 3000);
   // cane e gatto nella stanza: la ciotola per terra (il fumetto arriva quando hanno finito)
@@ -673,6 +680,7 @@ export function startDogWalk(): void {
   };
   roamers.delete('dog');
   sfx('click');
+  notePersonality('walkDog');
   toast(
     '🦮 Hai messo il guinzaglio al cane: ti seguirà nell’appartamento, nel cortile e al parco.',
     4000,

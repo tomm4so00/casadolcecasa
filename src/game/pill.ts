@@ -12,12 +12,14 @@ import {
   rollPillEffect,
   withPillTimer,
 } from './pill-rules.js';
+import { notePersonality } from './personality.js';
 
 /** Si prende una pillola (già tolta dallo zaino): dipendenza ed effetto a sorpresa. */
 export function takePill(r = Math.random()): PillEffect {
   const now = Date.now();
   drugTake();
   const effect = rollPillEffect(r, game.player.healthLevel);
+  notePersonality('takePill');
   const p = game.player;
   if (effect === 'euphoria') p.happinessLevel = 100;
   if (effect === 'munchies') p.hungerLevel = Math.max(0, p.hungerLevel - MUNCHIES_HUNGER);

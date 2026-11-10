@@ -32,6 +32,7 @@ import {
 } from './project-rules.js';
 import { recordActivity } from './activity.js';
 import { worldNode } from './world-db.js';
+import { notePersonality } from './personality.js';
 
 const rocket = PROJECTS.rocket;
 const moonbase = PROJECTS.moonbase;
@@ -360,6 +361,7 @@ async function donate(amount: number, id: ProjectId = 'rocket'): Promise<boolean
     return false;
   }
   recordActivity('green');
+  notePersonality('donateProject', amount);
   try {
     await game.session.db
       .ref(`${worldNode('projects')}/${id}/donors/` + game.session.myPlayerId)
@@ -415,6 +417,7 @@ export async function pressLaunchButton(): Promise<void> {
     if (!state.launchAt) toast('📡 Il pulsante non ha risposto: riprova tra poco.', 4000);
     return;
   }
+  notePersonality('launchRocket');
   try {
     await game.session.db
       .ref(worldNode('projects') + '/rocket/launchBy')

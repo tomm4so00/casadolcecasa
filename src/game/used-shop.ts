@@ -28,6 +28,7 @@ import {
   usedListing,
   usedPriceError,
 } from './collect-rules.js';
+import { notePersonality } from './personality.js';
 
 /** Ambiente del negozio. */
 export const USED_ENV = 'usato';
@@ -301,6 +302,7 @@ export function onUsedSold(m: GameValue, who: string): void {
   const c = collectible(m.item);
   const amt = Math.max(0, Math.floor(Number(m.amt) || 0));
   sfx('coin');
+  notePersonality('sellUsed');
   toast(
     `🏷️ ${who} ha comprato ${c ? `${c.emoji} ${c.name}` : 'un tuo pezzo'} al negozio dell'usato: +${dindini(amt)} in cassaforte!`,
     6000,

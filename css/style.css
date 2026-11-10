@@ -3865,3 +3865,115 @@ body.hacker-glitch::after {
   color: #ff9ff3;
   font-weight: bold;
 }
+
+/* ---- La tua personalità (dal profilo) e classifica delle personalità ---- */
+.pp-card-main {
+  max-width: 460px;
+  width: 92vw;
+}
+.pp-scroll {
+  max-height: 64vh;
+  overflow-y: auto;
+  text-align: left;
+  padding-right: 4px;
+}
+.pp-scroll h4 {
+  margin: 14px 0 6px;
+  font-size: 0.95rem;
+}
+.pp-hero {
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  border-radius: 10px;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.04);
+}
+.pp-hero-title {
+  font-weight: bold;
+  font-size: 1.05rem;
+}
+.pp-hero-sub,
+.pp-sub,
+.pp-note {
+  font-size: 0.75rem;
+  color: #a4b0be;
+}
+.pp-note {
+  margin: 6px 0;
+}
+.pp-perk,
+.pp-second {
+  font-size: 0.82rem;
+  margin-top: 6px;
+}
+.pp-second span {
+  color: #a4b0be;
+}
+.pp-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.82rem;
+  margin-top: 6px;
+}
+.pp-val {
+  color: #feca57;
+  font-weight: bold;
+}
+.pp-bar {
+  position: relative;
+  height: 8px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+  margin: 3px 0 2px;
+}
+.pp-fill {
+  height: 100%;
+  border-radius: 4px;
+}
+.pp-mark {
+  position: absolute;
+  top: -2px;
+  bottom: -2px;
+  width: 2px;
+  background: #ffffff;
+}
+.pp-empty {
+  font-size: 0.8rem;
+  color: #a4b0be;
+  padding: 6px 0;
+}
+.pp-card {
+  border-left: 4px solid #6c5ce7;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  padding: 6px 10px;
+  margin: 6px 0;
+  font-size: 0.8rem;
+}
+.pp-card summary {
+  cursor: pointer;
+  font-weight: bold;
+  font-size: 0.9rem;
+}
+.pp-card ul {
+  margin: 4px 0 6px;
+  padding-left: 18px;
+}
+.pp-card li span {
+  color: #a4b0be;
+}
+.pp-card-h {
+  margin-top: 6px;
+  color: #a29bfe;
+  font-weight: bold;
+}
+.pp-rank,
+.pp-back {
+  margin-top: 10px;
+}
+.pp-list {
+  max-height: none;
+}
+.pp-list small {
+  color: #a4b0be;
+}

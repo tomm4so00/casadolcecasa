@@ -806,6 +806,18 @@
         },
         "shifts": {
           ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 9007199254740991"
+        },
+        "pers": {
+          ".validate": "newData.isString() && newData.val().matches(/^(artist|business|criminal|romantic|addict|gambler|partier|animals|scientist|vigilante)$/)"
+        },
+        "persLv": {
+          ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 3"
+        },
+        "persDays": {
+          ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 100000"
+        },
+        "pers2": {
+          ".validate": "newData.isString() && newData.val().matches(/^(artist|business|criminal|romantic|addict|gambler|partier|animals|scientist|vigilante)$/)"
         }
       }
     },
@@ -1255,7 +1267,7 @@
         ".read": "(auth != null && (auth.token.firebase.sign_in_provider === 'google.com' || auth.token.firebase.sign_in_provider === 'anonymous' || (auth.token.firebase.sign_in_provider === 'password' && auth.token.email_verified === true))) && root.child('sims_accounts').child(auth.uid).child('playerId').val() === $pid",
         "$room": {
           ".write": "(auth != null && (auth.token.firebase.sign_in_provider === 'google.com' || auth.token.firebase.sign_in_provider === 'anonymous' || (auth.token.firebase.sign_in_provider === 'password' && auth.token.email_verified === true))) && root.child('sims_accounts').child(auth.uid).child('playerId').val() === $pid && newData.exists()",
-          ".validate": "newData.hasChildren(['n','since']) && newData.child('since').val() <= now && ((data.exists() && data.child('since').val() + 86400000 > now && newData.child('since').val() === data.child('since').val() && newData.child('n').val() === data.child('n').val() + 1 && (newData.child('n').val() <= 3 || ((newData.child('n').val() === 4 && root.child('sims_saves').child($pid).child('personality').child('announced').child('criminal').val() === true) || (newData.child('n').val() === 5 && root.child('sims_saves').child($pid).child('personality').child('announced').child('criminal').val() === true && root.child('sims_saves').child($pid).child('personality').child('prevail').child('criminal').val() >= 15) || (newData.child('n').val() === 6 && root.child('sims_saves').child($pid).child('personality').child('announced').child('criminal').val() === true && root.child('sims_saves').child($pid).child('personality').child('prevail').child('criminal').val() >= 30)))) || ((!data.exists() || data.child('since').val() + 86400000 <= now) && newData.child('n').val() === 1 && newData.child('since').val() > now - 300000))",
+          ".validate": "newData.hasChildren(['n','since']) && newData.child('since').val() <= now && ((data.exists() && data.child('since').val() + 86400000 > now && newData.child('since').val() === data.child('since').val() && newData.child('n').val() === data.child('n').val() + 1 && (newData.child('n').val() <= 3 || (root.child('sims_saves').child($pid).child('personality').child('announced').child('criminal').val() === true && (newData.child('n').val() <= 5 || (newData.child('n').val() <= 7 && root.child('sims_saves').child($pid).child('personality').child('prevail').child('criminal').val() >= 15) || (newData.child('n').val() <= 9 && root.child('sims_saves').child($pid).child('personality').child('prevail').child('criminal').val() >= 30))) || (root.child('sims_saves').child($pid).child('personality').child('second').val() === 'criminal' && (newData.child('n').val() <= 4 || (newData.child('n').val() <= 5 && root.child('sims_saves').child($pid).child('personality').child('prevail').child('criminal').val() >= 15) || (newData.child('n').val() <= 6 && root.child('sims_saves').child($pid).child('personality').child('prevail').child('criminal').val() >= 30))))) || ((!data.exists() || data.child('since').val() + 86400000 <= now) && newData.child('n').val() === 1 && newData.child('since').val() > now - 300000))",
           "n": {
             ".validate": "newData.isNumber()"
           },
@@ -1377,6 +1389,9 @@
           },
           "$other": {
             ".validate": false
+          },
+          "pct": {
+            ".validate": "newData.isNumber() && newData.val() >= 50 && newData.val() <= 80 && newData.val() % 1 === 0"
           }
         }
       }
@@ -1547,6 +1562,18 @@
         },
         "shifts": {
           ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 9007199254740991"
+        },
+        "pers": {
+          ".validate": "newData.isString() && newData.val().matches(/^(artist|business|criminal|romantic|addict|gambler|partier|animals|scientist|vigilante)$/)"
+        },
+        "persLv": {
+          ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 3"
+        },
+        "persDays": {
+          ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 100000"
+        },
+        "pers2": {
+          ".validate": "newData.isString() && newData.val().matches(/^(artist|business|criminal|romantic|addict|gambler|partier|animals|scientist|vigilante)$/)"
         },
         "world": {
           ".validate": "newData.isString() && (newData.val() === 'CASA-0001' || newData.val().matches(/^CASA-[23456789ABCDEFGHJKMNPQRSTUVWXYZ]{4}$/))"
@@ -2366,7 +2393,7 @@
             ".read": "(auth != null && (auth.token.firebase.sign_in_provider === 'google.com' || auth.token.firebase.sign_in_provider === 'anonymous' || (auth.token.firebase.sign_in_provider === 'password' && auth.token.email_verified === true))) && root.child('sims_accounts').child(auth.uid).child('playerId').val() === $pid",
             "$room": {
               ".write": "(auth != null && (auth.token.firebase.sign_in_provider === 'google.com' || auth.token.firebase.sign_in_provider === 'anonymous' || (auth.token.firebase.sign_in_provider === 'password' && auth.token.email_verified === true))) && root.child('sims_accounts').child(auth.uid).child('playerId').val() === $pid && newData.exists()",
-              ".validate": "newData.hasChildren(['n','since']) && newData.child('since').val() <= now && ((data.exists() && data.child('since').val() + 86400000 > now && newData.child('since').val() === data.child('since').val() && newData.child('n').val() === data.child('n').val() + 1 && (newData.child('n').val() <= 3 || ((newData.child('n').val() === 4 && root.child('sims_saves').child($pid).child('personality').child('announced').child('criminal').val() === true) || (newData.child('n').val() === 5 && root.child('sims_saves').child($pid).child('personality').child('announced').child('criminal').val() === true && root.child('sims_saves').child($pid).child('personality').child('prevail').child('criminal').val() >= 15) || (newData.child('n').val() === 6 && root.child('sims_saves').child($pid).child('personality').child('announced').child('criminal').val() === true && root.child('sims_saves').child($pid).child('personality').child('prevail').child('criminal').val() >= 30)))) || ((!data.exists() || data.child('since').val() + 86400000 <= now) && newData.child('n').val() === 1 && newData.child('since').val() > now - 300000))",
+              ".validate": "newData.hasChildren(['n','since']) && newData.child('since').val() <= now && ((data.exists() && data.child('since').val() + 86400000 > now && newData.child('since').val() === data.child('since').val() && newData.child('n').val() === data.child('n').val() + 1 && (newData.child('n').val() <= 3 || (root.child('sims_saves').child($pid).child('personality').child('announced').child('criminal').val() === true && (newData.child('n').val() <= 5 || (newData.child('n').val() <= 7 && root.child('sims_saves').child($pid).child('personality').child('prevail').child('criminal').val() >= 15) || (newData.child('n').val() <= 9 && root.child('sims_saves').child($pid).child('personality').child('prevail').child('criminal').val() >= 30))) || (root.child('sims_saves').child($pid).child('personality').child('second').val() === 'criminal' && (newData.child('n').val() <= 4 || (newData.child('n').val() <= 5 && root.child('sims_saves').child($pid).child('personality').child('prevail').child('criminal').val() >= 15) || (newData.child('n').val() <= 6 && root.child('sims_saves').child($pid).child('personality').child('prevail').child('criminal').val() >= 30))))) || ((!data.exists() || data.child('since').val() + 86400000 <= now) && newData.child('n').val() === 1 && newData.child('since').val() > now - 300000))",
               "n": {
                 ".validate": "newData.isNumber()"
               },
@@ -2392,6 +2419,18 @@
             },
             "shifts": {
               ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 9007199254740991"
+            },
+            "pers": {
+              ".validate": "newData.isString() && newData.val().matches(/^(artist|business|criminal|romantic|addict|gambler|partier|animals|scientist|vigilante)$/)"
+            },
+            "persLv": {
+              ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 3"
+            },
+            "persDays": {
+              ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 100000"
+            },
+            "pers2": {
+              ".validate": "newData.isString() && newData.val().matches(/^(artist|business|criminal|romantic|addict|gambler|partier|animals|scientist|vigilante)$/)"
             }
           }
         },
@@ -2652,6 +2691,9 @@
               },
               "$other": {
                 ".validate": false
+              },
+              "pct": {
+                ".validate": "newData.isNumber() && newData.val() >= 50 && newData.val() <= 80 && newData.val() % 1 === 0"
               }
             }
           }

@@ -1,3 +1,4 @@
+import { DISCO_PRICE } from './prices.js';
 import { MOONBASE_PARTS } from './render/moonbase.js';
 import { LEGACY_WORLD } from '../../shared/worlds.js';
 import { canSellJoint, isSmoking } from './weed.js';
@@ -599,7 +600,7 @@ export function initializeGame() {
     };
     return `${f(5)},${f(3)},${f(1)}`;
   };
-  game.DISCO_PRICE = 20;
+  game.DISCO_PRICE = DISCO_PRICE;
   game.DISCO_HAPPY = 35;
   game.DISCO_SLEEP = 15;
   game.graveList = [];

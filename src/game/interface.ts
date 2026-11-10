@@ -36,6 +36,7 @@ import {
 } from './accounts.js';
 import { roomLabel } from './realty-rules.js';
 import { personalityStatusText } from './personality-rules.js';
+import { openPersonalityPage } from './personality-page.js';
 import { game } from './context.js';
 import { lifetime, dom, browser } from './runtime.js';
 import {
@@ -214,6 +215,7 @@ export async function openProfile(..._args: GameValue[]): Promise<GameValue> {
       ...(guest
         ? [{ label: '💾 Salva il personaggio', value: 'save', color: '#00b894', wide: true }]
         : []),
+      { label: '✨ Vedi la tua personalità', value: 'personality', color: '#6c5ce7', wide: true },
       { label: '💌 Invita amici', value: 'invite', color: '#e84393', wide: true },
       { label: '🌍 Cambia condominio', value: 'world', color: '#16a085', wide: true },
       { label: '🧊 Criogenesi (pausa personaggio)', value: 'cryo', color: '#00a8ff', wide: true },
@@ -251,6 +253,7 @@ export async function openProfile(..._args: GameValue[]): Promise<GameValue> {
       toast(error instanceof Error ? error.message : String(error), 6000);
     }
   }
+  if (res.action === 'personality') openPersonalityPage();
   if (res.action === 'invite') await openInvite();
   if (res.action === 'world') await openWorldSwitch();
   if (res.action === 'cryo') await openCryo();

@@ -27,6 +27,8 @@ import {
 } from './betting-rules.js';
 import { recordActivity } from './activity.js';
 import { worldNode } from './world-db.js';
+import { notePersonality } from './personality.js';
+import { levelOf, slotPrize } from './personality-rules.js';
 
 const dindini = (n: number) => `${n.toLocaleString('it-IT')} Đ`;
 const serverNow = (): number => Date.now() + (game.session.serverOffset || 0);
@@ -55,6 +57,7 @@ export async function spinSlot(): Promise<void> {
   try {
     if (!(await spendMoney(SLOT_BET))) return;
     recordActivity('crypto');
+    notePersonality('slotSpin', SLOT_BET);
     sfx('click');
     const result: SlotSymbol[] = [0, 1, 2].map(() => reelSymbol(Math.random()));
     const reels = [0, 1, 2].map((i) => dom('slot-reel-' + i) as HTMLElement);
@@ -77,7 +80,8 @@ export async function spinSlot(): Promise<void> {
       };
       tick();
     });
-    const win = slotWin(result);
+    // il Giocatore d'azzardo vince un po' di più
+    const win = slotPrize(slotWin(result), levelOf(game.player.personality, 'gambler'));
     const box = dom('slot-result');
     if (win > 0) {
       await creditMoney(win);
@@ -206,6 +210,7 @@ async function askToAccept(g: RpsGame): Promise<void> {
   const ok = await change(me(), (cur) =>
     cur.state === 'invited' && cur.t === g.t ? { state: 'playing', round: 0 } : null,
   );
+  if (ok) notePersonality('rpsBet', g.bet);
   if (!ok) {
     await creditMoney(g.bet); // la sfida è scaduta nel frattempo
     toast('⌛ La sfida non è più valida: i tuoi soldi sono tornati in cassaforte.', 4500);
@@ -292,6 +297,7 @@ async function challenge(target: string, name: string, bet: number): Promise<voi
     }
     if (!(await spendMoney(bet))) return;
     recordActivity('crypto');
+    notePersonality('rpsBet', bet);
     const g: RpsGame = {
       a: me(),
       aName: myName(),

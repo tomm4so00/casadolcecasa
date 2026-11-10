@@ -20,6 +20,7 @@ import { dom, lifetime } from './runtime.js';
 import { hasRoom, presenceAlive } from './saves.js';
 import { getCurrentFurnitureMap, spawnAtDoor } from './world.js';
 import { worldNode } from './world-db.js';
+import { notePersonality } from './personality.js';
 
 /** Ora del server: l'attacco è uguale per tutti, anche con l'orologio del telefono sbagliato. */
 const serverNow = (): number => Date.now() + (game.session.serverOffset || 0);
@@ -195,6 +196,7 @@ export async function catchThief(id: string, name: string): Promise<boolean> {
     return false;
   }
   sfx('enemy');
+  notePersonality('punchThief');
   toast(`👊 Hai fermato ${name}! Non potrà mai più aprire la tua cassaforte.`, 6000);
   postGossip(
     `${game.player.myData.nick} ha beccato ${name} mentre gli scassinava la cassaforte 👊🕵️`,

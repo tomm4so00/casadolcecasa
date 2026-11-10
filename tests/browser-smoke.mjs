@@ -634,6 +634,25 @@ try {
   }, otto.idx);
   assert.deepEqual(debt, { paid: 80, ottoVault: 60, fund: 90, open: false });
   console.log('PASS: trash bin evidence, rummaging, police report, fine split and debt paid.');
+  // la pagina della personalità dal profilo e la classifica delle personalità del condominio
+  await page.evaluate(async () => {
+    const { game } = await import('/src/game/context.ts');
+    const { decodePersonality } = await import('/src/game/personality-rules.ts');
+    game.player.personality = decodePersonality({
+      announced: { vigilante: true },
+      prevail: { vigilante: 6, addict: 5 },
+    });
+    void (await import('/src/game/interface.ts')).openProfile();
+  });
+  await page
+    .locator('#dialog-buttons')
+    .getByRole('button', { name: /Vedi la tua personalità/ })
+    .click();
+  await page.locator('#personality-modal').getByText('Secondo tratto').first().waitFor();
+  await page.locator('#personality-modal .pp-rank').click();
+  await page.locator('#personality-modal').getByText('Personalità del condominio').waitFor();
+  await page.locator('#personality-modal .lb-close').click();
+  console.log('PASS: personality page from the profile, second trait and condominium ranking.');
   console.log('CATALOG', catalog);
   console.log('ERRORS', errors);
   assert.deepEqual(errors, []);

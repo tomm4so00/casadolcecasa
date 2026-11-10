@@ -30,6 +30,7 @@ import {
   spinAngles,
   totalOf,
 } from './roulette-rules.js';
+import { notePersonality } from './personality.js';
 
 const serverNow = (): number => Date.now() + (game.session.serverOffset || 0);
 const node = (path: string): GameValue => game.session.db.ref(worldNode('roulette') + '/' + path);
@@ -243,6 +244,7 @@ async function placeChip(key: string): Promise<void> {
     return;
   }
   if (!(await spendMoney(chip))) return;
+  notePersonality('rouletteBet', chip);
   const amount = chip;
   let ok = false;
   let saved: Bets = {};

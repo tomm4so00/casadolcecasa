@@ -21,6 +21,7 @@ import {
   rewarded,
   treatTeaches,
 } from './dog-training-rules.js';
+import { notePersonality } from './personality.js';
 
 type Phase = 'walk' | 'call' | 'ready' | 'act';
 
@@ -140,6 +141,7 @@ export async function dogTreat(): Promise<void> {
     return;
   }
   if (session !== s) return; // nel frattempo l'addestramento è finito
+  notePersonality('dogTreat', TREAT_PRICE);
   s.treatAt = now();
   game.mySay = 'Bravo! 🦴';
   game.mySayT = Date.now() - 4000;

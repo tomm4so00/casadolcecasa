@@ -22,6 +22,7 @@ import {
 } from './dealer-rules.js';
 import { type WeedMarket, bagPrice, decodeWeedMarket } from './weed-market-rules.js';
 import { BAG_GRAMS } from './weed-rules.js';
+import { notePersonality } from './personality.js';
 
 const world = (): string => game.session.worldId || LEGACY_WORLD;
 const hour = (): number => new Date().getHours();
@@ -124,6 +125,7 @@ export async function openStreetDealer(env: string): Promise<void> {
   const qty = pill ? 1 : BAG_GRAMS;
   if (!(await inventoryChange((ledger) => ledger.buy(item, qty, offer.price)))) return;
   game.player.dealers = afterPurchase(game.player.dealers, id, Date.now());
+  notePersonality('buyDrugs', offer.price);
   // l'erba comprata è domanda: muove il prezzo e la Canapa Verde in borsa
   if (!pill) recordActivity('canapa');
   await saveGame(true);

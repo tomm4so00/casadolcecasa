@@ -218,7 +218,7 @@ export async function deliverPainting(a: Auction): Promise<void> {
     .remove()
     .catch(() => {});
   game.player.stats.paintingsBought = (game.player.stats.paintingsBought || 0) + 1;
-  notePersonality('buyPainting');
+  notePersonality('buyPainting', sold.amt);
   saveGame(true);
   sfx('success');
   toast(
@@ -623,7 +623,7 @@ export async function completePurchase(a: Auction): Promise<void> {
     .catch(() => {});
   await sendSocial(a.by, { type: 'artSold', amt: sold.amt });
   game.player.stats.paintingsBought = (game.player.stats.paintingsBought || 0) + 1;
-  notePersonality('buyPainting');
+  notePersonality('buyPainting', sold.amt);
   saveGame(true);
   sfx('success');
   toast(`🖼️ Hai comprato ${nameOf(a)} di ${a.name}! È appeso nella tua stanza.`, 4500);

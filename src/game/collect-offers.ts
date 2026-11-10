@@ -33,6 +33,7 @@ import {
   shelfFull,
   shelfOf,
 } from './collect-rules.js';
+import { notePersonality } from './personality.js';
 
 const me = (): string => game.session.myPlayerId;
 const ref = (path: string): GameValue => game.session.db.ref('sims_collect/' + path);
@@ -354,6 +355,7 @@ export async function onCollectOffer(m: GameValue, who: string): Promise<void> {
   }
   void sendSocial(m.from, { type: 'colDone', item: c.id, amt });
   sfx('coin');
+  notePersonality('sellUsed');
   toast(`🤝 Affare fatto! ${c.emoji} ${c.name} è di ${who}: +${dindini(amt)} in cassaforte.`, 5500);
   postGossip(
     `${who} ha comprato ${c.emoji} ${c.name} da ${game.player.myData.nick} per ${dindini(amt)}`,

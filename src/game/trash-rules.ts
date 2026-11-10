@@ -112,9 +112,16 @@ export function describeKinds(n: Record<TrashKind, number>): string {
 /** La multa per `n` prove di un tipo. */
 export const fineFor = (k: TrashKind, n: number): number => TRASH[k].fine * n;
 
-/** Metà a chi denuncia (arrotondata in giù), il resto alla cassa della polizia. */
-export function splitFine(amount: number): { reporter: number; police: number } {
-  const reporter = Math.floor(amount / 2);
+/** La quota di chi denuncia (in percentuale): la metà, di più per il Giustiziere. */
+export const REPORTER_PCT = 50;
+export const REPORTER_PCT_MAX = 80;
+
+/** A chi denuncia la sua quota (arrotondata in giù), il resto alla cassa della polizia. */
+export function splitFine(
+  amount: number,
+  pct = REPORTER_PCT,
+): { reporter: number; police: number } {
+  const reporter = Math.floor((amount * pct) / 100);
   return { reporter, police: amount - reporter };
 }
 
@@ -167,9 +174,11 @@ export interface Fine {
   n: number;
   amt: number;
   paid: number;
-  /** Chi ha denunciato (riceve metà di quello che si paga dopo). */
+  /** Chi ha denunciato (riceve la sua quota di quello che si paga dopo). */
   to: string;
   t: number;
+  /** La quota di chi ha denunciato, in percentuale (manca nelle multe di prima: la metà). */
+  pct?: number;
 }
 
 export function decodeFine(value: unknown): Fine | null {
@@ -181,7 +190,9 @@ export function decodeFine(value: unknown): Fine | null {
   if (!Number.isSafeInteger(n) || n < 1 || amt !== fineFor(f.k, n)) return null;
   if (!Number.isSafeInteger(paid) || paid < 0 || paid > amt) return null;
   if (typeof f.to !== 'string' || typeof f.t !== 'number') return null;
-  return { k: f.k, n, amt, paid, to: f.to, t: f.t };
+  const pct = Number(f.pct);
+  const ok = Number.isSafeInteger(pct) && pct >= REPORTER_PCT && pct <= REPORTER_PCT_MAX;
+  return { k: f.k, n, amt, paid, to: f.to, t: f.t, ...(ok ? { pct } : {}) };
 }
 
 /** Quanto si riesce a pagare del debito con i soldi che si hanno (cassaforte più banca). */

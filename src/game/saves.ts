@@ -37,7 +37,12 @@ import { decodeRomance } from './romance-rules.js';
 import { decodeRelations } from './relations-rules.js';
 import { decodeWelcome } from './welcome-rules.js';
 import { limitedFurnitureProps, limitedRoomItems } from './limited.js';
-import { decodePersonality, obtainedPersonality, personalityLevel } from './personality-rules.js';
+import {
+  decodePersonality,
+  obtainedPersonality,
+  personalityLevel,
+  personalityRank,
+} from './personality-rules.js';
 import { decodeWorkDay } from './job-pay.js';
 import { pushOutOfCorridor } from './room-layout.js';
 import { footprintOf } from './render/primitives.js';
@@ -400,7 +405,9 @@ export async function saveGame(forceCloud = false): Promise<boolean> {
       .catch((e: unknown) => console.warn('[classifica globale]', e));
     game.lastSavePromise = Promise.all([
       game.session.db.ref('sims_saves/' + game.session.myPlayerId).set(data),
-      game.session.db.ref(worldNode('leaderboard') + '/' + game.session.myPlayerId).set(rank),
+      game.session.db
+        .ref(worldNode('leaderboard') + '/' + game.session.myPlayerId)
+        .set({ ...rank, ...personalityRank(game.player.personality) }),
     ])
       .then(() => {
         if (scope.active) game.lastCloudSaveContent = content;

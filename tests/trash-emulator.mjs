@@ -143,6 +143,25 @@ for (const [label, w] of [
     put(`${w('fines')}/player_dino/f1/paid`, 50, 'u1'),
   );
   await check(`${label}: e la chiude`, true, () => del(`${w('fines')}/player_dino/f1`, 'u1'));
+  // il Giustiziere prende di più (fino all'80%)
+  await check(`${label}: multa con la quota del Giustiziere`, true, () =>
+    put(`${w('fines')}/player_dino/f5`, { ...fine, pct: 70 }, 'u2'),
+  );
+  await check(`${label}: ma non oltre l'80%`, false, () =>
+    put(`${w('fines')}/player_dino/f6`, { ...fine, pct: 90 }, 'u2'),
+  );
+  // la personalità nella classifica del condominio
+  const rank = { name: 'Ada', wealth: 10, t: now };
+  await check(`${label}: Ada pubblica la sua personalità`, true, () =>
+    put(
+      `${w('leaderboard')}/player_ada1`,
+      { ...rank, pers: 'vigilante', persLv: 2, persDays: 16, pers2: 'addict' },
+      'u2',
+    ),
+  );
+  await check(`${label}: non una personalità inventata`, false, () =>
+    put(`${w('leaderboard')}/player_ada1`, { ...rank, pers: 'mago', persLv: 1 }, 'u2'),
+  );
 }
 
 console.log('Cestini e multe: ok', Object.keys(results).length, 'prove');
