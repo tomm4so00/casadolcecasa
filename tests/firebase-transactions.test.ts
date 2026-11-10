@@ -50,7 +50,7 @@ describe('transazioni come su Firebase', () => {
     const db = localDatabase(new Lifetime(), new MemoryStorage());
     await db.ref('sims_rooms_state').set({
       0: { id: 1, ownerId: 'p_morta', owner: 'Laura', vaultMoney: 25, lastSeen: NOW - H },
-      1: { id: 2, ownerId: 'p_assente', owner: 'Gino', vaultMoney: 10, lastSeen: NOW - 81 * H },
+      1: { id: 2, ownerId: 'p_assente', owner: 'Gino', vaultMoney: 10, lastSeen: NOW - 249 * H },
       2: { id: 3, ownerId: 'p_vivo', owner: 'Marco', vaultMoney: 5, lastSeen: NOW },
     });
     await db
@@ -60,7 +60,7 @@ describe('transazioni come su Firebase', () => {
 
     await maintainGame(likeFirebase(db), NOW);
 
-    // chi è morto e chi è assente da 80 ore: stanza libera, promemoria tolto, lapide
+    // chi è morto e chi è assente da più di 10 giorni: stanza libera, promemoria tolto, lapide
     expect((await db.ref('sims_rooms_state/0').get()).val()).toEqual({ id: 1, vaultMoney: 0 });
     expect((await db.ref('sims_rooms_state/1').get()).val()).toEqual({ id: 2, vaultMoney: 0 });
     expect((await db.ref('sims_saves/p_assente/dead').get()).val()).toBe(true);

@@ -399,8 +399,40 @@ describe('punti ben calibrati', () => {
     // con i soldi spesi davvero: versare 200 Đ vale più di 10 Đ
     expect(actionPoints('donateProject', 200)).toBeGreaterThan(actionPoints('donateProject', 10));
     // rischio e altri giocatori pesano
-    expect(actionEffort('kissAttempt')).toBe(1.5);
-    expect(actionEffort('theftAttempt')).toBe(3);
+    expect(actionEffort('kissAttempt')).toBe(0.75);
+    expect(actionEffort('theftAttempt')).toBe(0.75);
+    expect(actionEffort('rpsBet')).toBeGreaterThan(actionEffort('slotSpin') * 5);
+  });
+});
+
+describe('azioni rapide', () => {
+  it('con sole azioni rapide il Criminale e il Romanticone non prevalgono', () => {
+    const s = emptyPersonality();
+    for (let i = 0; i < 50; i++)
+      for (const a of [
+        'punch',
+        'insult',
+        'theftAttempt',
+        'compliment',
+        'talk',
+        'kissAttempt',
+      ] as const)
+        addPersonalityPoints(s, a, day(2));
+    expect(s.todayPoints.criminal).toBe(4);
+    expect(s.todayPoints.romantic).toBe(4);
+    expect(s.todayPoints.criminal!).toBeLessThan(PREVAIL_MIN_POINTS);
+    // con un crimine vero sì: una vendita e un furto riuscito
+    addPersonalityPoints(s, 'sellDrug', day(2));
+    addPersonalityPoints(s, 'theftSuccess', day(2));
+    expect(s.todayPoints.criminal!).toBeGreaterThanOrEqual(PREVAIL_MIN_POINTS);
+  });
+
+  it('pugni e insulti valgono al massimo un punto al giorno, la slot due', () => {
+    expect(actionDailyMax('punch')).toBe(1);
+    expect(actionDailyMax('insult')).toBe(1);
+    expect(actionDailyMax('theftAttempt')).toBe(2);
+    expect(actionDailyMax('slotSpin')).toBe(2);
+    expect(actionDailyMax('theftSuccess')).toBe(6);
   });
 });
 

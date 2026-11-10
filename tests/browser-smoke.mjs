@@ -231,6 +231,36 @@ try {
     leftPassage: false,
   });
   // commissariato: dietro il bancone e nella cella non si entra, il resto si gira tutto
+  // autoplay: i percorsi di chi vive da solo non passano dentro mobili, muri o lampioni
+  const blockedPaths = await page.evaluate(async () => {
+    const { game } = await import('/src/game/context.ts');
+    const { getSolidObstacles, collidesAt } = await import('/src/game/engine.ts');
+    const { applyRoomBounds } = await import('/src/game/room-size.ts');
+    const { AUTOPLAY_PLACES } = await import('/src/game/autoplay-rules.ts');
+    const out = [];
+    for (const [id, p] of Object.entries(AUTOPLAY_PLACES)) {
+      game.view.activeEnvironment = p.env;
+      applyRoomBounds(p.env);
+      const obstacles = getSolidObstacles();
+      const free = (x, y) =>
+        !collidesAt(x, y, obstacles) &&
+        x > game.X0 + 12 &&
+        x < game.X1 - 12 &&
+        y > game.Y0 + 12 &&
+        y < game.Y1 - 12;
+      p.points.forEach((a, i) => {
+        const b = p.points[(i + 1) % p.points.length];
+        const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+        for (let d = 0; d <= len; d += 5)
+          if (!free(a[0] + ((b[0] - a[0]) * d) / len, a[1] + ((b[1] - a[1]) * d) / len)) {
+            out.push(`${id}: tratto ${i}`);
+            break;
+          }
+      });
+    }
+    return out;
+  });
+  assert.deepEqual(blockedPaths, []);
   const policeCollision = await page.evaluate(async () => {
     const { game } = await import('/src/game/context.ts');
     const { getSolidObstacles, collidesAt } = await import('/src/game/engine.ts');

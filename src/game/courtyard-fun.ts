@@ -1,6 +1,7 @@
 // Cortile interno: sedersi sulle panchine e lanciare una moneta nella fontana.
 // Centro commerciale: comprare un gelato al carretto.
 // Stanza: sedersi sul divano e rilassarsi.
+import { shownPresence } from './autoplay.js';
 import type { GameValue } from './context.js';
 import { game } from './context.js';
 import { relaxWith, toast } from './missions.js';
@@ -190,8 +191,15 @@ export function othersHere(): [string, GameValue][] {
   const env = game.view.activeEnvironment;
   const now = Date.now();
   const out: [string, GameValue][] = [];
-  for (const [id, op] of Object.entries(game.onlinePlayers || {}) as [string, GameValue][]) {
-    if (id === game.session.myPlayerId || !op || op.env !== env) continue;
+  for (const [id, raw] of Object.entries(game.onlinePlayers || {}) as [string, GameValue][]) {
+    if (id === game.session.myPlayerId || !raw) continue;
+    const op = shownPresence(
+      id,
+      raw,
+      presenceAlive(id, raw, now),
+      now + (game.session.serverOffset || 0),
+    ).op;
+    if (op.env !== env) continue;
     if (env === 'PLAYER_ROOM' && op.roomIdx !== game.currentRoomIdx) continue;
     if (game.APT_ENVS.includes(env) && (op.apt || 0) !== game.currentApt) continue;
     const state = presenceState(

@@ -10,6 +10,8 @@ export interface OnlinePlayer extends PresenceInfo {
   env: string;
   /** Stanza privata in cui si trova (indice globale), solo dentro PLAYER_ROOM. */
   roomIdx?: number | null;
+  /** Solo in autoplay (autoplay.ts): seduto sul bordo del letto, a questa altezza. */
+  seatZ?: number;
   /** Appartamento, solo in salone, cucina e bagno. */
   apt?: number | null;
   look?: string;

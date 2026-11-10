@@ -30,6 +30,7 @@ import { CRACK_MS, HACKER_SHORT } from '../../shared/hacker-rules.js';
 import { hackerActive } from './hacker.js';
 import { setCrack } from './crack.js';
 import { enterPolice } from './police.js';
+import { absenceReport } from './autoplay.js';
 import { dropInTrash } from './trash.js';
 import { purchaseItem, sellItem, spendMoney, creditMoney } from './economy.js';
 import type { GameValue } from './context.js';
@@ -546,6 +547,30 @@ export async function resumeLastSpot(): Promise<boolean> {
       if (local && local.id === game.session.myPlayerId) op = local;
     } catch (e: GameValue) {}
   if (!op || !Number.isFinite(op.x) || !Number.isFinite(op.y)) return false;
+  // mentre si era via il personaggio è vissuto da solo (autoplay.ts): si riparte da lì
+  const report = op.offAt
+    ? absenceReport(op, Date.now() + game.session.serverOffset, game.moneyLevel)
+    : null;
+  if (report) {
+    tellAbsence(report.text, report.net);
+    if (report.inBed && hasRoom()) {
+      const bed: GameValue = getMyRoomMap().bed;
+      op = {
+        ...op,
+        env: 'PLAYER_ROOM',
+        roomIdx: game.myAssignedRoomIdx,
+        x: (bed?.x ?? 0) + 60,
+        y: (bed?.y ?? 0) + 30,
+      };
+    } else if (report.view?.kind === 'place') {
+      if (report.view.env !== 'CORTILE') {
+        // era fuori: rientra dall'ingresso del condominio
+        backToCourtyardGate();
+        return true;
+      }
+      op = { ...op, env: 'CORTILE', x: report.view.x, y: report.view.y };
+    }
+  }
   const env: string = op.env;
   if (game.APT_ENVS.includes(env)) {
     if (Number.isInteger(op.apt) && op.apt >= 0 && op.apt < game.APT_COUNT)
@@ -571,6 +596,25 @@ export async function resumeLastSpot(): Promise<boolean> {
     y: Math.max(game.Y0 + 30, Math.min(game.Y1 - 30, op.y)),
   };
   return true;
+}
+
+/**
+ * Il diario dell'assenza, appena le finestre dell'ingresso si chiudono; e le vincite o perdite del
+ * Giocatore d'azzardo alla slot, in cassaforte.
+ */
+function tellAbsence(text: string, net: number): void {
+  lifetime.setTimeout(async () => {
+    if (net > 0) await creditMoney(net);
+    else if (net < 0) await spendMoney(Math.min(-net, game.moneyLevel));
+    while (game.dialogResolve) await new Promise((r) => lifetime.setTimeout(r, 700));
+    await openDialog({
+      title: '📔 Mentre eri via',
+      text: `Il tuo personaggio ha vissuto da solo:
+
+${text}`,
+      buttons: [{ label: 'Bentornato!', value: null, color: '#6c5ce7' }],
+    });
+  }, 4500);
 }
 
 // Ritorno al salone davanti alla porta da cui si esce (stanza, cucina, bagno, cortile);

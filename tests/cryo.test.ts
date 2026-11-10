@@ -123,22 +123,22 @@ describe('criogenesi: il server', () => {
     return database;
   };
 
-  it('80 ore di assenza contano solo fuori dalla capsula', async () => {
-    // via da 100 ore, di cui 50 in capsula: per il personaggio ne sono passate 50
-    const capsule = { since: NOW - 90 * H, until: NOW - 40 * H };
-    const kept = await setup(NOW - 100 * H, capsule);
+  it('i 10 giorni di assenza contano solo fuori dalla capsula', async () => {
+    // via da 268 ore, di cui 50 in capsula: per il personaggio ne sono passate 218
+    const capsule = { since: NOW - 258 * H, until: NOW - 208 * H };
+    const kept = await setup(NOW - 268 * H, capsule);
     await maintainGame(kept, NOW);
     expect((await kept.ref('sims_rooms_state/0/ownerId').get()).val()).toBe(pid);
     // senza capsula muore
-    const gone = await setup(NOW - 100 * H, null);
+    const gone = await setup(NOW - 268 * H, null);
     await maintainGame(gone, NOW);
     expect((await gone.ref('sims_rooms_state/0/ownerId').get()).exists()).toBe(false);
     // con la capsula finita da tanto, alla fine muore lo stesso; la data tiene conto della pausa
-    const late = await setup(NOW - 200 * H, { since: NOW - 190 * H, until: NOW - 140 * H });
+    const late = await setup(NOW - 368 * H, { since: NOW - 358 * H, until: NOW - 308 * H });
     await maintainGame(late, NOW);
     expect((await late.ref('sims_rooms_state/0/ownerId').get()).exists()).toBe(false);
-    // 72 ore fuori dalla capsula: 10 prima, 50 di capsula, poi altre 62
-    expect((await late.ref(`sims_saves/${pid}/deadAt`).get()).val()).toBe(NOW - 200 * H + 122 * H);
+    // 240 ore fuori dalla capsula: 10 prima, 50 di capsula, poi altre 230
+    expect((await late.ref(`sims_saves/${pid}/deadAt`).get()).val()).toBe(NOW - 368 * H + 290 * H);
   });
 
   it('niente avviso di morte mentre il conto alla rovescia è fermo', async () => {
@@ -148,13 +148,13 @@ describe('criogenesi: il server', () => {
       return 'sent';
     };
     const push = { tokens: { k: { token: 'tok_'.padEnd(30, 'x'), t: NOW } } };
-    // via da 75 ore: senza capsula partirebbe l'avviso
-    const plain = await setup(NOW - 75 * H, null);
+    // via da 243 ore: senza capsula partirebbe l'avviso
+    const plain = await setup(NOW - 243 * H, null);
     await plain.ref('sims_push/' + pid).set(push);
     expect(await sendDeathWarnings(plain, NOW, send)).toBe(1);
     expect(sent[0]).toContain('entro 5 ore');
-    // con 30 di quelle ore in capsula: ne contano 45, nessun avviso
-    const cold = await setup(NOW - 75 * H, { since: NOW - 60 * H, until: NOW - 30 * H });
+    // con 30 di quelle ore in capsula: ne contano 213, nessun avviso
+    const cold = await setup(NOW - 243 * H, { since: NOW - 228 * H, until: NOW - 198 * H });
     await cold.ref('sims_push/' + pid).set(push);
     expect(await sendDeathWarnings(cold, NOW, send)).toBe(0);
   });

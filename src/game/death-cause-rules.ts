@@ -2,6 +2,7 @@
 // salute arriva a zero (dal gioco o dalla manutenzione sul server) e si salva con il personaggio,
 // perché dopo i bisogni non dicono più niente: il server segna i morti senza riscriverli.
 // Niente browser qui: il server importa questo file.
+import { ABANDON_DAYS } from './autoplay-rules.js';
 import type { CharacterState } from './models.js';
 import { fluDamage } from './flu-rules.js';
 
@@ -61,7 +62,7 @@ const NAMES: Record<Exclude<DeathCause, 'away'>, string> = {
   sadness: 'tristezza',
   drug: 'dipendenza dalla droga',
   flu: 'influenza',
-  abandoned: 'abbandono: nessuno se n’è preso cura per più di 3 giorni',
+  abandoned: `abbandono: nessuno se n’è preso cura per più di ${ABANDON_DAYS} giorni`,
 };
 
 const list = (items: string[]): string =>

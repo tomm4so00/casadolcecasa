@@ -1,3 +1,4 @@
+import { ABANDON_MS } from './autoplay-rules.js';
 import { DISCO_PRICE } from './prices.js';
 import { MOONBASE_PARTS } from './render/moonbase.js';
 import { LEGACY_WORLD } from '../../shared/worlds.js';
@@ -363,8 +364,9 @@ export function initializeGame() {
   game.player.deathCause = '';
   game.player.bornAt = 0;
   game.player.epitaph = '';
-  game.ABSENT_DEATH_MS = 80 * 3600 * 1000;
-  game.ABSENT_DEATH_ESTIMATE_MS = 72 * 3600 * 1000;
+  // come la manutenzione sul server: 10 giorni (più 8 ore di margine) senza entrare
+  game.ABSENT_DEATH_MS = ABANDON_MS + 8 * 3600 * 1000;
+  game.ABSENT_DEATH_ESTIMATE_MS = ABANDON_MS;
   game.lastNeedsWall = Date.now();
   game.lastDangerToast = 0;
   lifetime.setInterval(tickNeeds, 1000);

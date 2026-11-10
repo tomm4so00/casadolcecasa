@@ -12,6 +12,7 @@ import {
 import { graveFromSave, releaseRoomsOf } from '../../shared/death-rules.js';
 import { type CryoPass, awakeMs, decodeCryo, realTimeAfterAwake } from '../../shared/cryo-rules.js';
 import { ACTIVE_MARGIN_MS, absentDeath } from '../../src/game/absent-death-rules.js';
+import { ABANDON_DAYS, ABANDON_MS } from '../../src/game/autoplay-rules.js';
 import { encodeDeathCauses } from '../../src/game/death-cause-rules.js';
 import { announceRaids } from './street.js';
 import { dayNumber } from '../../src/game/game-clock.js';
@@ -159,7 +160,7 @@ export async function maintainWorld(
       const reference = database.ref('sims_saves/' + player.id);
       const stored = (await reference.get()).val();
       const save = record(stored) ? stored : { savedAt: now, moneyLevel: 0, gameMinutes: 0 };
-      const deadAt = realTimeAfterAwake(cryo.get(player.id) ?? null, player.lastSeen, 72 * 3600000);
+      const deadAt = realTimeAfterAwake(cryo.get(player.id) ?? null, player.lastSeen, ABANDON_MS);
       await reference.update({
         ...(!record(stored) ? save : {}),
         dead: true,
@@ -376,8 +377,11 @@ export async function tidyDeadPlayers(
 
 // ---------------------------------------------------------------- avviso prima della morte
 
-/** Dopo 80 ore senza entrare il personaggio muore: l'avviso parte 12 ore prima. */
-export const DEATH_AFTER_MS = 80 * 3600000;
+/**
+ * Dopo ABANDON_DAYS giorni (più 8 ore di margine) senza entrare il personaggio muore: l'avviso
+ * parte 12 ore prima.
+ */
+export const DEATH_AFTER_MS = ABANDON_MS + 8 * 3600000;
 export const WARN_BEFORE_MS = 12 * 3600000;
 export const GAME_URL = 'https://tomm4so00.github.io/casadolcecasa/';
 
@@ -398,7 +402,7 @@ export function deathWarningText(
   const hours = Math.max(1, Math.round((diesAt - now) / 3600000));
   return {
     title: `⚠️ ${name} sta per morire!`,
-    body: `Non entri in Casa dolce casa da più di 3 giorni. Entra entro ${hours} ${hours === 1 ? 'ora' : 'ore'}, altrimenti il tuo personaggio morirà.`,
+    body: `Non entri in Casa dolce casa da più di ${ABANDON_DAYS} giorni. Entra entro ${hours} ${hours === 1 ? 'ora' : 'ore'}, altrimenti il tuo personaggio morirà.`,
   };
 }
 

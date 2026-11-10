@@ -97,6 +97,11 @@ export interface ActionEffort {
   risky?: boolean;
   social?: boolean;
   routine?: boolean;
+  /**
+   * Tetto di punti al giorno per le azioni rapide (pochi secondi, ripetibili di continuo): così
+   * da sole non bastano a far prevalere una personalità.
+   */
+  dailyMax?: number;
 }
 
 export const EFFORT_PER_POINT = 2;
@@ -126,18 +131,21 @@ export const PERSONALITY_ACTIONS = {
   sellUsed: act('business', 'Vendere un oggetto all’usato o a un collezionista', 3),
   buyPainting: act('business', 'Comprare un quadro all’asta', 3, { cost: 200, social: true }),
   // Criminale
-  theftAttempt: act('criminal', 'Tentare un furto', 2, { risky: true }),
+  // le azioni rapide (uno scasso dura 15 secondi, pugni e insulti si rifanno ogni 20): poco e
+  // con un tetto basso. Per prevalere serve un crimine vero (un furto riuscito, una vendita)
+  theftAttempt: act('criminal', 'Tentare un furto', 0.5, { risky: true, dailyMax: 2 }),
   theftSuccess: act('criminal', 'Svuotare una cassaforte', 6, { risky: true }),
   sellDrug: act('criminal', 'Vendere erba o pillole a un altro giocatore', 2, {
     risky: true,
     social: true,
   }),
-  punch: act('criminal', 'Dare un pugno', 1, { risky: true }),
-  insult: act('criminal', 'Insultare qualcuno', 1),
+  punch: act('criminal', 'Dare un pugno', 0.33, { risky: true, dailyMax: 1 }),
+  insult: act('criminal', 'Insultare qualcuno', 0.33, { dailyMax: 1 }),
   // Romanticone
-  compliment: act('romantic', 'Fare un complimento', 1),
-  talk: act('romantic', 'Fare due chiacchiere', 1),
-  kissAttempt: act('romantic', 'Chiedere un bacio', 1, { social: true }),
+  // complimenti e chiacchiere si rifanno ogni 20 secondi: per prevalere servono baci veri
+  compliment: act('romantic', 'Fare un complimento', 0.33, { dailyMax: 1 }),
+  talk: act('romantic', 'Fare due chiacchiere', 0.33, { dailyMax: 1 }),
+  kissAttempt: act('romantic', 'Chiedere un bacio', 0.5, { social: true, dailyMax: 2 }),
   kissAccepted: act('romantic', 'Ricevere un sì a un bacio', 2, { social: true }),
   giveFood: act('romantic', 'Regalare un piatto cucinato', 5, { cost: 10, social: true }),
   // Tossico
@@ -149,8 +157,9 @@ export const PERSONALITY_ACTIONS = {
   buyDrugs: act('addict', 'Comprare dal Biondo o da Mirko', 2, { cost: NORMAL_BAG_PRICE }),
   harvestWeed: act('addict', 'Raccogliere l’erba coltivata', 10),
   // Giocatore d'azzardo
-  slotSpin: act('gambler', 'Giocare alla slot', 0.5, { cost: SLOT_BET, risky: true }),
-  rouletteBet: act('gambler', 'Puntare alla roulette', 1, { cost: CHIPS[1], risky: true }),
+  // un giro di slot dura pochi secondi; un giro di roulette 40
+  slotSpin: act('gambler', 'Giocare alla slot', 0.1, { cost: SLOT_BET, risky: true, dailyMax: 2 }),
+  rouletteBet: act('gambler', 'Puntare alla roulette', 0.7, { cost: CHIPS[1], risky: true }),
   rpsBet: act('gambler', 'Sfidare qualcuno a morra cinese con i soldi', 2, {
     cost: RPS_MIN_BET * 2,
     risky: true,
@@ -199,8 +208,10 @@ export function actionPoints(action: PersonalityAction, cost?: number): number {
 }
 
 /** Quanti punti al giorno può dare l'azione. */
-export const actionDailyMax = (action: PersonalityAction): number =>
-  (PERSONALITY_ACTIONS[action] as ActionEffort).routine ? ROUTINE_DAILY_MAX : ACTION_DAILY_MAX;
+export function actionDailyMax(action: PersonalityAction): number {
+  const a: ActionEffort = PERSONALITY_ACTIONS[action];
+  return a.dailyMax ?? (a.routine ? ROUTINE_DAILY_MAX : ACTION_DAILY_MAX);
+}
 
 /** Le azioni che fanno crescere una personalità. */
 export const actionsOf = (id: PersonalityId): PersonalityAction[] =>

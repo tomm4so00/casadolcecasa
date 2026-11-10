@@ -1,3 +1,4 @@
+import { autoplayLabel, shownPresence } from './autoplay.js';
 import { updateRocketTrip } from './moon.js';
 import { partVisible } from './render/moonbase.js';
 import { myBarDrinkOpts } from './render/bar.js';
@@ -722,10 +723,14 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
   game.frameNear = [];
   Object.keys(game.onlinePlayers).forEach((id: string): void => {
     if (id === game.session.myPlayerId) return;
-    const op: OnlinePlayer | undefined = game.onlinePlayers[id];
-    if (!op || op.env !== game.view.activeEnvironment) return;
-    // Chi ha lasciato il gioco resta visibile (offline); se non dormiva, sviene a sonno finito
-    const alive: boolean = presenceAlive(id, op, now);
+    const raw: OnlinePlayer | undefined = game.onlinePlayers[id];
+    if (!raw) return;
+    const alive: boolean = presenceAlive(id, raw, now);
+    // chi ha lasciato il gioco vive da solo (autoplay.ts): dove si vede e cosa fa adesso
+    const shown = shownPresence(id, raw, alive, now + (game.session.serverOffset || 0));
+    const op: OnlinePlayer = shown.op;
+    const auto = shown.view;
+    if (op.env !== game.view.activeEnvironment) return;
     const state = presenceState(
       op,
       alive,
@@ -748,11 +753,15 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
       s.sayShownAt = now;
     }
     const say: GameValue = !isOffline && op.say && now - s.sayShownAt < 6000 ? op.say : '';
-    // posizione fluida: a metà strada fra le ultime posizioni ricevute (vedi remote-motion)
+    // posizione fluida: a metà strada fra le ultime posizioni ricevute (vedi remote-motion);
+    // chi vive da solo ha la posizione già calcolata, fotogramma per fotogramma
     const motion: Motion = s.motion || (s.motion = newMotion());
     const tNow = performance.now();
-    addSample(motion, Number(op.t), op.x, op.y, tNow);
-    const at = positionAt(motion, tNow) || { x: op.x, y: op.y };
+    if (!auto || auto.kind === 'still') addSample(motion, Number(op.t), op.x, op.y, tNow);
+    const at =
+      auto && auto.kind !== 'still'
+        ? { x: op.x, y: op.y }
+        : positionAt(motion, tNow) || { x: op.x, y: op.y };
     let dx: GameValue = at.x - s.x,
       dy: GameValue = at.y - s.y;
     s.x = at.x;
@@ -768,12 +777,14 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
       // l'influenza si attacca a chi si avvicina troppo
       if (op.sick && dd < game.SOC_RANGE) nearSickPlayer(op.name || 'Qualcuno');
     }
-    let moving: GameValue = !isOffline && stepping;
+    let moving: GameValue = (!isOffline && stepping) || (auto?.kind === 'place' && auto.moving);
+    if (auto?.kind === 'place' && auto.moving) s.dir = auto.dir;
     // 💞 accanto al nome di chi è fidanzato
     const shownName: string = isOffline ? '' : op.name + heartFor(id);
     if (isOffline) {
       const lz = state === 'fainted' ? 34 : state === 'sleeping' ? 70 : 92;
-      labels.push((): GameValue => drawOfflineTag(s.x, s.y, lz, op.name));
+      const doing = autoplayLabel(auto);
+      labels.push((): GameValue => drawOfflineTag(s.x, s.y, lz, op.name, doing));
     }
     // sta scassinando una cassaforte: si vede da lontano, con i secondi che restano
     if (!isOffline && op.crack !== undefined) {
@@ -870,6 +881,7 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
     // seduto su una sedia: si disegna con la sedia più vicina (vedi drawChair)
     const othersChair: GameValue =
       state !== 'fainted' &&
+      !op.seatZ &&
       (act === 'chair' || act === 'chairSide' || act === 'chairAway' || act === 'chairAwaySide')
         ? chairsHere()
             .map((c) => c.chair)
@@ -914,11 +926,14 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
               pose,
               act === 'bench'
                 ? sofaBackOpts(map.sofa, s.x, s.y)
-                : act === 'arcade' &&
-                    (map.cabinet || map.arcadeConsole) &&
-                    cabinetFacesAway(map.cabinet || map.arcadeConsole)
-                  ? { back: true }
-                  : null,
+                : // in autoplay, seduto sul bordo del letto (autoplay.ts)
+                  typeof op.seatZ === 'number'
+                  ? { seatZ: op.seatZ }
+                  : act === 'arcade' &&
+                      (map.cabinet || map.arcadeConsole) &&
+                      cabinetFacesAway(map.cabinet || map.arcadeConsole)
+                    ? { back: true }
+                    : null,
             ),
     });
   });

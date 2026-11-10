@@ -86,10 +86,8 @@ export async function socDo(act?: GameValue): Promise<GameValue> {
     saySocial(myLine('punch'));
     sendSocial(t.id, { type: 'punch' });
     // ladro beccato: lo dice catchThief (avviso e gossip), al posto del pugno qualsiasi
-    if (thief && (await catchThief(t.id, t.name))) {
-      notePersonality('punch');
-      return;
-    }
+    // (i punti sono del Giustiziere, li dà catchThief: fermare un ladro non è da criminale)
+    if (thief && (await catchThief(t.id, t.name))) return;
     toast(`👊 Hai picchiato ${t.name}`);
     postGossip(
       `${game.player.myData.nick} ha preso a pugni ${t.name} 👊 Tira una brutta aria…`,

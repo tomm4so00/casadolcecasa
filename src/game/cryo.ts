@@ -1,6 +1,7 @@
 // Criogenesi nel gioco: legge il pass dell'account, si accorge quando arriva un pagamento e
 // apre la pagina di Stripe dal profilo. Il pass lo scrive solo la funzione che riceve i
 // pagamenti (il Worker in worker/src/index.ts): qui si legge e basta.
+import { ABANDON_DAYS } from './autoplay-rules.js';
 import {
   CRYO_DAYS,
   CRYO_LIFETIME_PRICE,
@@ -95,7 +96,7 @@ export async function openCryo(): Promise<void> {
     text:
       "Non puoi entrare per un po'? Con la criogenesi il tuo personaggio va in pausa quando esci: " +
       'fame, sonno, igiene, felicità e salute non calano, i tuoi animali non hanno fame e il ' +
-      'conto alla rovescia dei 3 giorni si ferma. Quando entri, giochi normalmente.' +
+      `conto alla rovescia dei ${ABANDON_DAYS} giorni si ferma. Quando entri, giochi normalmente.` +
       `\n\n${CRYO_DAYS} giorni a ${CRYO_PRICE}: se ricompri prima della scadenza, i giorni si sommano.` +
       (CRYO_LIFETIME_LINK
         ? `\n♾️ Pass a vita a ${CRYO_LIFETIME_PRICE}: la capsula non scade più.`

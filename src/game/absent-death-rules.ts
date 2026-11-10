@@ -9,10 +9,36 @@ import { decodeFlu } from './flu-rules.js';
 import { decodePillTimers } from './pill-rules.js';
 import { type CryoPass, awakeSpans } from '../../shared/cryo-rules.js';
 import { type DeathCause, deathCauses } from './death-cause-rules.js';
+import { ABSENCE_SLOWDOWN, BED_THRESHOLD } from './autoplay-rules.js';
+
+/**
+ * Chi è via vive da solo (autoplay-rules.ts): sonno, fame, igiene e felicità calano
+ * ABSENCE_SLOWDOWN volte più piano, così da pieni durano circa una settimana. La salute no.
+ */
+export function absenceRules(rules: NeedsRules): NeedsRules {
+  const k = ABSENCE_SLOWDOWN;
+  return {
+    ...rules,
+    sleepDepletion: rules.sleepDepletion * k,
+    hungerAwake: rules.hungerAwake * k,
+    hungerSleeping: rules.hungerSleeping * k,
+    hygieneDepletion: rules.hygieneDepletion * k,
+    happinessDepletion: rules.happinessDepletion * k,
+  };
+}
+
+/** Il parametro più basso: sotto BED_THRESHOLD il personaggio torna a letto. */
+export const lowestNeed = (s: CharacterState): number =>
+  Math.min(s.sleepLevel, s.hungerLevel, s.hygieneLevel, s.happinessLevel, s.healthLevel);
+
+/** Ogni quanto si guarda se è ora di tornare a letto (uguale ovunque: gioco e server). */
+const BED_CHECK_MS = 15 * 60_000;
 
 /**
  * I bisogni durante un'assenza da `from` a `to`, saltando il tempo passato in criogenesi:
  * si simulano solo i tratti fuori dalla capsula, ognuno alla sua ora (febbre e droghe la usano).
+ * Il letto in cui torna sotto la soglia si vede soltanto: lì i parametri continuano a calare
+ * piano (dormendo il sonno risalirebbe, e chi è via non morirebbe mai).
  */
 export function advanceAbsence(
   state: CharacterState,
@@ -21,8 +47,25 @@ export function advanceAbsence(
   rules: NeedsRules,
   cryo: CryoPass | null = null,
 ): void {
+  const slow = absenceRules(rules);
   for (const [start, end] of awakeSpans(cryo, from, to))
-    advanceNeeds(state, (end - start) / 1000, end, rules);
+    advanceNeeds(state, (end - start) / 1000, end, slow);
+}
+
+/**
+ * Se il giocatore uscisse adesso, quando il suo personaggio tornerebbe a letto (0: è già a letto
+ * o non succede entro 30 giorni). La pubblica nella presenza: gli altri lo vedono andare a letto.
+ */
+export function forecastBedAt(state: CharacterState, now: number, rules: NeedsRules): number {
+  if (state.isSleeping) return now;
+  const s = structuredClone(state);
+  const slow = absenceRules(rules);
+  for (let t = now; t < now + 30 * 86400000; t += BED_CHECK_MS) {
+    if (lowestNeed(s) < BED_THRESHOLD) return t;
+    if (s.healthLevel <= 0) return t;
+    advanceNeeds(s, BED_CHECK_MS / 1000, t + BED_CHECK_MS, slow);
+  }
+  return 0;
 }
 
 /** Velocità dei bisogni (secondi perché una barra passi da 100 a 0, e simili). */

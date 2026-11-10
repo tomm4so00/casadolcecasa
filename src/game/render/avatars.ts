@@ -3743,7 +3743,7 @@ export function drawFaintedAvatar(
 }
 
 // Nome di un giocatore che ha lasciato il gioco, con la scritta "offline" accanto.
-export function drawOfflineTag(x: number, y: number, z: number, name: string): void {
+export function drawOfflineTag(x: number, y: number, z: number, name: string, doing = ''): void {
   const ctx: GameValue = game.view.ctx;
   const p: GameValue = isoProject(x, y, z);
   ctx.font = 'bold 10px sans-serif';
@@ -3768,6 +3768,19 @@ export function drawOfflineTag(x: number, y: number, z: number, name: string): v
   ctx.fillStyle = '#dfe6e9';
   ctx.font = 'bold 9px sans-serif';
   ctx.fillText('offline', left + nameW + 4 + offW / 2, top + 11.5);
+  // chi vive da solo: cosa sta facendo, sotto il nome
+  if (doing) {
+    ctx.font = '9px sans-serif';
+    const w = Math.min(170, ctx.measureText(doing).width + 12);
+    ctx.fillStyle = 'rgba(0,0,0,0.55)';
+    ctx.beginPath();
+    ctx.roundRect
+      ? ctx.roundRect(p.x - w / 2, top + 18, w, 14, 7)
+      : ctx.rect(p.x - w / 2, top + 18, w, 14);
+    ctx.fill();
+    ctx.fillStyle = '#dfe6e9';
+    ctx.fillText(doing, p.x, top + 28.5, w - 8);
+  }
 }
 
 // Chi sta scassinando una cassaforte: etichetta rossa che lampeggia sopra il nome, con i secondi

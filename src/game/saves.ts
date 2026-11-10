@@ -1,3 +1,4 @@
+import { autoplayPresence } from './autoplay.js';
 import { decodeWeed } from './weed-rules.js';
 import { decodePillTimers, pruneTimers } from './pill-rules.js';
 import { decodeLoyalty } from './dealer-rules.js';
@@ -796,6 +797,8 @@ export function startPresence(..._args: GameValue[]): GameValue {
         ? { crack: String(currentCrack()!.roomIdx), crackT: currentCrack()!.startAt }
         : {}),
       ...dogPresence(),
+      // per vivere da solo quando esco (autoplay.ts)
+      ...autoplayPresence(),
       // personalità ottenuta: la vedono gli altri nella scheda del giocatore
       ...(obtainedPersonality(game.player.personality)
         ? {
