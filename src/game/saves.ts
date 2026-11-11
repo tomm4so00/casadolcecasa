@@ -19,8 +19,9 @@ import { publishVitals } from './players-hud-rules.js';
 import { needsRules } from './needs-rules.js';
 import { syncRoomEconomy, creditMoney, flushEconomy } from './economy.js';
 import { canPlaySession } from './accounts.js';
-import type { GameValue } from './context.js';
-import type { SaveV8 } from './save-model.js';
+import type { SaveV8, ValidatedSave } from './save-model.js';
+import type { RoomState, SceneMap } from './models.js';
+import type { OnlinePlayer } from './network-model.js';
 import { decodeSaveV8 } from './save-model.js';
 import { absentDeath, advanceAbsence } from './absent-death-rules.js';
 import { deathCauses, encodeDeathCauses } from './death-cause-rules.js';
@@ -51,6 +52,7 @@ import { PAINTING_SLOTS, paintingKey, roomPaintings } from './painting-rules.js'
 import { kissActive } from './romance.js';
 import { noteFaintOnReturn } from './faint.js';
 import { promptSetSafePin } from './needs.js';
+import { syncMyPin } from './safe-pins.js';
 import { worldNode } from './world-db.js';
 import { cabinetOpen } from './cabinet.js';
 import { currentCrack } from './crack.js';
@@ -63,13 +65,13 @@ export const mySafeLevel = (): 1 | 2 => safeLevel(game.player.ownedFurniture);
 
 export { hashPin };
 
-export function hasRoom(..._args: GameValue[]): GameValue {
+export function hasRoom(): boolean {
   return game.myAssignedRoomIdx !== null && game.myAssignedRoomIdx >= 0;
 }
 
-export function syncVaultFromServer(..._args: GameValue[]): GameValue {
+export function syncVaultFromServer(): void {
   if (!hasRoom()) return;
-  const room: GameValue = game.roomsState[game.myAssignedRoomIdx ?? -1];
+  const room: RoomState | undefined = game.roomsState[game.myAssignedRoomIdx ?? -1];
   if (!room || room.ownerId !== game.session.myPlayerId) return;
   syncRoomEconomy(room);
   syncInventoryFromRoom(room);
@@ -80,7 +82,7 @@ export function syncVaultFromServer(..._args: GameValue[]): GameValue {
     game.lastMoneyForSound = game.vaultCache;
   }
   if (game.legacyPocketMoney > 0) {
-    const amount: GameValue = game.legacyPocketMoney;
+    const amount = game.legacyPocketMoney;
     game.legacyPocketMoney = 0;
     void creditMoney(amount).then((ok) => {
       if (!ok) game.legacyPocketMoney += amount;
@@ -90,7 +92,7 @@ export function syncVaultFromServer(..._args: GameValue[]): GameValue {
   }
 }
 
-export function isMyRoomNow(..._args: GameValue[]): GameValue {
+export function isMyRoomNow(): boolean {
   return (
     game.view.activeEnvironment === 'PLAYER_ROOM' &&
     hasRoom() &&
@@ -98,38 +100,37 @@ export function isMyRoomNow(..._args: GameValue[]): GameValue {
   );
 }
 
-export function withTimeout(promise?: GameValue, ms?: GameValue): GameValue {
+/** La risposta di `promise`, oppure null se non arriva entro `ms` millisecondi. */
+export function withTimeout<T>(promise: PromiseLike<T>, ms: number): Promise<T | null> {
   return Promise.race([
-    promise,
-    new Promise(
-      (resolve?: GameValue): GameValue => lifetime.setTimeout((): GameValue => resolve(null), ms),
-    ),
+    Promise.resolve(promise),
+    new Promise<null>((resolve) => lifetime.setTimeout(() => resolve(null), ms)),
   ]);
 }
 
-export function buildSaveData(..._args: GameValue[]): SaveV8 {
-  let furniturePos: GameValue = {};
+export function buildSaveData(): SaveV8 {
+  const furniturePos: NonNullable<SaveV8['furniturePos']> = {};
   Object.keys(game.playerRoomFurniture).forEach(
-    (k?: GameValue): GameValue =>
+    (k) =>
       (furniturePos['base_' + k] = {
         x: Math.round(game.playerRoomFurniture[k].x),
         y: Math.round(game.playerRoomFurniture[k].y),
         ...(game.playerRoomFurniture[k].rot ? { rot: game.playerRoomFurniture[k].rot } : {}),
       }),
   );
-  game.furnitureCatalog.forEach(
-    (f?: GameValue): GameValue =>
-      (furniturePos[f.id] = {
-        x: Math.round(f.propData.x),
-        y: Math.round(f.propData.y),
-        ...(f.propData.rot ? { rot: f.propData.rot } : {}),
-      }),
-  );
+  game.furnitureCatalog.forEach((f) => {
+    const prop: { x: number; y: number; rot?: number } = f.propData;
+    furniturePos[f.id] = {
+      x: Math.round(prop.x),
+      y: Math.round(prop.y),
+      ...(prop.rot ? { rot: prop.rot } : {}),
+    };
+  });
   // mobili in edizione limitata: il loro posto nella stanza
   limitedFurnitureProps().forEach((p, id) => {
     furniturePos[id] = { x: Math.round(p.x), y: Math.round(p.y), ...(p.rot ? { rot: p.rot } : {}) };
   });
-  const r1: GameValue = (v?: GameValue): GameValue => Math.round(v * 10) / 10;
+  const r1 = (v: number): number => Math.round(v * 10) / 10;
   const data: SaveV8 = {
     v: game.GAME_VERSION,
     savedAt: Date.now(),
@@ -178,6 +179,9 @@ export function buildSaveData(..._args: GameValue[]): SaveV8 {
   if (game.player.workDay) data.workDay = game.player.workDay;
   // fin dove si è letta la chat: vale su tutti i dispositivi, non solo su questo
   if (game.chatReadT > 0) data.chatReadT = game.chatReadT;
+  // età e condizioni confermate, avviso della chat letto (terms.ts)
+  if (game.player.termsAt) data.termsAt = game.player.termsAt;
+  if (game.player.chatNoticeAt) data.chatNoticeAt = game.player.chatNoticeAt;
   // suoni, musica, notifiche e il resto: uguali su ogni telefono, browser o app installata
   data.prefs = collectPrefs();
   data.worldId = game.session.worldId;
@@ -200,7 +204,7 @@ export function buildSaveData(..._args: GameValue[]): SaveV8 {
     data.flu = { ...game.player.flu };
   if (Object.keys(game.player.invest).length) {
     data.invest = {};
-    Object.keys(game.player.invest).forEach((k?: GameValue): GameValue => {
+    Object.keys(game.player.invest).forEach((k) => {
       data.invest![k] = {
         units: Math.round(game.player.invest[k].units * 1e6) / 1e6,
         cost: Math.round(game.player.invest[k].cost * 100) / 100,
@@ -246,8 +250,9 @@ export function applySave(value: unknown): void {
     typeof v === 'number' && Number.isFinite(v) && v > 0 ? v : 0;
   game.player.coupleCooldownUntil = moment(s.coupleCooldownUntil);
   game.player.sleptTogetherSince = moment(s.sleptTogetherSince);
-  const num: GameValue = (v?: GameValue, d?: GameValue): GameValue =>
-    typeof v === 'number' && isFinite(v) ? v : d;
+  game.player.termsAt = moment(s.termsAt);
+  game.player.chatNoticeAt = moment(s.chatNoticeAt);
+  const num = (v: unknown, d: number): number => (typeof v === 'number' && isFinite(v) ? v : d);
   game.player.healthLevel = num(s.healthLevel, game.player.healthLevel);
   game.player.sleepLevel = num(s.sleepLevel, game.player.sleepLevel);
   game.player.hungerLevel = num(s.hungerLevel, game.player.hungerLevel);
@@ -283,8 +288,8 @@ export function applySave(value: unknown): void {
   game.player.coffeeAt = num(s.coffeeAt, 0);
   game.player.toiletAt = Math.max(0, num(s.toiletAt, 0));
   game.player.invest = {};
-  game.BIZ.forEach((b?: GameValue): GameValue => {
-    const v: GameValue = s.invest && s.invest[b.id];
+  game.BIZ.forEach((b) => {
+    const v = s.invest?.[b.id];
     if (v && num(v.units, 0) > 0)
       game.player.invest[b.id] = { units: num(v.units, 0), cost: num(v.cost, 0) };
   });
@@ -300,7 +305,7 @@ export function applySave(value: unknown): void {
         }
       : { active: false, doses: 0, lastDose: 0, endAt: 0, dAtDose: 0, crisisAt: 0 };
   game.player.epitaph = typeof s.epitaph === 'string' ? s.epitaph.slice(0, 60) : '';
-  const sb: GameValue = parseBody(s.body);
+  const sb = parseBody(s.body);
   if (sb) {
     game.myBody = sb;
     game.bodyChosen = true;
@@ -318,17 +323,16 @@ export function applySave(value: unknown): void {
   } else {
     // Salvataggi della versione precedente: colore della maglia + accessori
     game.player.equipped = Object.assign({}, game.DEFAULT_LOOK);
-    const oldTop: GameValue = game.shopCatalog.find(
-      (i?: GameValue): GameValue =>
-        i.slot === 'top' && i.color === s.currentOutfitColor && ownsItem(i.id),
+    const oldTop = game.shopCatalog.find(
+      (i) => i.slot === 'top' && i.color === s.currentOutfitColor && ownsItem(i.id),
     );
     if (oldTop) game.player.equipped.top = oldTop.id;
-    const acc: GameValue = s.equippedAcc || {};
+    const acc = s.equippedAcc || {};
     if (acc.glasses) game.player.equipped.glasses = 'item_glasses';
     if (acc.crown) game.player.equipped.hat = 'item_crown';
     else if (acc.hat) game.player.equipped.hat = 'item_hat';
   }
-  game.SLOTS.forEach((sl?: GameValue): GameValue => {
+  game.SLOTS.forEach((sl: string) => {
     // i capi in edizione limitata si controllano quando arriva il registro delle copie (limited.ts)
     const eq = game.player.equipped[sl];
     if (eq && !String(eq).startsWith('ltd_') && !ownsItem(eq))
@@ -336,16 +340,16 @@ export function applySave(value: unknown): void {
   });
   game.player.activeJobKey = s.activeJobKey || null;
   game.player.jobExperience = Object.assign(game.player.jobExperience, s.jobExperience || {});
-  let fp: GameValue = s.furniturePos || {};
+  let fp: Record<string, { x: number; y: number; rot?: number } | undefined> = s.furniturePos || {};
   // la mensola mai spostata stava nel primo posto scelto, ora coperto dalla tenda: riparte dal nuovo
-  const shelf: GameValue = fp.base_collectShelf;
+  const shelf = fp.base_collectShelf;
   if (shelf && shelf.x === -75 && shelf.y === -165) fp = { ...fp, base_collectShelf: undefined };
-  Object.keys(game.playerRoomFurniture).forEach((k?: GameValue): GameValue => {
+  Object.keys(game.playerRoomFurniture).forEach((k) => {
     // solo i mobili spostabili: cassaforte e porta restano dove sono
     if (fp['base_' + k] && game.playerRoomFurniture[k].moveable)
       Object.assign(game.playerRoomFurniture[k], fp['base_' + k]);
   });
-  game.furnitureCatalog.forEach((f?: GameValue): GameValue => {
+  game.furnitureCatalog.forEach((f) => {
     if (fp[f.id]) Object.assign(f.propData, fp[f.id]);
   });
   limitedFurnitureProps().forEach((p, id) => {
@@ -354,16 +358,19 @@ export function applySave(value: unknown): void {
   // Mobili sistemati prima del passaggio libero: vengono spinti fuori.
   [
     ...Object.values(game.playerRoomFurniture),
-    ...game.furnitureCatalog.map((f?: GameValue): GameValue => f.propData),
-  ].forEach((item?: GameValue): GameValue => {
+    ...game.furnitureCatalog.map((f) => f.propData),
+  ].forEach((item) => {
     if (!item.moveable || item.wallItem) return;
-    const fp2: GameValue = footprintOf(item);
+    const fp2 = footprintOf(item);
     Object.assign(item, pushOutOfCorridor({ x: item.x, y: item.y, w: fp2.w, h: fp2.h }));
   });
 }
 
 export async function saveGame(forceCloud = false): Promise<boolean> {
   if (!game.session.saveReady || game.player.isDead) return Promise.resolve(true);
+  // in pausa non si salva niente, nemmeno in locale: l'ultimo salvataggio è quello fatto prima
+  // della pausa, e da lì al rientro il tempo lo conta catchUpOffline (una volta sola)
+  if (game.session.dormant) return false;
   const scope = lifetime;
   if (!canPlaySession()) return false;
   // Preserve needs locally even while a money operation is waiting for reconnection.
@@ -388,7 +395,7 @@ export async function saveGame(forceCloud = false): Promise<boolean> {
     /* Already reported above. */
   }
   game.lastSaveContent = content;
-  const now: GameValue = Date.now();
+  const now = Date.now();
   if (forceCloud || game.moneyLevel !== game.lastCloudMoney || now - game.lastCloudSaveAt > 15000) {
     game.lastCloudSaveAt = now;
     game.lastCloudMoney = game.moneyLevel;
@@ -440,16 +447,19 @@ function durationText(seconds: number): string {
 // Il tempo scorre anche a gioco chiuso (nessun limite di ore): ricalcolo i bisogni per il tempo di assenza.
 // Se il gioco era stato chiuso mentre il personaggio dormiva, continua a dormire finché il sonno non arriva a 100%.
 // Con la criogenesi il tempo passato in capsula non conta, né per lui né per i suoi animali.
-export function catchUpOffline(s?: GameValue, cryo: CryoPass | null = null): GameValue {
+export function catchUpOffline(
+  s: Pick<ValidatedSave, 'savedAt' | 'sleeping'>,
+  cryo: CryoPass | null = null,
+): void {
   const now = Date.now();
-  const away: GameValue = (now - (s.savedAt || 0)) / 1000;
+  const away = (now - (s.savedAt || 0)) / 1000;
   if (!s.savedAt || !isFinite(away) || away <= 0) return;
 
   advanceAbsence(game.player, s.savedAt, now, needsRules(), cryo);
   const frozen = frozenMs(cryo, s.savedAt, now);
   // gli animali: il loro orologio della fame va avanti di quanto è durata la capsula
   if (frozen > 0)
-    for (const pet of Object.values(game.player.pets ?? {}) as GameValue[])
+    for (const pet of Object.values(game.player.pets ?? {}))
       if (pet && typeof pet.at === 'number') pet.at += frozen;
   noteFaintOnReturn(!!s.sleeping);
   if (away < 60) return;
@@ -457,7 +467,7 @@ export function catchUpOffline(s?: GameValue, cryo: CryoPass | null = null): Gam
   const txt = durationText(away);
   if (!fainted)
     lifetime.setTimeout(
-      (): GameValue =>
+      () =>
         toast(
           frozen >= 60000
             ? `🧊 Sei stato via ${txt}: ${durationText(frozen / 1000)} in criogenesi, senza che il tempo passasse per il tuo personaggio`
@@ -473,7 +483,7 @@ export function catchUpOffline(s?: GameValue, cryo: CryoPass | null = null): Gam
  * Morti salvate prima che si scrivesse il motivo: se il gioco ha salvato al momento della morte,
  * i bisogni nel salvataggio sono quelli di allora (la manutenzione invece non li riscrive).
  */
-function olderDeathCause(save: GameValue): string {
+function olderDeathCause(save: ValidatedSave): string {
   if (!save.deadAt || (save.savedAt || 0) < save.deadAt) return '';
   const causes = deathCauses(game.player, save.deadAt);
   // salvato molto dopo la morte: è il gioco che, riaprendolo, l'ha trovato morto
@@ -481,22 +491,24 @@ function olderDeathCause(save: GameValue): string {
   return encodeDeathCauses(causes);
 }
 
-export async function loadGame(..._args: GameValue[]): Promise<GameValue> {
-  let local: GameValue = null,
-    cloud: GameValue = null;
+export async function loadGame(): Promise<void> {
+  let local: ValidatedSave | null = null,
+    cloud: ValidatedSave | null = null;
   try {
     local = decodeSaveV8(JSON.parse(localStorage.getItem(game.session.SAVE_KEY) || 'null'));
-  } catch (e: GameValue) {}
+  } catch {
+    /* copia locale assente o rovinata */
+  }
   try {
-    const snap: GameValue = await withTimeout(
+    const snap = await withTimeout(
       game.session.db.ref('sims_saves/' + game.session.myPlayerId).once('value'),
       6000,
     );
     cloud = snap ? decodeSaveV8(snap.val()) : null;
-  } catch (e: GameValue) {
+  } catch (e) {
     console.warn('Salvataggio online non disponibile', e);
   }
-  let best: GameValue = local;
+  let best: ValidatedSave | null = local;
   // un personaggio già esistente: la guida iniziale non serve (vedi showIntro)
   game.session.hadSave = !!(local || cloud);
   if (cloud && (!best || (cloud.savedAt || 0) > (best.savedAt || 0))) best = cloud;
@@ -504,11 +516,9 @@ export async function loadGame(..._args: GameValue[]): Promise<GameValue> {
   const cryo = await loadMyCryo();
   // Una copia locale morta conta, tranne quando online c'è un salvataggio vivo più recente
   // (personaggio riportato in vita): altrimenti questo dispositivo lo farebbe morire di nuovo.
-  const revived = (x: GameValue): boolean =>
+  const revived = (x: ValidatedSave): boolean =>
     x !== cloud && !!cloud && !cloud.dead && (cloud.savedAt || 0) > (x.savedAt || 0);
-  const deadSave: GameValue = [local, cloud].find(
-    (x?: GameValue): GameValue => x && x.dead && !revived(x),
-  );
+  const deadSave = [local, cloud].find((x): x is ValidatedSave => !!x && !!x.dead && !revived(x));
   if (deadSave) {
     game.player.isDead = true;
     game.player.deadAt = deadSave.deadAt || 0;
@@ -542,15 +552,15 @@ export async function loadGame(..._args: GameValue[]): Promise<GameValue> {
   game.session.saveReady = true;
 }
 
-export function getMyRoomMap(..._args: GameValue[]): GameValue {
-  let combined: GameValue = Object.assign({}, game.playerRoomFurniture);
+export function getMyRoomMap(): SceneMap {
+  const combined: SceneMap = Object.assign({}, game.playerRoomFurniture);
   // Per ogni posizione mostra il mobile migliore posseduto (lusso > pregiato > standard).
   bestOwnedByProp(game.furnitureCatalog, game.player.ownedFurniture).forEach(
-    (def: GameValue, propKey: string) => {
+    (def, propKey: string) => {
       combined[propKey] = def.propData;
     },
   );
-  const room: GameValue = game.roomsState[game.myAssignedRoomIdx ?? -1];
+  const room: RoomState | undefined = game.roomsState[game.myAssignedRoomIdx ?? -1];
   const hung = roomPaintings(room);
   for (const slot of PAINTING_SLOTS) if (!hung[slot]) delete combined[paintingKey(slot)];
   // piante in vaso, casette degli animali
@@ -560,12 +570,12 @@ export function getMyRoomMap(..._args: GameValue[]): GameValue {
   return combined;
 }
 
-export function publishRoomLayout(..._args: GameValue[]): GameValue {
+export function publishRoomLayout(): void {
   if (!hasRoom()) return;
-  const layout: GameValue = {};
-  const map: GameValue = getMyRoomMap();
-  Object.keys(map).forEach((k?: GameValue): GameValue => {
-    const o: GameValue = map[k];
+  const layout: Record<string, unknown> = {};
+  const map = getMyRoomMap();
+  Object.keys(map).forEach((k) => {
+    const o = map[k];
     layout[k] = {
       x: Math.round(o.x),
       y: Math.round(o.y),
@@ -583,7 +593,7 @@ export function publishRoomLayout(..._args: GameValue[]): GameValue {
   });
   // cane e gatto (chi visita la stanza li vede girare)
   Object.assign(layout, freePetsForLayout());
-  const key: GameValue = JSON.stringify(layout);
+  const key = JSON.stringify(layout);
   if (key === game.lastLayoutKey) return;
   game.lastLayoutKey = key;
   // dal JSON, non dall'oggetto: Firebase rifiuta tutta la scrittura se un campo è undefined (la
@@ -593,10 +603,12 @@ export function publishRoomLayout(..._args: GameValue[]): GameValue {
     .set(JSON.parse(key));
 }
 
-export function normalizeRooms(val?: GameValue): GameValue {
-  let rooms: GameValue = [];
-  for (let i: GameValue = 0; i < game.TOTAL_ROOMS; i++) {
-    let r: GameValue = val && val[i] ? val[i] : {};
+/** L'elenco delle stanze sempre completo: quelle che mancano nel database sono libere. */
+export function normalizeRooms(val?: unknown): RoomState[] {
+  const list = (val && typeof val === 'object' ? val : {}) as Record<number, Partial<RoomState>>;
+  const rooms: RoomState[] = [];
+  for (let i = 0; i < game.TOTAL_ROOMS; i++) {
+    const r = list[i] || {};
     rooms.push(Object.assign(game.blankRoom(i), r));
   }
   return rooms;
@@ -606,58 +618,52 @@ export function normalizeRooms(val?: GameValue): GameValue {
 export const START_MONEY = 30;
 
 // Assegna la stanza con una transazione: due giocatori non possono prendere la stessa
-export async function claimRoom(..._args: GameValue[]): Promise<GameValue> {
-  let claimed: GameValue = -1;
+export async function claimRoom(): Promise<void> {
+  let claimed = -1;
   let free = -1;
   let full = false;
-  const MONTH: GameValue = 30 * 24 * 3600 * 1000;
+  const MONTH = 30 * 24 * 3600 * 1000;
   // Firebase annulla la transazione se nel frattempo si scrive dentro rooms_state (la
   // disposizione dei mobili salvata appena creato il personaggio): allora si riprova.
   for (let attempt = 0; attempt < 3 && claimed === -1 && !full; attempt++)
     try {
       const result = await withTimeout(
-        game.session.db
-          .ref(worldNode('rooms_state'))
-          .transaction((current?: GameValue): GameValue => {
-            let rooms: GameValue = normalizeRooms(current);
-            let idx: GameValue = rooms.findIndex(
-              (r?: GameValue): GameValue => r.ownerId === game.session.myPlayerId,
+        game.session.db.ref(worldNode('rooms_state')).transaction((current: unknown) => {
+          const rooms = normalizeRooms(current);
+          let idx = rooms.findIndex((r) => r.ownerId === game.session.myPlayerId);
+          if (idx === -1) idx = rooms.findIndex((r) => !r.owner && !r.ownerId);
+          // Stanze abbandonate da più di 30 giorni (e con cassaforte vuota) tornano libere
+          if (idx === -1 && game.session.OFFLINE)
+            idx = rooms.findIndex(
+              (r) => !!r.lastSeen && Date.now() - r.lastSeen > MONTH && !(r.vaultMoney > 0),
             );
-            if (idx === -1)
-              idx = rooms.findIndex((r?: GameValue): GameValue => !r.owner && !r.ownerId);
-            // Stanze abbandonate da più di 30 giorni (e con cassaforte vuota) tornano libere
-            if (idx === -1 && game.session.OFFLINE)
-              idx = rooms.findIndex(
-                (r?: GameValue): GameValue =>
-                  r.lastSeen && Date.now() - r.lastSeen > MONTH && !(r.vaultMoney > 0),
-              );
-            claimed = idx;
-            if (idx === -1) return rooms;
-            let old: GameValue = rooms[idx];
-            let base: GameValue =
-              old.ownerId === game.session.myPlayerId
-                ? old
-                : {
-                    id: old.id,
-                    // chi arriva in una stanza nuova trova qualche soldo per cominciare
-                    vaultMoney: START_MONEY,
-                    ...(old.pendingDeath ? { pendingDeath: old.pendingDeath } : {}),
-                  };
-            rooms[idx] = Object.assign({}, base, {
-              owner: game.player.myData.nick,
-              ownerId: game.session.myPlayerId,
-              lastSeen: Date.now(),
-            });
-            free = countFree(rooms);
-            return rooms;
-          }),
+          claimed = idx;
+          if (idx === -1) return rooms;
+          const old = rooms[idx];
+          const base: RoomState =
+            old.ownerId === game.session.myPlayerId
+              ? old
+              : {
+                  id: old.id,
+                  // chi arriva in una stanza nuova trova qualche soldo per cominciare
+                  vaultMoney: START_MONEY,
+                  ...(old.pendingDeath ? { pendingDeath: old.pendingDeath } : {}),
+                };
+          rooms[idx] = Object.assign({}, base, {
+            owner: game.player.myData.nick,
+            ownerId: game.session.myPlayerId,
+            lastSeen: Date.now(),
+          });
+          free = countFree(rooms);
+          return rooms;
+        }),
         8000,
       );
       if (!result?.committed) claimed = -1;
       else if (claimed === -1) full = true;
       // l'elenco dei mondi sa quanti posti restano (per chi cerca un mondo pubblico)
       else if (free >= 0) void publishFreeRooms(game.session.worldId, free);
-    } catch (e: GameValue) {
+    } catch (e) {
       claimed = -1;
       console.warn('Assegnazione stanza fallita', e);
     }
@@ -672,20 +678,24 @@ export async function claimRoom(..._args: GameValue[]): Promise<GameValue> {
   else toast(`🏠 Abiti in: ${roomLabel(claimed, game.ROOMS_PER_APT)}`);
 }
 
-export function syncMyPinFromRoom(..._args: GameValue[]): GameValue {
+export function syncMyPinFromRoom(): void {
   if (!hasRoom()) return;
-  let room: GameValue = game.roomsState[game.myAssignedRoomIdx ?? -1];
-  if (!room || room.ownerId !== game.session.myPlayerId || !room.pin) return;
-  // Migra i vecchi PIN salvati in chiaro
-  if (!String(room.pin).startsWith('h')) {
-    game.session.db
-      .ref(`${worldNode('rooms_state')}/${game.myAssignedRoomIdx}/pin`)
-      .set(hashPin(room.pin, room.id));
-  }
-  game.hasSetSafePin = true;
-  // Combinazione con un 5 ma cassaforte di livello 1 (scelta quando il 5 era permesso a tutti,
-  // o prima di rivendere la cassaforte livello 2): si chiede di cambiarla una volta
-  if (!game.pinRetiredAsked && pinTooHighForLevel(room.pin, room.id, mySafeLevel())) {
+  const room: RoomState | undefined = game.roomsState[game.myAssignedRoomIdx ?? -1];
+  if (!room || room.ownerId !== game.session.myPlayerId) return;
+  // il PIN sta nel nodo privato: quello vecchio nella stanza si sposta lì (safe-pins.ts)
+  void syncMyPin().then(checkRetiredPin);
+}
+
+/**
+ * Combinazione con un 5 ma cassaforte di livello 1 (scelta quando il 5 era permesso a tutti,
+ * o prima di rivendere la cassaforte livello 2): si chiede di cambiarla una volta.
+ */
+function checkRetiredPin(): void {
+  if (
+    !game.pinRetiredAsked &&
+    game.hasSetSafePin &&
+    pinTooHighForLevel(game.safePinCode, game.session.myPlayerId, mySafeLevel())
+  ) {
     game.pinRetiredAsked = true;
     lifetime.setTimeout(
       () =>
@@ -699,18 +709,23 @@ export function syncMyPinFromRoom(..._args: GameValue[]): GameValue {
   }
 }
 
-export function presenceAlive(id?: GameValue, op?: GameValue, now?: GameValue): GameValue {
+/** Il giocatore è davvero collegato? La sua presenza cambia ancora (op.t) e non è vecchia. */
+export function presenceAlive(
+  id: string,
+  op: OnlinePlayer | null | undefined,
+  now: number,
+): boolean {
   if (!op || !op.t) return false;
-  const tr: GameValue =
+  const tr: { t: number; at: number; changes: number } =
     game.presenceTrack[id] || (game.presenceTrack[id] = { t: op.t, at: now, changes: 1 });
   if (tr.t !== op.t) {
     tr.t = op.t;
     tr.at = now;
     tr.changes++;
   }
-  const seenRecently: GameValue = now - tr.at < 30000;
+  const seenRecently = now - tr.at < 30000;
   if (game.session.OFFLINE) return seenRecently;
-  const serverFresh: GameValue = now + game.session.serverOffset - op.t < 30000;
+  const serverFresh = now + game.session.serverOffset - op.t < 30000;
   return serverFresh || (tr.changes >= 2 && seenRecently);
 }
 
@@ -725,24 +740,39 @@ function dogPresence(): { dog?: number; dogX?: number; dogY?: number } {
   return { dog: 2, dogX: Math.round(w.x), dogY: Math.round(w.y) };
 }
 
-export function startPresence(..._args: GameValue[]): GameValue {
+export function startPresence(): void {
   try {
-    game.session.db.ref('.info/serverTimeOffset').on('value', (s?: GameValue): GameValue => {
+    game.session.db.ref('.info/serverTimeOffset').on('value', (s) => {
       game.session.serverOffset = Number(s.val()) || 0;
     });
-  } catch (e: GameValue) {}
-  const playerRef: GameValue = game.session.db.ref(
+  } catch {
+    /* senza l'ora del server si usa quella del telefono */
+  }
+  const playerRef = game.session.db.ref(
     worldNode('online_players') + '/' + game.session.myPlayerId,
   );
-  // Quando chiude la pagina il giocatore resta visibile agli altri, segnato come offline
-  playerRef.onDisconnect().update(OFFLINE_MARK);
+  // Quando chiude la pagina (o il gioco va in pausa) il giocatore resta visibile agli altri,
+  // segnato come offline: lo scrive il server quando la connessione cade. La richiesta si fa dopo
+  // aver scritto la presenza (le regole vogliono nome e posizione, e la controllano subito) e di
+  // nuovo a ogni riconnessione, perché il server la usa una volta sola.
+  let offlineArmed = false;
+  game.session.db.ref('.info/connected').on('value', (s) => {
+    if (s.val() !== true) offlineArmed = false;
+  });
+  const armOffline = (): void => {
+    Promise.resolve(playerRef.onDisconnect().update(OFFLINE_MARK)).catch((e: unknown) => {
+      offlineArmed = false;
+      console.warn('[presenza]', e);
+    });
+  };
   // Invia la posizione solo quando cambia, più un battito ogni 5 s
-  let lastSentKey: GameValue = '',
-    lastSentAt: GameValue = 0;
-  lifetime.setInterval((): GameValue => {
-    // da morto non si manda più niente: rimetterebbe in giro il personaggio appena tolto
-    if (game.player.isDead) return;
-    const payload: GameValue = {
+  let lastSentKey = '',
+    lastSentAt = 0;
+  lifetime.setInterval(() => {
+    // da morto non si manda più niente: rimetterebbe in giro il personaggio appena tolto;
+    // in pausa nemmeno: per gli altri si è usciti
+    if (game.player.isDead || game.session.dormant) return;
+    const payload: Record<string, unknown> = {
       name: game.player.myData.nick,
       x: Math.round(game.playerPos.x),
       y: Math.round(game.playerPos.y),
@@ -807,11 +837,17 @@ export function startPresence(..._args: GameValue[]): GameValue {
         : {}),
       ...(game.player.isSleeping ? { bed: game.bedSlot } : {}),
     };
-    const key: GameValue = JSON.stringify(payload);
-    const now: GameValue = Date.now();
+    const key = JSON.stringify(payload);
+    const now = Date.now();
     if (key !== lastSentKey || now - lastSentAt > 5000) {
       payload.t = now + game.session.serverOffset;
-      playerRef.set(payload);
+      const sent = playerRef.set(payload);
+      if (!offlineArmed) {
+        offlineArmed = true;
+        void Promise.resolve(sent).then(armOffline, () => {
+          offlineArmed = false;
+        });
+      }
       // copia sul dispositivo dell'ultimo posto, per il rientro (vedi resumeLastSpot)
       try {
         localStorage.setItem(
@@ -825,24 +861,24 @@ export function startPresence(..._args: GameValue[]): GameValue {
             apt: payload.apt,
           }),
         );
-      } catch (e: GameValue) {}
+      } catch {
+        /* archivio del browser pieno o bloccato: il posto si ritrova dalla presenza */
+      }
       lastSentKey = key;
       lastSentAt = now;
     }
   }, 100);
-  game.session.db
-    .ref(worldNode('online_players'))
-    .on('value', (snapshot?: GameValue): GameValue => {
-      game.onlinePlayers = snapshot.val() || {};
-    });
+  game.session.db.ref(worldNode('online_players')).on('value', (snapshot) => {
+    game.onlinePlayers = snapshot.val() || {};
+  });
   startInbox();
   startChat();
 }
 
-export function watchGameVersion(..._args: GameValue[]): GameValue {
-  const ref: GameValue = game.session.db.ref('sims_meta/version');
-  ref.on('value', (s?: GameValue): GameValue => {
-    const v: GameValue = s.val();
+export function watchGameVersion(): void {
+  const ref = game.session.db.ref('sims_meta/version');
+  ref.on('value', (s) => {
+    const v: unknown = s.val();
     if (typeof v === 'number' && v > game.GAME_VERSION) {
       saveGame(true);
       dom('update-banner').classList.remove('hidden');
@@ -850,6 +886,6 @@ export function watchGameVersion(..._args: GameValue[]): GameValue {
   });
 }
 
-export function reloadForUpdate(..._args: GameValue[]): GameValue {
+export function reloadForUpdate(): void {
   location.href = location.pathname + '?v=' + Date.now();
 }

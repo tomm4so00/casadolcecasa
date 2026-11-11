@@ -63,6 +63,7 @@ import { rebuildGraveyard } from './render/graveyard.js';
 import { firebaseOptions, isLocalMode, createDatabase } from './runtime.js';
 import { DOG_GATE } from './dog-park-rules.js';
 import { NEEDS_RULES } from './absent-death-rules.js';
+import { SHIFT_SECONDS } from '../../shared/job-pay-rules.js';
 
 export function initializeGame() {
   const canvas = document.getElementById('game-canvas');
@@ -248,7 +249,7 @@ export function initializeGame() {
   game.player.gameMinutes = 8 * 60;
   game.GAME_MINUTES_PER_SEC = NEEDS_RULES.gameMinutesPerSecond;
   game.activeShift = null;
-  game.SHIFT_SECONDS = 80;
+  game.SHIFT_SECONDS = SHIFT_SECONDS;
   game.mySay = '';
   game.mySayT = 0;
   game.dialogResolve = null;

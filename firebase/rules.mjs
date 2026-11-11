@@ -1,7 +1,9 @@
 // Controlla e pubblica le regole del Realtime Database usando la Firebase CLI già installata.
 //   node firebase/rules.mjs check   → confronta le regole online con firebase/database.rules.proposed.json
 //   node firebase/rules.mjs deploy  → salva una copia di quelle online, pubblica le nuove e ricontrolla
-// Serve un accesso fatto una volta con "npx firebase login".
+// Serve un accesso fatto una volta con "npx firebase login". Nei workflow di GitHub invece la
+// chiave di un account di servizio, nel file indicato da GOOGLE_APPLICATION_CREDENTIALS.
+// FIREBASE_PROJECT sceglie il progetto (quello di prova: vedi docs/ambiente-di-prova.md).
 import { execFileSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -14,7 +16,7 @@ const BACKUPS = resolve('firebase/backups');
 // Avvia la CLI di Firebase installata nel progetto, senza passare dalla shell.
 const CLI = resolve('node_modules/firebase-tools/lib/bin/firebase.js');
 function firebase(args) {
-  return execFileSync(process.execPath, [CLI, ...args, '--project', PROJECT], {
+  return execFileSync(process.execPath, [CLI, ...args, '--project', PROJECT, '--non-interactive'], {
     encoding: 'utf8',
     stdio: ['ignore', 'pipe', 'pipe'],
   });
@@ -57,7 +59,7 @@ function deploy() {
   const dir = mkdtempSync(join(tmpdir(), 'rules-deploy-'));
   const config = join(dir, 'firebase.json');
   writeFileSync(config, JSON.stringify({ database: { rules: RULES } }));
-  console.log(firebase(['deploy', '--only', 'database', '--config', config, '--non-interactive']));
+  console.log(firebase(['deploy', '--only', 'database', '--config', config]));
   return check();
 }
 

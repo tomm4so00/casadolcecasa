@@ -119,6 +119,7 @@ async function googleSim(page, email, nick) {
   await page.locator('#setup-new-sim').click();
   await page.locator('#setup-nickname').fill(nick);
   await page.locator('#setup-create-sim').click();
+  await acceptTerms(page);
   await finishNewSim(page);
 }
 
@@ -251,3 +252,9 @@ try {
   await server.close();
 }
 process.exit(failed ? 1 : 0);
+
+/** Età e condizioni (terms.ts): la casella e "Gioca", la prima volta di ogni personaggio. */
+async function acceptTerms(p) {
+  await p.locator('#dialog-check-box').check();
+  await p.locator('#dialog-buttons').getByRole('button', { name: '✅ Gioca' }).click();
+}

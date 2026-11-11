@@ -3,7 +3,6 @@ import { postGossip } from './gossip.js';
 import { TRADE_FEE, marketPriceAt, type Business, type BusinessId } from '../../shared/market.js';
 import { marketSnapshot, canTradeMarket } from './market-client.js';
 import { updateEconomy } from './economy.js';
-import type { GameValue } from './context.js';
 import { game } from './context.js';
 import { dom } from './runtime.js';
 import { openDialog } from './interface.js';
@@ -14,34 +13,37 @@ export function mktPrice(b: Business, at?: number): number {
   return snapshot && b ? marketPriceAt(snapshot, b.id, at ?? snapshot.updatedAt) : 0;
 }
 
-export function bizSpark(cv?: GameValue, b?: GameValue): GameValue {
-  const W: GameValue = cv.width,
-    H: GameValue = cv.height,
-    ctx2: GameValue = cv.getContext('2d'),
+/** Il grafico delle ultime 24 ore (un punto ogni quarto d'ora) nel riquadro dell'attività. */
+export function bizSpark(cv: HTMLCanvasElement, b: Business): void {
+  const W = cv.width,
+    H = cv.height,
+    ctx2 = cv.getContext('2d'),
     now = marketSnapshot()?.updatedAt ?? Date.now(),
-    N: GameValue = 96,
-    pts: GameValue = [];
-  for (let i: GameValue = 0; i <= N; i++) pts.push(mktPrice(b, now - (N - i) * 15 * 60000));
-  const mn: GameValue = Math.min(...pts),
-    mx: GameValue = Math.max(...pts),
-    up: GameValue = pts[N] >= pts[0];
+    N = 96,
+    pts: number[] = [];
+  if (!ctx2) return;
+  for (let i = 0; i <= N; i++) pts.push(mktPrice(b, now - (N - i) * 15 * 60000));
+  const mn = Math.min(...pts),
+    mx = Math.max(...pts),
+    up = pts[N] >= pts[0];
   ctx2.clearRect(0, 0, W, H);
   ctx2.strokeStyle = up ? '#2ed573' : '#ff4757';
   ctx2.lineWidth = 2;
   ctx2.beginPath();
-  pts.forEach((p?: GameValue, i?: GameValue): GameValue => {
-    const x: GameValue = (i / N) * (W - 4) + 2,
-      y: GameValue = H - 4 - ((p - mn) / (mx - mn || 1)) * (H - 8);
-    i ? ctx2.lineTo(x, y) : ctx2.moveTo(x, y);
+  pts.forEach((p, i) => {
+    const x = (i / N) * (W - 4) + 2,
+      y = H - 4 - ((p - mn) / (mx - mn || 1)) * (H - 8);
+    if (i) ctx2.lineTo(x, y);
+    else ctx2.moveTo(x, y);
   });
   ctx2.stroke();
 }
 
-export function bizBuild(..._args: GameValue[]): GameValue {
-  const box: GameValue = dom('biz-list');
+export function bizBuild(): void {
+  const box = dom('biz-list');
   box.innerHTML = '';
-  game.BIZ.forEach((b?: GameValue): GameValue => {
-    const c: GameValue = document.createElement('div');
+  game.BIZ.forEach((b) => {
+    const c = document.createElement('div');
     c.style.cssText =
       'background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.12);border-left:4px solid ' +
       b.color +
@@ -59,7 +61,7 @@ export function bizBuild(..._args: GameValue[]): GameValue {
   game.bizBuilt = true;
 }
 
-export function bizUpdate(..._args: GameValue[]): GameValue {
+export function bizUpdate(): void {
   const snapshot = marketSnapshot();
   const ready = canTradeMarket();
   const status = dom('market-status');
@@ -71,13 +73,13 @@ export function bizUpdate(..._args: GameValue[]): GameValue {
     button.disabled = !ready;
   if (!snapshot) return;
   const now = snapshot.updatedAt;
-  let tot: GameValue = 0,
-    cost: GameValue = 0;
-  game.BIZ.forEach((b?: GameValue): GameValue => {
-    const p: GameValue = mktPrice(b),
-      p24: GameValue = mktPrice(b, now - 24 * 3600000) || p,
-      v: GameValue = game.player.invest[b.id],
-      val: GameValue = v ? v.units * p : 0;
+  let tot = 0,
+    cost = 0;
+  game.BIZ.forEach((b) => {
+    const p = mktPrice(b),
+      p24 = mktPrice(b, now - 24 * 3600000) || p,
+      v = game.player.invest[b.id],
+      val = v ? v.units * p : 0;
     tot += val;
     cost += v ? v.cost : 0;
     // attività nuova: il server la quota al prossimo aggiornamento
@@ -98,19 +100,19 @@ export function bizUpdate(..._args: GameValue[]): GameValue {
       return;
     }
     dom('biz-p-' + b.id).textContent = p.toFixed(2).replace('.', ',');
-    const d: GameValue = dom('biz-d-' + b.id),
-      ch: GameValue = (p / p24 - 1) * 100;
+    const d = dom('biz-d-' + b.id),
+      ch = (p / p24 - 1) * 100;
     d.textContent = game.fmtPct(ch) + ' (24 h)';
     d.style.color = ch >= 0 ? '#2ed573' : '#ff4757';
-    const m: GameValue = dom('biz-m-' + b.id);
+    const m = dom('biz-m-' + b.id);
     if (v) {
-      const pl: GameValue = val - v.cost;
+      const pl = val - v.cost;
       m.innerHTML = `Il tuo investimento: <b>${game.fmtEur(val)}</b> <span style="color:${pl >= 0 ? '#2ed573' : '#ff4757'}">(${pl >= 0 ? '+' : ''}${game.fmtEur(pl)} · ${game.fmtPct(v.cost ? (pl / v.cost) * 100 : 0)})</span>`;
     } else m.innerHTML = '<span style="color:#888;">Non hai investito in questo business.</span>';
     dom('biz-w-' + b.id).style.opacity = v ? '1' : '0.4';
     bizSpark(dom('biz-c-' + b.id), b);
   });
-  const pl: GameValue = tot - cost;
+  const pl = tot - cost;
   dom('biz-sum').innerHTML =
     `Cassaforte: <b>${game.moneyLevel} Đ</b> · Investito ora: <b>${game.fmtEur(tot)}</b> <span style="color:${pl >= 0 ? '#2ed573' : '#ff4757'}">(${pl >= 0 ? '+' : ''}${game.fmtEur(pl)})</span>`;
 }
@@ -142,7 +144,7 @@ function crowdText(
   return `👥 Investiti da tutti: <b>${total.toLocaleString('it-IT')} Đ</b> (${q.holders || 0} ${q.holders === 1 ? 'giocatore' : 'giocatori'}) · ${trend}`;
 }
 
-export function openBizSite(..._args: GameValue[]): GameValue {
+export function openBizSite(): void {
   if (!game.bizBuilt) bizBuild();
   dom('biz-modal').classList.remove('hidden');
   bizUpdate();

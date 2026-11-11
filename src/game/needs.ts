@@ -20,14 +20,7 @@ import { needsRules } from './needs-rules.js';
 import type { GameValue } from './context.js';
 import { game } from './context.js';
 import { lifetime, dom, browser } from './runtime.js';
-import {
-  mySafeLevel,
-  buildSaveData,
-  hasRoom,
-  hashPin,
-  normalizeRooms,
-  withTimeout,
-} from './saves.js';
+import { mySafeLevel, buildSaveData, hasRoom, normalizeRooms, withTimeout } from './saves.js';
 import { mgStop, updateShift } from './jobs.js';
 import { openDialog, writeGrave } from './interface.js';
 import { releaseRoomsOf } from '../../shared/death-rules.js';
@@ -41,6 +34,7 @@ import { updatePetHud } from './pets.js';
 import { updateInventory } from './inventory.js';
 import { welcomeTeachesPin } from './welcome.js';
 import { worldNode } from './world-db.js';
+import { saveMyPin } from './safe-pins.js';
 export async function reapAbsentPlayers(..._args: GameValue[]): Promise<GameValue> {
   if (!game.session.OFFLINE) return; // The trusted scheduled process handles other characters.
   let reaped: GameValue = [];
@@ -280,6 +274,8 @@ export async function faint(..._args: GameValue[]): Promise<void> {
 }
 
 export function tickNeeds(..._args: GameValue[]): GameValue {
+  // in pausa il tempo lo conterà catchUpOffline al rientro, come per ogni assenza
+  if (game.session.dormant) return;
   const n: GameValue = Date.now();
   let d: GameValue = (n - game.lastNeedsWall) / 1000;
   game.lastNeedsWall = n;
@@ -627,13 +623,9 @@ export async function promptSetSafePin(intro?: string): Promise<GameValue> {
     return;
   }
   if (isValidPin(res.value, mySafeLevel()) && hasRoom()) {
-    let room: GameValue = game.roomsState[game.myAssignedRoomIdx ?? -1];
-    game.safePinCode = hashPin(res.value, room.id);
-    game.hasSetSafePin = true;
-    game.session.db
-      .ref(`${worldNode('rooms_state')}/${game.myAssignedRoomIdx}/pin`)
-      .set(game.safePinCode);
-    toast('✅ Cassaforte protetta con successo!');
+    // nel nodo privato: nessun altro giocatore la può leggere
+    if (await saveMyPin(res.value)) toast('✅ Cassaforte protetta con successo!');
+    else toast('📡 Combinazione non salvata: riprova quando sei connesso.');
   } else {
     toast(
       `❌ Combinazione non valida (${pinHint(mySafeLevel())}). Te la richiederò al prossimo guadagno.`,

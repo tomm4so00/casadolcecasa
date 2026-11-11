@@ -87,6 +87,7 @@ try {
   await page.locator('#setup-new-sim').click();
   await page.locator('#setup-nickname').fill('Profilo cloud v8');
   await page.locator('#setup-create-sim').click();
+  await acceptTerms(page);
   // personaggio nuovo: prima sceglie il condominio (qui c'è solo quello di sempre)
   await page.locator('#world-modal [data-w="public"]').click();
   await page
@@ -366,4 +367,10 @@ try {
 } finally {
   await browser.close();
   await server.close();
+}
+
+/** Età e condizioni (terms.ts): la casella e "Gioca", la prima volta di ogni personaggio. */
+async function acceptTerms(p) {
+  await p.locator('#dialog-check-box').check();
+  await p.locator('#dialog-buttons').getByRole('button', { name: '✅ Gioca' }).click();
 }

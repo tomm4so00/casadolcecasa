@@ -10,7 +10,7 @@ import {
 import { worldNodePath } from '../../shared/worlds.js';
 import { type MaintenanceDatabase, type PushSender, worldIds } from './maintenance.js';
 
-const GAME_URL = 'https://tomm4so00.github.io/casadolcecasa/';
+const GAME_URL = process.env.GAME_URL || 'https://tomm4so00.github.io/casadolcecasa/';
 const record = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object';
 
 /** Chi abita nel condominio: solo le sue aste sono esposte (vedi openAuctions nel gioco). */

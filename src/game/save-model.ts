@@ -52,6 +52,10 @@ export interface SaveV8 {
   workDay?: unknown;
   /** ora dell'ultimo messaggio della chat letto (su qualsiasi dispositivo) */
   chatReadT?: unknown;
+  /** quando ha confermato età (almeno 14 anni) e condizioni (terms.ts) */
+  termsAt?: unknown;
+  /** quando ha letto l'avviso della chat (terms.ts) */
+  chatNoticeAt?: unknown;
   weed?: unknown;
   pill?: unknown;
   dealers?: unknown;
@@ -90,7 +94,8 @@ const optionalFields = (
   fields: string[],
   validate: (entry: unknown) => boolean,
 ) => fields.every((key) => value[key] === undefined || validate(value[key]));
-type ValidatedSave = Partial<SaveV8> & { savedAt: number };
+/** Un salvataggio letto e controllato: i campi possono mancare, savedAt c'è sempre. */
+export type ValidatedSave = Partial<SaveV8> & { savedAt: number };
 
 /** Validate untrusted JSON before allowing it into typed character state. Keep v8 extensions. */
 export function decodeSaveV8(value: unknown): ValidatedSave | null {

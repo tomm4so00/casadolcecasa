@@ -1,212 +1,109 @@
 # Casa dolce casa
 
-Versione modulare del gioco completo proveniente da **`tomm4so00/casadolcecasa4`**,
-`GAME_VERSION = 8`, commit `8f15c85353196c899edd41770e953900cb0d081d`.
-Il confronto che identifica la base corretta è in [docs/base-comparison.md](docs/base-comparison.md).
+Gioco multiplayer da browser: un condominio disegnato in isometrico, dove ognuno ha la sua
+stanza, un personaggio da far vivere e dei soldi da guadagnare (o perdere) insieme agli altri.
+Si gioca su <https://tomm4so00.github.io/casadolcecasa/>, anche dal telefono (si installa come
+app).
+
+TypeScript e Vite per il gioco, Firebase Realtime Database per i dati condivisi, una scena
+disegnata su canvas. Niente framework.
+
+## Il gioco in breve
+
+- **Il condominio**: 8 appartamenti da 8 stanze, cioè 64 giocatori per mondo. Oltre al mondo
+  di tutti si possono creare mondi privati con un codice (`CASA-X92L`). Ci si può trasferire in
+  un'altra stanza o in un altro mondo.
+- **Il personaggio**: aspetto e vestiti, bisogni (fame, sonno, igiene, felicità, salute) che
+  calano anche a gioco chiuso, più piano, mentre il personaggio vive da solo (autoplay). Chi non
+  torna per 10 giorni muore di abbandono e finisce al cimitero. La criogenesi (a pagamento) mette
+  il personaggio in pausa durante l'assenza.
+- **I soldi**: la cassaforte della stanza (con PIN privato e scassinatori), la banca, quattro
+  lavori con turni e minigiochi, la borsa condivisa, aste di quadri, pezzi da collezione, il
+  negozio dell'usato, le edizioni limitate, roulette, slot e sfide a morra cinese.
+- **Gli altri**: chat, pettegolezzi, relazioni e coppie, dieci personalità, Zero lo
+  scassinatore, il cestino con le prove e le multe della polizia, animali, la serra, la luna, la
+  sala giochi, la cassetta dei suggerimenti.
+
+Si entra con **Google**, con **email e password** (indirizzo confermato) oppure come **ospite**.
+Un personaggio si gioca su un dispositivo alla volta: l'ultimo che lo apre prende la sessione.
 
 ## Avvio
 
-Node.js 22.12 o successivo; per gli strumenti Firebase è consigliata una versione LTS.
+Node.js 22.12 o successivo.
 
 ```sh
 npm ci
 npm run dev
 ```
 
-Apri l'indirizzo mostrato dal terminale. Per provare senza leggere o scrivere
-nel database reale, aggiungi **`?offline=1`** all'indirizzo. Le prove automatiche
-usano questa modalità oppure gli emulatori con progetto `demo-casadolcecasa`.
+Aggiungendo **`?offline=1`** all'indirizzo il gioco usa un database simulato sul dispositivo:
+niente arriva al database vero. Le prove automatiche usano questa modalità o gli emulatori di
+Firebase (progetto `demo-casadolcecasa`, serve Java 21).
+
+## Comandi
 
 ```sh
-npm run build
-npm run preview
+npm run check              # tutto: formattazione, tipi, test, prova nel browser (~10 s)
+npm test                   # test unitari (vitest)
+npm run typecheck          # tsc
+npm run format             # prettier (la CI fallisce se non è formattato)
+npm run test:browser       # prova nel browser: personaggio, stanze, 16 scene, salvataggi
+npm run test:cloud         # con gli emulatori: accesso, due browser, sessione, saldo
+npm run test:dormancy      # con gli emulatori: la pausa con la scheda nascosta
+npm run test:rules         # con gli emulatori: le regole del database
+npm run rules:check        # le regole online sono quelle della repo?
+npm run rules:deploy       # copia di quelle online in firebase/backups/, poi pubblica
+npm run shot -- …          # screenshot di una scena (vedi scripts/shot.mjs)
+npm run gamevalue:budget   # abbassa i tetti dei GameValue (any) rimasti
 ```
 
-La cartella da pubblicare è `dist/`. Non caricare `node_modules/` o i sorgenti
-TypeScript direttamente come sito statico.
+`GameValue` è `any`: il test `tests/gamevalue-budget.test.ts` conta quelli rimasti file per
+file e il numero può solo scendere. I file dei soldi e dei salvataggi non ne hanno.
 
-## Cosa comprende
-
-Sono presenti le funzioni della base v8: quattro appartamenti e 32 stanze,
-cassaforte e PIN, negozi di mobili e vestiti, editor del personaggio, quattro
-lavori con turni e minigiochi, investimenti simulati, chat globale e interazioni
-tra giocatori, classifiche, bisogni nel tempo, caffè, doccia e sonno, audio,
-illuminazione e ambienti, dipendenza, morte e cimitero.
-Il sistema missioni è mantenuto, con catalogo vuoto come nella v8 originale.
-
-Il bilanciamento è quello della v8: ad esempio il recupero completo del riposo
-richiede otto ore reali prima degli eventuali bonus del letto. Al riposo completo
-il personaggio si sveglia automaticamente, anche a gioco aperto. Il tempo passa
-anche durante l'assenza tramite `catchUpOffline`; vengono aggiornati anche gli
-altri bisogni e lo stesso bonus di salute del gioco aperto. Il sonno ancora
-in corso viene ripreso nella propria stanza al rientro. La versione precedente del prototipo usava valori differenti.
-
-## Salvataggi e Firebase
-
-La configurazione pubblica del progetto Firebase originale della v8 è conservata
-in `src/firebase-config.ts`. Le variabili `VITE_FIREBASE_*` permettono di usare
-un altro progetto; devono essere impostati tutti e cinque i valori di `.env.example`.
-`?offline=1` isola completamente le prove dal database online.
-
-Sono mantenuti identità e percorsi originali:
+## Com'è fatto
 
 ```text
-sims_saves/{playerId}             progressi del personaggio
-sims_rooms_state                  stanze, proprietari, PIN e cassaforti
-sims_online_players/{playerId}    presenza temporanea
-sims_leaderboard                  classifiche
-sims_graveyard                    personaggi deceduti
-sims_chat                        chat globale
+src/game/          il gioco: stato (context.ts), salvataggi (saves.ts), soldi (economy.ts,
+                   room-economy.ts), mondo e interazioni (world.ts, interactions.ts), disegno
+                   (engine.ts, render/), e un file per ogni meccanica
+src/game/*-rules.ts  le regole pure, senza browser, coperte dai test
+shared/            regole usate da gioco, server e Worker (mondi, borsa, PIN, paga, Zero…)
+server/            manutenzione ogni 15 minuti (market.yml): borsa, morti, PIN, notifiche
+worker/            Worker di Cloudflare: criogenesi (Stripe), paga dei turni, indizio di Zero
+firebase/          regole del database (database.rules.proposed.json) e script per pubblicarle
+tests/             test unitari, prove nel browser, prove delle regole sugli emulatori
+scripts/           screenshot, suggerimenti, controlli dei workflow
+docs/              come funzionano e come si pubblicano le parti più delicate
 ```
 
-Le altre tabelle sociali e i relativi nomi sono conservati nel codice di origine.
-Non viene convertito il database in `characters/{uid}`: quel formato apparteneva
-al prototipo precedente e avrebbe escluso molti dati della v8.
-Le regole del database reale rimangono gestite separatamente; `firebase.json`
-non include un comando di pubblicazione delle vecchie regole del prototipo.
-La compatibilità con i dati esistenti non equivale a un audit delle regole in uso.
+Le note per chi lavora sul codice (stile, regole del progetto, comandi) sono in
+[CLAUDE.md](CLAUDE.md).
 
-L'accesso online richiede **Google**, senza password separata del gioco. Ogni
-account è collegato a un Sim; i salvataggi locali online sono separati per
-personaggio. I Sim v8 precedenti vengono collegati automaticamente al primo
-accesso (dal dispositivo dove erano salvati o con il codice); ogni Sim resta del
-primo account che lo reclama.
-Le copie locali precedenti sono conservate.
+## Dati
 
-Il file `firebase/database.rules.proposed.json` contiene la politica con accesso
-Google obbligatorio e salvataggi privati. Procedura, collegamenti dei vecchi Sim
-e limiti delle meccaniche condivise sono in
-[docs/firebase-authentication.md](docs/firebase-authentication.md).
-La proposta va pubblicata insieme alla nuova versione; non viene distribuita
-automaticamente da `firebase.json`.
+Il mondo di tutti usa i percorsi di sempre (`sims_rooms_state`, `sims_chat`, …); ogni mondo
+privato ha i suoi sotto `worlds/<codice>/`. Account, salvataggi (`sims_saves`), PIN privati
+(`sims_safe_pins`) e borsa sono di tutti i mondi. Le regole del database decidono chi può
+scrivere cosa: chi le cambia le pubblica prima del gioco, così chi ha ancora la versione
+vecchia aperta non può rompere niente.
 
-Dopo un accesso con `npx firebase login`:
+## Pubblicazione
 
-```sh
-npm run rules:check    # le regole online sono uguali a quelle del progetto?
-npm run rules:deploy   # salva una copia di quelle online in firebase/backups/ e pubblica le nuove
-```
+- **`main`** → il gioco di tutti su GitHub Pages (`pages.yml`), ma solo se le regole del
+  database online sono quelle della repo: altrimenti si ferma e online resta il gioco di prima.
+- **`prova`** → il gioco di prova, con il suo progetto Firebase e il suo sito (`prova.yml`).
+- Le regole vere si pubblicano a mano (`npm run rules:deploy`), il Worker con
+  `npx wrangler deploy` dalla cartella `worker/`.
 
-La sessione in `sims_sessions/{playerId}` fa giocare lo stesso personaggio su un
-solo dispositivo alla volta: l'ultimo accesso prende la sessione e blocca il
-precedente. Web Locks impedisce invece due schede dello stesso browser. I vecchi client v8 non conoscono questo blocco;
-questa estensione non modifica automaticamente le regole del database.
+## Documenti
 
-Il gioco salva da solo ogni 3 secondi, quando la pagina passa in background e
-quando viene chiusa: non c'è un pulsante di salvataggio. Se un altro dispositivo
-apre lo stesso Sim, l'ultimo accesso vince: il dispositivo precedente mostra
-«Gioco aperto su un altro dispositivo» e smette di salvare finché non si ricarica. In modalità offline anche il database simulato
-è salvato sul dispositivo, inclusi cassaforte, stanze e chat; la presenza non viene
-ricaricata come se un giocatore fosse ancora online.
-La cancellazione dei dati del browser elimina le sole copie locali.
-
-Se non esiste già un salvataggio v8, il formato locale del precedente prototipo
-`casadolcecasa.save.v1` o `casadolcecasa.save.v2.guest` viene importato, conservando
-gli originali. Le posizioni dei mobili, i bisogni, i soldi e l'inventario vengono
-convertiti nel formato v8. Un salvataggio v8 esistente non viene sovrascritto da
-questa importazione.
-
-## Struttura
-
-```text
-src/main.ts                    ingresso dell'applicazione
-src/firebase-config.ts         configurazione pubblica Firebase e variabili ambiente
-src/game/
-  application.ts, lifetime.ts  montaggio e chiusura del gioco
-  accounts.ts, runtime.ts      accesso, sessione e collegamenti con il browser
-  database.ts                 contratto database e simulazione locale
-  save-model.ts, saves.ts      formato, importazione e salvataggi v8
-  context.ts, models.ts        stato tipizzato di personaggio, sessione e vista
-  initialize.ts               inizializzazione ordinata
-  economy.ts, room-economy.ts  soldi, acquisti e portafogli confermati insieme
-  simulation.ts, needs-rules.ts calcolo comune dei bisogni durante gioco e assenza
-  ui-actions.ts, ui-bindings.ts eventi senza funzioni globali o onclick HTML
-  market-client.ts            lettura delle quotazioni condivise
-  data/catalogues.ts          cataloghi, ambienti e dati statici
-  character.ts                vestiti, armadio e negozi
-  world.ts, jobs.ts            interazioni, movimenti, carriera e minigiochi
-  needs.ts                    bisogni, salute, caffè e assenza
-  social.ts, chat.ts           interazioni e messaggi
-  business.ts, missions.ts     investimenti simulati e classifiche/missioni
-  audio.ts                    suoni e musica
-  interface.ts, view.html      schermate e dialoghi
-  render/                     geometria, mobili, ambienti e avatar
-    primitives.ts, objects.ts  proiezione, box 3D, mobili di casa e oggetti di scena
-    scenes.ts, avatars.ts      pavimenti, pareti, cielo e personaggi
-    facades.ts, fridge.ts      palazzine del cortile e frigorifero
-    mall.ts, bank.ts, studio.ts centro commerciale, banca e studio di pittura
-    rocket.ts, moonbase.ts     razzo del laboratorio, lancio e base lunare
-    arcade-props.ts, ...       sala giochi, erba, cimitero, animali, oggetti limitati
-  source-manifest.json         provenienza di tutte le funzioni v8
-src/storage/tab-lock.ts        blocco fra schede del browser
-css/style.css                  stile del gioco completo
-tests/                        test unitari, parità e prove browser
-scripts/shot.mjs               screenshot di una scena in modalità prova (npm run shot)
-```
-
-La migrazione conserva la provenienza delle funzioni v8, documentando anche quelle
-sostituite dai servizi condivisi. Il compilatore TypeScript resta in modalità
-`strict`. Personaggio, sessione e vista sono separati in `game.player`,
-`game.session` e `game.view`; salvataggi, stanze, cataloghi, portafogli, messaggi e
-dialoghi hanno contratti espliciti. I dati caricati sono validati prima dell'uso.
-Le parti grafiche e alcune azioni legacy usano ancora `GameValue`: la tipizzazione
-dettagliata del vecchio renderer rimane un lavoro successivo.
-
-Le azioni dell'interfaccia usano una lista esplicita di comandi e un listener
-sul contenitore: le 304 funzioni del vecchio monolite non vengono più esposte
-su `window`. Non ci sono più attributi HTML `onclick`.
-
-## Mercato condiviso
-
-Le quotazioni online arrivano da `sims_market`, aggiornato ogni 15 minuti da
-un workflow GitHub Actions. I browser leggono gli stessi valori senza ricalcolare il
-mercato. Mancanza di connessione o prezzi più vecchi di 45 minuti sospendono gli
-scambi. La simulazione locale resta isolata con `?offline=1`.
-
-Il workflow va attivato separatamente: richiede una credenziale Firebase nei
-Secrets di GitHub e regole che consentano solo al processo centrale di scrivere
-le quotazioni. Firebase resta sul piano gratuito Spark; non servono Cloud
-Functions o un server dedicato. GitHub può ritardare gli aggiornamenti. Procedura e limiti sono in
-[docs/market-deployment.md](docs/market-deployment.md).
-
-Saldo e beni acquistati sono confermati insieme nella stanza. Il portafoglio
-v8 viene importato alla prima operazione; i nuovi acquisti non dipendono dalla
-riuscita di un secondo salvataggio per evitare di perdere l'oggetto pagato.
-
-## Verifiche
-
-```sh
-npm run typecheck
-npm ci --prefix server
-npm run build:server
-npm run format:check
-npm test
-npm run test:browser
-npm run test:cloud
-```
-
-`test:browser` verifica creazione del personaggio, stanze, acquisti, investimenti,
-lavori, chat, rendering dei 16 ambienti e persistenza dopo uscita/rientro e reload.
-`test:cloud` usa solo gli emulatori per accesso, recupero su un altro browser,
-saldo della cassaforte, blocco della seconda sessione e riconnessione.
-Richiede Java 21 nel `PATH`. I test browser usano Edge su Windows; su altri
-sistemi installa Chromium con `npx playwright install chromium`.
-Il popup Google reale va verificato sul progetto e dominio configurati.
-
-Usa `npm run format` per applicare la formattazione comune.
-
-## Pubblicazione automatica
-
-La repository di lavoro e pubblicazione è `tomm4so00/casadolcecasa`:
-<https://tomm4so00.github.io/casadolcecasa/>.
-`casadolcecasa4` rimane la fonte della base v8, non la destinazione predefinita.
-In **Settings → Pages → Source** scegli **GitHub Actions**. Il workflow
-`.github/workflows/pages.yml` controlla formattazione, test e tipi, compila il gioco
-e pubblica solo `dist/` a ogni push su `main`. Ricava il percorso corretto degli
-asset dalle impostazioni di Pages. Può essere avviato anche con **Run workflow**.
-
-Le variabili Firebase possono essere definite in **Settings → Secrets and
-variables → Actions → Variables**, con i nomi di `.env.example`; se non vengono
-impostate, viene usato il progetto originale v8. Non inserire chiavi amministrative.
-Il dominio `tomm4so00.github.io` deve essere autorizzato in Authentication per Google.
-Il workflow non pubblica né modifica regole del database.
+|                                                               |                                                                                            |
+| ------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| [ambiente-di-prova.md](docs/ambiente-di-prova.md)             | il gioco di prova: progetto, sito, variabili                                               |
+| [connessioni.md](docs/connessioni.md)                         | il limite di 100 connessioni e la pausa                                                    |
+| [criogenesi.md](docs/criogenesi.md)                           | criogenesi con Stripe e Worker, paga dei turni                                             |
+| [pin-privato.md](docs/pin-privato.md)                         | PIN privato, scasso e trasloco dei PIN                                                     |
+| [firebase-authentication.md](docs/firebase-authentication.md) | accesso con Google e collegamento dei personaggi vecchi (scritto prima di ospiti ed email) |
+| [market-deployment.md](docs/market-deployment.md)             | la borsa condivisa e la manutenzione                                                       |
+| [deployment-checklist.md](docs/deployment-checklist.md)       | la prima messa online (Firebase e GitHub Pages)                                            |
+| [base-comparison.md](docs/base-comparison.md)                 | da dove viene il codice (versione v8)                                                      |

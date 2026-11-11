@@ -30,6 +30,9 @@ export interface GameReference {
 }
 export interface GameDatabase {
   ref(path: string): GameReference;
+  /** Chiude e riapre la connessione (la pausa, dormancy.ts); il database locale non ne ha. */
+  goOffline?(): void;
+  goOnline?(): void;
 }
 
 const clone = <T>(value: T): T => (value === undefined ? value : structuredClone(value));

@@ -1,0 +1,92 @@
+# Il gioco di prova: a ogni push sul ramo "prova" si pubblicano le regole del database di prova
+# e il sito di prova (Firebase Hosting del progetto di prova). Il progetto vero non si tocca.
+# Configurazione e passi da fare una volta: docs/ambiente-di-prova.md.
+name: Ambiente di prova
+
+on:
+  push:
+    branches: [prova]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ambiente-di-prova
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: github.repository == 'tomm4so00/casadolcecasa' && github.ref == 'refs/heads/prova'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      # il gioco di prova: la sua configurazione Firebase, il suo Worker e il suo sito
+      VITE_FIREBASE_API_KEY: ${{ vars.PROVA_FIREBASE_API_KEY }}
+      VITE_FIREBASE_AUTH_DOMAIN: ${{ vars.PROVA_FIREBASE_AUTH_DOMAIN }}
+      VITE_FIREBASE_DATABASE_URL: ${{ vars.PROVA_FIREBASE_DATABASE_URL }}
+      VITE_FIREBASE_PROJECT_ID: ${{ vars.PROVA_FIREBASE_PROJECT_ID }}
+      VITE_FIREBASE_APP_ID: ${{ vars.PROVA_FIREBASE_APP_ID }}
+      VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ vars.PROVA_FIREBASE_MESSAGING_SENDER_ID }}
+      VITE_WORKER_URL: ${{ vars.PROVA_WORKER_URL }}
+      VITE_GAME_URL: ${{ vars.PROVA_GAME_URL }}
+      VITE_STAGE: prova
+      VITE_FIREBASE_EMULATORS: 'false'
+      FIREBASE_PROJECT: ${{ vars.PROVA_FIREBASE_PROJECT_ID }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # senza configurazione il gioco userebbe di nascosto il progetto vero: meglio fermarsi
+      - name: Configurazione del progetto di prova
+        env:
+          SERVICE_ACCOUNT: ${{ secrets.PROVA_FIREBASE_SERVICE_ACCOUNT }}
+        run: node scripts/check-prova-config.mjs
+
+      - name: Check formatting
+        run: npm run format:check
+
+      # i test usano gli indirizzi di sempre: senza le variabili del gioco di prova
+      - name: Run unit tests
+        run: >-
+          env -u VITE_FIREBASE_API_KEY -u VITE_FIREBASE_AUTH_DOMAIN -u VITE_FIREBASE_DATABASE_URL
+          -u VITE_FIREBASE_PROJECT_ID -u VITE_FIREBASE_APP_ID -u VITE_FIREBASE_MESSAGING_SENDER_ID
+          -u VITE_WORKER_URL -u VITE_GAME_URL -u VITE_STAGE npm test
+
+      - name: Typecheck and build
+        run: npm run build -- --base=/
+
+      - name: Chiave del progetto di prova
+        env:
+          SERVICE_ACCOUNT: ${{ secrets.PROVA_FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          printf '%s' "$SERVICE_ACCOUNT" > "$RUNNER_TEMP/firebase-key.json"
+          echo "GOOGLE_APPLICATION_CREDENTIALS=$RUNNER_TEMP/firebase-key.json" >> "$GITHUB_ENV"
+
+      # prima le regole, poi il gioco: la copia di quelle di prima resta tra gli allegati
+      - name: Regole del database di prova
+        run: node firebase/rules.mjs deploy
+
+      - name: Copia delle regole di prima
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: regole-prova-prima
+          path: firebase/backups/
+          if-no-files-found: ignore
+          retention-days: 30
+
+      - name: Sito di prova
+        run: >-
+          node node_modules/firebase-tools/lib/bin/firebase.js deploy --only hosting
+          --project "$FIREBASE_PROJECT" --non-interactive
+          --message "prova ${GITHUB_SHA::7}"

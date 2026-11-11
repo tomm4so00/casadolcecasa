@@ -251,9 +251,25 @@
           ".validate": "newData.isString() && newData.val().length <= 140"
         },
         "pin": {
-          ".validate": "newData.isString() && newData.val().length <= 20"
+          ".validate": "newData.isString() && newData.val().length <= 20 && newData.val() === data.val()"
+        },
+        "pinSet": {
+          ".validate": "newData.isBoolean() && (newData.val() === data.val() || (auth != null && auth.uid === 'market-publisher') || newData.parent().child('ownerId').val() === root.child('sims_accounts').child(auth.uid).child('playerId').val())"
+        },
+        "robbed": {
+          ".validate": "newData.hasChildren(['by','t']) && ((data.exists() && newData.child('by').val() === data.child('by').val() && newData.child('t').val() === data.child('t').val()) || (newData.child('by').val() === root.child('sims_accounts').child(auth.uid).child('playerId').val() && newData.child('t').val() <= now && newData.child('t').val() > now - 10000 && newData.parent().child('vaultMoney').val() === 0 && newData.parent().child('ownerId').val() === data.parent().child('ownerId').val() && data.parent().child('ownerId').val() !== root.child('sims_accounts').child(auth.uid).child('playerId').val() && root.child('sims_theft_blocks').child($room).child(root.child('sims_accounts').child(auth.uid).child('playerId').val()).child('by').val() !== data.parent().child('ownerId').val() && root.child('sims_safe_pins').child(data.parent().child('ownerId').val()).isString() && root.child('sims_theft').child(root.child('sims_accounts').child(auth.uid).child('playerId').val()).child(data.parent().child('id').val() + '').child('t').isNumber() && root.child('sims_theft').child(root.child('sims_accounts').child(auth.uid).child('playerId').val()).child(data.parent().child('id').val() + '').child('g').val() === root.child('sims_safe_pins').child(data.parent().child('ownerId').val()).val() && now >= root.child('sims_theft').child(root.child('sims_accounts').child(auth.uid).child('playerId').val()).child(data.parent().child('id').val() + '').child('t').val() + 14000 && now <= root.child('sims_theft').child(root.child('sims_accounts').child(auth.uid).child('playerId').val()).child(data.parent().child('id').val() + '').child('t').val() + 75000))",
+          "by": {
+            ".validate": "newData.isString()"
+          },
+          "t": {
+            ".validate": "newData.isNumber()"
+          },
+          "$other": {
+            ".validate": false
+          }
         },
         "vaultMoney": {
+          ".write": "auth != null && auth.uid === 'job-worker'",
           ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1000000 && (!data.exists() || newData.val() >= data.val() || auth.uid === 'market-publisher' || data.parent().child('ownerId').val() === root.child('sims_accounts').child(auth.uid).child('playerId').val() || root.child('sims_theft_blocks').child($room).child(root.child('sims_accounts').child(auth.uid).child('playerId').val()).child('by').val() !== data.parent().child('ownerId').val())"
         },
         "lastSeen": {
@@ -1267,11 +1283,17 @@
         ".read": "(auth != null && (auth.token.firebase.sign_in_provider === 'google.com' || auth.token.firebase.sign_in_provider === 'anonymous' || (auth.token.firebase.sign_in_provider === 'password' && auth.token.email_verified === true))) && root.child('sims_accounts').child(auth.uid).child('playerId').val() === $pid",
         "$room": {
           ".write": "(auth != null && (auth.token.firebase.sign_in_provider === 'google.com' || auth.token.firebase.sign_in_provider === 'anonymous' || (auth.token.firebase.sign_in_provider === 'password' && auth.token.email_verified === true))) && root.child('sims_accounts').child(auth.uid).child('playerId').val() === $pid && newData.exists()",
-          ".validate": "newData.hasChildren(['n','since']) && newData.child('since').val() <= now && ((data.exists() && data.child('since').val() + 86400000 > now && newData.child('since').val() === data.child('since').val() && newData.child('n').val() === data.child('n').val() + 1 && (newData.child('n').val() <= 3 || (root.child('sims_saves').child($pid).child('personality').child('announced').child('criminal').val() === true && (newData.child('n').val() <= 5 || (newData.child('n').val() <= 7 && root.child('sims_saves').child($pid).child('personality').child('prevail').child('criminal').val() >= 15) || (newData.child('n').val() <= 9 && root.child('sims_saves').child($pid).child('personality').child('prevail').child('criminal').val() >= 30))) || (root.child('sims_saves').child($pid).child('personality').child('second').val() === 'criminal' && (newData.child('n').val() <= 4 || (newData.child('n').val() <= 5 && root.child('sims_saves').child($pid).child('personality').child('prevail').child('criminal').val() >= 15) || (newData.child('n').val() <= 6 && root.child('sims_saves').child($pid).child('personality').child('prevail').child('criminal').val() >= 30))))) || ((!data.exists() || data.child('since').val() + 86400000 <= now) && newData.child('n').val() === 1 && newData.child('since').val() > now - 300000))",
+          ".validate": "newData.hasChildren(['n','since','g','t']) && newData.child('t').val() <= now && newData.child('t').val() > now - 10000 && newData.child('since').val() <= now && ((data.exists() && data.child('since').val() + 86400000 > now && newData.child('since').val() === data.child('since').val() && newData.child('n').val() === data.child('n').val() + 1 && (newData.child('n').val() <= 3 || (root.child('sims_saves').child($pid).child('personality').child('announced').child('criminal').val() === true && (newData.child('n').val() <= 5 || (newData.child('n').val() <= 7 && root.child('sims_saves').child($pid).child('personality').child('prevail').child('criminal').val() >= 15) || (newData.child('n').val() <= 9 && root.child('sims_saves').child($pid).child('personality').child('prevail').child('criminal').val() >= 30))) || (root.child('sims_saves').child($pid).child('personality').child('second').val() === 'criminal' && (newData.child('n').val() <= 4 || (newData.child('n').val() <= 5 && root.child('sims_saves').child($pid).child('personality').child('prevail').child('criminal').val() >= 15) || (newData.child('n').val() <= 6 && root.child('sims_saves').child($pid).child('personality').child('prevail').child('criminal').val() >= 30))))) || ((!data.exists() || data.child('since').val() + 86400000 <= now) && newData.child('n').val() === 1 && newData.child('since').val() > now - 300000))",
           "n": {
             ".validate": "newData.isNumber()"
           },
           "since": {
+            ".validate": "newData.isNumber()"
+          },
+          "g": {
+            ".validate": "newData.isString() && newData.val().matches(/^h[0-9a-z]{1,7}$/)"
+          },
+          "t": {
             ".validate": "newData.isNumber()"
           },
           "$other": {
@@ -1435,6 +1457,20 @@
         ".read": "((auth != null && (auth.token.firebase.sign_in_provider === 'google.com' || auth.token.firebase.sign_in_provider === 'anonymous' || (auth.token.firebase.sign_in_provider === 'password' && auth.token.email_verified === true))) && auth.uid === $uid) || (auth != null && auth.uid === 'cryo-webhook')",
         ".write": "auth != null && auth.uid === 'cryo-webhook'",
         ".validate": "newData.hasChildren(['since','until']) && newData.child('since').isNumber() && newData.child('until').isNumber()"
+      }
+    },
+    "sims_jobs": {
+      "$uid": {
+        ".read": "((auth != null && (auth.token.firebase.sign_in_provider === 'google.com' || auth.token.firebase.sign_in_provider === 'anonymous' || (auth.token.firebase.sign_in_provider === 'password' && auth.token.email_verified === true))) && auth.uid === $uid)",
+        ".write": "auth != null && auth.uid === 'job-worker'",
+        ".validate": "newData.hasChildren(['day','count','imported'])"
+      }
+    },
+    "sims_safe_pins": {
+      "$pid": {
+        ".read": "((auth != null && (auth.token.firebase.sign_in_provider === 'google.com' || auth.token.firebase.sign_in_provider === 'anonymous' || (auth.token.firebase.sign_in_provider === 'password' && auth.token.email_verified === true))) && root.child('sims_accounts').child(auth.uid).child('playerId').val() === $pid) || (auth != null && auth.uid === 'market-publisher')",
+        ".write": "((auth != null && (auth.token.firebase.sign_in_provider === 'google.com' || auth.token.firebase.sign_in_provider === 'anonymous' || (auth.token.firebase.sign_in_provider === 'password' && auth.token.email_verified === true))) && root.child('sims_accounts').child(auth.uid).child('playerId').val() === $pid) || (auth != null && auth.uid === 'market-publisher')",
+        ".validate": "newData.isString() && newData.val().matches(/^h[0-9a-z]{1,7}$/)"
       }
     },
     "sims_deletions": {
@@ -1603,9 +1639,25 @@
               ".validate": "newData.isString() && newData.val().length <= 140"
             },
             "pin": {
-              ".validate": "newData.isString() && newData.val().length <= 20"
+              ".validate": "newData.isString() && newData.val().length <= 20 && newData.val() === data.val()"
+            },
+            "pinSet": {
+              ".validate": "newData.isBoolean() && (newData.val() === data.val() || (auth != null && auth.uid === 'market-publisher') || newData.parent().child('ownerId').val() === root.child('sims_accounts').child(auth.uid).child('playerId').val())"
+            },
+            "robbed": {
+              ".validate": "newData.hasChildren(['by','t']) && ((data.exists() && newData.child('by').val() === data.child('by').val() && newData.child('t').val() === data.child('t').val()) || (newData.child('by').val() === root.child('sims_accounts').child(auth.uid).child('playerId').val() && newData.child('t').val() <= now && newData.child('t').val() > now - 10000 && newData.parent().child('vaultMoney').val() === 0 && newData.parent().child('ownerId').val() === data.parent().child('ownerId').val() && data.parent().child('ownerId').val() !== root.child('sims_accounts').child(auth.uid).child('playerId').val() && root.child('worlds').child($worldId).child('theft_blocks').child($room).child(root.child('sims_accounts').child(auth.uid).child('playerId').val()).child('by').val() !== data.parent().child('ownerId').val() && root.child('sims_safe_pins').child(data.parent().child('ownerId').val()).isString() && root.child('worlds').child($worldId).child('theft').child(root.child('sims_accounts').child(auth.uid).child('playerId').val()).child(data.parent().child('id').val() + '').child('t').isNumber() && root.child('worlds').child($worldId).child('theft').child(root.child('sims_accounts').child(auth.uid).child('playerId').val()).child(data.parent().child('id').val() + '').child('g').val() === root.child('sims_safe_pins').child(data.parent().child('ownerId').val()).val() && now >= root.child('worlds').child($worldId).child('theft').child(root.child('sims_accounts').child(auth.uid).child('playerId').val()).child(data.parent().child('id').val() + '').child('t').val() + 14000 && now <= root.child('worlds').child($worldId).child('theft').child(root.child('sims_accounts').child(auth.uid).child('playerId').val()).child(data.parent().child('id').val() + '').child('t').val() + 75000))",
+              "by": {
+                ".validate": "newData.isString()"
+              },
+              "t": {
+                ".validate": "newData.isNumber()"
+              },
+              "$other": {
+                ".validate": false
+              }
             },
             "vaultMoney": {
+              ".write": "auth != null && auth.uid === 'job-worker'",
               ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1000000 && (!data.exists() || newData.val() >= data.val() || auth.uid === 'market-publisher' || data.parent().child('ownerId').val() === root.child('sims_accounts').child(auth.uid).child('playerId').val() || root.child('worlds').child($worldId).child('theft_blocks').child($room).child(root.child('sims_accounts').child(auth.uid).child('playerId').val()).child('by').val() !== data.parent().child('ownerId').val())"
             },
             "lastSeen": {
@@ -2393,11 +2445,17 @@
             ".read": "(auth != null && (auth.token.firebase.sign_in_provider === 'google.com' || auth.token.firebase.sign_in_provider === 'anonymous' || (auth.token.firebase.sign_in_provider === 'password' && auth.token.email_verified === true))) && root.child('sims_accounts').child(auth.uid).child('playerId').val() === $pid",
             "$room": {
               ".write": "(auth != null && (auth.token.firebase.sign_in_provider === 'google.com' || auth.token.firebase.sign_in_provider === 'anonymous' || (auth.token.firebase.sign_in_provider === 'password' && auth.token.email_verified === true))) && root.child('sims_accounts').child(auth.uid).child('playerId').val() === $pid && newData.exists()",
-              ".validate": "newData.hasChildren(['n','since']) && newData.child('since').val() <= now && ((data.exists() && data.child('since').val() + 86400000 > now && newData.child('since').val() === data.child('since').val() && newData.child('n').val() === data.child('n').val() + 1 && (newData.child('n').val() <= 3 || (root.child('sims_saves').child($pid).child('personality').child('announced').child('criminal').val() === true && (newData.child('n').val() <= 5 || (newData.child('n').val() <= 7 && root.child('sims_saves').child($pid).child('personality').child('prevail').child('criminal').val() >= 15) || (newData.child('n').val() <= 9 && root.child('sims_saves').child($pid).child('personality').child('prevail').child('criminal').val() >= 30))) || (root.child('sims_saves').child($pid).child('personality').child('second').val() === 'criminal' && (newData.child('n').val() <= 4 || (newData.child('n').val() <= 5 && root.child('sims_saves').child($pid).child('personality').child('prevail').child('criminal').val() >= 15) || (newData.child('n').val() <= 6 && root.child('sims_saves').child($pid).child('personality').child('prevail').child('criminal').val() >= 30))))) || ((!data.exists() || data.child('since').val() + 86400000 <= now) && newData.child('n').val() === 1 && newData.child('since').val() > now - 300000))",
+              ".validate": "newData.hasChildren(['n','since','g','t']) && newData.child('t').val() <= now && newData.child('t').val() > now - 10000 && newData.child('since').val() <= now && ((data.exists() && data.child('since').val() + 86400000 > now && newData.child('since').val() === data.child('since').val() && newData.child('n').val() === data.child('n').val() + 1 && (newData.child('n').val() <= 3 || (root.child('sims_saves').child($pid).child('personality').child('announced').child('criminal').val() === true && (newData.child('n').val() <= 5 || (newData.child('n').val() <= 7 && root.child('sims_saves').child($pid).child('personality').child('prevail').child('criminal').val() >= 15) || (newData.child('n').val() <= 9 && root.child('sims_saves').child($pid).child('personality').child('prevail').child('criminal').val() >= 30))) || (root.child('sims_saves').child($pid).child('personality').child('second').val() === 'criminal' && (newData.child('n').val() <= 4 || (newData.child('n').val() <= 5 && root.child('sims_saves').child($pid).child('personality').child('prevail').child('criminal').val() >= 15) || (newData.child('n').val() <= 6 && root.child('sims_saves').child($pid).child('personality').child('prevail').child('criminal').val() >= 30))))) || ((!data.exists() || data.child('since').val() + 86400000 <= now) && newData.child('n').val() === 1 && newData.child('since').val() > now - 300000))",
               "n": {
                 ".validate": "newData.isNumber()"
               },
               "since": {
+                ".validate": "newData.isNumber()"
+              },
+              "g": {
+                ".validate": "newData.isString() && newData.val().matches(/^h[0-9a-z]{1,7}$/)"
+              },
+              "t": {
                 ".validate": "newData.isNumber()"
               },
               "$other": {

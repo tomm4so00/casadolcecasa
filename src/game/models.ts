@@ -66,6 +66,8 @@ export interface ChatMessage {
 export interface DialogResult {
   action: string | null;
   value: string;
+  /** la casella `check` era spuntata */
+  checked?: boolean;
 }
 export interface DialogOptions {
   title: string;
@@ -79,8 +81,17 @@ export interface DialogOptions {
     value?: string;
     multiline?: boolean;
   } | null;
-  /** `wide`: il pulsante occupa una riga intera, sotto gli altri */
-  buttons: { label: string; value: string | null; color?: string; wide?: boolean }[];
+  /** una casella da spuntare (con un link facoltativo, per esempio alle condizioni) */
+  check?: { label: string; href?: string; linkText?: string } | null;
+  /** `wide`: il pulsante occupa una riga intera, sotto gli altri; `needsCheck`: resta spento
+   *  finché la casella non è spuntata */
+  buttons: {
+    label: string;
+    value: string | null;
+    color?: string;
+    wide?: boolean;
+    needsCheck?: boolean;
+  }[];
 }
 export interface DrugState {
   active: boolean;
@@ -104,7 +115,18 @@ export interface RoomState {
   owner?: string | null;
   ownerId?: string | null;
   vaultMoney: number;
+  /** PIN vecchio, leggibile da tutti: ora sta in sims_safe_pins e qui si cancella */
   pin?: string | null;
+  /** la cassaforte ha una combinazione (quale, lo sa solo il proprietario) */
+  pinSet?: boolean;
+  /** l'ultimo furto riuscito: le regole del database lo accettano solo col PIN giusto */
+  robbed?: { by: string; t: number };
+  /** promemoria di chi abitava qui ed è morto: lo scrive il server (maintenance.ts) */
+  pendingDeath?: { id: string; name?: string; lastSeen?: number };
+  /** quadri appesi: posto → codice del quadro (painting-rules.ts) */
+  paintings?: Record<string, string>;
+  /** quadri messi in vendita dalla stanza, per posto */
+  sale?: Record<string, unknown>;
   lastSeen?: number;
   layout?: Record<
     string,
@@ -126,6 +148,10 @@ export interface CharacterState {
   rawFood: number;
   dishes: number;
   /** Dopo essersi lasciati: fino a quando non ci si fidanza con nessuno (ms). */
+  /** quando ha confermato età (almeno 14 anni) e condizioni; 0 = non ancora (terms.ts) */
+  termsAt?: number;
+  /** quando ha letto l'avviso della chat (terms.ts) */
+  chatNoticeAt?: number;
   coupleCooldownUntil?: number;
   /** Da quando si dorme nello stesso letto del fidanzato (0 = no): per il premio al risveglio. */
   sleptTogetherSince?: number;
@@ -196,6 +222,8 @@ export interface SessionState {
   serverOffset: number;
   /** Il mondo (condominio) in cui si gioca: stanze, chat, cimitero… sono i suoi. */
   worldId: string;
+  /** In pausa (dormancy.ts): scollegati dal database, niente bisogni né salvataggi. */
+  dormant?: boolean;
 }
 export interface ViewState {
   activeEnvironment: string;

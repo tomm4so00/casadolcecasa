@@ -2,7 +2,7 @@ import { notePersonality } from './personality.js';
 import { creditMoney } from './economy.js';
 import type { GameValue } from './context.js';
 import { game } from './context.js';
-import { dom } from './runtime.js';
+import { dom, lifetime } from './runtime.js';
 import { collidesAt, getSolidObstacles } from './engine.js';
 import { toast } from './missions.js';
 import { sfx } from './audio.js';
@@ -11,6 +11,7 @@ import { ellipseShadow } from './render/objects.js';
 import { drawBeamTarget, drawPanelTarget } from './render/construction.js';
 import { openDialog } from './interface.js';
 import { nextPayMessage, shiftsLeftToday } from './job-pay.js';
+import { claimServerPay, flushPendingPay } from './job-server.js';
 import { applyRoomBounds } from './room-size.js';
 import { type Prop, hiddenBehind } from './work-spawn-rules.js';
 import {
@@ -492,11 +493,33 @@ export async function updateShift(delta: number): Promise<void> {
     s.pay = Math.max(0, basePay + itemsPay + tips - fine);
     s.rating = rating;
     s.mult = mult;
-    game.player.jobExperience[s.jobKey] = (game.player.jobExperience[s.jobKey] || 0) + 1;
-    const paid = await creditMoney(s.pay);
-    if (!paid) {
-      toast('Pagamento del turno non confermato.');
-      return;
+    const countShift = () => {
+      game.player.jobExperience[s.jobKey] = (game.player.jobExperience[s.jobKey] || 0) + 1;
+    };
+    // la paga la versa il server (job-server.ts); in modalità prova resta locale
+    let later = false;
+    if (s.serverShift) {
+      const outcome = await claimServerPay(s.serverShift, s.jobKey, { delivered, tips, fine });
+      if (outcome.kind === 'refused') {
+        toast('💼 ' + outcome.message, 4500);
+        return;
+      }
+      if (outcome.kind === 'paid') {
+        // il server applica i tetti del lavoro: conta la sua cifra
+        s.pay = outcome.pay;
+        if (outcome.exp === null) countShift();
+      } else {
+        // salvata nel telefono: si riprova da sola, la prima volta dopo poco più di un minuto
+        later = true;
+        countShift();
+        lifetime.setTimeout(() => void flushPendingPay(), 70_000);
+      }
+    } else {
+      countShift();
+      if (!(await creditMoney(s.pay))) {
+        toast('Pagamento del turno non confermato.');
+        return;
+      }
     }
     game.player.stats.shifts++;
     notePersonality('workShift');
@@ -507,8 +530,11 @@ export async function updateShift(delta: number): Promise<void> {
     const multText = s.mult !== 1 ? ' ×' + String(s.mult).replace('.', ',') : '';
     const left = shiftsLeftToday(game.player.workDay, new Date());
     void openDialog({
-      title: `✅ +${s.pay} Đ`,
+      title: later ? '⏳ Turno finito' : `✅ +${s.pay} Đ`,
       text:
+        (later
+          ? `Il server non ha risposto: la paga (${s.pay} Đ) arriverà da sola appena risponde, anche alla prossima partita.\n\n`
+          : '') +
         `${basePay} Đ${multText} di paga + ${delivered} 📦 × ${s.perItem || 0} Đ` +
         (tips ? ` + ${tips} Đ di mance e bonus` : '') +
         (fine ? ` − ${fine} Đ ${s.fineLabel || 'di multa del capo'}` : '') +

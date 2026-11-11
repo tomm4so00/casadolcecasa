@@ -1,5 +1,5 @@
 // Sala scommesse: slot da 5 Đ e morra cinese tra due giocatori con puntata.
-import type { GameValue } from './context.js';
+import type { GameReference, GameSnapshot } from './database.js';
 import { game } from './context.js';
 import { dom, lifetime } from './runtime.js';
 import { toast } from './missions.js';
@@ -130,7 +130,11 @@ interface RpsGame {
 const OUT_KEY = 'sims_rps_out';
 const SECRET_KEY = 'sims_rps_secret';
 /** Sfida che sto seguendo: il nodo è sempre sims_rps/<sfidato>. */
-let watching: { target: string; ref: GameValue; listener: GameValue } | null = null;
+let watching: {
+  target: string;
+  ref: GameReference;
+  listener: (snap: GameSnapshot) => void;
+} | null = null;
 let lastGame: RpsGame | null = null;
 const answered = new Set<number>();
 let lastRound = -1;
@@ -149,16 +153,16 @@ function watch(target: string): void {
   if (watching?.target === target) return;
   if (watching) watching.ref.off('value', watching.listener);
   const ref = rpsRef(target);
-  const listener = (snap: GameValue): void => void onGame(target, snap.val());
+  const listener = (snap: GameSnapshot): void => void onGame(target, snap.val());
   ref.on('value', listener);
   watching = { target, ref, listener };
 }
 
 /** Cambia la sfida con una transazione: niente doppi pagamenti anche con due finestre aperte. */
 async function change(target: string, update: (g: RpsGame) => Partial<RpsGame> | null) {
-  const result = await rpsRef(target).transaction((cur: GameValue) => {
+  const result = await rpsRef(target).transaction((cur: RpsGame | null) => {
     if (!cur) return undefined;
-    const patch = update(cur as RpsGame);
+    const patch = update(cur);
     return patch ? { ...cur, ...patch, moveT: serverNow() } : undefined;
   });
   return result.committed;
@@ -167,7 +171,7 @@ async function change(target: string, update: (g: RpsGame) => Partial<RpsGame> |
 export function startBetting(): void {
   if (game.session.OFFLINE && !game.session.myPlayerId) return;
   // sfide ricevute
-  rpsRef(me()).on('value', (snap: GameValue) => {
+  rpsRef(me()).on('value', (snap) => {
     const g = snap.val() as RpsGame | null;
     if (!g) return;
     if (g.state === 'invited' && g.b === me()) void askToAccept(g);
@@ -185,7 +189,7 @@ async function askToAccept(g: RpsGame): Promise<void> {
   answered.add(g.t);
   sfx('mission');
   sendNotify('⚔️ Sfida a morra cinese', `${g.aName} ti sfida per ${dindini(g.bet)}`, 'sims-rps');
-  const res: GameValue = await openDialog({
+  const res = await openDialog({
     title: '⚔️ Sfida a morra cinese',
     text: `${g.aName} ti sfida a morra cinese per ${dindini(g.bet)}.\nSe accetti, metti ${dindini(g.bet)} nel piatto: chi vince prende ${dindini(g.bet * 2)}.`,
     buttons: [
@@ -228,7 +232,7 @@ async function askToAccept(g: RpsGame): Promise<void> {
 /** Tutti i giocatori online in questo momento (escluso me), ovunque si trovino; prima chi è nella sala. */
 function playersOnline(): { id: string; name: string; place: string; here: boolean }[] {
   const now = Date.now();
-  return Object.entries<GameValue>(game.onlinePlayers || {})
+  return Object.entries(game.onlinePlayers || {})
     .filter(([id, op]) => id !== me() && op && !op.offline && presenceAlive(id, op, now))
     .map(([id, op]) => ({
       id,

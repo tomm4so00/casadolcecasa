@@ -12,6 +12,7 @@ import {
   decodeCryo,
 } from '../../shared/cryo-rules.js';
 import { game } from './context.js';
+import { isTestStage } from './stage.js';
 import { requireAccount } from './guest.js';
 import type { GameValue } from './context.js';
 import { openDialog } from './interface.js';
@@ -88,7 +89,8 @@ export async function openCryo(): Promise<void> {
   const active = cryoActive(current, now);
   // con il pass a vita non c'è più niente da comprare
   const forever = active && cryoForever(current);
-  const offline = game.session.OFFLINE;
+  // in modalità prova e nel gioco di prova niente pagamenti veri
+  const offline = game.session.OFFLINE || isTestStage();
   const monthLink = !offline && !forever ? CRYO_PAYMENT_LINK : '';
   const lifetimeLink = !offline && !forever ? CRYO_LIFETIME_LINK : '';
   const res = await openDialog({

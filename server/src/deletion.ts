@@ -3,6 +3,8 @@
 // appartiene a quell'account: tutti i suoi personaggi (anche delle vite precedenti e quelli
 // recuperati con il codice), in ogni nodo del database, e infine l'account di accesso.
 // Restano solo le ricevute degli acquisti (sims_cryo/<uid>): la legge chiede di tenerle 10 anni.
+// Quello che la pagina condizioni.html promette di cancellare deve sparire tutto: lo controlla
+// tests/deletion.test.ts, che cerca i codici dell'account in tutto il database.
 import { releaseRoomsOf } from '../../shared/death-rules.js';
 import { LEGACY_WORLD, WORLD_NODES, isWorldCode, worldNodePath } from '../../shared/worlds.js';
 
@@ -53,6 +55,12 @@ export const DELETION_NODES = [
   'sims_arcade_global',
   'sims_arcade_board',
   'sims_arcade_top',
+  // suggerimenti, assaggi lasciati agli altri, coppie, ladri bloccati, multe nate da sue denunce
+  'sims_suggestions',
+  'sims_gifts',
+  'sims_couples',
+  'sims_theft_blocks',
+  'sims_fines',
 ] as const;
 
 /** I nodi in cui ogni giocatore ha una voce tutta sua, con il codice come chiave. */
@@ -74,6 +82,9 @@ const PER_PLAYER = [
   'sims_couples',
   'sims_trash',
   'sims_fines',
+  // il PIN privato della cassaforte e quando ha creato l'ultimo mondo
+  'sims_safe_pins',
+  'sims_world_creators',
 ];
 
 /**
@@ -109,6 +120,9 @@ export function deletionPaths(uid: string, data: Partial<Record<string, unknown>
   add(`sims_link_requests/${uid}`);
   add(`sims_invited/${uid}`);
   add(`sims_arcade_runs/${uid}`);
+  // i turni di lavoro (li scrive il Worker) e l'ora dell'ultimo suggerimento
+  add(`sims_jobs/${uid}`);
+  add(`sims_suggest_last/${uid}`);
 
   // contatori delle attività in borsa: giorno → attività → giocatore
   for (const [day, byBiz] of entries(data.sims_activity))
@@ -186,12 +200,46 @@ export function deletionPaths(uid: string, data: Partial<Record<string, unknown>
   // la casella email occupata dall'account: si libera (l'email non resta salvata)
   for (const [key, owner] of entries(data.sims_emails))
     if (owner === uid) add(`sims_emails/${key}`);
+  // i suggerimenti mandati con l'account (le copie già arrivate su Telegram restano là)
+  for (const [key, s] of entries(data.sims_suggestions))
+    if (record(s) && s.uid === uid) add(`sims_suggestions/${key}`);
+  // e quello che parla dei suoi personaggi nelle cose degli altri
+  for (const path of referencePaths(ids, data)) add(path);
 
   // Un percorso dentro uno già cancellato è inutile (e Firebase rifiuta i percorsi annidati).
   const sorted = [...paths].sort();
   return sorted.filter(
     (path) => !sorted.some((other) => other !== path && path.startsWith(other + '/')),
   );
+}
+
+/**
+ * Quello che parla dei personaggi `ids` nei nodi degli altri: suggerimenti, assaggi lasciati,
+ * coppie, blocchi col pugno, multe nate da loro denunce. Serve alla cancellazione e alla pulizia
+ * dei resti (cleanupLeftoversOnce).
+ */
+export function referencePaths(ids: Set<string>, data: Partial<Record<string, unknown>>): string[] {
+  const mine = (value: unknown) => typeof value === 'string' && ids.has(value);
+  const paths: string[] = [];
+  // i suggerimenti mandati allo staff
+  for (const [key, s] of entries(data.sims_suggestions))
+    if (record(s) && mine(s.pid)) paths.push(`sims_suggestions/${key}`);
+  // gli assaggi di benvenuto lasciati nelle stanze degli altri, con il nome
+  for (const [room, byGiver] of entries(data.sims_gifts))
+    for (const [pid] of entries(byGiver)) if (ids.has(pid)) paths.push(`sims_gifts/${room}/${pid}`);
+  // la metà della coppia scritta dall'altro: l'altro torna single
+  for (const [pid, c] of entries(data.sims_couples))
+    if (record(c) && mine(c.with)) paths.push(`sims_couples/${pid}`);
+  // i blocchi col pugno: quando era lui il ladro e quando era lui a bloccare
+  for (const [room, thieves] of entries(data.sims_theft_blocks))
+    for (const [thief, b] of entries(thieves))
+      if (ids.has(thief) || (record(b) && mine(b.by)))
+        paths.push(`sims_theft_blocks/${room}/${thief}`);
+  // le multe degli altri nate da sue denunce: si chiudono (la sua metà non può più averla)
+  for (const [pid, fines] of entries(data.sims_fines))
+    for (const [id, f] of entries(fines))
+      if (record(f) && mine(f.to)) paths.push(`sims_fines/${pid}/${id}`);
+  return paths;
 }
 
 /** I nodi di un mondo con il nome del mondo di sempre (sims_chat…): così vale lo stesso calcolo. */
@@ -243,12 +291,20 @@ function releaseRooms(rooms: unknown, ids: Set<string>): unknown {
     }
   }
   const list = (Array.isArray(next) ? [...next] : { ...next }) as Record<string, unknown>;
-  for (const [key, room] of Object.entries(list))
+  for (const [key, room] of Object.entries(list)) {
     if (record(room) && record(room.pendingDeath) && ids.has(String(room.pendingDeath.id))) {
       const { pendingDeath: _gone, ...rest } = room;
       list[key] = rest;
       changed = true;
     }
+    // il segno del furto riuscito, nelle stanze che ha svuotato
+    const now = list[key];
+    if (record(now) && record(now.robbed) && ids.has(String(now.robbed.by))) {
+      const { robbed: _gone, ...rest } = now;
+      list[key] = rest;
+      changed = true;
+    }
+  }
   return changed ? list : undefined;
 }
 
@@ -309,4 +365,90 @@ export async function processDeletionRequests(
     }
   }
   return done;
+}
+
+// ---------------------------------------------------------------- resti di prima
+
+/**
+ * Il segno che la pulizia dei resti è stata fatta. Fino a novembre 2026 la cancellazione
+ * lasciava suggerimenti, assaggi, coppie, blocchi e multe che nominano personaggi non più
+ * esistenti: si tolgono una volta, poi questo segno ferma la pulizia.
+ */
+export const LEFTOVERS_MARK = 'sims_meta/leftoversCleaned';
+
+/**
+ * Una volta sola: toglie quello che nomina personaggi che non esistono più (senza salvataggio
+ * in sims_saves), nel mondo di sempre e in quelli in `worlds`. Restituisce quanti percorsi ha
+ * cancellato, o null se era già stata fatta.
+ */
+export async function cleanupLeftoversOnce(
+  database: DeletionDatabase,
+  worlds: string[],
+): Promise<number | null> {
+  if ((await database.ref(LEFTOVERS_MARK).get()).val() === true) return null;
+  const read = async (path: string) => (await database.ref(path).get()).val();
+  const global: Tree = {};
+  for (const node of ['sims_suggestions', 'sims_couples', 'sims_world_creators'])
+    global[node] = await read(node);
+  const perWorld = new Map<string, Tree>();
+  for (const world of new Set([LEGACY_WORLD, ...worlds])) {
+    const data: Tree = {};
+    for (const node of ['gifts', 'theft_blocks', 'fines'] as const)
+      data['sims_' + node] = await read(worldNodePath(world, node));
+    perWorld.set(world, data);
+  }
+  // tutti i personaggi nominati in questi nodi
+  const named = new Set<string>();
+  const note = (value: unknown) => {
+    if (typeof value === 'string' && /^player_[A-Za-z0-9_-]+$/.test(value)) named.add(value);
+  };
+  for (const [, s] of entries(global.sims_suggestions)) if (record(s)) note(s.pid);
+  for (const [pid, c] of entries(global.sims_couples)) {
+    note(pid);
+    if (record(c)) note(c.with);
+  }
+  for (const [pid] of entries(global.sims_world_creators)) note(pid);
+  for (const data of perWorld.values()) {
+    for (const [, givers] of entries(data.sims_gifts))
+      for (const [pid] of entries(givers)) note(pid);
+    for (const [, thieves] of entries(data.sims_theft_blocks))
+      for (const [thief, b] of entries(thieves)) {
+        note(thief);
+        if (record(b)) note(b.by);
+      }
+    for (const [pid, fines] of entries(data.sims_fines)) {
+      note(pid);
+      for (const [, f] of entries(fines)) if (record(f)) note(f.to);
+    }
+  }
+  // non esistono più quelli senza salvataggio (i morti lo tengono, con il segno di morte)
+  const gone = new Set<string>();
+  for (const pid of named) if ((await read(`sims_saves/${pid}/savedAt`)) === null) gone.add(pid);
+  const paths: string[] = [];
+  if (gone.size) {
+    for (const pid of gone) {
+      paths.push(`sims_couples/${pid}`, `sims_world_creators/${pid}`);
+      for (const world of perWorld.keys()) paths.push(`${worldNodePath(world, 'fines')}/${pid}`);
+    }
+    for (const [world, data] of perWorld) {
+      const found = referencePaths(gone, world === LEGACY_WORLD ? { ...global, ...data } : data);
+      paths.push(
+        ...(world === LEGACY_WORLD
+          ? found
+          : found
+              .filter((path) => WORLD_PREFIX.test(path))
+              .map((path) =>
+                path.replace(WORLD_PREFIX, (_m, node) =>
+                  worldNodePath(world, node as (typeof WORLD_NODES)[number]),
+                ),
+              )),
+      );
+    }
+    const unique = [...new Set(paths)].sort();
+    const outer = unique.filter((p) => !unique.some((o) => o !== p && p.startsWith(o + '/')));
+    await database.ref('/').update(Object.fromEntries(outer.map((p) => [p, null])));
+    paths.splice(0, paths.length, ...outer);
+  }
+  await database.ref('/').update({ [LEFTOVERS_MARK]: true });
+  return paths.length;
 }

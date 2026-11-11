@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   accountPlayerIds,
   deletionPaths,
+  cleanupLeftoversOnce,
   processDeletionRequests,
 } from '../server/src/deletion.js';
 import { maintainGame } from '../server/src/maintenance.js';
@@ -14,6 +15,11 @@ const NOW = 1_800_000_000_000;
 /** Vuoto come lo vede Firebase, che toglie da solo gli oggetti rimasti senza figli. */
 const empty = (v: unknown): boolean =>
   v === undefined || v === null || (typeof v === 'object' && Object.values(v).every(empty));
+/** Senza gli oggetti rimasti vuoti, come li vedrebbe Firebase. */
+const firebaseView = (v: unknown): unknown =>
+  JSON.parse(
+    JSON.stringify(v, (_k, x) => (x && typeof x === 'object' && empty(x) ? undefined : x)),
+  );
 const UID = 'uidAnnaxxxxxxxxxxxxxxxxxxx1';
 const A = 'player_' + UID; // personaggio attuale
 const A_OLD = A + '_rabc123'; // vita precedente
@@ -95,6 +101,44 @@ function world() {
       [A]: { uidAltro: { nick: 'Altro', t: 1 } },
     },
     sims_cryo: { [UID]: { since: 1, until: 2, payments: { cs_1: { at: 1, amount: 299 } } } },
+    // quello che prima della correzione restava (condizioni.html promette di cancellarlo)
+    sims_suggestions: {
+      s1: { uid: UID, pid: A, nick: 'Anna', kind: 'bug', text: 'non va', t: 1 },
+      s2: {
+        uid: 'uidBrunoxxxxxxxxxxxxxxxx2',
+        pid: B,
+        nick: 'Bruno',
+        kind: 'idea',
+        text: 'sì',
+        t: 2,
+      },
+    },
+    sims_suggest_last: { [UID]: 1, uidBrunoxxxxxxxxxxxxxxxx2: 2 },
+    sims_gifts: {
+      1: { [A]: { name: 'Anna', x: 0, y: 0, t: 1 } },
+      0: { [B]: { name: 'Bruno', t: 1 } },
+    },
+    sims_couples: {
+      [A]: { with: B, name: 'Bruno', since: 1, ok: true },
+      [B]: { with: A, name: 'Anna', since: 1, ok: true },
+    },
+    sims_theft_blocks: {
+      1: { [A]: { by: B, t: 1 } },
+      0: { [B]: { by: A, t: 1 } },
+      5: { player_altro: { by: B, t: 1 } },
+    },
+    sims_fines: {
+      [B]: {
+        f1: { k: 'bag', n: 1, amt: 50, paid: 50, to: A, t: 1 },
+        f2: { k: 'bag', n: 1, amt: 50, paid: 0, to: 'player_altro', t: 1 },
+      },
+    },
+    sims_world_creators: { [A]: 1, [B]: 2 },
+    sims_safe_pins: { [A]: 'h1abc', [B]: 'h2def' },
+    sims_jobs: {
+      [UID]: { day: '2026-11-11', count: 1, imported: true },
+      uidBrunoxxxxxxxxxxxxxxxx2: { day: 'x', count: 1, imported: true },
+    },
     sims_deletions: { [UID]: { at: NOW } },
     sims_emails: { 'anna@gmailcom': UID, 'bruno@gmailcom': 'uidBrunoxxxxxxxxxxxxxxxx2' },
     sims_rooms_state: {
@@ -106,7 +150,14 @@ function world() {
         lastSeen: NOW,
         layout: { bed: { x: 1 } },
       },
-      1: { id: 2, owner: 'Bruno', ownerId: B, vaultMoney: 70, lastSeen: NOW },
+      1: {
+        id: 2,
+        owner: 'Bruno',
+        ownerId: B,
+        vaultMoney: 70,
+        lastSeen: NOW,
+        robbed: { by: A, t: 1 },
+      },
       2: { id: 3, vaultMoney: 0, pendingDeath: { id: A_LEGACY, name: 'Anna', lastSeen: 1 } },
     },
   };
@@ -141,6 +192,15 @@ describe("cancellazione dell'account su richiesta", () => {
     // Bruno ha tutto: salvataggio, stanza, messaggi, offerte, classifica…
     expect(all.sims_saves[B].nick).toBe('Bruno');
     expect(all.sims_rooms_state[1].ownerId).toBe(B);
+    // …e i suoi suggerimenti, regali, PIN, turni, blocchi e multe di altri; la coppia si scioglie
+    expect(Object.keys(all.sims_suggestions)).toEqual(['s2']);
+    expect(firebaseView(all.sims_gifts)).toEqual({ 0: { [B]: { name: 'Bruno', t: 1 } } });
+    expect(all.sims_safe_pins).toEqual({ [B]: 'h2def' });
+    expect(Object.keys(all.sims_jobs)).toEqual(['uidBrunoxxxxxxxxxxxxxxxx2']);
+    expect(firebaseView(all.sims_theft_blocks)).toEqual({ 5: { player_altro: { by: B, t: 1 } } });
+    expect(Object.keys(all.sims_fines[B])).toEqual(['f2']);
+    expect(empty(all.sims_couples)).toBe(true);
+    expect(all.sims_rooms_state[1].robbed).toBeUndefined();
     expect(Object.keys(all.sims_chat)).toEqual(['c2']);
     expect(Object.keys(all.sims_gossip)).toEqual(['g3']);
     expect(all.sims_painting_titles).toEqual({ q2: { title: 'Notte', by: B, t: 1 } });
@@ -197,5 +257,41 @@ describe("cancellazione dell'account su richiesta", () => {
     expect(node['.write']).toContain('auth.uid === $uid && !data.exists() && newData.exists()');
     expect(node['.read']).toContain('auth.uid === $uid');
     expect(node.$other['.validate']).toBe(false);
+  });
+});
+
+describe('pulizia una volta sola dei resti di prima', () => {
+  it('toglie solo quello che nomina personaggi che non esistono più, poi si ferma', async () => {
+    const database = localDatabase(new Lifetime(), new MemoryStorage());
+    const GONE = 'player_cancellato1';
+    await database.ref('').update({
+      sims_saves: {
+        [B]: { savedAt: NOW, nick: 'Bruno' },
+        player_morto: { savedAt: 1, dead: true },
+      },
+      sims_suggestions: {
+        s1: { uid: 'uidVia', pid: GONE, nick: 'Via', kind: 'bug', text: 'x', t: 1 },
+        s2: { uid: 'uidBruno', pid: B, nick: 'Bruno', kind: 'idea', text: 'y', t: 2 },
+      },
+      sims_couples: { [B]: { with: GONE, name: 'Via', since: 1 } },
+      sims_world_creators: { [GONE]: 1, [B]: 2 },
+      sims_gifts: { 3: { [GONE]: { name: 'Via', t: 1 }, [B]: { name: 'Bruno', t: 1 } } },
+      sims_theft_blocks: { 1: { [GONE]: { by: B, t: 1 } }, 2: { player_morto: { by: B, t: 1 } } },
+      sims_fines: { [B]: { f1: { to: GONE, amt: 5 }, f2: { to: 'player_morto', amt: 5 } } },
+      worlds: { 'CASA-AB23': { gifts: { 0: { [GONE]: { name: 'Via', t: 1 } } } } },
+    });
+    expect(await cleanupLeftoversOnce(database, ['CASA-AB23'])).toBeGreaterThan(0);
+    const all = (await database.ref('').get()).val();
+    expect(JSON.stringify(firebaseView(all))).not.toContain(GONE);
+    // chi esiste ancora (anche morto, con il suo salvataggio) non si tocca
+    expect(Object.keys(all.sims_suggestions)).toEqual(['s2']);
+    expect(all.sims_world_creators).toEqual({ [B]: 2 });
+    expect(firebaseView(all.sims_gifts)).toEqual({ 3: { [B]: { name: 'Bruno', t: 1 } } });
+    expect(firebaseView(all.sims_theft_blocks)).toEqual({ 2: { player_morto: { by: B, t: 1 } } });
+    expect(Object.keys(all.sims_fines[B])).toEqual(['f2']);
+    // la seconda volta non fa niente
+    await database.ref('sims_gifts/9').set({ [GONE]: { name: 'Via', t: 1 } });
+    expect(await cleanupLeftoversOnce(database, ['CASA-AB23'])).toBeNull();
+    expect((await database.ref('sims_gifts/9').get()).val()).not.toBeNull();
   });
 });

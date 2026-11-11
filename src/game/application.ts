@@ -1,5 +1,6 @@
 import template from './view.html?raw';
 import { version } from '../../package.json';
+import { isTestStage } from './stage.js';
 import { initializeGame } from './initialize.js';
 import { game } from './context.js';
 import { bindUiActions } from './ui-bindings.js';
@@ -17,7 +18,8 @@ export function mountLatestGame() {
   if (!root) throw new Error('Contenitore del gioco mancante');
   root.innerHTML = template;
   const versionTag = document.getElementById('app-version');
-  if (versionTag) versionTag.textContent = 'v' + version;
+  // nel gioco di prova la scritta PROVA: nessuno lo confonde con quello di tutti
+  if (versionTag) versionTag.textContent = 'v' + version + (isTestStage() ? ' · PROVA' : '');
   bindUiActions(root);
   initializeGame();
   // Dopo initializeGame: serve la sessione per sapere dove ricordare l'invito

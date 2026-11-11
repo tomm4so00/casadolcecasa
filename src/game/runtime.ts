@@ -93,7 +93,11 @@ export function createDatabase(local: boolean): GameDatabase {
     },
   });
   // Il percorso vuoto è la radice: da Firebase 9 db.ref('') va in errore, serve db.ref()
-  return { ref: (path) => wrap(path ? db.ref(path) : db.ref()) };
+  return {
+    ref: (path) => wrap(path ? db.ref(path) : db.ref()),
+    goOffline: () => db.goOffline(),
+    goOnline: () => db.goOnline(),
+  };
 }
 
 export type { GameSnapshot };

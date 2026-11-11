@@ -1,12 +1,11 @@
 // Bacheca immobiliare del cortile: menu per trasferirsi in una stanza libera.
-import type { GameValue } from './context.js';
 import { game } from './context.js';
 import { openDialog } from './interface.js';
 import { toast } from './missions.js';
 import { postGossip } from './gossip.js';
 import { sfx } from './audio.js';
 import { hasRoom, normalizeRooms, saveGame, withTimeout } from './saves.js';
-import { hashPin } from './safe-pin.js';
+import { ensureMyPinPrivate } from './safe-pins.js';
 import { settleEconomy } from './economy.js';
 import { isFreeRoom, moveRoom, roomLabel } from './realty-rules.js';
 import { recordActivity } from './activity.js';
@@ -17,7 +16,7 @@ const label = (idx: number): string => roomLabel(idx, game.ROOMS_PER_APT);
 /** Stanze libere, raggruppate per appartamento. */
 function freeRoomsByApt(): Map<number, number[]> {
   const out = new Map<number, number[]>();
-  (game.roomsState || []).forEach((r: GameValue, i: number) => {
+  (game.roomsState || []).forEach((r, i) => {
     if (!isFreeRoom(r)) return;
     const apt = game.aptOfRoom(i);
     out.set(apt, [...(out.get(apt) || []), i]);
@@ -96,20 +95,33 @@ async function moveMyRoom(target: number): Promise<void> {
   const from: number = game.myAssignedRoomIdx ?? -1;
   // prima si chiudono gli acquisti e i movimenti di soldi ancora in corso sulla stanza vecchia
   await settleEconomy();
-  let moved: GameValue = null;
+  // il PIN vecchio rimasto nella stanza va nel nodo privato: il trasloco non lo porta con sé
+  if (!(await ensureMyPinPrivate())) {
+    toast(
+      '🏘️ Trasloco rimandato: la combinazione della cassaforte non è ancora al sicuro. Riprova tra poco.',
+      4500,
+    );
+    return;
+  }
+  let moved: ReturnType<typeof moveRoom> = null;
   try {
     const ref = game.session.db.ref(worldNode('rooms_state'));
     await withTimeout(ref.get(), 5000);
-    const result: GameValue = await withTimeout(
-      ref.transaction((cur: GameValue) => {
-        moved = moveRoom(normalizeRooms(cur), game.session.myPlayerId, target, hashPin, Date.now());
+    const result = await withTimeout(
+      ref.transaction((cur: unknown) => {
+        moved = moveRoom(
+          normalizeRooms(cur) as Parameters<typeof moveRoom>[0],
+          game.session.myPlayerId,
+          target,
+          Date.now(),
+        );
         return moved || undefined; // undefined = annulla
       }),
       8000,
     );
     if (!result?.committed) moved = null;
     else game.roomsState = normalizeRooms(result.snapshot.val());
-  } catch (e: GameValue) {
+  } catch (e) {
     console.warn('Cambio stanza fallito', e);
     moved = null;
   }
@@ -123,7 +135,6 @@ async function moveMyRoom(target: number): Promise<void> {
   }
   game.myAssignedRoomIdx = target;
   if (game.currentRoomIdx === from) game.currentRoomIdx = target;
-  game.safePinCode = game.roomsState[target]?.pin || '';
   game.lastLayoutKey = ''; // la disposizione dei mobili si ripubblica sulla stanza nuova
   saveGame(false);
   sfx('success');

@@ -1,3 +1,4 @@
+import { wokeFromPause } from './dormancy.js';
 import { game } from './context.js';
 import { startGame } from './interface.js';
 import { toast } from './missions.js';
@@ -254,8 +255,9 @@ export function mountCloudSetup(root: HTMLElement): void {
   panel.querySelectorAll<HTMLButtonElement>('[data-setup-login]').forEach((button) => {
     lifetime.listen(button, 'click', () => show('login'));
   });
-  // With "Ricordami" a returning player goes straight into the game.
-  if (remember.checked) {
+  // With "Ricordami" a returning player goes straight into the game. Anche tornando dalla pausa
+  // (dormancy.ts): la pagina si è ricaricata da sola e il giocatore si aspetta il gioco.
+  if (remember.checked || wokeFromPause()) {
     loginButton.disabled = true;
     loginButton.textContent = 'Accesso in corso…';
     const pageLoaded = new Promise<void>((resolve) => {

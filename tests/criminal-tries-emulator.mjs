@@ -55,7 +55,9 @@ async function maxTries(i, personality) {
   // qualche secondo fa: l'orologio del database non deve vederla nel futuro
   const since = Date.now() - 5000;
   let n = 0;
-  while (n < 12 && (await put(`sims_theft/${pid}/0`, { n: n + 1, since }, uid))) n++;
+  // come il gioco: ogni tentativo porta la combinazione provata (cifrata) e l'ora
+  const attempt = () => ({ n: n + 1, since, g: 'h1abc', t: Date.now() - 1000 });
+  while (n < 12 && (await put(`sims_theft/${pid}/0`, attempt(), uid))) n++;
   return n;
 }
 

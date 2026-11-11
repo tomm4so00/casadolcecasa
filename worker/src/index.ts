@@ -1,12 +1,26 @@
-// Worker di Cloudflare che riceve da Stripe la conferma dei pagamenti della criogenesi e
-// allunga il pass dell'account nel database di Firebase. Configurazione in docs/criogenesi.md:
+// Worker di Cloudflare del gioco. Fa due cose:
+// - riceve da Stripe la conferma dei pagamenti della criogenesi e allunga il pass dell'account;
+// - versa la paga dei turni di lavoro (/lavoro/…), al posto del browser (job-shift.ts);
+// - durante l'attacco di Zero dice la prima cifra del PIN privato (/scasso/…, safe-hint.ts).
+// Configurazione in docs/criogenesi.md:
 //   STRIPE_WEBHOOK_SECRET      segreto "whsec_…" del webhook               (wrangler secret put)
 //   FIREBASE_SERVICE_ACCOUNT   chiave JSON di un account di servizio        (wrangler secret put)
 //   STRIPE_CRYO_PAYMENT_LINK   id "plink_…" del Payment Link dei 30 giorni      (wrangler.toml)
 //   STRIPE_CRYO_LIFETIME_LINK  id "plink_…" del Payment Link del pass a vita    (wrangler.toml)
 //   FIREBASE_DATABASE_URL      indirizzo del database                        (wrangler.toml)
+//   FIREBASE_PROJECT_ID        progetto Firebase dei token dei giocatori     (wrangler.toml)
+//   GAME_ORIGINS               siti da cui il gioco può chiamare /lavoro/   (wrangler.toml)
 import { type CheckoutSession, applyCryoPayment } from './cryo-payment.js';
-import { CRYO_WRITER, type ServiceAccount, accessToken, restDatabase } from './firebase-rest.js';
+import { type KeySource, bearer, googleKeys, verifyFirebaseToken } from './firebase-auth.js';
+import {
+  CRYO_WRITER,
+  JOB_WRITER,
+  type ServiceAccount,
+  accessToken,
+  restDatabase,
+} from './firebase-rest.js';
+import { type JobDatabase, type JobReply, endJob, startJob } from './job-shift.js';
+import { safeHint } from './safe-hint.js';
 import { verifyStripeSignature } from './stripe-signature.js';
 
 export interface Env {
@@ -15,6 +29,8 @@ export interface Env {
   STRIPE_CRYO_LIFETIME_LINK?: string;
   FIREBASE_SERVICE_ACCOUNT: string;
   FIREBASE_DATABASE_URL: string;
+  FIREBASE_PROJECT_ID: string;
+  GAME_ORIGINS: string;
 }
 
 const PAID_EVENTS = new Set([
@@ -69,9 +85,101 @@ export async function handleWebhook(
   return Response.json({ received: true });
 }
 
+// ---------------------------------------------------------------- il lavoro
+
+/** Le intestazioni che lasciano il browser leggere la risposta, solo dai siti del gioco. */
+function cors(request: Request, env: Env): Record<string, string> {
+  const origin = request.headers.get('origin') || '';
+  const allowed = (env.GAME_ORIGINS || '')
+    .split(',')
+    .map((o) => o.trim())
+    .filter(Boolean);
+  if (!allowed.includes(origin)) return {};
+  return {
+    'access-control-allow-origin': origin,
+    'access-control-allow-methods': 'POST, OPTIONS',
+    'access-control-allow-headers': 'authorization, content-type',
+    'access-control-max-age': '86400',
+    vary: 'origin',
+  };
+}
+
+/**
+ * Le richieste del gioco (/lavoro/inizio, /lavoro/fine, /scasso/indizio): chi chiama si
+ * riconosce dal token di Firebase.
+ */
+export async function handleJob(
+  request: Request,
+  env: Env,
+  now: number,
+  keys: KeySource,
+  database: () => Promise<JobDatabase>,
+  newId: () => string = () => crypto.randomUUID(),
+): Promise<Response> {
+  const headers = cors(request, env);
+  if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers });
+  const reply = ({ status, body }: JobReply) => Response.json(body, { status, headers });
+  if (request.method !== 'POST')
+    return reply({ status: 405, body: { ok: false, error: 'metodo', message: 'Solo POST' } });
+  const token = bearer(request);
+  const user = token ? await verifyFirebaseToken(token, env.FIREBASE_PROJECT_ID, now, keys) : null;
+  if (!user)
+    return reply({
+      status: 401,
+      body: { ok: false, error: 'accesso', message: 'Accesso scaduto: ricarica il gioco.' },
+    });
+  let body: unknown = null;
+  try {
+    body = await request.json();
+  } catch {
+    /* corpo vuoto o rotto: lo rifiutano i controlli */
+  }
+  const path = new URL(request.url).pathname;
+  try {
+    const db = await database();
+    if (path === '/lavoro/inizio') {
+      const result = await startJob(db, user.uid, body, now, newId);
+      console.log('Lavoro inizio', user.uid, result.status, result.body.error ?? '');
+      return reply(result);
+    }
+    if (path === '/lavoro/fine') {
+      const result = await endJob(db, user.uid, body, now);
+      // i numeri dichiarati restano nei log: servono a regolare i tetti di JOB_CLAIM_LIMITS
+      console.log('Lavoro fine', user.uid, JSON.stringify(body), result.status, result.body);
+      return reply(result);
+    }
+    if (path === '/scasso/indizio') return reply(await safeHint(db, user.uid, body, now));
+  } catch (error) {
+    console.error('Richiesta non riuscita', user.uid, path, String(error));
+    return reply({
+      status: 500,
+      body: { ok: false, error: 'temporaneo', message: 'Riprova tra poco.' },
+    });
+  }
+  return reply({ status: 404, body: { ok: false, error: 'indirizzo', message: 'Non trovato' } });
+}
+
 export default {
   fetch(request: Request, env: Env): Promise<Response> {
     const account = () => JSON.parse(env.FIREBASE_SERVICE_ACCOUNT) as ServiceAccount;
-    return handleWebhook(request, env, Date.now(), () => accessToken(account(), Date.now()));
+    const token = () => accessToken(account(), Date.now());
+    const path = new URL(request.url).pathname;
+    if (path.startsWith('/lavoro/') || path.startsWith('/scasso/')) {
+      const now = Date.now();
+      return handleJob(
+        request,
+        env,
+        now,
+        () => googleKeys(now),
+        async () =>
+          restDatabase({
+            url: env.FIREBASE_DATABASE_URL,
+            token: await token(),
+            uid: JOB_WRITER,
+            adminReads: true,
+          }),
+      );
+    }
+    return handleWebhook(request, env, Date.now(), token);
   },
 };

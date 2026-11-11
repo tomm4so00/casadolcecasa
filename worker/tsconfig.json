@@ -11,5 +11,12 @@
     "skipLibCheck": true,
     "noEmit": true
   },
-  "include": ["src/**/*.ts", "../shared/cryo-rules.ts"]
+  "include": [
+    "src/**/*.ts",
+    "../shared/cryo-rules.ts",
+    "../shared/job-pay-rules.ts",
+    "../shared/worlds.ts",
+    "../shared/hacker-rules.ts",
+    "../shared/safe-pin-rules.ts"
+  ]
 }

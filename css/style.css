@@ -917,6 +917,36 @@ input:-webkit-autofill:focus {
   flex: 1;
   border-top: 1px solid rgba(255, 255, 255, 0.18);
 }
+/* casella da spuntare nel dialogo (età e condizioni) e il suo link */
+#dialog-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-top: 12px;
+  font-size: 0.95rem;
+  line-height: 1.35;
+  cursor: pointer;
+}
+#dialog-check.hidden,
+#dialog-link.hidden {
+  display: none;
+}
+#dialog-check input {
+  width: 22px;
+  height: 22px;
+  flex: none;
+  margin: 0;
+  accent-color: #2ed573;
+}
+#dialog-link {
+  display: inline-block;
+  margin-top: 10px;
+  color: #74b9ff;
+}
+#dialog-buttons .btn-primary:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
 #dialog-buttons {
   display: flex;
   flex-wrap: wrap; /* tanti pulsanti (es. bacheca immobiliare): vanno a capo, 4 per riga */

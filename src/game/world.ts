@@ -93,6 +93,10 @@ import { COLLECT_ENV, refillStands } from './collect.js';
 import { USED_ENV } from './used-shop.js';
 import { recordActivity } from './activity.js';
 import { worldNode } from './world-db.js';
+import { openServerShift, serverPaysJobs } from './job-server.js';
+import { saveMyPin } from './safe-pins.js';
+import { callWorker } from './worker-client.js';
+import { LEGACY_WORLD } from '../../shared/worlds.js';
 // Il proprietario può cambiare la combinazione della propria cassaforte quando vuole
 export async function changeSafePin(..._args: GameValue[]): Promise<GameValue> {
   if (!hasRoom() || !isMyRoomNow()) return;
@@ -112,11 +116,11 @@ export async function changeSafePin(..._args: GameValue[]): Promise<GameValue> {
     toast('❌ Combinazione non valida: servono ' + pinHint(mySafeLevel()) + '.');
     return;
   }
-  game.safePinCode = hashPin(res.value, room.id);
-  game.hasSetSafePin = true;
-  game.session.db
-    .ref(`${worldNode('rooms_state')}/${game.myAssignedRoomIdx}/pin`)
-    .set(game.safePinCode);
+  // nel nodo privato: nessun altro giocatore la può leggere
+  if (!(await saveMyPin(res.value))) {
+    toast('📡 Combinazione non salvata: riprova quando sei connesso.');
+    return;
+  }
   toast('✅ Nuova combinazione salvata!');
 }
 
@@ -778,9 +782,6 @@ export async function handleObjectInteract(..._args: GameValue[]): Promise<void>
 export async function handleSafeInteraction(..._args: GameValue[]): Promise<GameValue> {
   const room: GameValue = game.roomsState[game.currentRoomIdx ?? -1];
   if (!room) return;
-  const vaultRef: GameValue = game.session.db.ref(
-    `${worldNode('rooms_state')}/${game.currentRoomIdx}/vaultMoney`,
-  );
   if (isMyRoomNow()) {
     const buttons: GameValue = [{ label: 'Chiudi', value: null, color: '#57606f' }];
     buttons.push({
@@ -804,7 +805,8 @@ export async function handleSafeInteraction(..._args: GameValue[]): Promise<Game
     if (res.action === 'pin') changeSafePin();
     return;
   }
-  if (!room.pin) {
+  // la combinazione è privata: la stanza dice solo se ce n'è una (pin: stanza non ancora spostata)
+  if (!room.pinSet && !room.pin) {
     toast('🔒 Questa cassaforte non è protetta o è vuota.');
     return;
   }
@@ -819,7 +821,8 @@ export async function handleSafeInteraction(..._args: GameValue[]): Promise<Game
   );
   const caught = async (): Promise<boolean> => {
     try {
-      return (await withTimeout(blockRef.get(), 8000)).val()?.by === room.ownerId;
+      // senza risposta in tempo si fa come se il pugno non ci fosse: lo controllano le regole
+      return (await withTimeout(blockRef.get(), 8000))?.val()?.by === room.ownerId;
     } catch {
       return false;
     }
@@ -839,7 +842,9 @@ export async function handleSafeInteraction(..._args: GameValue[]): Promise<Game
   const serverNow = (): number => Date.now() + (game.session.serverOffset || 0) - 2000;
   let record: TheftRecord | null = null;
   try {
-    record = decodeTheftRecord((await withTimeout(theftRef.get(), 8000)).val());
+    const snap = await withTimeout(theftRef.get(), 8000);
+    if (!snap) throw new Error('nessuna risposta');
+    record = decodeTheftRecord(snap.val());
   } catch {
     toast('📡 Connessione assente: riprova tra poco.');
     return;
@@ -860,8 +865,9 @@ export async function handleSafeInteraction(..._args: GameValue[]): Promise<Game
   }
   // la cassaforte livello 2 accetta combinazioni con le cifre fino a 5
   const level = safeLevel(room.economy?.ownedFurniture);
-  // durante l'attacco di Zero la prima cifra è già scoperta: se ne scrivono solo 2
-  const known = hackerActive() ? firstPinDigit(room.pin, room.id, level) : '';
+  // durante l'attacco di Zero la prima cifra è già scoperta: se ne scrivono solo 2. La dice il
+  // Worker, l'unico oltre al proprietario a leggere il PIN; se non risponde, niente indizio.
+  const known = hackerActive() ? await zeroHint(roomIdx) : '';
   const warning = `\n\n⚠️ Lo scasso dura ${CRACK_MS / 1000} secondi: se ${room.owner || 'il proprietario'} ti becca e ti dà un pugno, questa cassaforte per te resta chiusa per sempre.`;
   const res: GameValue = await openDialog({
     title: `🕵️ Tentativo di scasso · Cassaforte livello ${level}`,
@@ -894,11 +900,13 @@ export async function handleSafeInteraction(..._args: GameValue[]): Promise<Game
     const result = await withTimeout(
       theftRef.transaction((cur: GameValue) => {
         saved = recordTheftAttempt(decodeTheftRecord(cur), serverNow(), maxTries);
-        return saved ?? undefined;
+        // la combinazione provata (cifrata come il PIN privato) e l'ora restano scritte: quando
+        // si prova a svuotare la cassaforte, le regole del database le confrontano col PIN
+        return saved ? { ...saved, g: hashPin(guess, room.ownerId), t: serverNow() } : undefined;
       }),
       8000,
     );
-    if (!result.committed) saved = null;
+    if (!result?.committed) saved = null;
   } catch {
     saved = null;
   }
@@ -925,13 +933,15 @@ export async function handleSafeInteraction(..._args: GameValue[]): Promise<Game
     );
     return;
   }
-  if (room.pin === hashPin(guess, room.id) || room.pin === guess) {
-    let stolen: GameValue = 0;
-    const r: GameValue = await vaultRef.transaction((v?: GameValue): GameValue => {
-      stolen = v || 0;
-      return 0;
-    });
-    if (r && r.committed && stolen > 0) {
+  // la combinazione non la conosce nessun telefono tranne quello del proprietario: decide il
+  // database, che accetta di svuotare la cassaforte solo con il tentativo giusto registrato
+  const stolen = await emptySafe(roomIdx, room.ownerId, guess, serverNow);
+  if (stolen === 'error') {
+    toast('📡 Connessione persa durante lo scasso: riprova tra poco.', 4000);
+    return;
+  }
+  if (stolen !== 'wrong') {
+    if (stolen > 0) {
       if (!(await creditMoney(stolen))) return;
       saveGame(true);
       sfx('theft');
@@ -961,19 +971,61 @@ export async function handleSafeInteraction(..._args: GameValue[]): Promise<Game
 }
 
 /**
- * La prima cifra della combinazione, scoperta da Zero durante l'attacco: con così poche
- * combinazioni basta provarle tutte contro il codice salvato. '' se non si trova.
+ * Svuota la cassaforte della stanza `roomIdx` se `guess` è la combinazione giusta. Il segno
+ * `robbed` (chi e quando) si scrive insieme alla cassaforte a zero, e le regole del database lo
+ * accettano solo se l'ultimo tentativo registrato ha la combinazione del PIN privato, è passato
+ * il tempo dello scasso e il proprietario non ha dato il pugno. Restituisce quanto si è preso,
+ * 'wrong' se il database rifiuta, 'error' se non risponde.
  */
-function firstPinDigit(pin: unknown, roomId: unknown, level: number): string {
-  if (typeof pin !== 'string') return '';
-  const top = maxPinDigit(level);
-  for (let a = 1; a <= top; a++)
-    for (let b = 1; b <= top; b++)
-      for (let c = 1; c <= top; c++) {
-        const code = `${a}${b}${c}`;
-        if (pin === code || pin === hashPin(code, roomId)) return String(a);
-      }
-  return '';
+async function emptySafe(
+  roomIdx: number,
+  ownerId: string,
+  guess: string,
+  serverNow: () => number,
+): Promise<number | 'wrong' | 'error'> {
+  // in modalità prova non ci sono regole: il PIN (locale) si confronta qui
+  if (game.session.OFFLINE) {
+    const pin = (await game.session.db.ref('sims_safe_pins/' + ownerId).get()).val();
+    if (pin !== hashPin(guess, ownerId)) return 'wrong';
+  }
+  const reference = game.session.db.ref(`${worldNode('rooms_state')}/${roomIdx}`);
+  let stolen = 0;
+  try {
+    await withTimeout(reference.get(), 8000);
+    const result = await withTimeout(
+      reference.transaction((cur: GameValue) => {
+        stolen = 0;
+        // primo giro senza dati in memoria: si risponde null e Firebase rifà il conto
+        if (cur === null) return null;
+        if (cur.ownerId !== ownerId || !(cur.vaultMoney > 0)) return undefined;
+        stolen = cur.vaultMoney;
+        return {
+          ...cur,
+          vaultMoney: 0,
+          robbed: { by: game.session.myPlayerId, t: serverNow() },
+        };
+      }),
+      8000,
+    );
+    if (!result) return 'error'; // nessuna risposta in tempo
+    return result.committed ? stolen : 0;
+  } catch (error) {
+    return /permission/i.test(String((error as { code?: string })?.code || error))
+      ? 'wrong'
+      : 'error';
+  }
+}
+
+/** La prima cifra della combinazione, che durante l'attacco di Zero dice il Worker ('' se no). */
+async function zeroHint(roomIdx: number): Promise<string> {
+  if (game.session.OFFLINE) return '';
+  const reply = await callWorker('/scasso/indizio', {
+    world: game.session.worldId || LEGACY_WORLD,
+    room: roomIdx,
+  });
+  return reply?.ok && typeof reply.digit === 'string' && /^[1-5]$/.test(reply.digit)
+    ? reply.digit
+    : '';
 }
 
 /**
@@ -1390,7 +1442,7 @@ Sparirà dalla tua stanza (se hai un modello più semplice, tornerà quello).`,
   if (
     definition.category === 'safe' &&
     room &&
-    pinTooHighForLevel(room.pin, room.id, mySafeLevel())
+    pinTooHighForLevel(game.safePinCode, game.session.myPlayerId, mySafeLevel())
   )
     void promptSetSafePin(
       `La cassaforte è tornata al livello 1, che accetta solo le cifre da 1 a 4, e la tua combinazione contiene un 5. Scegline una nuova: ${pinHint(1)}.`,
@@ -1457,6 +1509,9 @@ export function continueCurrentJob(..._args: GameValue[]): GameValue {
   );
 }
 
+/** Un turno sta aspettando la risposta del server. */
+let jobStarting = false;
+
 export async function chooseOrGoToJob(
   jobKey?: GameValue,
   jobTitleName?: GameValue,
@@ -1478,10 +1533,25 @@ export async function chooseOrGoToJob(
     return;
   }
   if (workLimitReached()) return;
+  let tier: { base: number; perItem: number } = jobPayTier(
+    (game.player.jobExperience[jobKey] || 0) + 1,
+  );
+  // la paga la versa il server: è lui ad aprire il turno e a dire quanto vale
+  let serverShift: string | undefined;
+  if (serverPaysJobs()) {
+    if (jobStarting) return; // doppio clic mentre si aspetta il server
+    jobStarting = true;
+    const opened = await openServerShift(jobKey).finally(() => {
+      jobStarting = false;
+    });
+    if (!opened) return;
+    serverShift = opened.id;
+    game.player.jobExperience[jobKey] = opened.exp;
+    tier = opened;
+  }
   game.player.workDay = recordShift(game.player.workDay, new Date());
   if (jobKey === 'ristorante') recordActivity('pizza');
   game.player.activeJobKey = jobKey;
-  const tier = jobPayTier((game.player.jobExperience[jobKey] || 0) + 1);
   const pay: number = tier.base;
   game.activeShift = {
     jobKey,
@@ -1490,6 +1560,7 @@ export async function chooseOrGoToJob(
     perItem: tier.perItem,
     delivered: 0,
     remaining: game.SHIFT_SECONDS,
+    serverShift,
   };
   game.view.isOutsideMenuOpen = false;
   game.view.outsideSubmenu = '';

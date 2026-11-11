@@ -2,7 +2,8 @@
 // il quadro all'asta riceve cuoricini e offerte; il pittore accetta la migliore e chi l'ha fatta
 // paga e appende il quadro nella sua stanza, dove resta suo per sempre. Anche i collezionisti
 // (finti) fanno offerte al pittore, come prima su quadrivendo.it.
-import type { GameValue } from './context.js';
+import type { RoomState } from './models.js';
+import type { SocialMessage } from './network-model.js';
 import { game } from './context.js';
 import { lifetime } from './runtime.js';
 import { toast } from './missions.js';
@@ -23,6 +24,7 @@ import { botOfferAmount, nextOfferTime } from './art-market-rules.js';
 import {
   type Auction,
   bidError,
+  decodeAuction,
   decodeAuctions,
   minBid,
   movedAuction,
@@ -39,7 +41,7 @@ const serverNow = (): number => Date.now() + (game.session.serverOffset || 0) - 
 const auctionRef = (id: string, child = '') =>
   game.session.db.ref(`${worldNode('auctions')}/${id}${child ? '/' + child : ''}`);
 const myIdx = (): number => game.myAssignedRoomIdx ?? -1;
-const myRoom = (): GameValue => game.roomsState[myIdx()];
+const myRoom = (): RoomState | undefined => game.roomsState[myIdx()];
 /** Il quadro chiamato col suo titolo, oppure con la frase di riserva. */
 const nameOf = (a: Auction, fallback = 'il quadro') => quotedTitle(a.code) || fallback;
 
@@ -71,7 +73,7 @@ export function onAuctionsChange(fn: () => void): () => void {
 export function startAuctions(): void {
   if (started) return;
   started = true;
-  game.session.db.ref(worldNode('auctions')).on('value', (snap: GameValue): void => {
+  game.session.db.ref(worldNode('auctions')).on('value', (snap): void => {
     all = decodeAuctions(snap?.val());
     listeners.forEach((fn) => fn());
     void checkPurchases().then(() => checkExpiring());
@@ -130,7 +132,7 @@ export async function startAuction(code: string, opt: { resale?: boolean } = {})
 export async function acceptBid(a: Auction): Promise<void> {
   const bid = a.bid;
   if (a.by !== me() || !bid || a.sold) return;
-  const res: GameValue = await openDialog({
+  const res = await openDialog({
     title: '🤝 Accetti l’offerta?',
     text:
       `${bid.name} offre ${dindini(bid.amt)} per ${nameOf(a, 'il tuo quadro')}.\n\n` +
@@ -235,7 +237,7 @@ export async function withdrawAuction(a: Auction, ask = true): Promise<void> {
     return;
   }
   // dall'avviso dello spazio espositivo la scelta è già fatta: niente seconda domanda
-  const res: GameValue = !ask
+  const res: { action: string | null } = !ask
     ? { action: 'hang' }
     : await openDialog({
         title: '🖼️ Ritiri il quadro dall’asta?',
@@ -284,7 +286,7 @@ export async function moveAuctions(from: string, to: string): Promise<number> {
   const db = game.session.db;
   let mine: Auction[] = [];
   try {
-    const snap: GameValue = await withTimeout(db.ref(worldNodePath(from, 'auctions')).get(), 6000);
+    const snap = await withTimeout(db.ref(worldNodePath(from, 'auctions')).get(), 6000);
     mine = decodeAuctions(snap?.val()).filter((a) => a.by === me());
   } catch (error) {
     console.warn('[aste] trasloco', error);
@@ -338,7 +340,7 @@ export async function auctionHungPainting(slot?: PaintingSlot): Promise<void> {
   const code = chosen ? hung[chosen] : null;
   if (!chosen || !code) return;
   const title = quotedTitle(code);
-  const res: GameValue = await openDialog({
+  const res = await openDialog({
     title: `🔨 Metti all'asta ${title || 'il quadro'}?`,
     text:
       "Il quadro si stacca dalla parete della tua stanza e va all'asta: riceve cuoricini e offerte, e tu accetti quella che preferisci (i soldi arrivano subito).\n\n" +
@@ -396,7 +398,7 @@ export async function expiryChoice(a: Auction): Promise<void> {
   if (a.expiresAt === undefined || a.by !== me()) return;
   sfx('mission');
   const notice = expiryNotice(paintingTitle(a.code));
-  const res: GameValue = await openDialog({
+  const res = await openDialog({
     title: notice.title,
     text:
       notice.body +
@@ -465,7 +467,7 @@ export async function placeBid(a: Auction): Promise<void> {
     toast(pre, 3500);
     return;
   }
-  const res: GameValue = await openDialog({
+  const res = await openDialog({
     title: "💰 Fai un'offerta",
     text:
       `Quanto offri a ${a.name} per ${nameOf(a, 'il suo quadro')}?\n\n` +
@@ -490,9 +492,10 @@ export async function placeBid(a: Auction): Promise<void> {
   let committed = false;
   try {
     const result = await withTimeout(
-      auctionRef(a.id, 'bid').transaction((cur: GameValue) => {
-        if (cur && !(amt > cur.amt)) return undefined;
-        prev = cur && typeof cur.by === 'string' ? cur : null;
+      auctionRef(a.id, 'bid').transaction((cur: unknown) => {
+        // l'offerta di adesso, controllata come tutte le altre (decodeAuction)
+        prev = decodeAuction(a.id, { code: a.code, by: a.by, t: a.t, bid: cur })?.bid ?? null;
+        if (cur && !(prev && amt > prev.amt)) return undefined;
         return {
           by: me(),
           name: (game.player.myData.nick || 'Qualcuno').slice(0, 20),
@@ -546,7 +549,7 @@ export async function completePurchase(a: Auction): Promise<void> {
   // già pagato al pittore: resta solo da appenderlo
   if (sold.paid) return deliverPainting(a);
   sfx('mission');
-  const res: GameValue = await openDialog({
+  const res = await openDialog({
     title: '🤝 Offerta accettata!',
     text:
       `${a.name} ha accettato la tua offerta di ${dindini(sold.amt)} per ${nameOf(a)}.\n\n` +
@@ -585,7 +588,7 @@ export async function completePurchase(a: Auction): Promise<void> {
     const reference = game.session.db.ref(worldNode('rooms_state'));
     await reference.get();
     const result = await withTimeout(
-      reference.transaction((rooms: GameValue) => {
+      reference.transaction((rooms: Record<string, RoomState> | null) => {
         if (!rooms) return undefined;
         const buyer = rooms[mine];
         const sellerKey = Object.keys(rooms).find((k) => rooms[k]?.ownerId === a.by);
@@ -636,7 +639,7 @@ export async function completePurchase(a: Auction): Promise<void> {
 // ---------------------------------------------------------------- messaggi
 
 /** Al pittore: è arrivata un'offerta per un suo quadro. */
-export async function onArtOffer(m: GameValue, who: string): Promise<void> {
+export async function onArtOffer(m: SocialMessage, who: string): Promise<void> {
   const a = auctionById(String(m.pic || ''));
   const amt = Number(m.amt);
   if (!a || a.by !== me()) return;
@@ -651,7 +654,7 @@ export async function onArtOffer(m: GameValue, who: string): Promise<void> {
 }
 
 /** A chi ha offerto: il pittore ha accettato. */
-export async function onArtAccept(m: GameValue): Promise<void> {
+export async function onArtAccept(m: SocialMessage): Promise<void> {
   const a = auctionById(String(m.pic || ''));
   if (!a || a.sold?.to !== me() || asked.has(a.id)) return;
   asked.add(a.id);
@@ -660,7 +663,7 @@ export async function onArtAccept(m: GameValue): Promise<void> {
 }
 
 /** Offerta superata, quadro ritirato dall'asta, o compratore che ha rinunciato. */
-export function onArtNo(m: GameValue, who: string): void {
+export function onArtNo(m: SocialMessage, who: string): void {
   const a = auctionById(String(m.pic || ''));
   const what = a ? nameOf(a) : 'il quadro';
   const amt = dindini(Number(m.amt) || 0);
@@ -729,7 +732,7 @@ async function collectorOffer(a: Auction): Promise<void> {
     'art-offer',
   );
   sfx('mission');
-  const res: GameValue = await openDialog({
+  const res = await openDialog({
     title: '🎩 Offerta di un collezionista',
     text:
       `Un collezionista ha visto ${what} all'asta e offre ${dindini(amount)}.` +

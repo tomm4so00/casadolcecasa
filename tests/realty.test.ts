@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isFreeRoom, moveRoom, rehashPin, roomLabel } from '../src/game/realty-rules';
+import { isFreeRoom, moveRoom, roomLabel } from '../src/game/realty-rules';
 import { hashPin } from '../src/game/safe-pin';
 
 const blank = (i: number) => ({ id: i + 1, owner: null, ownerId: null, pin: null, vaultMoney: 0 });
@@ -10,6 +10,7 @@ const rooms = () => {
     owner: 'Anna',
     ownerId: 'p_anna',
     pin: hashPin('243', 3),
+    pinSet: true,
     vaultMoney: 1500,
     lastSeen: 1,
     layout: { bed: { x: 10, y: 20 } },
@@ -28,7 +29,7 @@ describe('bacheca immobiliare', () => {
   });
 
   it('sposta tutto nella stanza libera e libera quella vecchia', () => {
-    const out = moveRoom(rooms(), 'p_anna', 9, hashPin, 777)!;
+    const out = moveRoom(rooms(), 'p_anna', 9, 777)!;
     expect(out[9]).toMatchObject({
       id: 10,
       owner: 'Anna',
@@ -45,25 +46,25 @@ describe('bacheca immobiliare', () => {
     expect(out[5]).toEqual(rooms()[5]);
   });
 
-  it('la combinazione resta la stessa anche se cambia il numero della stanza', () => {
-    const out = moveRoom(rooms(), 'p_anna', 9, hashPin, 0)!;
-    expect(out[9].pin).toBe(hashPin('243', 10));
-    expect(rehashPin(hashPin('155', 1), 1, 2, hashPin)).toBe(hashPin('155', 2));
-    expect(rehashPin('321', 1, 2, hashPin)).toBe(hashPin('321', 2)); // vecchio PIN in chiaro
-    expect(rehashPin(null, 1, 2, hashPin)).toBeNull();
+  it('la combinazione non viaggia con la stanza: sta nel nodo privato del giocatore', () => {
+    const out = moveRoom(rooms(), 'p_anna', 9, 0)!;
+    // un PIN vecchio rimasto nella stanza non finisce in quella nuova (safe-pins lo sposta prima)
+    expect(out[9].pin).toBeUndefined();
+    // resta il segno che la cassaforte ha una combinazione
+    expect(out[9].pinSet).toBe(true);
   });
 
   it('non si entra in una stanza occupata, né senza stanza, né nella propria', () => {
-    expect(moveRoom(rooms(), 'p_anna', 5, hashPin, 0)).toBeNull();
-    expect(moveRoom(rooms(), 'p_nessuno', 9, hashPin, 0)).toBeNull();
-    expect(moveRoom(rooms(), 'p_anna', 2, hashPin, 0)).toBeNull();
-    expect(moveRoom(rooms(), 'p_anna', 99, hashPin, 0)).toBeNull();
+    expect(moveRoom(rooms(), 'p_anna', 5, 0)).toBeNull();
+    expect(moveRoom(rooms(), 'p_nessuno', 9, 0)).toBeNull();
+    expect(moveRoom(rooms(), 'p_anna', 2, 0)).toBeNull();
+    expect(moveRoom(rooms(), 'p_anna', 99, 0)).toBeNull();
   });
 
   it('il promemoria di chi abitava prima resta nella sua stanza', () => {
     const list = rooms();
     list[9] = { id: 10, vaultMoney: 0, pendingDeath: { id: 'p_old' } };
-    const out = moveRoom(list, 'p_anna', 9, hashPin, 0)!;
+    const out = moveRoom(list, 'p_anna', 9, 0)!;
     expect(out[9].pendingDeath).toEqual({ id: 'p_old' });
     expect(out[9].ownerId).toBe('p_anna');
   });

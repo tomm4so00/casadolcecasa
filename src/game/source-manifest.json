@@ -195,11 +195,6 @@
       "line": 1101
     },
     {
-      "name": "hashPin",
-      "module": "safe-pin",
-      "line": 1116
-    },
-    {
       "name": "hasRoom",
       "module": "saves",
       "line": 1122
@@ -1755,6 +1750,10 @@
     {
       "name": "drugApply",
       "module": "src/game/simulation.ts"
+    },
+    {
+      "name": "hashPin",
+      "module": "shared/safe-pin-rules.ts"
     }
   ]
 }

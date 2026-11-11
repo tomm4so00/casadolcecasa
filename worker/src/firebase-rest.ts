@@ -5,6 +5,8 @@
 // https://firebase.google.com/docs/database/rest/auth
 
 export const CRYO_WRITER = 'cryo-webhook';
+/** Chi versa la paga dei turni: le regole gli lasciano scrivere sims_jobs e le cassaforti. */
+export const JOB_WRITER = 'job-worker';
 const SCOPES = [
   'https://www.googleapis.com/auth/firebase.database',
   'https://www.googleapis.com/auth/userinfo.email',
@@ -89,11 +91,21 @@ interface Snapshot {
  * REST. La transazione usa l'ETag: se nel frattempo qualcun altro ha scritto, Firebase risponde
  * 412 e si riprova con il valore nuovo.
  */
-export function restDatabase(options: { url: string; token: string; uid?: string }) {
-  const address = (path: string) => {
+export function restDatabase(options: {
+  url: string;
+  token: string;
+  uid?: string;
+  /**
+   * Letture con la chiave piena: il Worker del lavoro deve leggere account, sessione,
+   * salvataggio e stanza, protetti da regole pensate per i giocatori. Le scritture restano
+   * dell'utente ridotto `uid`.
+   */
+  adminReads?: boolean;
+}) {
+  const address = (path: string, write: boolean) => {
     const url = new URL(options.url);
     url.pathname = '/' + path.replace(/^\/+/, '') + '.json';
-    if (options.uid)
+    if (options.uid && (write || !options.adminReads))
       url.searchParams.set('auth_variable_override', JSON.stringify({ uid: options.uid }));
     return url.toString();
   };
@@ -102,7 +114,7 @@ export function restDatabase(options: { url: string; token: string; uid?: string
     ...extra,
   });
   const read = async (path: string, withEtag: boolean) => {
-    const response = await fetch(address(path), {
+    const response = await fetch(address(path, false), {
       headers: headers(withEtag ? { 'x-firebase-etag': 'true' } : {}),
     });
     if (!response.ok) throw new Error(`Lettura di ${path} rifiutata: ${response.status}`);
@@ -122,7 +134,7 @@ export function restDatabase(options: { url: string; token: string; uid?: string
             const { value, etag } = await read(path, true);
             const next = update(structuredClone(value));
             if (next === undefined) return { committed: false, snapshot: { val: () => value } };
-            const response = await fetch(address(path), {
+            const response = await fetch(address(path, true), {
               method: 'PUT',
               headers: headers({ 'content-type': 'application/json', 'if-match': etag ?? '' }),
               body: JSON.stringify(next),

@@ -6,6 +6,7 @@ import { game } from './context.js';
 import { lifetime, dom } from './runtime.js';
 import { closeModal } from './render/primitives.js';
 import { toast } from './missions.js';
+import { chatNoticeOnce } from './terms.js';
 import { recordActivity } from './activity.js';
 import { worldNode } from './world-db.js';
 import { isGuest, requireAccount } from './guest.js';
@@ -119,6 +120,11 @@ export async function sendChat(..._args: GameValue[]): Promise<GameValue> {
   if (!text) return;
   if (game.player.isDead) {
     toast('⚰️ Un fantasma non può scrivere in chat.');
+    return;
+  }
+  // la prima volta: chi legge la chat e cosa non scriverci (il messaggio resta nel campo)
+  if (!game.player.chatNoticeAt && !game.session.OFFLINE) {
+    await chatNoticeOnce();
     return;
   }
   const now: GameValue = Date.now();

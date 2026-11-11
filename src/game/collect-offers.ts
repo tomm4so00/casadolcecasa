@@ -5,7 +5,8 @@
 // quel momento non sta giocando. Chi ha la mensola piena deve poi liberare un posto: mette in
 // vendita all'usato uno dei suoi pezzi, o lo butta se il negozio dell'usato è pieno.
 // Le regole sono in collect-rules.ts.
-import type { GameValue } from './context.js';
+import type { GameReference } from './database.js';
+import type { SocialMessage } from './network-model.js';
 import { requireAccount } from './guest.js';
 import { game } from './context.js';
 import { openDialog } from './interface.js';
@@ -36,9 +37,9 @@ import {
 import { notePersonality } from './personality.js';
 
 const me = (): string => game.session.myPlayerId;
-const ref = (path: string): GameValue => game.session.db.ref('sims_collect/' + path);
+const ref = (path: string): GameReference => game.session.db.ref('sims_collect/' + path);
 const dindini = (n: number) => `${n.toLocaleString('it-IT')} Đ`;
-const amountOf = (m: GameValue) => Math.max(0, Math.floor(Number(m?.amt) || 0));
+const amountOf = (m: SocialMessage) => Math.max(0, Math.floor(Number(m?.amt) || 0));
 
 /** Aspetta che non ci siano altre finestre aperte (le offerte arrivano anche mentre si gioca). */
 async function waitForDialogs(): Promise<void> {
@@ -142,7 +143,7 @@ export async function makeCollectOffer(c: Collectible, ownerId: string): Promise
 }
 
 /** Il proprietario ha accettato: il pezzo è già mio e i soldi sono già passati. */
-export async function onCollectDeal(m: GameValue, who: string): Promise<void> {
+export async function onCollectDeal(m: SocialMessage, who: string): Promise<void> {
   const c = collectible(m.item);
   if (!c) return;
   sfx('personality');
@@ -158,7 +159,7 @@ export async function onCollectDeal(m: GameValue, who: string): Promise<void> {
 }
 
 /** Risposta negativa: rifiutata, oppure in cassaforte non c'erano più abbastanza soldi. */
-export function onCollectOfferRefused(m: GameValue, who: string): void {
+export function onCollectOfferRefused(m: SocialMessage, who: string): void {
   const c = collectible(m.item);
   if (!c) return;
   const what = `${dindini(amountOf(m))} per ${c.emoji} ${c.name}`;
@@ -267,7 +268,7 @@ async function freeOneSpot(arrived: Collectible): Promise<boolean> {
 /** Butta un mio pezzo: resta senza proprietario, e quindi torna nel negozio di collezionismo. */
 async function dropPiece(c: Collectible): Promise<boolean> {
   try {
-    const r = await ref('owners/' + c.id).transaction((cur: GameValue) => {
+    const r = await ref('owners/' + c.id).transaction((cur: unknown) => {
       if (cur === null) return null;
       const o = decodeCollect({ owners: { [c.id]: cur } }).owners[c.id];
       return o?.o === me() && !o.sale ? null : undefined;
@@ -300,13 +301,14 @@ onCollectChange(() => {
 // ---------------------------------------------------------------- il proprietario
 
 /** È arrivata un'offerta per un mio pezzo: se accetto, l'affare si conclude subito. */
-export async function onCollectOffer(m: GameValue, who: string): Promise<void> {
+export async function onCollectOffer(m: SocialMessage, who: string): Promise<void> {
   const c = collectible(m.item);
   const amt = amountOf(m);
   if (!c || !amt || typeof m.from !== 'string') return;
+  const from = m.from;
   await waitForDialogs();
   const no = (extra: Record<string, unknown> = {}) =>
-    void sendSocial(m.from, { type: 'colNo', item: c.id, amt, ...extra });
+    void sendSocial(from, { type: 'colNo', item: c.id, amt, ...extra });
   const owner = collectState().owners[c.id];
   if (owner?.o !== me()) return no();
   if (owner.sale) {
@@ -332,34 +334,34 @@ export async function onCollectOffer(m: GameValue, who: string): Promise<void> {
     return no();
   }
   // 1. i soldi dalla sua cassaforte alla mia, nella stessa transazione
-  if (!(await collectMoneyFrom(m.from, amt))) {
+  if (!(await collectMoneyFrom(from, amt))) {
     toast(`💸 ${who} non ha più ${dindini(amt)} in cassaforte: l’affare non si può fare.`, 5000);
     return no({ broke: 1 });
   }
   // 2. il pezzo passa a lui (se non riesce, gli restituisco i soldi)
   let given = false;
   try {
-    const r = await ref('owners/' + c.id).transaction((cur: GameValue) => {
+    const r = await ref('owners/' + c.id).transaction((cur: unknown) => {
       if (cur === null) return null;
       const o = decodeCollect({ owners: { [c.id]: cur } }).owners[c.id] || null;
-      return giveTo(o, me(), m.from, who, Date.now()) || undefined;
+      return giveTo(o, me(), from, who, Date.now()) || undefined;
     });
-    given = !!r?.committed && r.snapshot?.val()?.o === m.from;
+    given = !!r?.committed && r.snapshot?.val()?.o === from;
   } catch (error) {
     console.warn('[offerte collezione]', error);
   }
   if (!given) {
-    await transferMoney(m.from, amt);
+    await transferMoney(from, amt);
     toast('Non è stato possibile concludere l’affare: i soldi sono tornati a chi li aveva.', 5000);
     return no();
   }
-  void sendSocial(m.from, { type: 'colDone', item: c.id, amt });
+  void sendSocial(from, { type: 'colDone', item: c.id, amt });
   sfx('coin');
   notePersonality('sellUsed');
   toast(`🤝 Affare fatto! ${c.emoji} ${c.name} è di ${who}: +${dindini(amt)} in cassaforte.`, 5500);
   postGossip(
     `${who} ha comprato ${c.emoji} ${c.name} da ${game.player.myData.nick} per ${dindini(amt)}`,
-    [m.from],
+    [from],
   );
   saveGame(true);
 }

@@ -1,4 +1,5 @@
-# Worker che riceve da Stripe i pagamenti della criogenesi (vedi docs/criogenesi.md).
+# Worker che riceve da Stripe i pagamenti della criogenesi e versa la paga dei turni di lavoro
+# (vedi docs/criogenesi.md).
 # I segreti non stanno qui: si caricano con "npx wrangler secret put <NOME>".
 name = "casadolcecasa-criogenesi"
 main = "src/index.ts"
@@ -14,6 +15,27 @@ FIREBASE_DATABASE_URL = "https://casadolcecasa-6d92a-default-rtdb.firebaseio.com
 STRIPE_CRYO_PAYMENT_LINK = "plink_1UZxmBED0NNIO3xr3WIYCPFh,plink_1UYontED0NNIO3xr0zR7q2O4"
 # pass a vita (9,99 €)
 STRIPE_CRYO_LIFETIME_LINK = "plink_1UZxmCED0NNIO3xr17CItjl9"
+# progetto Firebase: i token dei giocatori devono essere suoi
+FIREBASE_PROJECT_ID = "casadolcecasa-6d92a"
+# i siti da cui il gioco chiama /lavoro/ (il browser blocca gli altri); separati da virgole
+GAME_ORIGINS = "https://tomm4so00.github.io,http://127.0.0.1:5173,http://localhost:5173"
 
 [observability]
 enabled = true
+
+# ---------------------------------------------------------------- ambiente di prova
+# Il Worker del gioco di prova (docs/ambiente-di-prova.md): npx wrangler deploy --env prova
+# Ha il suo nome, il suo database e il suo segreto FIREBASE_SERVICE_ACCOUNT
+# (npx wrangler secret put FIREBASE_SERVICE_ACCOUNT --env prova). Niente Stripe: nel gioco di
+# prova la criogenesi non si compra, e senza STRIPE_WEBHOOK_SECRET ogni avviso è rifiutato.
+# Le [vars] qui sopra non valgono per gli ambienti: vanno ripetute tutte.
+[env.prova]
+name = "casadolcecasa-prova"
+
+[env.prova.vars]
+# il progetto Firebase di prova (casadolcecasa-prova)
+FIREBASE_DATABASE_URL = "https://casadolcecasa-prova-default-rtdb.firebaseio.com"
+FIREBASE_PROJECT_ID = "casadolcecasa-prova"
+GAME_ORIGINS = "https://casadolcecasa-prova.web.app,https://casadolcecasa-prova.firebaseapp.com"
+STRIPE_CRYO_PAYMENT_LINK = ""
+STRIPE_CRYO_LIFETIME_LINK = ""

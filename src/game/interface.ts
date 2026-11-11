@@ -16,6 +16,9 @@ import {
   startGuestReminder,
 } from './guest.js';
 import { openCryo, watchCryo } from './cryo.js';
+import { flushPendingPay } from './job-server.js';
+import { startDormancy } from './dormancy.js';
+import { ensureTerms } from './terms.js';
 import { startHacker } from './hacker.js';
 import { startSuggestions } from './suggestions.js';
 import { leavePartner, myPartner, startCouples } from './couples.js';
@@ -72,6 +75,7 @@ export function openDialog({
   title,
   text = '',
   input = null,
+  check = null,
   buttons,
 }: DialogOptions): Promise<DialogResult> {
   if (game.dialogResolve) game.dialogResolve({ action: null, value: '' });
@@ -92,13 +96,26 @@ export function openDialog({
     inp.maxLength = input.maxLength || 60;
     inp.value = input.value || '';
   }
+  // la casella da spuntare e il suo link (età e condizioni)
+  const checkRow: HTMLElement = dom('dialog-check');
+  const checkBox: HTMLInputElement = dom('dialog-check-box');
+  const link: HTMLAnchorElement = dom('dialog-link');
+  checkRow.classList.toggle('hidden', !check);
+  checkBox.checked = false;
+  dom('dialog-check-text').textContent = check?.label || '';
+  link.classList.toggle('hidden', !check?.href);
+  if (check?.href) {
+    link.href = check.href;
+    link.textContent = check.linkText || check.href;
+  }
   box.innerHTML = '';
   return new Promise((resolve) => {
     const finish = (action: string | null): void => {
       game.dialogResolve = null;
       modal.classList.add('hidden');
-      resolve({ action, value: inp.value.trim() });
+      resolve({ action, value: inp.value.trim(), checked: !!check && checkBox.checked });
     };
+    const needing: HTMLButtonElement[] = [];
     game.dialogResolve = resolve;
     buttons.forEach((b) => {
       const btn: GameValue = document.createElement('button');
@@ -107,8 +124,15 @@ export function openDialog({
       if (b.color) btn.style.background = b.color;
       btn.textContent = b.label;
       btn.onclick = (): GameValue => finish(b.value);
+      if (b.needsCheck && check) {
+        btn.disabled = true;
+        needing.push(btn);
+      }
       box.appendChild(btn);
     });
+    checkBox.onchange = () => {
+      for (const btn of needing) btn.disabled = !checkBox.checked;
+    };
     line.onkeydown = area.onkeydown = null;
     inp.onkeydown = (e?: GameValue): GameValue => {
       if (e.key === 'Enter' && !input?.multiline) {
@@ -402,6 +426,8 @@ export async function startGame(..._args: GameValue[]): Promise<GameValue> {
   startLoop();
   watchGameVersion();
   await loadGame();
+  // età e condizioni: una volta per personaggio, prima di tutto il resto (terms.ts)
+  if (!(await ensureTerms())) return;
   if (game.player.isDead || game.player.healthLevel <= 0) {
     // morto in una sessione precedente, oppure durante l'assenza
     if (!game.player.isDead) await die();
@@ -430,12 +456,14 @@ export async function startGame(..._args: GameValue[]): Promise<GameValue> {
     let other: GameValue = null;
     if (game.sleepRoom !== null && game.sleepRoom !== game.myAssignedRoomIdx)
       try {
-        other = (
-          await withTimeout(
-            game.session.db.ref(worldNode('rooms_state') + '/' + game.sleepRoom).get(),
-            5000,
-          )
-        ).val();
+        // senza risposta in tempo si dorme nel proprio letto
+        other =
+          (
+            await withTimeout(
+              game.session.db.ref(worldNode('rooms_state') + '/' + game.sleepRoom).get(),
+              5000,
+            )
+          )?.val() ?? null;
       } catch {
         other = null;
       }
@@ -468,6 +496,10 @@ export async function startGame(..._args: GameValue[]): Promise<GameValue> {
   // entrati con il link di una sfida: si propone di giocarla (dopo le finestre dell'ingresso)
   lifetime.setTimeout(() => void joinSharedChallenge(), 2500);
   watchCryo();
+  // la paga di un turno che il server non aveva confermato: si riprova appena si entra
+  lifetime.setTimeout(() => void flushPendingPay(), 4000);
+  // con la scheda nascosta da un po' il gioco si scollega: le connessioni del piano Spark sono 100
+  startDormancy();
   // Zero, lo scassinatore: riga sotto i parametri, annuncio delle 11:45, ladri alla mia cassaforte
   startHacker();
   // coppie: cuori accanto ai nomi, insieme, anniversari
@@ -504,7 +536,7 @@ export async function startGame(..._args: GameValue[]): Promise<GameValue> {
   showIntro(); // guida iniziale (solo la prima volta; sempre rileggibile dal ❓)
   lifetime.setInterval((): GameValue => saveGame(false), 3000);
   lifetime.setInterval((): GameValue => {
-    if (hasRoom())
+    if (hasRoom() && !game.session.dormant)
       game.session.db
         .ref(`${worldNode('rooms_state')}/${game.myAssignedRoomIdx}/lastSeen`)
         .set(Date.now());

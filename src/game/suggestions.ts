@@ -91,7 +91,8 @@ async function writeSuggestion(): Promise<void> {
     title: '📮 Suggerimenti e bug',
     text:
       'Hai un’idea per migliorare il gioco o hai trovato qualcosa che non va? Scrivilo qui: ' +
-      'lo leggono i creatori del gioco.\n\nDi cosa si tratta?',
+      'lo leggono i creatori del gioco e i collaboratori, che lo ricevono anche su Telegram, ' +
+      'insieme al nome del tuo personaggio. Non scrivere dati personali.\n\nDi cosa si tratta?',
     buttons: [
       { label: 'Annulla', value: null, color: '#57606f' },
       { label: KIND_LABEL.bug, value: 'bug', color: '#e17055' },

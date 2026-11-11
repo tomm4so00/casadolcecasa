@@ -2,7 +2,9 @@
 
 Gioco multiplayer da browser (TypeScript, Vite, Firebase Realtime Database) con una scena
 isometrica disegnata su canvas. Un push su `main` pubblica subito il gioco su GitHub Pages
-(`.github/workflows/pages.yml`): fai commit e push solo quando l'utente lo chiede.
+(`.github/workflows/pages.yml`), ma solo se le regole del database online sono quelle della
+repo; un push sul ramo `prova` pubblica il gioco di prova, con il suo progetto Firebase
+(`prova.yml`, vedi `docs/ambiente-di-prova.md`). Fai commit e push solo quando l'utente lo chiede.
 
 ## Comandi
 

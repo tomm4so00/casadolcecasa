@@ -65,3 +65,9 @@ export function decodeChatMessage(value: unknown): ChatMessage | null {
     return null;
   return { id: value.id, name: value.name, text: value.text, t: value.t };
 }
+
+/**
+ * Un messaggio tra giocatori (sims_interactions/<giocatore>/<chiave>): tipo, mittente e i campi
+ * del suo tipo. Arriva da altri giocatori, quindi ogni campo va controllato prima di usarlo.
+ */
+export type SocialMessage = Record<string, unknown>;

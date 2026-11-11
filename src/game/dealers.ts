@@ -54,8 +54,11 @@ async function weedMarket(): Promise<WeedMarket | null> {
   if (Date.now() - marketAt < 5 * 60_000) return market;
   try {
     const snap = await withTimeout(game.session.db.ref('sims_weed_market').get(), 5000);
-    market = decodeWeedMarket(snap.val());
-    marketAt = Date.now();
+    // senza risposta in tempo resta l'ultimo letto, e si riprova la prossima volta
+    if (snap) {
+      market = decodeWeedMarket(snap.val());
+      marketAt = Date.now();
+    }
   } catch {
     // senza rete si usa l'ultimo letto (o il prezzo normale)
   }

@@ -65,7 +65,8 @@ export async function acquirePlayerSession() {
     if (value?.id !== id) loseSession(id);
   });
   lifetime.setInterval(() => {
-    if (!sessionValid) return;
+    // in pausa (dormancy.ts) non si rinnova: al ritorno la pagina si ricarica e la riprende
+    if (!sessionValid || game.session.dormant) return;
     void ref
       .transaction((value) => (value?.id === id ? { id, expiresAt: now() + 45000 } : undefined))
       .then((value) => {
@@ -77,6 +78,16 @@ export async function acquirePlayerSession() {
 
 export function canPlaySession() {
   return sessionValid;
+}
+
+/** La sessione di questa scheda (sims_sessions/<personaggio>/id). */
+export function currentSessionId(): string | null {
+  return sessionId;
+}
+
+/** Il personaggio è aperto su un altro dispositivo: questa scheda si blocca con l'avviso. */
+export function blockThisSession(): void {
+  if (sessionId) loseSession(sessionId);
 }
 
 /** Esce dall'account: questa scheda smette di salvare e lascia il Sim libero. */

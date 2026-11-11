@@ -6,7 +6,7 @@ import { activityTarget, type ActivityLog } from '../../shared/activity.js';
 import { updateWeedMarket } from './street.js';
 import { getMessaging } from 'firebase-admin/messaging';
 import { getAuth } from 'firebase-admin/auth';
-import { processDeletionRequests } from './deletion.js';
+import { cleanupLeftoversOnce, processDeletionRequests } from './deletion.js';
 import { cleanupGuests } from './guests.js';
 import { notifyHacker } from './hacker.js';
 import { notifyAnniversaries } from './couples.js';
@@ -125,6 +125,14 @@ async function main() {
       if (deleted) console.log(`Accounts deleted on request: ${deleted}`);
     } catch (error) {
       console.log('Account deletions skipped:', (error as { code?: string }).code || String(error));
+    }
+    // una volta sola: i resti degli account cancellati prima che la cancellazione togliesse tutto
+    try {
+      const db = getDatabase(app);
+      const cleaned = await cleanupLeftoversOnce(db, await worldIds(db));
+      if (cleaned !== null) console.log(`Leftovers of deleted accounts removed: ${cleaned}`);
+    } catch (error) {
+      console.log('Leftovers cleanup skipped:', (error as { code?: string }).code || String(error));
     }
     // Ospiti che non entrano da 7 giorni senza aver salvato il personaggio.
     try {

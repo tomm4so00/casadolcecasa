@@ -4,7 +4,11 @@
 // Comprare: si prenota il pezzo (nessun altro può comprarlo nel frattempo), si pagano i soldi al
 // venditore, poi il pezzo passa al compratore e l'espositore si libera. Se il pagamento non riesce,
 // la prenotazione si toglie e il pezzo resta in vendita.
-import type { GameValue } from './context.js';
+import type { GameReference } from './database.js';
+import type { SocialMessage } from './network-model.js';
+
+/** Un pezzo nel registro dei proprietari (sims_collect/owners): lo controlla ownerOf. */
+type OwnerRecord = Record<string, unknown> | null;
 import { game } from './context.js';
 import { openDialog } from './interface.js';
 import { toast } from './missions.js';
@@ -34,7 +38,7 @@ import { notePersonality } from './personality.js';
 export const USED_ENV = 'usato';
 
 const me = (): string => game.session.myPlayerId;
-const ref = (path: string): GameValue => game.session.db.ref('sims_collect/' + path);
+const ref = (path: string): GameReference => game.session.db.ref('sims_collect/' + path);
 const dindini = (n: number) => `${n.toLocaleString('it-IT')} Đ`;
 const serverNow = (): number => Date.now() + (game.session.serverOffset || 0);
 
@@ -45,7 +49,7 @@ function ownerOf(id: string, cur: unknown): CollectOwner | null {
 
 /** Il nome sopra ogni espositore: il pezzo in vendita e chi lo vende. */
 function updateUsedNames(): void {
-  const map: GameValue = game.usedShopFurniture;
+  const map = game.usedShopFurniture;
   if (!map) return;
   for (let i = 0; i < STANDS; i++) {
     const l = usedListing(collectState(), i);
@@ -127,18 +131,18 @@ export async function listPiece(c: Collectible, i: number, fromShelf = false): P
   // prima l'annuncio sul pezzo, poi il pezzo nell'espositore
   let ok = false;
   try {
-    const r = await ref('owners/' + c.id).transaction((cur: GameValue) => {
+    const r = await ref('owners/' + c.id).transaction((cur: OwnerRecord) => {
       if (cur === null) return null;
       const o = ownerOf(c.id, cur);
       if (!o || o.o !== me() || o.sale) return undefined;
-      const next = { ...cur, sale: { p: price, t: Date.now(), st: i } };
+      const next: Record<string, unknown> = { ...cur, sale: { p: price, t: Date.now(), st: i } };
       // per far posto a un pezzo nuovo esce anche dalla mensola
       if (fromShelf) delete next.s;
       return next;
     });
     ok = !!r?.committed && ownerOf(c.id, r.snapshot?.val())?.sale?.st === i;
     if (ok) {
-      const s = await ref('used/' + i).transaction((cur: GameValue) => {
+      const s = await ref('used/' + i).transaction((cur: unknown) => {
         // libero, oppure col pezzo di un annuncio che non c'è più
         if (typeof cur === 'string' && cur !== c.id && usedListing(collectState(), i))
           return undefined;
@@ -175,7 +179,7 @@ async function withdraw(i: number): Promise<void> {
   if (res.action !== 'ok') return;
   let ok = false;
   try {
-    const r = await ref('owners/' + l.c.id).transaction((cur: GameValue) => {
+    const r = await ref('owners/' + l.c.id).transaction((cur: OwnerRecord) => {
       if (cur === null) return null;
       const o = ownerOf(l.c.id, cur);
       if (!o || o.o !== me() || !o.sale || reservedBy(o.sale, serverNow())) return undefined;
@@ -252,7 +256,7 @@ export async function settleSale(
   const path = 'owners/' + c.id;
   let reserved = false;
   try {
-    const r = await ref(path).transaction((cur: GameValue) => {
+    const r = await ref(path).transaction((cur: OwnerRecord) => {
       if (cur === null) return null;
       const o = ownerOf(c.id, cur);
       if (o?.o !== sellerId) return undefined; // venduto o cambiato nel frattempo
@@ -265,10 +269,12 @@ export async function settleSale(
   }
   if (!reserved) return 'gone';
   if (!(await transferMoney(sellerId, price))) {
-    await ref(path).transaction((cur: GameValue) => {
+    await ref(path).transaction((cur: OwnerRecord) => {
       if (cur === null) return null;
-      if (cur?.sale?.to !== me()) return undefined;
-      const sale = { ...cur.sale };
+      // la prenotazione è ancora mia: la tolgo, il pezzo resta in vendita
+      const old = ownerOf(c.id, cur)?.sale;
+      if (old?.to !== me()) return undefined;
+      const sale: Record<string, unknown> = { ...old };
       delete sale.to;
       delete sale.rt;
       return { ...cur, sale };
@@ -277,7 +283,7 @@ export async function settleSale(
   }
   let done = false;
   try {
-    const r = await ref(path).transaction((cur: GameValue) => {
+    const r = await ref(path).transaction((cur: OwnerRecord) => {
       if (cur === null) return null;
       return (
         completeSale(ownerOf(c.id, cur), me(), game.player.myData.nick, Date.now()) || undefined
@@ -298,7 +304,7 @@ export async function settleSale(
 }
 
 /** Il venditore scopre che un suo pezzo è stato comprato (i soldi sono già in cassaforte). */
-export function onUsedSold(m: GameValue, who: string): void {
+export function onUsedSold(m: SocialMessage, who: string): void {
   const c = collectible(m.item);
   const amt = Math.max(0, Math.floor(Number(m.amt) || 0));
   sfx('coin');

@@ -2,7 +2,10 @@
 // tutti (vedi roulette-rules.ts). Si gioca da soli o insieme agli altri che sono al tavolo: le
 // puntate di tutti si vedono, il numero è lo stesso per tutti. Nel database (nodo del mondo
 // "roulette"): bets/<giro>/<giocatore>, results/<giro> (il numero), paid/<giro>/<giocatore>.
-import type { GameValue } from './context.js';
+import type { GameReference, GameSnapshot } from './database.js';
+
+/** Una puntata o un numero uscito, come arriva dal database: ogni campo va controllato. */
+type Entry = { nick?: unknown; bets?: unknown; r?: unknown; n?: unknown } | null;
 import { game } from './context.js';
 import { lifetime } from './runtime.js';
 import { toast } from './missions.js';
@@ -33,7 +36,8 @@ import {
 import { notePersonality } from './personality.js';
 
 const serverNow = (): number => Date.now() + (game.session.serverOffset || 0);
-const node = (path: string): GameValue => game.session.db.ref(worldNode('roulette') + '/' + path);
+const node = (path: string): GameReference =>
+  game.session.db.ref(worldNode('roulette') + '/' + path);
 const me = (): string => game.session.myPlayerId;
 
 // ---------------------------------------------------------------- stato condiviso
@@ -98,10 +102,10 @@ function followRound(round: number): void {
   table = {};
   tableRound = round;
   const ref = node('bets/' + round);
-  const onValue = (snap: GameValue): void => {
+  const onValue = (snap: GameSnapshot): void => {
     const v = snap?.val() || {};
     const next: typeof table = {};
-    for (const [pid, e] of Object.entries(v as Record<string, GameValue>))
+    for (const [pid, e] of Object.entries(v as Record<string, Entry>))
       if (e && typeof e === 'object')
         next[pid] = { nick: String(e.nick || 'Giocatore').slice(0, 20), bets: decodeBets(e.bets) };
     table = next;
@@ -114,10 +118,10 @@ function followRound(round: number): void {
 function followResults(): void {
   if (stopResults) return;
   const ref = node('results').orderByChild('r').limitToLast(12);
-  const onValue = (snap: GameValue): void => {
+  const onValue = (snap: GameSnapshot): void => {
     const v = snap?.val() || {};
-    for (const e of Object.values(v as Record<string, GameValue>))
-      if (e && Number.isInteger(e.r) && isResult(e.n)) results.set(e.r, e.n);
+    for (const e of Object.values(v as Record<string, Entry>))
+      if (e && Number.isInteger(e.r) && isResult(e.n)) results.set(e.r as number, e.n);
     render();
   };
   ref.on('value', onValue);
@@ -130,7 +134,7 @@ async function drawResult(round: number): Promise<void> {
   drawn.add(round);
   const n = Math.floor(Math.random() * 37);
   try {
-    const res = await node('results/' + round).transaction((cur: GameValue) =>
+    const res = await node('results/' + round).transaction((cur: unknown) =>
       cur ? undefined : { r: round, n },
     );
     const v = res?.snapshot?.val();
@@ -162,7 +166,7 @@ async function settle(): Promise<void> {
         continue;
       }
       if (!results.has(round)) {
-        const snap: GameValue = await node('results/' + round).get();
+        const snap = await node('results/' + round).get();
         const v = snap?.val();
         if (v && isResult(v.n)) results.set(round, v.n);
         else await drawResult(round);
@@ -172,7 +176,7 @@ async function settle(): Promise<void> {
         keep.push(round);
         continue;
       }
-      const mine: GameValue = (await node(`bets/${round}/${me()}`).get())?.val();
+      const mine: Entry = (await node(`bets/${round}/${me()}`).get())?.val();
       const bets = decodeBets(mine?.bets);
       const won = payout(bets, n);
       if (totalOf(bets) > 0) {
@@ -249,7 +253,7 @@ async function placeChip(key: string): Promise<void> {
   let ok = false;
   let saved: Bets = {};
   try {
-    const r = await node(`bets/${p.round}/${me()}`).transaction((cur: GameValue) => {
+    const r = await node(`bets/${p.round}/${me()}`).transaction((cur: Entry) => {
       const bets = decodeBets(cur?.bets);
       bets[key] = (bets[key] || 0) + amount;
       if (totalOf(bets) > MAX_ROUND_BET) return undefined;

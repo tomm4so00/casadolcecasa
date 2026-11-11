@@ -41,3 +41,39 @@ jobs:
           FIREBASE_PROJECT_ID: ${{ vars.VITE_FIREBASE_PROJECT_ID || 'casadolcecasa-6d92a' }}
           FIREBASE_DATABASE_URL: ${{ vars.VITE_FIREBASE_DATABASE_URL || 'https://casadolcecasa-6d92a-default-rtdb.firebaseio.com' }}
         run: node server/lib/server/src/index.js
+
+  # La manutenzione del database di prova (docs/ambiente-di-prova.md), con il codice del ramo
+  # "prova" e la chiave del progetto di prova. Niente Telegram: il gruppo è quello vero.
+  update-prova:
+    if: github.repository == 'tomm4so00/casadolcecasa' && github.event.repository.private == false && github.ref == 'refs/heads/main' && vars.PROVA_MARKET_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    concurrency:
+      group: shared-stock-market-prova
+      cancel-in-progress: false
+    steps:
+      - name: Checkout
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: prova
+      - name: Set up Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: server/package-lock.json
+      - name: Install publisher dependencies
+        run: npm ci --prefix server
+      - name: Build publisher
+        run: npm run build --prefix server
+      - name: Publish this market slot
+        env:
+          FIREBASE_MARKET_SERVICE_ACCOUNT: ${{ secrets.PROVA_FIREBASE_SERVICE_ACCOUNT }}
+          FIREBASE_PROJECT_ID: ${{ vars.PROVA_FIREBASE_PROJECT_ID }}
+          FIREBASE_DATABASE_URL: ${{ vars.PROVA_FIREBASE_DATABASE_URL }}
+          GAME_URL: ${{ vars.PROVA_GAME_URL }}
+        run: |
+          case "$FIREBASE_PROJECT_ID" in
+            ''|casadolcecasa-6d92a) echo "::error::Manca PROVA_FIREBASE_PROJECT_ID (o è il progetto vero)"; exit 1 ;;
+          esac
+          node server/lib/server/src/index.js

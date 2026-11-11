@@ -1,19 +1,8 @@
 // Regole della paga dei turni di lavoro (senza dipendenze dal browser, così sono testabili).
+// Livelli e turni al giorno stanno in shared/: la paga la versa il Worker, con gli stessi numeri.
+import { JOB_PAY_TIERS, SHIFTS_PER_DAY, jobPayTier } from '../../shared/job-pay-rules.js';
 
-// Livelli di carriera: paga base del turno ed dindini extra per ogni oggetto consegnato.
-// `from` è il numero del turno (1 = primo turno) da cui vale il livello.
-export const JOB_PAY_TIERS = [
-  // un livello ogni 15 turni: gli aumenti crescono man mano che si sale
-  { from: 1, base: 40, perItem: 5 },
-  { from: 16, base: 45, perItem: 6 },
-  { from: 31, base: 55, perItem: 8 },
-  { from: 46, base: 70, perItem: 11 },
-  { from: 61, base: 95, perItem: 15 },
-] as const;
-
-export function jobPayTier(turn: number) {
-  return [...JOB_PAY_TIERS].reverse().find((tier) => turn >= tier.from) ?? JOB_PAY_TIERS[0];
-}
+export { JOB_PAY_TIERS, SHIFTS_PER_DAY, jobPayTier };
 
 // Spiega quanti turni mancano al prossimo aumento, dopo averne completati `done`.
 export function nextPayMessage(done: number): string {
@@ -40,9 +29,6 @@ export function nextPayMessage(done: number): string {
 }
 
 // ---------------------------------------------------------------- turni al giorno
-
-/** Quante volte al giorno si può andare al lavoro (il conteggio riparte a mezzanotte). */
-export const SHIFTS_PER_DAY = 4;
 
 export interface WorkDay {
   /** Giorno (AAAA-MM-GG) a cui si riferisce il conteggio. */

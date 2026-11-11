@@ -11,6 +11,7 @@ import {
 } from '../../shared/pet-rules.js';
 import { graveFromSave, releaseRoomsOf } from '../../shared/death-rules.js';
 import { type CryoPass, awakeMs, decodeCryo, realTimeAfterAwake } from '../../shared/cryo-rules.js';
+import { hashPin, recoverPin } from '../../shared/safe-pin-rules.js';
 import { ACTIVE_MARGIN_MS, absentDeath } from '../../src/game/absent-death-rules.js';
 import { ABANDON_DAYS, ABANDON_MS } from '../../src/game/autoplay-rules.js';
 import { encodeDeathCauses } from '../../src/game/death-cause-rules.js';
@@ -118,6 +119,47 @@ export async function maintainGame(database: MaintenanceDatabase, now: number): 
   if (removed.length) console.log(`Empty worlds removed: ${removed.join(', ')}`);
 }
 
+/**
+ * Il PIN delle casseforti stava nella stanza, leggibile da tutti: si sposta nel nodo privato
+ * sims_safe_pins/<giocatore>, con le stesse cifre cifrate col codice del giocatore. Prima si
+ * scrive la copia privata (se c'è già, vale quella: il gioco nuovo sposta da sé il proprio PIN),
+ * poi si cancella quella pubblica. Si può ripetere: le stanze già spostate non hanno più `pin`.
+ * Restituisce quante stanze ha sistemato.
+ */
+export async function moveSafePins(
+  database: MaintenanceDatabase,
+  world: string = LEGACY_WORLD,
+): Promise<number> {
+  const path = worldNodePath(world, 'rooms_state');
+  const rooms = (await database.ref(path).get()).val();
+  if (!record(rooms)) return 0;
+  let moved = 0;
+  for (const [key, room] of Object.entries(rooms)) {
+    if (!record(room) || typeof room.pin !== 'string' || !room.pin) continue;
+    const owner = typeof room.ownerId === 'string' && room.ownerId ? room.ownerId : null;
+    const code = owner ? recoverPin(room.pin, room.id) : null;
+    if (owner && !code) {
+      console.log(`PIN non riconosciuto: ${world} stanza ${key}, resta dov'è`);
+      continue;
+    }
+    if (owner && code) {
+      const hash = hashPin(code, owner);
+      await liveTransaction(database.ref('sims_safe_pins/' + owner), (current) =>
+        typeof current === 'string' ? undefined : hash,
+      );
+    }
+    // una stanza libera con un PIN rimasto: lo si toglie e basta
+    await liveTransaction(database.ref(`${path}/${key}`), (current) => {
+      if (!record(current) || typeof current.pin !== 'string') return undefined;
+      if ((current.ownerId || null) !== owner) return undefined; // cambiata nel frattempo
+      const { pin: _pin, ...rest } = current;
+      return owner ? { ...rest, pinSet: true } : rest;
+    });
+    moved++;
+  }
+  return moved;
+}
+
 /** Morti, lapidi, stanze liberate e pulizie di un mondo. */
 export async function maintainWorld(
   database: MaintenanceDatabase,
@@ -126,6 +168,8 @@ export async function maintainWorld(
   cryo: Map<string, CryoPass> = new Map(),
 ): Promise<void> {
   const p = (node: WorldNode) => worldNodePath(world, node);
+  const pins = await moveSafePins(database, world);
+  if (pins) console.log(`Safe PINs moved to sims_safe_pins in ${world}: ${pins}`);
   const rooms = database.ref(p('rooms_state'));
   let expired: { id: string; name: string; lastSeen: number }[] = [];
   const result = await liveTransaction(rooms, (value) => {
@@ -383,7 +427,8 @@ export async function tidyDeadPlayers(
  */
 export const DEATH_AFTER_MS = ABANDON_MS + 8 * 3600000;
 export const WARN_BEFORE_MS = 12 * 3600000;
-export const GAME_URL = 'https://tomm4so00.github.io/casadolcecasa/';
+/** Il sito del gioco nei link delle notifiche: quello di prova lo dà il workflow (GAME_URL). */
+export const GAME_URL = process.env.GAME_URL || 'https://tomm4so00.github.io/casadolcecasa/';
 
 export type PushResult = 'sent' | 'gone' | 'error';
 export type PushSender = (

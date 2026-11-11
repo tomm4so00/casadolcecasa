@@ -4,7 +4,9 @@
 // Scambio: chi compra fa un'offerta (non può ritirarla) → il proprietario accetta o rifiuta, una
 // volta sola → se accetta, chi compra paga e prende la copia. Se chi compra spende i soldi e non può
 // più pagare, l'offerta si annulla da sola. Così nessuno perde soldi o oggetti a metà.
-import type { GameValue } from './context.js';
+import type { GameReference } from './database.js';
+import type { RoomState, SceneMap } from './models.js';
+import type { SocialMessage } from './network-model.js';
 import { requireAccount } from './guest.js';
 import { game } from './context.js';
 import { openDialog } from './interface.js';
@@ -44,12 +46,12 @@ let started = false;
 const listeners = new Set<() => void>();
 
 const me = (): string => game.session.myPlayerId;
-const ref = (item: string, n: number | string): GameValue =>
+const ref = (item: string, n: number | string): GameReference =>
   game.session.db.ref(`sims_limited/${item}/${n}`);
 
 /** Nome dell'oggetto (vestito o mobile). */
 function limitedName(item: string): string {
-  const cloth = (game.shopCatalog || []).find((i: GameValue) => i.id === item);
+  const cloth = (game.shopCatalog || []).find((i) => i.id === item);
   const furn = LIMITED_FURNITURE.find((f) => f.id === item);
   return cloth?.name || furn?.name || item;
 }
@@ -73,7 +75,7 @@ export function onLedgerChange(fn: () => void): void {
 export function startLimited(): void {
   if (started) return;
   started = true;
-  game.session.db.ref('sims_limited').on('value', (snap: GameValue): void => {
+  game.session.db.ref('sims_limited').on('value', (snap): void => {
     const before = JSON.stringify(itemsOf(ledger, me()));
     ledger = decodeLedger(snap.val());
     // un capo venduto non si può più indossare
@@ -93,18 +95,20 @@ export function startLimited(): void {
 
 // ---------------------------------------------------------------- mobili nella stanza
 
-const props = new Map<string, GameValue>();
+/** Un mobile nella stanza: come gli altri della scena, con il numero della copia nel nome. */
+type LimitedProp = SceneMap[string];
+const props = new Map<string, LimitedProp>();
 
 /** Oggetti dei mobili in edizione limitata (posizione salvata come per gli altri mobili). */
-export function limitedFurnitureProps(): Map<string, GameValue> {
+export function limitedFurnitureProps(): Map<string, LimitedProp> {
   for (const def of LIMITED_FURNITURE)
     if (!props.has(def.id)) props.set(def.id, { ...def.propData, ltd: def.id });
   return props;
 }
 
 /** Mobili in edizione limitata da mettere nella mia stanza (quelli che possiedo). */
-export function limitedRoomItems(): Record<string, GameValue> {
-  const out: Record<string, GameValue> = {};
+export function limitedRoomItems(): Record<string, LimitedProp> {
+  const out: Record<string, LimitedProp> = {};
   for (const [id, prop] of limitedFurnitureProps()) {
     const n = myCopy(id);
     if (n) out[id] = Object.assign(prop, { name: `${limitedName(id)} #${n}/${LIMITED_COPIES}` });
@@ -145,7 +149,7 @@ export async function buyLimited(item: string, price: number): Promise<void> {
   let got: number | null = null;
   for (let k = 1; k <= LIMITED_COPIES && !got; k++) {
     try {
-      const r = await ref(item, k).transaction((cur: GameValue) =>
+      const r = await ref(item, k).transaction((cur: unknown) =>
         cur ? undefined : { o: me(), on: game.player.myData.nick, t: Date.now() },
       );
       if (r?.committed) got = k;
@@ -252,7 +256,7 @@ async function cancelOffer(s: SentOffer): Promise<void> {
 
 /** Tiene d'occhio le offerte inviate: se spendo i soldi, quelle che non posso pagare si annullano. */
 function startSent(): void {
-  game.session.db.ref(`sims_ltd_sent/${me()}`).on('value', (snap: GameValue): void => {
+  game.session.db.ref(`sims_ltd_sent/${me()}`).on('value', (snap): void => {
     sent = decodeSent(snap.val());
   });
   lifetime.setInterval(() => {
@@ -273,7 +277,7 @@ const withdrawnShown = new Set<string>();
 /** Ascolta le offerte ricevute e le propone una alla volta. */
 function startOffers(): void {
   let first = true;
-  game.session.db.ref(`sims_ltd_offers/${me()}`).on('value', (snap: GameValue): void => {
+  game.session.db.ref(`sims_ltd_offers/${me()}`).on('value', (snap): void => {
     const next = decodeOffers(snap.val());
     // offerta nuova mentre il gioco è in un'altra scheda: notifica del browser
     if (!first)
@@ -309,7 +313,7 @@ async function takeOffer(o: LimitedOffer): Promise<boolean> {
   try {
     const r = await game.session.db
       .ref(`sims_ltd_offers/${me()}/${o.id}`)
-      .transaction((cur: GameValue) => (cur ? null : undefined));
+      .transaction((cur: unknown) => (cur ? null : undefined));
     return !!r?.committed;
   } catch (error) {
     console.warn('[edizione limitata]', error);
@@ -357,7 +361,7 @@ async function reviewOffer(o: LimitedOffer): Promise<void> {
     }
     let ok = false;
     try {
-      const r = await ref(o.item, o.n).transaction((cur: GameValue) => {
+      const r = await ref(o.item, o.n).transaction((cur: unknown) => {
         const e =
           (decodeLedger({ [o.item]: { [o.n]: cur } })[o.item]?.[String(o.n)] as LedgerEntry) ||
           null;
@@ -383,7 +387,7 @@ async function reviewOffer(o: LimitedOffer): Promise<void> {
 }
 
 /** Offerta arrivata come messaggio (versione precedente del gioco): la si tratta allo stesso modo. */
-export async function onLimitedOffer(m: GameValue, who: string): Promise<void> {
+export async function onLimitedOffer(m: SocialMessage, who: string): Promise<void> {
   const item = String(m.item || ''),
     n = Number(m.n),
     amt = Number(m.amt);
@@ -401,17 +405,20 @@ export async function onLimitedOffer(m: GameValue, who: string): Promise<void> {
 }
 
 /** Chi aveva fatto l'offerta l'ha annullata (non può più pagare): avviso e, se era già accettata, la copia torna libera da vendere. */
-export async function onLimitedWithdrawn(m: GameValue, who: string): Promise<void> {
+export async function onLimitedWithdrawn(m: SocialMessage, who: string): Promise<void> {
   const item = String(m.item || ''),
     n = Number(m.n),
     amt = Number(m.amt);
   if (!isLimitedId(item) || typeof m.from !== 'string') return;
   if (m.sale) {
     try {
-      await ref(item, n).transaction((cur: GameValue) => {
-        if (!cur || cur.o !== me() || cur.sale?.to !== m.from || cur.sale?.p !== amt)
-          return undefined;
-        const { sale: _sale, ...rest } = cur;
+      await ref(item, n).transaction((cur: unknown) => {
+        // la copia è ancora mia e in vendita proprio a chi ha annullato: torna libera
+        const e = decodeLedger({ [item]: { [n]: cur } })[item]?.[String(n)] as
+          | LedgerEntry
+          | undefined;
+        if (!e || e.o !== me() || e.sale?.to !== m.from || e.sale?.p !== amt) return undefined;
+        const { sale: _sale, ...rest } = cur as Record<string, unknown>;
         return rest;
       });
     } catch (error) {
@@ -422,7 +429,11 @@ export async function onLimitedWithdrawn(m: GameValue, who: string): Promise<voi
 }
 
 /** Il compratore riceve la risposta: se accettata, paga e prende l'oggetto. */
-export async function onLimitedAnswer(m: GameValue, who: string, accepted: boolean): Promise<void> {
+export async function onLimitedAnswer(
+  m: SocialMessage,
+  who: string,
+  accepted: boolean,
+): Promise<void> {
   const item = String(m.item || ''),
     n = Number(m.n),
     amount = Number(m.amt);
@@ -448,7 +459,7 @@ export async function onLimitedAnswer(m: GameValue, who: string, accepted: boole
   }
   let ok = false;
   try {
-    const r = await ref(item, n).transaction((cur: GameValue) => {
+    const r = await ref(item, n).transaction((cur: unknown) => {
       const e = (decodeLedger({ [item]: { [n]: cur } })[item]?.[String(n)] as LedgerEntry) || null;
       return claimSale(e, me(), game.player.myData.nick, amount, Date.now()) || undefined;
     });
@@ -467,7 +478,8 @@ export async function onLimitedAnswer(m: GameValue, who: string, accepted: boole
   toast(`💎 Affare fatto! ${label(item, n)} ora è tuo.`, 5000);
   postGossip(
     `${game.player.myData.nick} ha comprato ${label(item, n)} da ${who} per ${amount.toLocaleString('it-IT')} Đ 💎`,
-    [m.from],
+    // il venditore lo sa già: è quello del registro, non quello che dice il messaggio
+    [entry.o],
   );
   saveGame(true);
 }
@@ -476,7 +488,7 @@ export async function onLimitedAnswer(m: GameValue, who: string, accepted: boole
 
 /** Proprietario della stanza in cui mi trovo (null se è la mia o non c'è). */
 function roomOwner(): { id: string; name: string } | null {
-  const room: GameValue = game.roomsState?.[game.currentRoomIdx ?? -1];
+  const room: RoomState | undefined = game.roomsState?.[game.currentRoomIdx ?? -1];
   if (!room?.ownerId || room.ownerId === me()) return null;
   return { id: room.ownerId, name: room.owner || 'Giocatore' };
 }
@@ -492,7 +504,7 @@ export async function wardrobeOffers(): Promise<boolean> {
   const owner = roomOwner();
   if (!owner) return false;
   const clothes = itemsOf(ledger, owner.id).filter((x) =>
-    (game.shopCatalog || []).some((i: GameValue) => i.id === x.item),
+    (game.shopCatalog || []).some((i) => i.id === x.item),
   );
   if (!clothes.length) return false;
   const res = await openDialog({
@@ -522,7 +534,7 @@ export function visitedLimitedClothes(): string | null {
   const owner = roomOwner();
   if (!owner) return null;
   const clothes = itemsOf(ledger, owner.id).filter((x) =>
-    (game.shopCatalog || []).some((i: GameValue) => i.id === x.item),
+    (game.shopCatalog || []).some((i) => i.id === x.item),
   );
   if (!clothes.length) return null;
   const what =

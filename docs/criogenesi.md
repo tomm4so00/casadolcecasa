@@ -119,3 +119,45 @@ casadolcecasa-criogenesi → Log): `attivata`, `già registrato`, `altro prodott
 - **Mentre si gioca** i bisogni calano normalmente: la capsula vale solo per le assenze.
 - **Errori temporanei** (Firebase che non risponde): il Worker risponde 500 e Stripe riprova da
   solo per qualche giorno.
+
+# La paga dei turni di lavoro
+
+Lo stesso Worker versa la paga dei turni: il browser non scrive più da solo i soldi del lavoro.
+Indirizzo: `https://casadolcecasa-criogenesi.casadolcecasa-criogenesi.workers.dev`
+(`JOB_SERVER_URL` in `src/game/job-server.ts`).
+
+## Come funziona
+
+1. **Inizio turno** (`POST /lavoro/inizio`): il gioco manda il token di Firebase del giocatore.
+   Il Worker controlla la firma di Google, che il personaggio sia aperto (`sims_sessions`), che
+   la stanza sia sua e che oggi (giorno di Roma) non abbia già fatto 4 turni. Poi apre il turno
+   in `sims_jobs/<uid>` con il livello di paga calcolato dai turni che conta lui. La prima
+   volta copia i turni fatti finora dal salvataggio (al massimo 60: dal 61° la paga non sale).
+2. **Fine turno** (`POST /lavoro/fine`): il gioco manda oggetti consegnati, mance e multe. Il
+   Worker paga solo se il turno è durato almeno 78 secondi e non ha più di 26 ore, con oggetti
+   e mance entro i tetti di `JOB_CLAIM_LIMITS` (`shared/job-pay-rules.ts`). Prima chiude il
+   turno, poi versa in cassaforte, poi segna la paga come versata: la stessa richiesta
+   ripetuta riceve la stessa risposta senza soldi in più.
+3. **Se il Worker non risponde**: all'inizio il turno non parte; alla fine la richiesta resta
+   salvata nel telefono e il gioco la riprova da solo (dopo un minuto, all'ingresso nel gioco e
+   prima del turno dopo) per 24 ore.
+
+Il Worker legge il database con la chiave piena, ma scrive come utente ridotto `job-worker`:
+le regole gli lasciano scrivere solo `sims_jobs` e alzare `vaultMoney`. In modalità prova
+(`?offline=1`) la paga resta locale.
+
+I numeri dichiarati a fine turno restano nei log del Worker (`npm run logs --prefix worker`,
+righe `Lavoro fine`): servono a regolare i tetti guardando i turni veri.
+
+## Pubblicare
+
+Prima le regole, poi il Worker, poi il gioco:
+
+```sh
+node firebase/rules.mjs deploy
+cd worker && npx wrangler deploy
+```
+
+Finché la regola di `vaultMoney` permette ancora al proprietario di scrivere la sua cassaforte,
+chi ha la versione vecchia del gioco continua a pagarsi da solo: si chiuderà quando anche le
+altre entrate passeranno dal Worker.

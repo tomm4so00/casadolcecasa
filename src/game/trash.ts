@@ -7,7 +7,8 @@
 //   trash/<giocatore>/<id>   = { k, t }   il suo cestino: lo scrive lui, gli altri possono solo togliere
 //   fines/<giocatore>/<id>   = Fine       le multe da pagare: le scrive chi denuncia
 //   police_fund              = numero     la cassa della polizia: si può solo aggiungere
-import type { GameValue } from './context.js';
+import type { GameSnapshot } from './database.js';
+import type { RoomState, SceneMap } from './models.js';
 import { game } from './context.js';
 import { lifetime } from './runtime.js';
 import { worldNode } from './world-db.js';
@@ -63,7 +64,7 @@ export const myTrashCount = (): Record<TrashKind, number> => countKinds(Object.v
 export function startTrash(): void {
   const db = game.session.db;
   const trashRef = db.ref(`${worldNode('trash')}/${me()}`);
-  const onTrash = (snap: GameValue): void => {
+  const onTrash = (snap: GameSnapshot): void => {
     const v = snap?.val();
     mine = liveTrash(v, serverNow());
     // quello che lo spazzino si è già portato via sparisce anche dal database
@@ -75,13 +76,13 @@ export function startTrash(): void {
   };
   trashRef.on('value', onTrash);
   const fundRef = db.ref(worldNode('police_fund'));
-  const onFund = (snap: GameValue): void => {
+  const onFund = (snap: GameSnapshot): void => {
     const v = Number(snap?.val());
     fund = Number.isSafeInteger(v) && v > 0 ? v : 0;
   };
   fundRef.on('value', onFund);
   const finesRef = db.ref(`${worldNode('fines')}/${me()}`);
-  const onFines = (snap: GameValue): void => {
+  const onFines = (snap: GameSnapshot): void => {
     fines = snap?.val() && typeof snap.val() === 'object' ? snap.val() : {};
     void payFines();
   };
@@ -117,7 +118,7 @@ export function dropInTrash(k: TrashKind): void {
 
 /** Il proprietario della stanza in cui si è (per frugare nel suo cestino). */
 function roomOwner(): { id: string; name: string } | null {
-  const room: GameValue = game.roomsState[game.currentRoomIdx ?? -1];
+  const room: RoomState | undefined = game.roomsState[game.currentRoomIdx ?? -1];
   return room?.ownerId ? { id: room.ownerId, name: room.owner || 'qualcuno' } : null;
 }
 
@@ -263,7 +264,7 @@ export async function denounceAll(): Promise<void> {
       done.add(key);
       continue;
     }
-    const lives = Object.values(game.roomsState || {}).some((r: GameValue) => r?.ownerId === g.who);
+    const lives = Object.values(game.roomsState || {}).some((r) => r?.ownerId === g.who);
     if (!lives) {
       lines.push(`• ${g.name} non abita più nel condominio: la denuncia è archiviata.`);
       done.add(key);
@@ -427,7 +428,7 @@ function tick(): void {
   void askToPlace();
 }
 
-const getBin = (): GameValue => game.playerRoomFurniture?.trashBin;
+const getBin = (): SceneMap[string] | undefined => game.playerRoomFurniture?.trashBin;
 
 async function askToPlace(): Promise<void> {
   asking = true;
