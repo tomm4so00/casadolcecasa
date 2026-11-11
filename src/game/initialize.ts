@@ -1,4 +1,5 @@
 import { maskText } from '../../shared/text-filter-rules.js';
+import { isBlocked } from './blocks.js';
 import { ABANDON_MS } from './autoplay-rules.js';
 import { DISCO_PRICE } from './prices.js';
 import { MOONBASE_PARTS } from './render/moonbase.js';
@@ -451,6 +452,21 @@ export function initializeGame() {
       label: (): GameValue => `💊 Scambia pillole (${game.player.drugStock})`,
       color: '#8e44ad',
       show: (): GameValue => game.player.drugStock > 0,
+    },
+    // moderazione (blocks.ts): si vedono anche con chi è bloccato
+    { id: 'report', label: '🚩 Segnala', color: '#636e72', whenBlocked: true },
+    {
+      id: 'block',
+      label: '🚫 Blocca',
+      color: '#57606f',
+      show: (): boolean => !isBlocked(game.socTarget?.id),
+    },
+    {
+      id: 'unblock',
+      label: '🔓 Sblocca',
+      color: '#57606f',
+      whenBlocked: true,
+      show: (): boolean => isBlocked(game.socTarget?.id),
     },
   ];
   game.socBusy = (): GameValue =>

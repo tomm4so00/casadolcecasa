@@ -1,4 +1,6 @@
 import { maskText } from '../../shared/text-filter-rules.js';
+import { isBlocked, startBlocks } from './blocks.js';
+import { isMuted, startModeration } from './moderation.js';
 import { autoplayPresence } from './autoplay.js';
 import { decodeWeed } from './weed-rules.js';
 import { decodePillTimers, pruneTimers } from './pill-rules.js';
@@ -876,15 +878,19 @@ export function startPresence(): void {
   game.session.db.ref(worldNode('online_players')).on('value', (snapshot) => {
     const all = snapshot.val() || {};
     // nomi e fumetti li scrivono i giocatori, anche con versioni vecchie: si copre quello che non va
-    for (const op of Object.values(all) as Record<string, unknown>[]) {
+    for (const [id, op] of Object.entries(all) as [string, Record<string, unknown>][]) {
       if (!op || typeof op !== 'object') continue;
       if (typeof op.name === 'string') op.name = maskText(op.name);
       if (typeof op.say === 'string') op.say = maskText(op.say);
+      // i fumetti di chi ho bloccato o di chi è silenziato non si vedono (blocks.ts, moderation.ts)
+      if (isBlocked(id) || isMuted(id)) delete op.say;
     }
     game.onlinePlayers = all;
   });
   startInbox();
   startChat();
+  startBlocks();
+  startModeration();
 }
 
 /**

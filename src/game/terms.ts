@@ -69,14 +69,24 @@ export async function chatNoticeOnce(): Promise<void> {
     game.player.chatNoticeAt = Date.now();
     return;
   }
-  await openDialog({
-    title: '💬 La chat del condominio',
-    text:
-      'Quello che scrivi qui lo leggono tutti i giocatori del condominio, anche persone che non ' +
-      'conosci.\n\nNon scrivere dati tuoi o di altri (cognome, indirizzo, telefono, scuola, ' +
-      'social) e rispetta gli altri: niente insulti né contenuti offensivi.',
-    buttons: [{ label: 'Ho capito', value: 'ok', color: '#2e86de' }],
-  });
+  for (;;) {
+    const res = await openDialog({
+      title: '💬 La chat del condominio',
+      text:
+        'Quello che scrivi qui lo leggono tutti i giocatori del condominio, anche persone che non ' +
+        'conosci.\n\nNon scrivere dati tuoi o di altri (cognome, indirizzo, telefono, ' +
+        'social) e rispetta gli altri: niente odio, molestie né contenuti sessuali.\n\n' +
+        'Se qualcuno ti dà fastidio tocca un suo messaggio (o toccalo nel gioco) per segnalarlo ' +
+        'o bloccarlo.',
+      buttons: [
+        { label: '📜 Regole', value: 'rules', color: '#636e72' },
+        { label: 'Ho capito', value: 'ok', color: '#2e86de' },
+      ],
+    });
+    if (res.action !== 'rules') break;
+    // le regole della comunità in un'altra scheda; poi si torna qui
+    window.open('./regole.html', '_blank', 'noopener');
+  }
   game.player.chatNoticeAt = Date.now();
   void saveGame(true);
 }

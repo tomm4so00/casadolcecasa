@@ -13,6 +13,7 @@ import { notifyHacker } from './hacker.js';
 import { notifyAnniversaries } from './couples.js';
 import { expireAuctions } from './auctions.js';
 import { forwardSuggestions, telegramFromEnv } from './suggestions.js';
+import { moderate } from './moderation.js';
 import {
   type PushSender,
   cleanOldActivity,
@@ -217,6 +218,30 @@ async function main() {
       }
     } catch (error) {
       console.log('Suggestions skipped:', (error as { code?: string }).code || 'unknown error');
+    }
+    // moderazione: segnalazioni sul gruppo, silenzio automatico, sospensioni (moderation.ts)
+    try {
+      const auth = getAuth(app);
+      const mod = await moderate(getDatabase(app), scheduledAt, telegramFromEnv(), {
+        async setDisabled(uid, disabled) {
+          try {
+            await auth.updateUser(uid, { disabled });
+            // chi viene sospeso esce anche dai dispositivi dove è già dentro
+            if (disabled) await auth.revokeRefreshTokens(uid);
+            return true;
+          } catch (error) {
+            if ((error as { code?: string }).code === 'auth/user-not-found') return false;
+            throw error;
+          }
+        },
+      });
+      if (mod.sent || mod.muted.length || mod.banned || mod.restored || mod.deletions)
+        console.log(
+          `Moderation: reports sent ${mod.sent}, auto-muted ${mod.muted.length}, ` +
+            `suspended ${mod.banned}, restored ${mod.restored}, deletions ${mod.deletions}`,
+        );
+    } catch (error) {
+      console.log('Moderation skipped:', (error as { code?: string }).code || String(error));
     }
     await getDatabase(app)
       .ref('sims_meta/version')

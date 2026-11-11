@@ -34,6 +34,7 @@ import {
 } from './romance.js';
 import { recordActivity } from './activity.js';
 import { worldNode } from './world-db.js';
+import { blockPlayer, reportPlayer, unblockPlayer } from './blocks.js';
 export function sendSocial(tid?: GameValue, msg?: GameValue): GameValue {
   const key: GameValue = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
   msg.from = game.session.myPlayerId;
@@ -50,6 +51,10 @@ export function saySocial(txt?: GameValue): GameValue {
 export async function socDo(act?: GameValue): Promise<GameValue> {
   const t: GameValue = game.socTarget;
   if (!t || game.socBusy()) return;
+  // segnala, blocca, sblocca (blocks.ts)
+  if (act === 'report') return reportPlayer(t.id, t.name);
+  if (act === 'block') return blockPlayer(t.id, t.name);
+  if (act === 'unblock') return unblockPlayer(t.id, t.name);
   // il pugno a chi sta scassinando la mia cassaforte lo ferma, anche subito dopo un altro pugno
   const thief = act === 'punch' && crackingMySafe(t.id);
   if (thief) game.socCd[t.id + '|punch'] = 0;

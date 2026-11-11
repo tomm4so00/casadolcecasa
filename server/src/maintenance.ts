@@ -1,3 +1,4 @@
+import { REPORT_KEEP_DAYS } from '../../shared/block-rules.js';
 import { RETIRED_BUSINESSES } from '../../shared/market.js';
 import { ACTIVITY_DAYS, dayOf } from '../../shared/activity.js';
 import {
@@ -117,6 +118,8 @@ export async function maintainGame(database: MaintenanceDatabase, now: number): 
   }
   const pruned = await pruneUsage(database, now);
   if (pruned) console.log(`Usage counters removed (days): ${pruned}`);
+  const reports = await pruneReports(database, now);
+  if (reports) console.log(`Old reports removed: ${reports}`);
   const removed = await removeEmptyWorlds(database, now);
   if (removed.length) console.log(`Empty worlds removed: ${removed.join(', ')}`);
 }
@@ -173,6 +176,20 @@ export async function pruneUsage(database: MaintenanceDatabase, now: number): Pr
   const old = Object.keys(days).filter((day) => day < oldest);
   if (old.length)
     await database.ref('sims_usage').update(Object.fromEntries(old.map((day) => [day, null])));
+  return old.length;
+}
+
+/** Toglie le segnalazioni più vecchie di 6 mesi (REPORT_KEEP_DAYS); restituisce quante. */
+export async function pruneReports(database: MaintenanceDatabase, now: number): Promise<number> {
+  const all = (await database.ref('sims_reports').get()).val();
+  if (!record(all)) return 0;
+  const oldest = now - REPORT_KEEP_DAYS * 86_400_000;
+  const old: string[] = [];
+  for (const [by, list] of Object.entries(all))
+    for (const [who, r] of Object.entries(record(list) ? list : {}))
+      if (!record(r) || typeof r.t !== 'number' || r.t < oldest) old.push(`${by}/${who}`);
+  if (old.length)
+    await database.ref('sims_reports').update(Object.fromEntries(old.map((p) => [p, null])));
   return old.length;
 }
 

@@ -61,6 +61,9 @@ export const DELETION_NODES = [
   'sims_couples',
   'sims_theft_blocks',
   'sims_fines',
+  // chi l'ha bloccato e chi l'ha segnalato (blocks.ts)
+  'sims_blocks',
+  'sims_reports',
 ] as const;
 
 /** I nodi in cui ogni giocatore ha una voce tutta sua, con il codice come chiave. */
@@ -85,6 +88,11 @@ const PER_PLAYER = [
   // il PIN privato della cassaforte e quando ha creato l'ultimo mondo
   'sims_safe_pins',
   'sims_world_creators',
+  // chi ha bloccato e chi ha segnalato lui; i suoi silenzi e le sue sospensioni
+  'sims_blocks',
+  'sims_reports',
+  'sims_mutes',
+  'sims_bans',
 ];
 
 /**
@@ -174,6 +182,11 @@ export function deletionPaths(uid: string, data: Partial<Record<string, unknown>
   for (const [buyer, sent] of entries(data.sims_ltd_sent))
     for (const [id, s] of entries(sent))
       if (record(s) && mine(s.owner)) add(`sims_ltd_sent/${buyer}/${id}`);
+  // lui nelle liste dei bloccati degli altri, e le segnalazioni su di lui
+  for (const [owner, list] of entries(data.sims_blocks))
+    for (const [pid] of entries(list)) if (ids.has(pid)) add(`sims_blocks/${owner}/${pid}`);
+  for (const [by, list] of entries(data.sims_reports))
+    for (const [pid] of entries(list)) if (ids.has(pid)) add(`sims_reports/${by}/${pid}`);
   // messaggi e regali che ha mandato agli altri
   for (const [pid, inbox] of entries(data.sims_interactions))
     for (const [key, m] of entries(inbox))

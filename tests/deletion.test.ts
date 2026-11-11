@@ -127,6 +127,18 @@ function world() {
       0: { [B]: { by: A, t: 1 } },
       5: { player_altro: { by: B, t: 1 } },
     },
+    // Anna ha bloccato e segnalato Bruno; Bruno ha bloccato Anna e un altro, e ha segnalato Anna
+    sims_blocks: {
+      [A]: { [B]: { name: 'Bruno', t: 1 } },
+      [B]: { [A]: { name: 'Anna', t: 1 }, player_altro: { name: 'Altro', t: 1 } },
+    },
+    sims_reports: {
+      [A]: { [B]: { name: 'Bruno', reason: 'spam', world: 'CASA-0001', t: 1 } },
+      [B]: {
+        [A_OLD]: { name: 'Anna', reason: 'odio', world: 'CASA-0001', t: 1 },
+        player_altro: { name: 'Altro', reason: 'spam', world: 'CASA-0001', t: 1 },
+      },
+    },
     sims_fines: {
       [B]: {
         f1: { k: 'bag', n: 1, amt: 50, paid: 50, to: A, t: 1 },
@@ -199,6 +211,12 @@ describe("cancellazione dell'account su richiesta", () => {
     expect(Object.keys(all.sims_jobs)).toEqual(['uidBrunoxxxxxxxxxxxxxxxx2']);
     expect(firebaseView(all.sims_theft_blocks)).toEqual({ 5: { player_altro: { by: B, t: 1 } } });
     expect(Object.keys(all.sims_fines[B])).toEqual(['f2']);
+    // i blocchi e le segnalazioni di Bruno su altri restano; spariscono quelli di e su Anna
+    expect(firebaseView(all.sims_blocks)).toEqual({
+      [B]: { player_altro: { name: 'Altro', t: 1 } },
+    });
+    expect(Object.keys(firebaseView(all.sims_reports) as object)).toEqual([B]);
+    expect(Object.keys(all.sims_reports[B])).toEqual(['player_altro']);
     expect(empty(all.sims_couples)).toBe(true);
     expect(all.sims_rooms_state[1].robbed).toBeUndefined();
     expect(Object.keys(all.sims_chat)).toEqual(['c2']);

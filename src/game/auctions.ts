@@ -521,9 +521,24 @@ export async function placeBid(a: Auction): Promise<void> {
     toast('Offerta non registrata: forse qualcuno ha appena offerto di più.', 4000);
     return;
   }
+  // se il pittore mi ha bloccato l'avviso non parte: l'offerta si ritira, non resta a metà
+  try {
+    await sendSocial(a.by, { type: 'artOffer', amt, pic: a.id });
+  } catch (error) {
+    console.warn('[aste]', error);
+    const back = prev as Auction['bid'] | null;
+    await auctionRef(a.id, 'bid')
+      .transaction((cur: unknown) => {
+        const now = decodeAuction(a.id, { code: a.code, by: a.by, t: a.t, bid: cur })?.bid;
+        return now?.by === me() && now.amt === amt ? (back ?? null) : undefined;
+      })
+      .catch(() => {});
+    void dropDebit(a.by, amt);
+    toast('Offerta non registrata.', 4000);
+    return;
+  }
   sfx('coin');
   toast(`📨 Hai offerto ${dindini(amt)}: ora decide ${a.name}.`, 4000);
-  await sendSocial(a.by, { type: 'artOffer', amt, pic: a.id });
   const before = prev as Auction['bid'] | null;
   if (before && before.by !== me())
     await sendSocial(before.by, { type: 'artNo', amt: before.amt, pic: a.id, why: 'over' });

@@ -26,6 +26,7 @@ import { openDialog, writeGrave } from './interface.js';
 import { releaseRoomsOf } from '../../shared/death-rules.js';
 import { toast } from './missions.js';
 import { socDo } from './social.js';
+import { isBlocked } from './blocks.js';
 import { box, onFace } from './render/objects.js';
 import { isoProject, isoScale } from './render/primitives.js';
 import { sfx } from './audio.js';
@@ -338,8 +339,12 @@ export function updateSocialPanel(..._args: GameValue[]): GameValue {
   game.frameNear.sort((a?: GameValue, b?: GameValue): GameValue => a.d - b.d);
   const t: GameValue = !game.socBusy() && game.frameNear.length ? game.frameNear[0] : null;
   game.socTarget = t;
+  // con chi ho bloccato restano solo segnala e sblocca (blocks.ts)
+  const off = !!t && isBlocked(t.id);
   const acts: GameValue = t
-    ? game.SOC_ACTIONS.filter((a?: GameValue): GameValue => !a.show || a.show())
+    ? game.SOC_ACTIONS.filter(
+        (a?: GameValue): GameValue => (!off || a.whenBlocked) && (!a.show || a.show()),
+      )
     : [];
   const key: GameValue = t
     ? t.id +

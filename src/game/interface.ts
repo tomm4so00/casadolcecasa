@@ -28,6 +28,8 @@ import { leavePartner, myPartner, startCouples } from './couples.js';
 import { startTrash } from './trash.js';
 import { startTaste } from './taste.js';
 import { blockedByDeletion, requestDeletion } from './deletion.js';
+import { openBlockedList } from './blocks.js';
+import { isModerator, openModPanel, stoppedByMute } from './moderation.js';
 import { startPlayersHud } from './players-hud.js';
 import { dayNumber } from './game-clock.js';
 import { renderArtSite, startArtMarket } from './art-market.js';
@@ -151,6 +153,7 @@ export function openDialog({
 
 export async function openChat(..._args: GameValue[]): Promise<GameValue> {
   if (!(await requireAccount('scrivere nel fumetto'))) return;
+  if (stoppedByMute()) return;
   const res: GameValue = await openDialog({
     title: "💬 Di' qualcosa",
     text: 'Il messaggio appare sopra la tua testa per qualche secondo, visibile a chi è nella tua stessa stanza.',
@@ -265,6 +268,10 @@ export async function openProfile(..._args: GameValue[]): Promise<GameValue> {
             },
           ]
         : []),
+      { label: '🚫 Persone bloccate', value: 'blocked', color: '#636e72', wide: true },
+      ...(isModerator()
+        ? [{ label: '🛡️ Moderazione', value: 'moderation', color: '#2d3436', wide: true }]
+        : []),
       { label: '🎨 Aspetto', value: 'look', color: '#8e44ad' },
       { label: '⚰️ Epitaffio', value: 'epitaph', color: '#636e72' },
       ...(game.session.OFFLINE ? [{ label: 'Usa codice', value: 'switch', color: '#e67e22' }] : []),
@@ -295,6 +302,8 @@ export async function openProfile(..._args: GameValue[]): Promise<GameValue> {
   if (res.action === 'cryo') await openCryo();
   if (res.action === 'look') openCharacterCreator(false);
   if (res.action === 'epitaph') openEpitaph();
+  if (res.action === 'blocked') await openBlockedList();
+  if (res.action === 'moderation') await openModPanel();
   if (res.action === 'switch') switchToCode(res.value);
 }
 

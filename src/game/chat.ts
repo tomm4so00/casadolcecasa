@@ -12,6 +12,9 @@ import { recordActivity } from './activity.js';
 import { worldNode } from './world-db.js';
 import { isGuest, requireAccount } from './guest.js';
 import { filterNotice, filterText } from '../../shared/text-filter-rules.js';
+import { isBlocked, onBlocksChange, playerOptions } from './blocks.js';
+import { stoppedByMute } from './moderation.js';
+
 export function chatColor(name?: GameValue): GameValue {
   let h: GameValue = 0;
   for (const c of String(name)) h = (h * 31 + c.charCodeAt(0)) % 360;
@@ -56,6 +59,8 @@ export function renderChat(..._args: GameValue[]): GameValue {
   }
   let lastDay: GameValue = '';
   game.chatMsgs.forEach((m?: GameValue): GameValue => {
+    // i messaggi di chi ho bloccato non si vedono (blocks.ts)
+    if (isBlocked(m.id)) return;
     const d: GameValue = new Date(m.t || 0),
       day: GameValue = d.toLocaleDateString('it-IT', { day: 'numeric', month: 'long' });
     if (day !== lastDay) {
@@ -86,6 +91,12 @@ export function renderChat(..._args: GameValue[]): GameValue {
     tx.textContent = m.text;
     row.appendChild(hd);
     row.appendChild(tx);
+    // toccando il messaggio di un altro: segnala o blocca
+    if (!mine && m.id) {
+      row.style.cursor = 'pointer';
+      row.title = 'Segnala o blocca';
+      row.onclick = (): void => void playerOptions(m.id, m.name || 'Giocatore');
+    }
     box.appendChild(row);
   });
   if (stick) box.scrollTop = box.scrollHeight;
@@ -120,6 +131,8 @@ export async function sendChat(..._args: GameValue[]): Promise<GameValue> {
   const inp: GameValue = dom('gchat-input');
   const typed: string = inp.value.trim().slice(0, game.CHAT_MAX_LEN);
   if (!typed) return;
+  // silenziato dalla moderazione: lo si dice, il messaggio resta nel campo (moderation.ts)
+  if (stoppedByMute()) return;
   if (game.player.isDead) {
     toast('⚰️ Un fantasma non può scrivere in chat.');
     return;
@@ -158,6 +171,11 @@ export async function sendChat(..._args: GameValue[]): Promise<GameValue> {
 }
 
 export function startChat(..._args: GameValue[]): GameValue {
+  // bloccare o sbloccare qualcuno cambia i messaggi da mostrare (qui e non al caricamento del
+  // file: chat.ts e blocks.ts si importano a vicenda)
+  onBlocksChange(() => {
+    if (game.chatOpen?.()) renderChat();
+  });
   if (game.session.OFFLINE) {
     try {
       const saved: GameValue = JSON.parse(
