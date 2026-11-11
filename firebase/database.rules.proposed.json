@@ -788,6 +788,9 @@
       ".read": "auth != null && (auth.token.firebase.sign_in_provider === 'google.com' || auth.token.firebase.sign_in_provider === 'anonymous' || (auth.token.firebase.sign_in_provider === 'password' && auth.token.email_verified === true))",
       "version": {
         ".validate": "newData.isNumber() && (!data.exists() || newData.val() >= data.val())"
+      },
+      "app": {
+        ".validate": "newData.isNumber() && (!data.exists() || newData.val() >= data.val())"
       }
     },
     "sims_online_players": {

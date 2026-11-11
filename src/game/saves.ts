@@ -20,6 +20,8 @@ import { needsRules } from './needs-rules.js';
 import { syncRoomEconomy, creditMoney, flushEconomy } from './economy.js';
 import { canPlaySession } from './accounts.js';
 import type { SaveV8, ValidatedSave } from './save-model.js';
+import { version as appVersion } from '../../package.json';
+import { updateAvailable } from '../../shared/app-version.js';
 import type { RoomState, SceneMap } from './models.js';
 import type { OnlinePlayer } from './network-model.js';
 import { decodeSaveV8 } from './save-model.js';
@@ -875,11 +877,15 @@ export function startPresence(): void {
   startChat();
 }
 
+/**
+ * Il banner "Nuova versione!": la manutenzione scrive in sims_meta/app la versione davvero
+ * online (shared/app-version.ts). sims_meta/version (formato dei salvataggi) qui non conta più:
+ * il server lo alza solo per avvisare le versioni di prima.
+ */
 export function watchGameVersion(): void {
-  const ref = game.session.db.ref('sims_meta/version');
+  const ref = game.session.db.ref('sims_meta/app');
   ref.on('value', (s) => {
-    const v: unknown = s.val();
-    if (typeof v === 'number' && v > game.GAME_VERSION) {
+    if (updateAvailable(s.val(), appVersion)) {
       saveGame(true);
       dom('update-banner').classList.remove('hidden');
     }

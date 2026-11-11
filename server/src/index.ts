@@ -7,6 +7,7 @@ import { updateWeedMarket } from './street.js';
 import { getMessaging } from 'firebase-admin/messaging';
 import { getAuth } from 'firebase-admin/auth';
 import { cleanupLeftoversOnce, processDeletionRequests } from './deletion.js';
+import { announceOnlineVersion, siteVersion } from './app-version.js';
 import { cleanupGuests } from './guests.js';
 import { notifyHacker } from './hacker.js';
 import { notifyAnniversaries } from './couples.js';
@@ -22,6 +23,7 @@ import {
   notifyLimitedOffers,
   sendPetWarnings,
   worldIds,
+  GAME_URL,
 } from './maintenance.js';
 import { worldNodePath } from '../../shared/worlds.js';
 
@@ -219,6 +221,13 @@ async function main() {
     await getDatabase(app)
       .ref('sims_meta/version')
       .transaction((value: unknown) => (typeof value === 'number' && value >= 8 ? undefined : 8));
+    // la versione davvero online del gioco: chi ha aperta una più vecchia vede "Nuova versione!"
+    try {
+      const online = await announceOnlineVersion(getDatabase(app), siteVersion(GAME_URL));
+      if (online) console.log(`Online game version announced: ${online}`);
+    } catch (error) {
+      console.log('Version announcement skipped:', String(error));
+    }
     console.log(
       result.committed ? 'Shared market updated.' : 'Market slot already published; no changes.',
     );
