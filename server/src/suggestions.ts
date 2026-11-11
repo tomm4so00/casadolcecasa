@@ -1,7 +1,19 @@
 // La cassetta "Suggerimenti e bug" (shared/suggestion-rules.ts): a ogni giro il server manda sul
 // gruppo Telegram dei collaboratori i messaggi non ancora mandati e li segna con `tg`.
 import { isSuggestion, telegramText } from '../../shared/suggestion-rules.js';
-import type { Database } from 'firebase-admin/database';
+
+/**
+ * Solo quello che serve del database di firebase-admin: così il modulo (e il suo test) non dipende
+ * dal pacchetto del server, che nel controllo dei tipi del gioco non c'è.
+ */
+interface Query {
+  orderByChild(key: string): Query;
+  limitToLast(count: number): Query;
+  get(): Promise<{ val(): unknown }>;
+}
+interface SuggestionDatabase {
+  ref(path: string): Query & { set(value: unknown): Promise<unknown> };
+}
 
 /** Manda un messaggio Telegram (HTML). Vero se è partito. */
 export type TelegramSender = (html: string) => Promise<boolean>;
@@ -31,7 +43,7 @@ const PER_RUN = 20;
 
 /** Manda i messaggi nuovi, dal più vecchio; restituisce quanti ne sono partiti. */
 export async function forwardSuggestions(
-  database: Database,
+  database: SuggestionDatabase,
   send: TelegramSender,
 ): Promise<number> {
   const raw = (
