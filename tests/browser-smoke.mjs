@@ -640,11 +640,12 @@ try {
     };
   }, otto.idx);
   assert.deepEqual(otto.mine, { bag: 1, clip: 1 });
+  // la multa non si prende dalla cassaforte di Otto: la paga lui appena è in gioco (payFines)
   assert.deepEqual(fined, {
-    ottoVault: 20,
-    myVault: otto.vault + 50,
-    fund: 50,
-    fine: { amt: 100, paid: 100, n: 2 },
+    ottoVault: 120,
+    myVault: otto.vault,
+    fund: 0,
+    fine: { amt: 100, paid: 0, n: 2 },
     leftInBin: ['c'],
     proofs: 0,
   });
@@ -666,8 +667,10 @@ try {
       open: !!(await ref.get()).val(),
     };
   }, otto.idx);
-  assert.deepEqual(debt, { paid: 80, ottoVault: 60, fund: 90, open: false });
-  console.log('PASS: trash bin evidence, rummaging, police report, fine split and debt paid.');
+  assert.deepEqual(debt, { paid: 80, ottoVault: 160, fund: 40, open: false });
+  console.log(
+    'PASS: trash bin evidence, rummaging, police report, fine left to pay and debt paid.',
+  );
   // la pagina della personalità dal profilo e la classifica delle personalità del condominio
   await page.evaluate(async () => {
     const { game } = await import('/src/game/context.ts');

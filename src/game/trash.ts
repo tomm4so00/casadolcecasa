@@ -19,13 +19,7 @@ import { sfx } from './audio.js';
 import { postGossip } from './gossip.js';
 import { requireAccount } from './guest.js';
 import { startMovingFurniture } from './character.js';
-import {
-  bankWithdraw,
-  flushEconomy,
-  seizeMoneyFrom,
-  spendMoney,
-  transferMoney,
-} from './economy.js';
+import { bankWithdraw, flushEconomy, spendMoney, transferMoney } from './economy.js';
 import { levelOf, reporterShare, todayKey } from './personality-rules.js';
 import {
   MAX_PROOFS,
@@ -270,9 +264,9 @@ export async function denounceAll(): Promise<void> {
       done.add(key);
       continue;
     }
-    // dalla sua cassaforte quello che c'è (fino alla multa): metà a me, metà alla cassa
-    const taken = await seizeMoneyFrom(g.who, g.amount, (t) => splitFine(t, pct).reporter);
-    if (taken > 0) await addToFund(splitFine(taken, pct).police);
+    // la multa la paga lui, dalla sua cassaforte: subito se è in gioco, altrimenti al rientro
+    // (payFines). Nessuno può prendere soldi dalla cassaforte di un altro.
+    const taken = 0;
     try {
       const id = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
       const fine: Fine = {
@@ -295,15 +289,9 @@ export async function denounceAll(): Promise<void> {
     }
     done.add(key);
     notePersonality('denounce');
-    const mineShare = splitFine(taken, pct).reporter;
-    gained += mineShare;
     lines.push(
-      `• ${g.name}: multa di ${dindini(g.amount)} per ${TRASH[g.k].why}` +
-        (taken >= g.amount
-          ? `, pagata subito. A te ${dindini(mineShare)}.`
-          : taken > 0
-            ? `: aveva solo ${dindini(taken)} in cassaforte (a te ${dindini(mineShare)}), il resto lo pagherà appena può.`
-            : `: la cassaforte è vuota, pagherà appena può.`),
+      `• ${g.name}: multa di ${dindini(g.amount)} per ${TRASH[g.k].why}. ` +
+        `La paga appena è in gioco: a te ne arriva il ${pct}% (${dindini(splitFine(g.amount, pct).reporter)}).`,
     );
     postGossip(
       `👮 ${g.name} ha preso una multa di ${dindini(g.amount)} per ${TRASH[g.k].why}`,
@@ -320,8 +308,8 @@ export async function denounceAll(): Promise<void> {
     title: '👮 Denuncia registrata',
     text:
       `L'agente batte il verbale al computer e timbra le prove.\n\n${lines.join('\n\n')}\n\n` +
-      `La tua parte di ogni multa (il ${pct}%) arriva nella tua cassaforte; il resto va nella ` +
-      'cassa della polizia.',
+      `La tua parte di ogni multa (il ${pct}%) arriva nella tua cassaforte quando la multa viene ` +
+      'pagata; il resto va nella cassa della polizia.',
     buttons: [{ label: 'Grazie', value: null, color: '#1f3a68' }],
   });
 }

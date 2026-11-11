@@ -3,6 +3,7 @@ import type { EconomyState, RoomState } from './models.js';
 import { decodeSaveV8, isRecord } from './save-model.js';
 import { bankBalanceOf } from './bank-rules.js';
 import { worldNode } from './world-db.js';
+import { useDebit } from '../../shared/debit-rules.js';
 
 export function decodeEconomy(value: unknown): EconomyState | null {
   if (!isRecord(value) || value.version !== 1) return null;
@@ -94,58 +95,6 @@ export class RoomEconomy {
   collect(fromPlayerId: string, amount: number): Promise<boolean> {
     return this.move(fromPlayerId, amount, -1);
   }
-  /**
-   * Una multa (vedi trash.ts): dalla cassaforte di `fromPlayerId` si prende fin dove arriva, al
-   * massimo `amount`; a me ne va la parte `share(preso)`. Restituisce quanto si è preso (0 se la
-   * transazione non è riuscita: per esempio se mi ha bloccato come ladro).
-   */
-  seize(fromPlayerId: string, amount: number, share: (taken: number) => number): Promise<number> {
-    this.operations++;
-    let taken = 0;
-    const operation = this.pending.then(async () => {
-      if (
-        !this.active() ||
-        !Number.isSafeInteger(amount) ||
-        amount < 1 ||
-        fromPlayerId === this.playerId
-      )
-        return 0;
-      const reference = this.database.ref(worldNode('rooms_state'));
-      await reference.get();
-      const result = await reference.transaction((rooms: Record<string, RoomState> | null) => {
-        taken = 0;
-        if (!this.active() || !rooms) return undefined;
-        const mine = rooms[this.roomIndex];
-        const otherKey = Object.keys(rooms).find((key) => rooms[key]?.ownerId === fromPlayerId);
-        const other = otherKey === undefined ? undefined : rooms[otherKey];
-        if (
-          !mine ||
-          mine.ownerId !== this.playerId ||
-          !other ||
-          !Number.isSafeInteger(other.vaultMoney) ||
-          !Number.isSafeInteger(mine.vaultMoney)
-        )
-          return undefined;
-        const take = Math.max(0, Math.min(amount, other.vaultMoney));
-        if (!take) return undefined;
-        const mineGets = share(take);
-        taken = take;
-        return {
-          ...rooms,
-          [this.roomIndex]: { ...mine, vaultMoney: mine.vaultMoney + mineGets },
-          [otherKey!]: { ...other, vaultMoney: other.vaultMoney - take },
-        };
-      });
-      if (!result.committed) return 0;
-      if (this.active()) this.confirmed(result.snapshot.val()[this.roomIndex] as RoomState);
-      return taken;
-    });
-    const settled = operation.finally(() => {
-      this.operations--;
-    });
-    this.pending = settled.catch(() => {});
-    return settled;
-  }
   /** Sposta `amount` fra le due cassaforti nella stessa transazione: 1 = do io, −1 = ricevo io. */
   private move(otherPlayerId: string, amount: number, way: 1 | -1): Promise<boolean> {
     this.operations++;
@@ -178,10 +127,23 @@ export class RoomEconomy {
           !Number.isSafeInteger(payee.vaultMoney + amount)
         )
           return undefined;
+        let next: RoomState = { ...other, vaultMoney: other.vaultMoney + way * amount };
+        // prendo dalla sua cassaforte: serve il suo permesso di addebito, che si consuma qui,
+        // nella stessa scrittura (le regole controllano che il resto torni)
+        if (way === -1) {
+          const left = useDebit(other.allow?.[this.playerId], amount, Date.now());
+          if (left === false) return undefined;
+          const allow = { ...(other.allow || {}) };
+          if (left) allow[this.playerId] = left;
+          else delete allow[this.playerId];
+          next = { ...next, allow };
+          // finito l'ultimo permesso, niente nodo vuoto (Firebase lo toglierebbe da solo)
+          if (!Object.keys(allow).length) delete next.allow;
+        }
         return {
           ...rooms,
           [this.roomIndex]: { ...mine, vaultMoney: mine.vaultMoney - way * amount },
-          [otherKey!]: { ...other, vaultMoney: other.vaultMoney + way * amount },
+          [otherKey!]: next,
         };
       });
       if (!result.committed) return false;

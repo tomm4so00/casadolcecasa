@@ -52,8 +52,10 @@ export interface SaveV8 {
   workDay?: unknown;
   /** ora dell'ultimo messaggio della chat letto (su qualsiasi dispositivo) */
   chatReadT?: unknown;
-  /** quando ha confermato età (almeno 14 anni) e condizioni (terms.ts) */
+  /** quando ha accettato le condizioni la prima volta (terms.ts) */
   termsAt?: unknown;
+  /** quando ha confermato di avere almeno 18 anni (terms.ts) */
+  adultAt?: unknown;
   /** quando ha letto l'avviso della chat (terms.ts) */
   chatNoticeAt?: unknown;
   weed?: unknown;

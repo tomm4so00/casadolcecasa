@@ -19,7 +19,7 @@ import { postGossip } from './gossip.js';
 import { sendSocial } from './social.js';
 import { collectState, onCollectChange } from './collect.js';
 import { listPiece } from './used-shop.js';
-import { collectMoneyFrom, transferMoney } from './economy.js';
+import { allowDebit, collectMoneyFrom, dropDebit, transferMoney } from './economy.js';
 import { recordActivity } from './activity.js';
 import {
   type Collectible,
@@ -135,11 +135,17 @@ export async function makeCollectOffer(c: Collectible, ownerId: string): Promise
     toast('❌ ' + error, 4000);
     return;
   }
+  // il permesso di addebito: se accetta, prende i soldi dalla mia cassaforte (debit-rules.ts)
+  if (!(await allowDebit(ownerId, amount))) {
+    toast('Non sono riuscito a preparare l’offerta. Riprova quando sei connesso.', 4000);
+    return;
+  }
   try {
     await sendSocial(ownerId, { type: 'colOffer', item: c.id, amt: amount });
     sfx('click');
     toast(`💌 Offerta inviata a ${owner.on}: ${dindini(amount)} per ${c.emoji} ${c.name}.`, 4500);
   } catch {
+    void dropDebit(ownerId, amount);
     toast('Non sono riuscito a inviare l’offerta. Riprova quando sei connesso.', 4000);
   }
 }
@@ -162,6 +168,8 @@ export async function onCollectDeal(m: SocialMessage, who: string): Promise<void
 
 /** Risposta negativa: rifiutata, oppure in cassaforte non c'erano più abbastanza soldi. */
 export function onCollectOfferRefused(m: SocialMessage, who: string): void {
+  // l'offerta non vale più: anche il permesso di addebito per lui scende
+  if (typeof m.from === 'string') void dropDebit(m.from, amountOf(m));
   const c = collectible(m.item);
   if (!c) return;
   const what = `${dindini(amountOf(m))} per ${c.emoji} ${c.name}`;

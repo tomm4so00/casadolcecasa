@@ -1,32 +1,37 @@
-// Età e condizioni: chi gioca conferma una volta, con una casella, di avere almeno 14 anni e di
+// Età e condizioni: chi gioca conferma una volta, con una casella, di avere almeno 18 anni e di
 // accettare condizioni e privacy (public/condizioni.html). Si salva solo il momento della
-// conferma (termsAt nel salvataggio), nessuna data di nascita. Senza conferma non si gioca.
+// conferma (termsAt e adultAt nel salvataggio), nessuna data di nascita. Senza conferma non si
+// gioca; chi non ha 18 anni può uscire o cancellare l'account.
 // In modalità prova (?offline=1) non si chiede niente: non c'è nessun dato online.
 import { game } from './context.js';
 import { openDialog } from './interface.js';
 import { saveGame } from './saves.js';
 import { signOutAccount } from './accounts.js';
-
-/** L'età minima per iscriversi (condizioni.html, sezione Minorenni). */
-export const MIN_AGE = 14;
+import { requestDeletion } from './deletion.js';
+import { MIN_AGE, termsToAsk } from './terms-rules.js';
 
 const TEXT =
-  `Casa dolce casa è per chi ha almeno ${MIN_AGE} anni.\n\n` +
+  `Casa dolce casa è solo per maggiorenni: per giocare devi avere almeno ${MIN_AGE} anni.\n\n` +
   'Nel gioco ci sono una chat che leggono tutti, relazioni tra giocatori e, per finta, alcol, ' +
-  'droghe e giochi d’azzardo con i soldi del gioco (che non valgono niente).\n\n' +
-  'L’unico acquisto con soldi veri è la criogenesi: se hai meno di 18 anni serve il consenso ' +
-  'di un genitore.';
+  'droghe e giochi d’azzardo con i soldi del gioco (che non valgono niente).';
+
+/** Per chi aveva confermato quando l'età minima era 14 anni. */
+const RAISED =
+  `📢 Abbiamo alzato l’età minima da 14 a ${MIN_AGE} anni: ti chiediamo di confermare di nuovo. ` +
+  'Se non hai ancora 18 anni puoi uscire o cancellare il tuo account.\n\n';
 
 /**
  * Chiede la conferma se il personaggio non l'ha ancora data. Vero se si può giocare; falso se
  * il giocatore ha scelto di uscire (allora esce dall'account e la pagina torna all'accesso).
  */
 export async function ensureTerms(): Promise<boolean> {
-  if (game.session.OFFLINE || game.player.termsAt) return true;
+  if (game.session.OFFLINE) return true;
+  const ask = termsToAsk(game.player.termsAt, game.player.adultAt);
+  if (ask === 'none') return true;
   for (;;) {
     const res = await openDialog({
       title: '📄 Prima di giocare',
-      text: TEXT,
+      text: (ask === 'adult' ? RAISED : '') + TEXT,
       check: {
         label: `Ho almeno ${MIN_AGE} anni e accetto condizioni e privacy`,
         href: './condizioni.html',
@@ -34,15 +39,21 @@ export async function ensureTerms(): Promise<boolean> {
       },
       buttons: [
         { label: 'Esci', value: 'exit', color: '#57606f' },
+        { label: '🗑️ Cancella account', value: 'delete', color: '#c0392b' },
         { label: '✅ Gioca', value: 'ok', color: '#2ed573', needsCheck: true },
       ],
     });
     if (res.action === 'ok' && res.checked) {
-      game.player.termsAt = Date.now();
+      const now = Date.now();
+      game.player.termsAt = game.player.termsAt || now;
+      game.player.adultAt = now;
       void saveGame(true);
       return true;
     }
     if (res.action === 'exit') break;
+    // la cancellazione chiede la sua conferma; se va a buon fine ricarica la pagina, se no si
+    // torna qui
+    if (res.action === 'delete') await requestDeletion();
     // chiuso da un altro dialogo arrivato nel frattempo: si richiede
   }
   await signOutAccount();

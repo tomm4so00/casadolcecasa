@@ -71,7 +71,8 @@ await check('voce con lettere strane', false, () =>
 await check('giorno inventato', false, () =>
   call('PATCH', 'sims_usage/domani/posto:bar', { n: inc(1) }, 'u1'),
 );
-await check('senza account', false, () => call('PATCH', P, { n: inc(1) }, 'u9'));
+// u9 lo creano altre prove (ospiti, suggerimenti): qui serve un utente mai visto
+await check('senza account', false, () => call('PATCH', P, { n: inc(1) }, 'nessuno'));
 await check('i giocatori non li leggono', false, () => call('GET', 'sims_usage', undefined, 'u1'));
 
 console.log('PASS contatori d’uso: si aggiunge solo 1, li legge solo il server.');

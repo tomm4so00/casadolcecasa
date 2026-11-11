@@ -127,6 +127,8 @@ export interface RoomState {
   paintings?: Record<string, string>;
   /** quadri messi in vendita dalla stanza, per posto */
   sale?: Record<string, unknown>;
+  /** permessi di addebito: chi può prendere quanto da questa cassaforte (shared/debit-rules.ts) */
+  allow?: Record<string, { amt: number; t: number }>;
   lastSeen?: number;
   layout?: Record<
     string,
@@ -148,8 +150,10 @@ export interface CharacterState {
   rawFood: number;
   dishes: number;
   /** Dopo essersi lasciati: fino a quando non ci si fidanza con nessuno (ms). */
-  /** quando ha confermato età (almeno 14 anni) e condizioni; 0 = non ancora (terms.ts) */
+  /** quando ha accettato le condizioni la prima volta; 0 = non ancora (terms.ts) */
   termsAt?: number;
+  /** quando ha confermato di avere almeno 18 anni (dalla 0.31; prima l'età minima era 14) */
+  adultAt?: number;
   /** quando ha letto l'avviso della chat (terms.ts) */
   chatNoticeAt?: number;
   coupleCooldownUntil?: number;

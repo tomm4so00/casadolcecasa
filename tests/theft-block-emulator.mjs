@@ -108,7 +108,10 @@ for (const [label, prefix, rs, op] of [
   await check(`${label}: Marco non svuota più la cassaforte`, false, () =>
     put(`${rs}/0/vaultMoney`, 0, 'u2'),
   );
-  await check(`${label}: Sara (non beccata) sì`, true, () => put(`${rs}/0/vaultMoney`, 0, 'u3'));
+  // senza la prova dello scasso (il PIN, vedi safe-pin-emulator) nessuno svuota la cassaforte
+  await check(`${label}: nemmeno Sara (non beccata), senza PIN`, false, () =>
+    put(`${rs}/0/vaultMoney`, 0, 'u3'),
+  );
   await check(`${label}: Anna rimette i suoi soldi`, true, () =>
     put(`${rs}/0/vaultMoney`, 500, 'u1'),
   );

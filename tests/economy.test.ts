@@ -51,18 +51,27 @@ describe('confirmed room economy', () => {
     expect(await wallet.transfer('missing_player', 10)).toBe(false);
     expect(await wallet.transfer('player_other', 1000)).toBe(false);
   });
-  it("incassa un'offerta accettata dalla cassaforte di chi l'ha fatta, solo se ci sono i soldi", async () => {
+  it("incassa un'offerta accettata dalla cassaforte di chi l'ha fatta, solo col suo permesso", async () => {
     const { database, wallet } = await setup();
     await database
       .ref('sims_rooms_state/1')
       .set({ id: 2, ownerId: 'player_other', vaultMoney: 50 });
+    // senza permesso di addebito non si prende niente
+    expect(await wallet.collect('player_other', 30)).toBe(false);
+    expect((await database.ref('sims_rooms_state/1/vaultMoney').get()).val()).toBe(50);
+    // l'offerta di 40 scrive il permesso; se ne prendono 30 e ne restano 10
+    await database.ref('sims_rooms_state/1/allow/player_test').set({ amt: 40, t: Date.now() });
     expect(await wallet.collect('player_other', 30)).toBe(true);
     const rooms = (await database.ref('sims_rooms_state').get()).val();
     expect(rooms[0].vaultMoney).toBe(130);
     expect(rooms[1].vaultMoney).toBe(20);
-    // non bastano: niente si muove
-    expect(await wallet.collect('player_other', 21)).toBe(false);
+    expect(rooms[1].allow.player_test.amt).toBe(10);
+    // il permesso non basta: niente si muove
+    expect(await wallet.collect('player_other', 11)).toBe(false);
     expect((await database.ref('sims_rooms_state/1/vaultMoney').get()).val()).toBe(20);
+    // finito il permesso, sparisce
+    expect(await wallet.collect('player_other', 10)).toBe(true);
+    expect((await database.ref('sims_rooms_state/1/allow').get()).val()).toBeNull();
     expect(await wallet.collect('missing_player', 1)).toBe(false);
   });
   it('does not grant goods if the database denies the operation or room ownership changed', async () => {

@@ -105,9 +105,13 @@ for (const [label, w] of [
     del(`${w('trash')}/player_dino`, 'u2'),
   );
   await check(`${label}: Dino svuota il suo`, true, () => del(`${w('trash')}/player_dino`, 'u1'));
-  // la multa: 50 Đ, Ada ne prende 25 dalla cassaforte di Dino e 25 vanno alla cassa
-  await check(`${label}: Ada riscuote la multa dalla cassaforte di Dino`, true, () =>
+  // la multa: 50 Đ. Ada non può prenderli dalla cassaforte di Dino: li paga Dino, 25 ad Ada
+  // e 25 alla cassa (payFines in trash.ts)
+  await check(`${label}: Ada non riscuote dalla cassaforte di Dino`, false, () =>
     patch(w('rooms_state'), { '0/vaultMoney': 450, '1/vaultMoney': 525 }, 'u2'),
+  );
+  await check(`${label}: Dino paga la multa, metà ad Ada`, true, () =>
+    patch(w('rooms_state'), { '0/vaultMoney': 450, '1/vaultMoney': 525 }, 'u1'),
   );
   await check(`${label}: la metà della polizia va nella cassa`, true, () =>
     put(w('police_fund'), 25, 'u2'),

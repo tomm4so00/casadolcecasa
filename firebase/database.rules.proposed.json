@@ -270,7 +270,21 @@
         },
         "vaultMoney": {
           ".write": "auth != null && auth.uid === 'job-worker'",
-          ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1000000 && (!data.exists() || newData.val() >= data.val() || auth.uid === 'market-publisher' || data.parent().child('ownerId').val() === root.child('sims_accounts').child(auth.uid).child('playerId').val() || root.child('sims_theft_blocks').child($room).child(root.child('sims_accounts').child(auth.uid).child('playerId').val()).child('by').val() !== data.parent().child('ownerId').val())"
+          ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1000000 && (!data.exists() || newData.val() >= data.val() || auth.uid === 'market-publisher' || data.parent().child('ownerId').val() === root.child('sims_accounts').child(auth.uid).child('playerId').val() || (newData.val() === 0 && newData.parent().child('robbed').child('by').val() === root.child('sims_accounts').child(auth.uid).child('playerId').val() && newData.parent().child('robbed').child('t').val() !== data.parent().child('robbed').child('t').val()) || (data.parent().child('allow').child(root.child('sims_accounts').child(auth.uid).child('playerId').val()).child('amt').isNumber() && data.parent().child('allow').child(root.child('sims_accounts').child(auth.uid).child('playerId').val()).child('t').val() > now - 1209600000 && data.parent().child('allow').child(root.child('sims_accounts').child(auth.uid).child('playerId').val()).child('amt').val() >= (data.val() - newData.val()) && (!newData.parent().child('allow').child(root.child('sims_accounts').child(auth.uid).child('playerId').val()).exists() || newData.parent().child('allow').child(root.child('sims_accounts').child(auth.uid).child('playerId').val()).child('amt').val() === data.parent().child('allow').child(root.child('sims_accounts').child(auth.uid).child('playerId').val()).child('amt').val() - (data.val() - newData.val()))))"
+        },
+        "allow": {
+          "$payee": {
+            ".validate": "newData.hasChildren(['amt','t']) && $payee.matches(/^[A-Za-z0-9_-]{1,140}$/) && (data.parent().parent().child('ownerId').val() === root.child('sims_accounts').child(auth.uid).child('playerId').val() || ($payee === root.child('sims_accounts').child(auth.uid).child('playerId').val() && data.exists() && newData.child('amt').val() < data.child('amt').val() && newData.child('t').val() === data.child('t').val()))",
+            "amt": {
+              ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 1000000 && newData.val() % 1 === 0"
+            },
+            "t": {
+              ".validate": "newData.isNumber() && newData.val() <= now + 60000"
+            },
+            "$other": {
+              ".validate": false
+            }
+          }
         },
         "lastSeen": {
           ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 9007199254740991"
@@ -1661,7 +1675,21 @@
             },
             "vaultMoney": {
               ".write": "auth != null && auth.uid === 'job-worker'",
-              ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1000000 && (!data.exists() || newData.val() >= data.val() || auth.uid === 'market-publisher' || data.parent().child('ownerId').val() === root.child('sims_accounts').child(auth.uid).child('playerId').val() || root.child('worlds').child($worldId).child('theft_blocks').child($room).child(root.child('sims_accounts').child(auth.uid).child('playerId').val()).child('by').val() !== data.parent().child('ownerId').val())"
+              ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1000000 && (!data.exists() || newData.val() >= data.val() || auth.uid === 'market-publisher' || data.parent().child('ownerId').val() === root.child('sims_accounts').child(auth.uid).child('playerId').val() || (newData.val() === 0 && newData.parent().child('robbed').child('by').val() === root.child('sims_accounts').child(auth.uid).child('playerId').val() && newData.parent().child('robbed').child('t').val() !== data.parent().child('robbed').child('t').val()) || (data.parent().child('allow').child(root.child('sims_accounts').child(auth.uid).child('playerId').val()).child('amt').isNumber() && data.parent().child('allow').child(root.child('sims_accounts').child(auth.uid).child('playerId').val()).child('t').val() > now - 1209600000 && data.parent().child('allow').child(root.child('sims_accounts').child(auth.uid).child('playerId').val()).child('amt').val() >= (data.val() - newData.val()) && (!newData.parent().child('allow').child(root.child('sims_accounts').child(auth.uid).child('playerId').val()).exists() || newData.parent().child('allow').child(root.child('sims_accounts').child(auth.uid).child('playerId').val()).child('amt').val() === data.parent().child('allow').child(root.child('sims_accounts').child(auth.uid).child('playerId').val()).child('amt').val() - (data.val() - newData.val()))))"
+            },
+            "allow": {
+              "$payee": {
+                ".validate": "newData.hasChildren(['amt','t']) && $payee.matches(/^[A-Za-z0-9_-]{1,140}$/) && (data.parent().parent().child('ownerId').val() === root.child('sims_accounts').child(auth.uid).child('playerId').val() || ($payee === root.child('sims_accounts').child(auth.uid).child('playerId').val() && data.exists() && newData.child('amt').val() < data.child('amt').val() && newData.child('t').val() === data.child('t').val()))",
+                "amt": {
+                  ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 1000000 && newData.val() % 1 === 0"
+                },
+                "t": {
+                  ".validate": "newData.isNumber() && newData.val() <= now + 60000"
+                },
+                "$other": {
+                  ".validate": false
+                }
+              }
             },
             "lastSeen": {
               ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 9007199254740991"

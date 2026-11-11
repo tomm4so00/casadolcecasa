@@ -16,7 +16,7 @@ import { sendSocial } from './social.js';
 import { postGossip } from './gossip.js';
 import { notePersonality } from './personality.js';
 import { artistOffer, levelOf } from './personality-rules.js';
-import { collectMoneyFrom, creditMoney } from './economy.js';
+import { collectMoneyFrom, creditMoney, dropDebit, allowDebit } from './economy.js';
 import { askPaintingTitle, paintingTitle, quotedTitle } from './painting-titles.js';
 import { chooseHungPainting, pickWallSlot } from './paint-studio.js';
 import { type PaintingSlot, roomPaintings } from './painting-rules.js';
@@ -490,6 +490,11 @@ export async function placeBid(a: Auction): Promise<void> {
     toast(err, 3500);
     return;
   }
+  // il permesso di addebito: se accetta, il pittore prende i soldi dalla mia cassaforte
+  if (!(await allowDebit(a.by, amt))) {
+    toast('Offerta non registrata: riprova quando sei connesso.', 4000);
+    return;
+  }
   let prev: Auction['bid'] | null = null;
   let committed = false;
   try {
@@ -512,6 +517,7 @@ export async function placeBid(a: Auction): Promise<void> {
     console.warn('[aste]', error);
   }
   if (!committed) {
+    void dropDebit(a.by, amt);
     toast('Offerta non registrata: forse qualcuno ha appena offerto di più.', 4000);
     return;
   }
@@ -627,6 +633,8 @@ export async function completePurchase(a: Auction): Promise<void> {
     .remove()
     .catch(() => {});
   await sendSocial(a.by, { type: 'artSold', amt: sold.amt });
+  // pagato da me: il permesso di addebito per lui non serve più
+  void dropDebit(a.by, sold.amt);
   game.player.stats.paintingsBought = (game.player.stats.paintingsBought || 0) + 1;
   notePersonality('buyPainting', sold.amt);
   saveGame(true);
@@ -667,6 +675,10 @@ export async function onArtAccept(m: SocialMessage): Promise<void> {
 /** Offerta superata, quadro ritirato dall'asta, o compratore che ha rinunciato. */
 export function onArtNo(m: SocialMessage, who: string): void {
   const a = auctionById(String(m.pic || ''));
+  // l'offerta non vale più: il permesso di addebito per il pittore scende ("over" lo manda chi
+  // ha offerto di più, gli altri il pittore stesso)
+  const painter = a?.by ?? (m.why !== 'over' && typeof m.from === 'string' ? m.from : null);
+  if (painter && m.why !== 'gaveup') void dropDebit(painter, Number(m.amt) || 0);
   const what = a ? nameOf(a) : 'il quadro';
   const amt = dindini(Number(m.amt) || 0);
   if (m.why === 'over')

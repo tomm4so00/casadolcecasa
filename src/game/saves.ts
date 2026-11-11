@@ -183,6 +183,7 @@ export function buildSaveData(): SaveV8 {
   if (game.chatReadT > 0) data.chatReadT = game.chatReadT;
   // età e condizioni confermate, avviso della chat letto (terms.ts)
   if (game.player.termsAt) data.termsAt = game.player.termsAt;
+  if (game.player.adultAt) data.adultAt = game.player.adultAt;
   if (game.player.chatNoticeAt) data.chatNoticeAt = game.player.chatNoticeAt;
   // suoni, musica, notifiche e il resto: uguali su ogni telefono, browser o app installata
   data.prefs = collectPrefs();
@@ -253,6 +254,7 @@ export function applySave(value: unknown): void {
   game.player.coupleCooldownUntil = moment(s.coupleCooldownUntil);
   game.player.sleptTogetherSince = moment(s.sleptTogetherSince);
   game.player.termsAt = moment(s.termsAt);
+  game.player.adultAt = moment(s.adultAt);
   game.player.chatNoticeAt = moment(s.chatNoticeAt);
   const num = (v: unknown, d: number): number => (typeof v === 'number' && isFinite(v) ? v : d);
   game.player.healthLevel = num(s.healthLevel, game.player.healthLevel);

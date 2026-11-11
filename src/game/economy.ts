@@ -7,6 +7,8 @@ import { RoomEconomy, decodeEconomy } from './room-economy.js';
 import type { EconomyState, RoomState } from './models.js';
 import { bankBalanceOf, depositChange, withdrawChange } from './bank-rules.js';
 import { recordActivity } from './activity.js';
+import { worldNode } from './world-db.js';
+import { grantDebit, reduceDebit } from '../../shared/debit-rules.js';
 
 let wallet: RoomEconomy | null = null;
 export function resetEconomy() {
@@ -123,20 +125,42 @@ export async function transferMoney(targetPlayerId: string, amount: number): Pro
   }
 }
 
+/** Il mio permesso di addebito per `payee` (shared/debit-rules.ts), nella mia stanza. */
+function debitRef(payee: string) {
+  if (game.myAssignedRoomIdx === null || game.myAssignedRoomIdx < 0) return null;
+  return game.session.db.ref(
+    `${worldNode('rooms_state')}/${game.myAssignedRoomIdx}/allow/${payee}`,
+  );
+}
+
 /**
- * Riscuote una multa dalla cassaforte di un altro giocatore: si prende fin dove arriva (al
- * massimo `amount`) e a me va `share(preso)`. Restituisce quanto si è preso.
+ * Un'offerta: `payee` potrà prendere `amount` dalla mia cassaforte quando accetta. Si somma ai
+ * permessi che ha già. False se non si è riusciti a scriverlo (allora l'offerta non parte).
  */
-export async function seizeMoneyFrom(
-  fromPlayerId: string,
-  amount: number,
-  share: (taken: number) => number,
-): Promise<number> {
+export async function allowDebit(payee: string, amount: number): Promise<boolean> {
+  const ref = debitRef(payee);
+  if (!ref || !payee || payee === game.session.myPlayerId) return false;
   try {
-    return (await getWallet()?.seize(fromPlayerId, amount, share)) ?? 0;
+    const r = await ref.transaction(
+      (cur: unknown) => grantDebit(cur, amount, Date.now()) ?? undefined,
+    );
+    return !!r?.committed;
   } catch (error) {
-    console.warn('[multa]', error);
-    return 0;
+    console.warn('[permesso]', error);
+    return false;
+  }
+}
+
+/** L'offerta non serve più (rifiutata, superata, pagata da me): il permesso scende. */
+export async function dropDebit(payee: string, amount: number): Promise<void> {
+  const ref = debitRef(payee);
+  if (!ref || !payee) return;
+  try {
+    await ref.transaction((cur: unknown) =>
+      cur ? reduceDebit(cur, amount, Date.now()) : undefined,
+    );
+  } catch (error) {
+    console.warn('[permesso]', error);
   }
 }
 

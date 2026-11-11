@@ -113,8 +113,7 @@ export async function openCryo(): Promise<void> {
           : !CRYO_PAYMENT_LINK && !CRYO_LIFETIME_LINK
             ? '\n\n⏳ Arriva presto!'
             : '\n\nIl pagamento avviene sulla pagina sicura di Stripe; la capsula si attiva da sola appena il pagamento è confermato. ' +
-              "Prima di pagare ti chiediamo di accettare le condizioni: l'attivazione è immediata e per questo non c'è il recesso di 14 giorni. " +
-              'Se hai meno di 18 anni chiedi prima a un genitore.'),
+              "Prima di pagare ti chiediamo di accettare le condizioni: l'attivazione è immediata e per questo non c'è il recesso di 14 giorni."),
     buttons: [
       { label: 'Chiudi', value: null, color: '#57606f' },
       { label: '📄 Condizioni', value: 'terms', color: '#636e72' },
