@@ -613,22 +613,22 @@ function drawFacade(
     opening,
   );
   if (o.building) {
-    // appartamento ancora vuoto: nastro bianco e rosso sopra il portone chiuso
+    // Appartamento vuoto: nastro bianco e rosso nella metà bassa del portone.
     onFace(b, side ? 'right' : 'left', (): void => {
       const { dx, dw } = door;
-      const dy = door.spring - dw / 2;
+      const tapeY = door.spring + (door.bottom - door.spring) * 0.6;
       // appartamento ancora vuoto: nastro bianco e rosso sul portone
       ctx.save();
       ctx.beginPath();
-      ctx.rect(dx - 4, dy + dw / 2 + 2, dw + 8, 9);
+      ctx.rect(dx - 4, tapeY, dw + 8, 9);
       ctx.clip();
       for (let u = dx - 14, i = 0; u < dx + dw + 8; u += 8, i++) {
         ctx.fillStyle = i % 2 ? '#ffffff' : '#e74c3c';
         ctx.beginPath();
-        ctx.moveTo(u, dy + dw / 2 + 11);
-        ctx.lineTo(u + 8, dy + dw / 2 + 2);
-        ctx.lineTo(u + 16, dy + dw / 2 + 2);
-        ctx.lineTo(u + 8, dy + dw / 2 + 11);
+        ctx.moveTo(u, tapeY + 9);
+        ctx.lineTo(u + 8, tapeY);
+        ctx.lineTo(u + 16, tapeY);
+        ctx.lineTo(u + 8, tapeY + 9);
         ctx.fill();
       }
       ctx.restore();
