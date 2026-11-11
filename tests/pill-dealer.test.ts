@@ -80,7 +80,9 @@ describe('spacciatori', () => {
     expect(dealerOnDuty('mirko', 5)).toBe(true);
     expect(dealerOnDuty('mirko', 12)).toBe(false);
     expect(DEALERS.mirko.sells).toBe('pill');
-    expect(DEALERS.biondo.sells).toBe('weed');
+    expect(DEALERS.biondo.sells).toBe('pill');
+    expect(DEALERS.nico.sells).toBe('weed');
+    expect(Object.values(DEALERS).filter((d) => d.sells === 'weed')).toHaveLength(1);
   });
 
   it('il listino delle pillole sta nella sua fascia e cambia piano da un’ora all’altra', () => {
@@ -97,7 +99,7 @@ describe('spacciatori', () => {
     expect(streetPillPrice('CASA-0001', NOW)).toBe(streetPillPrice('CASA-0001', NOW));
   });
 
-  it('retate rare (in media una ogni 7–10 giorni), da 12 a 24 ore, al bar o in discoteca', () => {
+  it('retate rare (in media una ogni 7–10 giorni), da 12 a 24 ore, nei tre luoghi', () => {
     const raids = [];
     for (let d = 0; d < 3650; d++) {
       const r = raidOfDay('CASA-0001', 20_000 + d);
@@ -112,7 +114,9 @@ describe('spacciatori', () => {
     }
     for (let i = 1; i < raids.length; i++)
       expect(raids[i].id - raids[i - 1].id).toBeGreaterThanOrEqual(5);
-    expect(new Set(raids.map((r) => r.place))).toEqual(new Set(['bar', 'discoteca']));
+    expect(new Set(raids.map((r) => r.place))).toEqual(
+      new Set(['bar', 'discoteca', 'passeggiata']),
+    );
     const r = raids[0];
     expect(activeRaid('CASA-0001', r.start)).toEqual(r);
     expect(activeRaid('CASA-0001', r.end)).toBeNull();
@@ -121,7 +125,7 @@ describe('spacciatori', () => {
   it('durante una retata lo spacciatore del posto sparisce e l’altro raddoppia', () => {
     let r = null;
     for (let d = 20_000; !r; d++) r = raidOfDay('CASA-0001', d);
-    const busted = r.place === 'bar' ? 'biondo' : 'mirko';
+    const busted = r.place === 'bar' ? 'biondo' : r.place === 'discoteca' ? 'mirko' : 'nico';
     const other = busted === 'biondo' ? 'mirko' : 'biondo';
     const hour = DEALERS[other].from;
     expect(dealerOffer(busted, 'CASA-0001', r.start, DEALERS[busted].from, 20, 0, {}).present).toBe(

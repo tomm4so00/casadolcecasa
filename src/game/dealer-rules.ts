@@ -6,8 +6,8 @@
 const HOUR = 3_600_000;
 const DAY = 24 * HOUR;
 
-export type DealerId = 'biondo' | 'mirko';
-export type DealerPlace = 'bar' | 'discoteca';
+export type DealerId = 'biondo' | 'mirko' | 'nico';
+export type DealerPlace = 'bar' | 'discoteca' | 'passeggiata';
 
 export const DEALERS: Record<
   DealerId,
@@ -29,7 +29,7 @@ export const DEALERS: Record<
     place: 'bar',
     from: 14,
     to: 2,
-    sells: 'weed',
+    sells: 'pill',
     markup: 1,
     lines: [
       'Roba buona, prezzo giusto.',
@@ -48,6 +48,19 @@ export const DEALERS: Record<
       'Psst… stanotte ho le pillole giuste.',
       'Non chiedermi cosa c’è dentro.',
       'Tu sì che hai l’aria di uno che se ne intende.',
+    ],
+  },
+  nico: {
+    name: 'Nico',
+    place: 'passeggiata',
+    from: 10,
+    to: 22,
+    sells: 'weed',
+    markup: 1,
+    lines: [
+      'Senti che profumo. Solo erba, niente pillole.',
+      'Una bustina per la passeggiata?',
+      'Il prezzo segue il mercato.',
     ],
   },
 };
@@ -88,13 +101,14 @@ export interface Raid {
   end: number;
 }
 
-/** La retata di un blocco: da 12 a 24 ore, al bar o in discoteca. */
+/** La retata di un blocco: da 12 a 24 ore in uno dei tre luoghi. */
 function raidOfBlock(world: string, block: number): Raid {
   const day =
     block * RAID_BLOCK_DAYS + Math.floor(hash01(`${world}|giorno|${block}`) * RAID_START_DAYS);
   const start = day * DAY + Math.floor(hash01(`${world}|ora|${day}`) * 24) * HOUR;
   const hours = 12 + Math.floor(hash01(`${world}|durata|${day}`) * 13);
-  const place: DealerPlace = hash01(`${world}|posto|${day}`) < 0.5 ? 'bar' : 'discoteca';
+  const places: DealerPlace[] = ['bar', 'discoteca', 'passeggiata'];
+  const place = places[Math.floor(hash01(`${world}|posto|${day}`) * places.length)];
   return { id: day, place, start, end: start + hours * HOUR };
 }
 
@@ -105,7 +119,14 @@ export function raidOfDay(world: string, day: number): Raid | null {
 }
 
 /** La retata in corso adesso nel condominio, oppure null. */
+let developmentRaid: Raid | null | undefined;
+const development = (import.meta as ImportMeta & { env?: { DEV?: boolean } }).env?.DEV === true;
+export function setDevelopmentRaid(raid: Raid | null | undefined): void {
+  if (development) developmentRaid = raid;
+}
+
 export function activeRaid(world: string, now: number): Raid | null {
+  if (development && developmentRaid !== undefined) return developmentRaid;
   const block = Math.floor(Math.floor(now / DAY) / RAID_BLOCK_DAYS);
   for (const b of [block, block - 1]) {
     const raid = raidOfBlock(world, b);
@@ -239,8 +260,31 @@ export function dealerLine(id: DealerId, offer: DealerOffer, now: number): strin
 
 /** Il messaggio per i pettegolezzi all'inizio e alla fine di una retata. */
 export function raidGossip(raid: Raid, ended: boolean): string {
-  const where = raid.place === 'bar' ? 'al bar' : 'in discoteca';
+  const where =
+    raid.place === 'bar'
+      ? 'al bar'
+      : raid.place === 'discoteca'
+        ? 'in discoteca'
+        : 'in passeggiata';
   return ended
     ? `🚓 La polizia se n'è andata ${where}: lo spacciatore è tornato.`
     : `🚨 Retata ${where}! Lo spacciatore è sparito e chi è rimasto raddoppia i prezzi.`;
+}
+
+/** Quantita nello zaino che fanno scattare il sospetto durante una retata. */
+export function policeSuspicious(grams: number, pills: number): boolean {
+  return grams >= 10 || pills >= 3;
+}
+
+/** Un solo locale viene occupato dalla polizia; gli altri seguono i normali orari. */
+export function streetRole(
+  env: string,
+  world: string,
+  now: number,
+  hour: number,
+): 'police' | 'dealer' | 'absent' {
+  const id = (Object.keys(DEALERS) as DealerId[]).find((id) => DEALERS[id].place === env);
+  if (!id) return 'absent';
+  if (activeRaid(world, now)?.place === env) return 'police';
+  return dealerOnDuty(id, hour) ? 'dealer' : 'absent';
 }

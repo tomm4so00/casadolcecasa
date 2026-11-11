@@ -72,6 +72,26 @@ export class InventoryLedger {
     return this.update(() => true);
   }
 
+  /** Multa e sequestro sono confermati dallo stesso registro dello zaino. */
+  policeResolution(fine: number | null, onSeized?: (grams: number) => void): Promise<boolean> {
+    let grams = 0;
+    return this.update((_rooms, room, stock) => {
+      if (fine !== null) {
+        if (!Number.isSafeInteger(fine) || fine < 0 || room.vaultMoney < fine) return false;
+        room.vaultMoney -= fine;
+      } else {
+        const released = releaseOffer(stock, 'cancelled');
+        grams = stockOf(released, 'weed');
+        stock.items = { weed: 0, drug: 0 };
+        if (released.offer) stock.offer = released.offer;
+      }
+      return true;
+    }).then((ok) => {
+      if (ok && fine === null) onSeized?.(grams);
+      return ok;
+    });
+  }
+
   /** Il costo viene sottratto insieme all'aggiunta nello zaino. */
   buy(item: TradeItem, quantity: number, price: number): Promise<boolean> {
     return this.update((_rooms, room, stock) => {

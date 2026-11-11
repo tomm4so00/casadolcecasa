@@ -1078,7 +1078,7 @@ export async function doActivity(type?: GameValue): Promise<void> {
   game.view.isOutsideMenuOpen = false;
   game.view.outsideSubmenu = '';
   dom('pop-interaction').classList.add('hidden');
-  dom('btn-return-home').classList.remove('hidden');
+  dom('btn-return-home').classList.toggle('hidden', ['walk', 'bar', 'disco'].includes(type));
   if (type === 'walk') {
     if (usesLeftToday(game.player.daily, 'walk', new Date()) <= 0) {
       toast(`🌳 Hai già fatto ${DAILY_LIMITS.walk} passeggiate oggi: riprova domani!`);
@@ -1109,6 +1109,7 @@ export async function doActivity(type?: GameValue): Promise<void> {
     game.player.happinessLevel = Math.min(100, game.player.happinessLevel + 15);
     game.player.hungerLevel = Math.min(100, game.player.hungerLevel + 15);
     game.view.activeEnvironment = 'bar';
+    game.playerPos = { x: 0, y: 110 };
     game.view.currentRoomTitle = "Bar all'Aperto ☕";
   } else if (type === 'disco') {
     if (usesLeftToday(game.player.daily, 'disco', new Date()) <= 0) {
@@ -1133,6 +1134,7 @@ export async function doActivity(type?: GameValue): Promise<void> {
     game.player.sleepLevel = Math.max(0, game.player.sleepLevel - game.DISCO_SLEEP);
     notePersonality('disco', price);
     game.view.activeEnvironment = 'discoteca';
+    game.playerPos = { x: 0, y: 110 };
     game.view.currentRoomTitle = 'Discoteca 🕺';
     toast(`🕺 Si balla! Felicità +${game.DISCO_HAPPY}%, sonno −${game.DISCO_SLEEP}%`, 3500);
   } else if (type === 'cemetery') {
@@ -1242,7 +1244,10 @@ export async function doActivity(type?: GameValue): Promise<void> {
     game.playerPos = { x: 0, y: 300 };
     return;
   }
-  game.playerPos = { x: 0, y: 80 };
+  game.playerPos = {
+    x: 0,
+    y: ['bar', 'discoteca'].includes(game.view.activeEnvironment) ? 110 : 80,
+  };
 }
 
 /** Porta il personaggio davanti al razzo per vedere il lancio (dal pulsante del conto alla rovescia). */

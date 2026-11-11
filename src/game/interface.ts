@@ -1,4 +1,5 @@
 import { startBetting } from './betting.js';
+import { devMode } from './dev-mode.js';
 import { chooseFirstWorld, currentWorldCode, openWorldSwitch } from './world-select.js';
 import { startGossip } from './gossip.js';
 import { startPaintingTitles } from './painting-titles.js';
@@ -59,7 +60,7 @@ import { openCharacterCreator } from './render/avatars.js';
 import { openEpitaph, rebuildGraveyard } from './render/graveyard.js';
 import { checkMissions, toast } from './missions.js';
 import { openFurnitureShopModal, resumeLastSpot, setupControls } from './world.js';
-import { renderClothesShop } from './character.js';
+import { currentBody, renderClothesShop } from './character.js';
 import { startLoop } from './engine.js';
 import {
   die,
@@ -425,9 +426,15 @@ export async function startGame(..._args: GameValue[]): Promise<GameValue> {
   setTimeout(revealScene, 8000);
   startLoop();
   watchGameVersion();
-  await loadGame();
-  // età e condizioni: una volta per personaggio, prima di tutto il resto (terms.ts)
-  if (!(await ensureTerms())) return;
+  if (devMode) {
+    game.session.saveReady = true;
+    game.session.hadSave = true;
+    game.bodyChosen = true;
+    game.player.myData.nick = 'Sim di prova';
+    game.myBody = { ...currentBody() };
+    game.hasSetSafePin = true;
+  } else await loadGame();
+  if (!devMode && !(await ensureTerms())) return;
   if (game.player.isDead || game.player.healthLevel <= 0) {
     // morto in una sessione precedente, oppure durante l'assenza
     if (!game.player.isDead) await die();
@@ -443,13 +450,14 @@ export async function startGame(..._args: GameValue[]): Promise<GameValue> {
   const firstCharacter = !game.bodyChosen;
   if (!game.bodyChosen) await openCharacterCreator(true);
   await claimRoom();
+  if (devMode) await (await import('./dev-fixture.js')).prepareDevFixture();
   // l'ospite che ha appena salvato riceve ora il bonus dell'invito con cui era arrivato
   void claimInvite(firstCharacter || !!game.session.guestSaved);
   reapAbsentPlayers();
   game.currentApt = hasRoom() ? game.aptOfRoom(game.myAssignedRoomIdx) : 0;
   game.view.currentRoomTitle = game.saloonTitle();
   // si riparte dall'ultima posizione (chi dorme o è svenuto ha già il suo posto, qui sotto)
-  if (!game.player.isSleeping && !game.fainted) await resumeLastSpot();
+  if (!devMode && !game.player.isSleeping && !game.fainted) await resumeLastSpot();
   if (game.player.isSleeping && hasRoom()) {
     // si riprende nel letto in cui ci si era addormentati, anche se è di un altro giocatore
     // (l'elenco delle stanze non è ancora arrivato: si legge solo quella stanza)
@@ -533,7 +541,7 @@ export async function startGame(..._args: GameValue[]): Promise<GameValue> {
   updateNotifyButton();
   checkMissions();
   lifetime.setInterval(checkMissions, 1000);
-  showIntro(); // guida iniziale (solo la prima volta; sempre rileggibile dal ❓)
+  if (!devMode) showIntro(); // guida iniziale (solo la prima volta; sempre rileggibile dal ❓)
   lifetime.setInterval((): GameValue => saveGame(false), 3000);
   lifetime.setInterval((): GameValue => {
     if (hasRoom() && !game.session.dormant)

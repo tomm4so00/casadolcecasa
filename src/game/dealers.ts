@@ -1,4 +1,4 @@
-// Gli spacciatori nel gioco: Il Biondo al bar (erba) e Mirko in discoteca (pillole misteriose).
+// Biondo al bar e Mirko in discoteca vendono pillole; Nico in passeggiata vende erba.
 // Prezzi, orari e retate vengono da dealer-rules.ts; il prezzo dell'erba dal mercato
 // (weed-market-rules.ts), pubblicato dal server.
 import type { GameValue } from './context.js';
@@ -12,6 +12,7 @@ import { drugLevel } from './needs.js';
 import { LEGACY_WORLD } from '../../shared/worlds.js';
 import {
   DEALERS,
+  streetRole,
   type DealerId,
   activeRaid,
   afterPurchase,
@@ -23,11 +24,12 @@ import {
 import { type WeedMarket, bagPrice, decodeWeedMarket } from './weed-market-rules.js';
 import { BAG_GRAMS } from './weed-rules.js';
 import { notePersonality } from './personality.js';
+import { policeLine, talkToPolice } from './raid-police.js';
 
 const world = (): string => game.session.worldId || LEGACY_WORLD;
 const hour = (): number => new Date().getHours();
 
-/** Lo spacciatore di un ambiente (bar o discoteca). */
+/** Lo spacciatore di un ambiente. */
 export function dealerOf(env: string): DealerId | null {
   for (const id of Object.keys(DEALERS) as DealerId[]) if (DEALERS[id].place === env) return id;
   return null;
@@ -35,16 +37,16 @@ export function dealerOf(env: string): DealerId | null {
 
 /** C'è adesso (orario e niente polizia)? Serve anche per mostrare o no l'omino. */
 export function dealerHere(env: string): boolean {
-  const id = dealerOf(env);
-  if (!id) return false;
-  const raid = activeRaid(world(), Date.now());
-  return dealerOnDuty(id, hour()) && raid?.place !== DEALERS[id].place;
+  return streetRoleHere(env) !== 'absent';
 }
 
 /** Le frasi dell'omino. */
 export const dealerBotLines = (env: string): string[] => {
   const id = dealerOf(env);
-  return id ? DEALERS[id].lines : [];
+  const bot = game.simulationBots.find(
+    (b: { dealer?: boolean; env: string }) => b.dealer && b.env === env,
+  );
+  return streetRoleHere(env) === 'police' ? policeLine(bot || {}) : id ? DEALERS[id].lines : [];
 };
 
 let market: WeedMarket | null = null;
@@ -75,10 +77,7 @@ export async function openStreetDealer(env: string): Promise<void> {
   const now = Date.now();
   const raid = activeRaid(world(), now);
   if (raid?.place === d.place) {
-    toast(
-      '🚓 Lo spacciatore è sparito: in giro ci sono gli sbirri. Meglio non farsi vedere.',
-      4500,
-    );
+    talkToPolice(env);
     return;
   }
   if (!dealerOnDuty(id, hour())) {
@@ -139,3 +138,9 @@ export async function openStreetDealer(env: string): Promise<void> {
     4500,
   );
 }
+
+export function streetRoleHere(env: string): 'police' | 'dealer' | 'absent' {
+  return streetRole(env, world(), Date.now(), hour());
+}
+
+export { updatePolice as updateStreetPolice } from './raid-police.js';

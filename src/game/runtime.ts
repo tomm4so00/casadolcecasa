@@ -2,6 +2,7 @@ import firebase from 'firebase/compat/app';
 import 'firebase/compat/database';
 import { FIREBASE_CONFIG, isFirebaseConfigured } from '../firebase-config.js';
 import { Lifetime } from './lifetime.js';
+import { devMode } from './dev-mode.js';
 import { localDatabase } from './database.js';
 import type { GameDatabase, GameReference, GameSnapshot } from './database.js';
 import type { GameValue } from './context.js';
@@ -12,14 +13,15 @@ export const firebaseClient = firebase;
 export const firebaseOptions = FIREBASE_CONFIG;
 export let lifetime = new Lifetime();
 export function isLocalMode() {
-  return new URLSearchParams(location.search).has('offline') || !isFirebaseConfigured();
+  return devMode || new URLSearchParams(location.search).has('offline') || !isFirebaseConfigured();
 }
 export function resetLifetime() {
   lifetime.dispose();
   lifetime = new Lifetime();
 }
 export function createLocalDb() {
-  return localDatabase(lifetime);
+  if (devMode) sessionStorage.removeItem('offline_sims_database_v8');
+  return localDatabase(lifetime, devMode ? sessionStorage : localStorage);
 }
 const emulatorDatabases = new WeakSet<firebase.database.Database>();
 

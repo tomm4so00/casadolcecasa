@@ -1627,6 +1627,7 @@ export const SIMULATION_BOTS = [
   { name: 'Bot_Marco', env: 'discoteca', x: 70, y: -30, vx: 18, vy: -24 },
   { name: 'Bot_Elena', env: 'discoteca', x: -20, y: -50, vx: -15, vy: 22 },
   { name: 'Mirko 🕴️', env: 'discoteca', x: 140, y: 70, vx: 0, vy: 0, dealer: true },
+  { name: 'Nico 🌿', env: 'passeggiata', x: -100, y: 80, vx: 0, vy: 0, dealer: true },
   { name: 'Bot_Paolo', env: 'viaggio', x: 20, y: 30, vx: -15, vy: -15 },
   { name: 'Bot_Giulia', env: 'lavoro_ufficio', x: -30, y: -30, vx: 25, vy: 15 },
 ];
