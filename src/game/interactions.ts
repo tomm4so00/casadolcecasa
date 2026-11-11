@@ -62,11 +62,16 @@ import { quotedTitle } from './painting-titles.js';
 import { type DoorGap, type RoomBounds, crossedDoor, gapFor, nearDoor } from './door-walk-rules.js';
 import { roomPaintings, slotOfKey } from './painting-rules.js';
 import { relaxWith, toast } from './missions.js';
-import { freeRoomsInApt, openClothesShop, openWardrobe } from './character.js';
+import {
+  freeRoomsInApt,
+  openClothesShop,
+  openWardrobe,
+  returnHomeFromActivity,
+} from './character.js';
 import { mgButtonText, mgInteract } from './jobs.js';
 import { coffeeLeftMs, openDealer, useCoffee } from './needs.js';
 import { pillSleepBlock } from './pill.js';
-import { dealerOf } from './dealers.js';
+import { dealerOf, streetRoleHere } from './dealers.js';
 import { DEALERS } from './dealer-rules.js';
 import { showGraveInfo } from './render/graveyard.js';
 import { startShower, startToilet, startWash } from './bathroom.js';
@@ -648,6 +653,9 @@ const GALLERY: Place = {
 
 const DEALER: Place = {
   prompt: () => {
+    const role = streetRoleHere(game.view.activeEnvironment);
+    if (role === 'police') return { text: '🚓 Parla con il poliziotto' };
+    if (role === 'absent') return { text: 'Lo spacciatore non è di turno', locked: true };
     const id = dealerOf(game.view.activeEnvironment);
     return { text: id ? `🕴️ Parla con ${DEALERS[id].name}` : '🕴️ Parla con lo spacciatore' };
   },
@@ -730,8 +738,10 @@ const MOON_BASE: Place = {
 // ---------------------------------------------------------------- parco
 // Il cancello si attraversa liberamente; il pulsante permette di richiamare il cane.
 const PARK: Place = {
-  prompt: (key, item) => (key === 'dogGate' ? dogGatePrompt() : touch(item)),
-  act(key) {
+  prompt: (key, item) =>
+    key === 'dealer' ? DEALER.prompt(key, item) : key === 'dogGate' ? dogGatePrompt() : touch(item),
+  act(key, item) {
+    if (key === 'dealer') return DEALER.act(key, item);
     if (key === 'dogGate') useDogGate();
   },
 };
@@ -1024,6 +1034,13 @@ export function promptFor(key: string, item: GameValue): Prompt {
 
 /** Preme il pulsante dell'oggetto vicino. */
 export async function interactWith(key: string, item: GameValue): Promise<void> {
+  if (
+    key === 'doorExit' &&
+    ['bar', 'discoteca', 'passeggiata'].includes(game.view.activeEnvironment)
+  ) {
+    returnHomeFromActivity();
+    return;
+  }
   if (funSpots()[key]?.fun === 'bench') {
     toggleBench(key);
     return;

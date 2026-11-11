@@ -103,7 +103,9 @@ import { clampToRoom, doorwayAt } from './door-walk-rules.js';
 import { chairsOf, deskChair } from './chair-rules.js';
 import { cabinetFacesAway, cabinetPlayerPose } from './cabinet.js';
 import { pillControlSign, updatePillVisuals } from './pill.js';
-import { dealerBotLines, dealerHere } from './dealers.js';
+import { dealerBotLines, dealerHere, streetRoleHere, updateStreetPolice } from './dealers.js';
+import { policeHoldingPlayer, policeSmoking } from './raid-police.js';
+import { officerLook } from './render/police.js';
 import { CRACK_MS } from '../../shared/hacker-rules.js';
 import { giftDrawables } from './taste.js';
 import { heartFor } from './couples.js';
@@ -261,7 +263,7 @@ function onScreen(x: number, y: number): boolean {
 
 export function renderEnvironment(delta?: GameValue, animTime?: GameValue): GameValue {
   const ctx = game.view.ctx;
-  if (!canPlaySession()) {
+  if (!canPlaySession() || policeHoldingPlayer()) {
     game.moveForward = game.moveRight = 0;
     delta = 0;
   }
@@ -364,6 +366,10 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
         ? 'Zona esterna del laboratorio 🚀'
         : 'Laboratorio Ingegneristico 🔧';
   game.simulationBots.forEach((bot?: GameValue): GameValue => {
+    if (bot.dealer) {
+      updateStreetPolice(bot, delta, getSolidObstacles());
+      return;
+    }
     if (bot.env === game.view.activeEnvironment) {
       const nx = bot.x + bot.vx * delta,
         ny = bot.y + bot.vy * delta;
@@ -541,6 +547,19 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
       );
     });
   }
+  if (game.ENV_PROPS[game.view.activeEnvironment] && map.doorExit) {
+    const exit = map.doorExit;
+    addThing(
+      exit.x,
+      exit.y,
+      exit.w,
+      exit.h,
+      12,
+      '',
+      () => drawMapItem('doorExit', exit, animTime, lights),
+      -1e5,
+    );
+  }
   // la sedia davanti alla scrivania del PC: chi ci siede si disegna con lei (vedi drawChair)
   game.frameDesk = game.view.activeEnvironment === 'PLAYER_ROOM' && map.desk ? map.desk : null;
   if (game.frameDesk) {
@@ -702,20 +721,28 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
           drawPlayerAvatar(
             bot.x,
             bot.y,
-            bot.name,
+            bot.dealer && streetRoleHere(bot.env) === 'police' ? 'Poliziotto' : bot.name,
             animTime,
             // Rocco del grow shop: sempre con gli occhi rossi, senza occhiali da sole
             bot.stoned
               ? { ...withStonedEyes(botLook(bot.name), true), glasses: null }
-              : botLook(bot.name),
+              : bot.dealer && streetRoleHere(bot.env) === 'police'
+                ? {
+                    ...officerLook(0),
+                    glasses: null,
+                    stoned: policeSmoking(bot),
+                  }
+                : botLook(bot.name),
             !!(bot.vx || bot.vy),
             say,
             {
               walkDir: { x: bot.vx, y: bot.vy },
               speed: Math.hypot(bot.vx, bot.vy),
+              pose: policeSmoking(bot) ? 'smoke' : '',
             },
           );
           ctx.restore();
+          if (policeSmoking(bot)) drawSmokePuffs(bot.x, bot.y, animTime);
         },
       });
     }

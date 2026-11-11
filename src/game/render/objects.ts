@@ -1530,7 +1530,7 @@ export function drawMapItem(
     resetPlane();
   }
   if (k === 'doorExit' || k === 'exitHouse') {
-    drawExitMat(item, k === 'exitHouse' ? 'ESCI DI CASA' : 'USCITA');
+    if (!item.noMat) drawExitMat(item, k === 'exitHouse' ? 'ESCI DI CASA' : 'USCITA');
     return drawExitArrow(k, item, t);
   }
   // Gli oggetti da parete (il quadro) si disegnano sulla parete, non sul pavimento.

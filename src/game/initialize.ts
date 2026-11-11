@@ -61,6 +61,7 @@ import { mixColor } from './render/primitives.js';
 import { rebuildGraveyard } from './render/graveyard.js';
 
 import { firebaseOptions, isLocalMode, createDatabase } from './runtime.js';
+import { devMode } from './dev-mode.js';
 import { DOG_GATE } from './dog-park-rules.js';
 import { NEEDS_RULES } from './absent-death-rules.js';
 import { SHIFT_SECONDS } from '../../shared/job-pay-rules.js';
@@ -87,7 +88,7 @@ export function initializeGame() {
   game.firebaseConfig = firebaseOptions;
   game.GAME_VERSION = 8;
   const offline = isLocalMode();
-  const prefix = offline ? 'offline_' : '';
+  const prefix = devMode ? 'devtest_' : offline ? 'offline_' : '';
   const playerId =
     localStorage.getItem(prefix + 'sims_device_id') ||
     'player_' + Math.random().toString(36).substring(2, 9);
@@ -383,7 +384,11 @@ export function initializeGame() {
     Math.min(5, Math.max(1, game.player.drug.doses)) * 24 * 3600 * 1000;
   game.discoMap = { dealer: { x: 140, y: 70, w: 20, h: 20, name: 'Spacciatore' } };
   game.barMap = { dealer: { x: 140, y: -35, w: 20, h: 20, name: 'Spacciatore' } };
+  game.barMap.doorExit = { x: 0, y: 160, w: 60, h: 15, name: 'Uscita', moveable: false };
+  game.discoMap.doorExit = { x: 0, y: 160, w: 60, h: 15, name: 'Uscita', moveable: false };
   game.parkMap = {
+    doorExit: { x: 0, y: 305, w: 70, h: 15, name: 'Uscita', noMat: true, moveable: false },
+    dealer: { x: -100, y: 80, w: 20, h: 20, name: 'Spacciatore' },
     dogGate: { x: DOG_GATE.x, y: DOG_GATE.y, w: DOG_GATE.w, h: 4, name: 'Area cani 🐕' },
   };
   game.DISCO_LINES = [

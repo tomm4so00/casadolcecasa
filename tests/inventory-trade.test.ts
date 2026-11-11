@@ -45,6 +45,26 @@ async function setup(path = 'sims_rooms_state') {
   };
 }
 
+describe('fermo di polizia', () => {
+  it('paga la multa conservando le scorte e rifiuta un secondo pagamento senza fondi', async () => {
+    const { seller, read } = await setup();
+    expect(await seller.policeResolution(100)).toBe(true);
+    expect((await read())[0].vaultMoney).toBe(0);
+    expect((await read())[0].inventory.items).toEqual({ weed: 8, drug: 4 });
+    expect(await seller.policeResolution(100)).toBe(false);
+    expect((await read())[0].vaultMoney).toBe(0);
+  });
+  it('sequestra entrambe le scorte e annulla anche la merce prenotata', async () => {
+    const { seller, read } = await setup();
+    expect(await seller.offer('buyer', 'weed', 5, 10, 'seizure')).toBe(true);
+    expect(await seller.policeResolution(null)).toBe(true);
+    const room = (await read())[0];
+    expect(room.vaultMoney).toBe(100);
+    expect(room.inventory.items).toEqual({ weed: 0, drug: 0 });
+    expect(room.inventory.offer.status).toBe('cancelled');
+  });
+});
+
 describe('scambi condivisi dello zaino', () => {
   it('sposta dosi e denaro insieme e impedisce di accettare due volte', async () => {
     const { seller, buyer, read } = await setup();

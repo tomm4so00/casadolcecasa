@@ -25,7 +25,7 @@ const OFFICERS = [
 const looks: GameValue[] = [];
 
 /** La divisa: giacca blu, camicia azzurra, cravatta e berretto con la visiera. */
-function officerLook(i: number): GameValue {
+export function officerLook(i: number): GameValue {
   if (looks[i]) return looks[i];
   const base: GameValue = resolveLook(parseLook('item_suit,pants_black,shoes_formal,neck_tie'));
   const look: GameValue = {
