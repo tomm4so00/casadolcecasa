@@ -1,5 +1,6 @@
 // Animali domestici nel gioco: negozio, casette nella stanza, cane e gatto che girano per la stanza,
 // fame con le sue barre, cibo e passeggiata col guinzaglio. Le regole sono in pet-rules.ts.
+import { filterNotice, filterText } from '../../shared/text-filter-rules.js';
 import type { GameValue } from './context.js';
 import { game } from './context.js';
 import { dom, lifetime } from './runtime.js';
@@ -158,7 +159,10 @@ export async function renamePet(kind: PetKind, first = false): Promise<boolean> 
       hint = error;
       continue;
     }
-    st.name = cleanPetName(res.value)!;
+    const { text, problems } = filterText(cleanPetName(res.value)!);
+    const notice = filterNotice(problems);
+    if (notice) toast(notice, 5000);
+    st.name = text;
     break;
   }
   const home = homes.get(kind);

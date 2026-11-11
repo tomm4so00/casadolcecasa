@@ -1,4 +1,5 @@
 // Titoli dei quadri: si leggono da tutti, li scrive chi dà il nome al quadro (di solito l'autore).
+import { filterNotice, filterText, maskText } from '../../shared/text-filter-rules.js';
 import type { GameValue } from './context.js';
 import { game } from './context.js';
 import { openDialog } from './interface.js';
@@ -33,7 +34,9 @@ export function startPaintingTitles(): void {
 
 /** Titolo del quadro (null se non ne ha ancora uno). */
 export function paintingTitle(code: string | null | undefined): string | null {
-  return code ? titles[paintingId(code)]?.title || null : null;
+  const title = code ? titles[paintingId(code)]?.title : null;
+  // l'ha scritto un giocatore, magari con una versione vecchia: si copre quello che non va
+  return title ? maskText(title) : null;
 }
 
 /** «Titolo» oppure "" se non ha nome. */
@@ -71,7 +74,9 @@ export async function askPaintingTitle(code: string, intro: string): Promise<str
       toast('❌ ' + error, 3500);
       continue;
     }
-    const title = cleanTitle(res.value);
+    const { text: title, problems } = filterText(cleanTitle(res.value));
+    const notice = filterNotice(problems);
+    if (notice) toast(notice, 5000);
     try {
       await game.session.db
         .ref('sims_painting_titles/' + paintingId(code))

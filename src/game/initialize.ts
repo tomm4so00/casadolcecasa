@@ -1,3 +1,4 @@
+import { maskText } from '../../shared/text-filter-rules.js';
 import { ABANDON_MS } from './autoplay-rules.js';
 import { DISCO_PRICE } from './prices.js';
 import { MOONBASE_PARTS } from './render/moonbase.js';
@@ -355,7 +356,9 @@ export function initializeGame() {
         toast('Inserisci un nome valido per iniziare!');
         return;
       }
-      localStorage.setItem(game.session.LS_PREFIX + 'sims_player_nick', enteredNick.slice(0, 20));
+      // il nome lo vedono tutti: link, telefoni e insulti d'odio partono coperti
+      enteredNick = maskText(enteredNick.slice(0, 20));
+      localStorage.setItem(game.session.LS_PREFIX + 'sims_player_nick', enteredNick);
       startGame();
     };
     lifetime.listen(startBtn, 'click', triggerStart);

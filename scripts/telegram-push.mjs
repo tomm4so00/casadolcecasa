@@ -44,18 +44,37 @@ for (const p of parts) {
   text += p + '\n\n';
 }
 
-const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({
-    chat_id: chat,
-    text: text.trim(),
-    parse_mode: 'HTML',
-    disable_web_page_preview: true,
-  }),
-});
-if (!res.ok) {
-  console.error('Telegram ha rifiutato il messaggio:', res.status, await res.text());
+/** Manda il messaggio a una chat; restituisce la risposta di Telegram. */
+async function send(chatId) {
+  const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      chat_id: chatId,
+      text: text.trim(),
+      parse_mode: 'HTML',
+      disable_web_page_preview: true,
+    }),
+  });
+  return { ok: res.ok, status: res.status, body: await res.text() };
+}
+
+let sent = await send(chat);
+// il gruppo è diventato un supergruppo e ha cambiato numero: Telegram dice quello nuovo, si
+// riprova lì. Il segreto TELEGRAM_CHAT_ID va comunque aggiornato.
+const moved = (() => {
+  try {
+    return JSON.parse(sent.body)?.parameters?.migrate_to_chat_id;
+  } catch {
+    return undefined;
+  }
+})();
+if (!sent.ok && moved) {
+  console.warn(`Il gruppo ha cambiato numero: aggiorna il segreto TELEGRAM_CHAT_ID a ${moved}.`);
+  sent = await send(moved);
+}
+if (!sent.ok) {
+  console.error('Telegram ha rifiutato il messaggio:', sent.status, sent.body);
   process.exit(1);
 }
 console.log(`Mandati ${commits.length} commit al gruppo.`);

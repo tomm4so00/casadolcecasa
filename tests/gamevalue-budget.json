@@ -1,5 +1,5 @@
 {
-  "total": 3388,
+  "total": 3387,
   "files": {
     "src/game/activity.ts": 2,
     "src/game/arcade.ts": 12,
@@ -9,7 +9,7 @@
     "src/game/bathroom.ts": 6,
     "src/game/cabinet.ts": 10,
     "src/game/character.ts": 165,
-    "src/game/chat.ts": 60,
+    "src/game/chat.ts": 59,
     "src/game/collect.ts": 6,
     "src/game/context.ts": 103,
     "src/game/couples.ts": 3,

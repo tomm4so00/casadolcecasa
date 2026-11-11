@@ -11,6 +11,7 @@ import { chatNoticeOnce } from './terms.js';
 import { recordActivity } from './activity.js';
 import { worldNode } from './world-db.js';
 import { isGuest, requireAccount } from './guest.js';
+import { filterNotice, filterText } from '../../shared/text-filter-rules.js';
 export function chatColor(name?: GameValue): GameValue {
   let h: GameValue = 0;
   for (const c of String(name)) h = (h * 31 + c.charCodeAt(0)) % 360;
@@ -117,8 +118,8 @@ export function closeGlobalChat(..._args: GameValue[]): GameValue {
 export async function sendChat(..._args: GameValue[]): Promise<GameValue> {
   if (!(await requireAccount('scrivere in chat'))) return;
   const inp: GameValue = dom('gchat-input');
-  const text: GameValue = inp.value.trim().slice(0, game.CHAT_MAX_LEN);
-  if (!text) return;
+  const typed: string = inp.value.trim().slice(0, game.CHAT_MAX_LEN);
+  if (!typed) return;
   if (game.player.isDead) {
     toast('⚰️ Un fantasma non può scrivere in chat.');
     return;
@@ -136,6 +137,10 @@ export async function sendChat(..._args: GameValue[]): Promise<GameValue> {
   game.chatLastSend = now;
   countUse('chat');
   inp.value = '';
+  // link, telefoni, insulti d'odio e sessuale esplicito partono coperti (text-filter-rules.ts)
+  const { text, problems } = filterText(typed);
+  const notice = filterNotice(problems);
+  if (notice) toast(notice, 5000);
   const t: GameValue =
     now + (typeof game.session.serverOffset === 'number' ? game.session.serverOffset : 0);
   const key: GameValue =

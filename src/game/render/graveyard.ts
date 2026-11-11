@@ -1,4 +1,5 @@
 // Cimitero: tombe, lapide commemorativa ed epitaffi dei giocatori scomparsi.
+import { filterNotice, filterText, maskText } from '../../../shared/text-filter-rules.js';
 import { spendMoney } from '../economy.js';
 import { type GameValue, game } from '../context.js';
 import { isoProject, isoScale } from './primitives.js';
@@ -60,10 +61,21 @@ export function drawMemorialProp(it?: GameValue): GameValue {
   });
 }
 
+/** Nome ed epitaffio coperti dove serve (text-filter-rules.ts). */
+function maskGrave<T extends { name: string; epitaph?: unknown }>(g: T): T & { epitaph: string } {
+  return {
+    ...g,
+    name: maskText(g.name),
+    epitaph: typeof g.epitaph === 'string' ? maskText(g.epitaph) : '',
+  };
+}
+
 export function rebuildGraveyard(val?: GameValue): GameValue {
   game.graveList = Object.keys(val || {})
     .map((id?: GameValue): GameValue => Object.assign({ id }, val[id]))
-    .filter((g?: GameValue): GameValue => g && g.name)
+    .filter((g?: GameValue): GameValue => g && typeof g.name === 'string' && g.name)
+    // nomi ed epitaffi li hanno scritti i giocatori: si copre quello che non va
+    .map(maskGrave)
     .sort((a?: GameValue, b?: GameValue): GameValue => (b.deadAt || 0) - (a.deadAt || 0));
   const cols: GameValue = [-150, -110, -70, 70, 110, 150],
     rows: GameValue = [40, 0, -40, -80, -120];
@@ -177,7 +189,10 @@ export async function openEpitaph(..._args: GameValue[]): Promise<GameValue> {
     ],
   });
   if (res.action === 'ok') {
-    game.player.epitaph = res.value.slice(0, 60);
+    const { text, problems } = filterText(res.value.slice(0, 60));
+    const notice = filterNotice(problems);
+    if (notice) toast(notice, 5000);
+    game.player.epitaph = text;
     saveGame(true);
     toast(game.player.epitaph ? '⚰️ Epitaffio salvato' : '⚰️ Epitaffio rimosso');
   }

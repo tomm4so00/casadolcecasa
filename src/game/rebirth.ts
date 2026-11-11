@@ -3,13 +3,14 @@
 import { game } from './context.js';
 import { onlineSaveKey, rebirthNameError, rebirthPlayerId } from './account-model.js';
 import { browser } from './runtime.js';
+import { maskText } from '../../shared/text-filter-rules.js';
 
 /** Crea il nuovo personaggio e ricarica il gioco. Restituisce un errore da mostrare, se c'è. */
 export async function startNewLife(name: string): Promise<string | null> {
   const error = rebirthNameError(name, game.player.myData.nick || '');
   if (error) return error;
   const prefix = game.session.LS_PREFIX;
-  const nick = name.trim().slice(0, 20);
+  const nick = maskText(name.trim().slice(0, 20));
   let newId: string;
   if (game.session.OFFLINE) {
     // modalità prova: basta un nuovo codice sul dispositivo

@@ -1,3 +1,4 @@
+import { maskText } from '../../shared/text-filter-rules.js';
 import { wokeFromPause } from './dormancy.js';
 import { game } from './context.js';
 import { startGame } from './interface.js';
@@ -166,7 +167,7 @@ export function mountCloudSetup(root: HTMLElement): void {
     guestNick.focus();
   });
   run(el('setup-guest-start'), async () => {
-    const nick = guestNick.value.trim();
+    const nick = maskText(guestNick.value.trim());
     if (!nick) {
       toast('Scegli un nome per il tuo personaggio!');
       guestNick.focus();
@@ -290,7 +291,7 @@ export function mountCloudSetup(root: HTMLElement): void {
   });
   run(el('setup-create-sim'), async () => {
     if (!access) return;
-    const nick = nickInput.value.trim();
+    const nick = maskText(nickInput.value.trim());
     if (!nick) {
       toast('Inserisci un nome valido per iniziare!');
       return;

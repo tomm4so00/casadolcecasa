@@ -1,3 +1,4 @@
+import { filterNotice, filterText } from '../../shared/text-filter-rules.js';
 import { startUsage } from './usage.js';
 import { startBetting } from './betting.js';
 import { devMode } from './dev-mode.js';
@@ -160,7 +161,10 @@ export async function openChat(..._args: GameValue[]): Promise<GameValue> {
     ],
   });
   if (res.action === 'ok' && res.value) {
-    game.mySay = res.value.slice(0, 60);
+    const { text, problems } = filterText(res.value.slice(0, 60));
+    const notice = filterNotice(problems);
+    if (notice) toast(notice, 5000);
+    game.mySay = text;
     game.player.stats.chats++;
     game.mySayT = Date.now();
   }

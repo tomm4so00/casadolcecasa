@@ -1,3 +1,4 @@
+import { maskText } from '../../shared/text-filter-rules.js';
 import { autoplayPresence } from './autoplay.js';
 import { decodeWeed } from './weed-rules.js';
 import { decodePillTimers, pruneTimers } from './pill-rules.js';
@@ -873,7 +874,14 @@ export function startPresence(): void {
     }
   }, 100);
   game.session.db.ref(worldNode('online_players')).on('value', (snapshot) => {
-    game.onlinePlayers = snapshot.val() || {};
+    const all = snapshot.val() || {};
+    // nomi e fumetti li scrivono i giocatori, anche con versioni vecchie: si copre quello che non va
+    for (const op of Object.values(all) as Record<string, unknown>[]) {
+      if (!op || typeof op !== 'object') continue;
+      if (typeof op.name === 'string') op.name = maskText(op.name);
+      if (typeof op.say === 'string') op.say = maskText(op.say);
+    }
+    game.onlinePlayers = all;
   });
   startInbox();
   startChat();

@@ -1,6 +1,7 @@
 import type { ChatMessage } from './models.js';
 import type { PresenceInfo } from './presence-rules.js';
 import { isRecord } from './save-model.js';
+import { maskText } from '../../shared/text-filter-rules.js';
 
 /** Quello che ogni giocatore pubblica in sims_online_players/<id> (vedi startPresence in saves.ts). */
 export interface OnlinePlayer extends PresenceInfo {
@@ -63,7 +64,8 @@ export function decodeChatMessage(value: unknown): ChatMessage | null {
     value.name.length > 100
   )
     return null;
-  return { id: value.id, name: value.name, text: value.text, t: value.t };
+  // scritto da un altro, magari con una versione vecchia: si copre quello che non va
+  return { id: value.id, name: maskText(value.name), text: maskText(value.text), t: value.t };
 }
 
 /**

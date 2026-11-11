@@ -106,8 +106,11 @@ export interface PetState {
 
 /** Lunghezza massima del nome di un animale. */
 export const PET_NAME_MAX = 16;
-/** Lettere (anche accentate), numeri, spazi, apostrofo, punto e trattino: niente simboli né HTML. */
-const PET_NAME_CHARS = /^[\p{L}\p{N} '’.-]+$/u;
+/**
+ * Lettere (anche accentate), numeri, spazi, apostrofo, punto e trattino: niente simboli né HTML.
+ * L'asterisco serve alle parti coperte dal filtro (text-filter-rules.ts).
+ */
+const PET_NAME_CHARS = /^[\p{L}\p{N} '’.*-]+$/u;
 
 const tidy = (value: string): string => value.trim().replace(/\s+/g, ' ');
 
