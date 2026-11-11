@@ -1,3 +1,4 @@
+import { countUse } from './usage.js';
 // Negozio di oggetti da collezione e mensola della stanza (le regole sono in collect-rules.ts).
 //
 // Comprare: si paga, poi si prende il pezzo con una transazione (se qualcuno l'ha preso un attimo
@@ -102,6 +103,7 @@ export function standPrompt(i: number): { text: string; locked?: boolean } {
 
 /** Compra il pezzo dell'espositore `i`. */
 export async function buyFromStand(i: number): Promise<void> {
+  countUse('collezione');
   const c = onSale(state, i);
   if (!c) {
     toast('🏺 Qui non c’è niente in vendita in questo momento.', 3000);

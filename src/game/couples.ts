@@ -1,3 +1,4 @@
+import { countUse } from './usage.js';
 // Le coppie: due giocatori sono fidanzati solo se ognuno dice di esserlo con l'altro
 // (sims_couples/<giocatore> = con chi e da quando). Ognuno scrive solo il suo: se uno lascia,
 // l'altro lo vede subito o al prossimo ingresso e si libera da solo.
@@ -67,6 +68,7 @@ export function coupleText(pid: string): string {
 
 /** Si fidanza con `id`: scrive la propria metà (l'altro scrive la sua). */
 export async function engageWith(id: string, name: string): Promise<boolean> {
+  countUse('coppia');
   try {
     await ref(me()).set({ with: id, name: name.slice(0, 20), since: serverNow() });
     return true;

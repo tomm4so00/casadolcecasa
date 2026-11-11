@@ -1,3 +1,4 @@
+import { countUse } from './usage.js';
 // Criogenesi nel gioco: legge il pass dell'account, si accorge quando arriva un pagamento e
 // apre la pagina di Stripe dal profilo. Il pass lo scrive solo la funzione che riceve i
 // pagamenti (il Worker in worker/src/index.ts): qui si legge e basta.
@@ -85,6 +86,7 @@ export function watchCryo(): void {
 
 /** Il pulsante "Criogenesi" del profilo. */
 export async function openCryo(): Promise<void> {
+  countUse('criogenesi');
   const now = Date.now();
   const active = cryoActive(current, now);
   // con il pass a vita non c'è più niente da comprare

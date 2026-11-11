@@ -1,3 +1,4 @@
+import { countUse } from './usage.js';
 import { notePersonality } from './personality.js';
 import { postGossip } from './gossip.js';
 import { TRADE_FEE, marketPriceAt, type Business, type BusinessId } from '../../shared/market.js';
@@ -151,6 +152,7 @@ export function openBizSite(): void {
 }
 
 export async function bizInvest(id: BusinessId): Promise<void> {
+  countUse('borsa');
   if (!canTradeMarket()) {
     toast('Mercato non disponibile: attendi quotazioni aggiornate.');
     return;

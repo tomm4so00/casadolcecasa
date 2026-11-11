@@ -1,3 +1,4 @@
+import { countUse } from './usage.js';
 // Aste dei quadri (regole in auction-rules.ts). Ogni condominio ha le sue, in worlds/…/auctions:
 // il quadro all'asta riceve cuoricini e offerte; il pittore accetta la migliore e chi l'ha fatta
 // paga e appende il quadro nella sua stanza, dove resta suo per sempre. Anche i collezionisti
@@ -458,6 +459,7 @@ export async function toggleVote(a: Auction): Promise<void> {
 
 /** Offerta per un quadro all'asta: dev'essere più alta della migliore. */
 export async function placeBid(a: Auction): Promise<void> {
+  countUse('asta');
   if (!hasRoom()) {
     toast('🏠 Ti serve una stanza dove appendere il quadro.', 3500);
     return;

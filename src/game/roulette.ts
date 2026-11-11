@@ -1,3 +1,4 @@
+import { countUse } from './usage.js';
 // Roulette della sala scommesse: un unico tavolo per condominio, a giri continui uguali per
 // tutti (vedi roulette-rules.ts). Si gioca da soli o insieme agli altri che sono al tavolo: le
 // puntate di tutti si vedono, il numero è lo stesso per tutti. Nel database (nodo del mondo
@@ -597,6 +598,7 @@ function animate(t: number): void {
 
 /** Al tavolo: si apre la finestra con la ruota e il tabellone delle puntate. */
 export function openRoulette(): void {
+  countUse('roulette');
   if (game.session.OFFLINE) {
     toast('🎡 La roulette si gioca online: nella modalità prova non c’è il tavolo.', 4000);
     return;

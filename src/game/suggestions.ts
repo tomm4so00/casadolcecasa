@@ -1,3 +1,4 @@
+import { countUse } from './usage.js';
 // La cassetta "Suggerimenti e bug" del cortile (regole in shared/suggestion-rules.ts): chi ha un
 // account scrive un'idea o un bug; i collaboratori (sims_staff) li leggono qui e li segnano come
 // letti. Il server li manda anche sul gruppo Telegram (server/src/suggestions.ts).
@@ -53,6 +54,7 @@ export function startSuggestions(): void {
 
 /** La cassetta: i collaboratori scelgono se leggere o scrivere, gli altri scrivono. */
 export async function openSuggestionBox(): Promise<void> {
+  countUse('suggerimenti');
   if (staff) {
     const res = await openDialog({
       title: '📮 Suggerimenti e bug',

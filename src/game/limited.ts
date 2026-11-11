@@ -1,3 +1,4 @@
+import { countUse } from './usage.js';
 // Oggetti in edizione limitata: acquisto al negozio di una copia numerata, mobili nella propria
 // stanza, offerte tra giocatori e passaggio di proprietà.
 //
@@ -172,6 +173,7 @@ export async function buyLimited(item: string, price: number): Promise<void> {
 
 /** Chi visita fa un'offerta per la copia `n` di `item`, posseduta da `owner`. */
 export async function makeOffer(item: string, n: number): Promise<void> {
+  countUse('edizioni');
   if (!(await requireAccount('fare offerte agli altri giocatori'))) return;
   const entry = ledger[item]?.[String(n)];
   if (!entry) return;

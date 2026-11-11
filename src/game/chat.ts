@@ -1,3 +1,4 @@
+import { countUse } from './usage.js';
 import type { GameValue } from './context.js';
 import { decodeChatMessage } from './network-model.js';
 import { isRecord } from './save-model.js';
@@ -133,6 +134,7 @@ export async function sendChat(..._args: GameValue[]): Promise<GameValue> {
     return;
   }
   game.chatLastSend = now;
+  countUse('chat');
   inp.value = '';
   const t: GameValue =
     now + (typeof game.session.serverOffset === 'number' ? game.session.serverOffset : 0);

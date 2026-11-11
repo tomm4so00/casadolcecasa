@@ -1,3 +1,4 @@
+import { countUse } from './usage.js';
 // Negozio dell'usato: cinque espositori dove i giocatori mettono in vendita i loro pezzi da
 // collezione al prezzo che vogliono. Le regole sono in collect-rules.ts.
 //
@@ -72,6 +73,7 @@ export function usedPrompt(i: number): { text: string; locked?: boolean } {
 
 /** Preme il pulsante dell'espositore `i`. */
 export async function usedAct(i: number): Promise<void> {
+  countUse('usato');
   const l = usedListing(collectState(), i);
   if (!l) await listItem(i);
   else if (l.owner.o === me()) await withdraw(i);

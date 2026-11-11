@@ -1,3 +1,4 @@
+import { startUsage } from './usage.js';
 import { startBetting } from './betting.js';
 import { chooseFirstWorld, currentWorldCode, openWorldSwitch } from './world-select.js';
 import { startGossip } from './gossip.js';
@@ -500,6 +501,8 @@ export async function startGame(..._args: GameValue[]): Promise<GameValue> {
   lifetime.setTimeout(() => void flushPendingPay(), 4000);
   // con la scheda nascosta da un po' il gioco si scollega: le connessioni del piano Spark sono 100
   startDormancy();
+  // quante volte si entra in ogni posto (usage.ts)
+  startUsage();
   // Zero, lo scassinatore: riga sotto i parametri, annuncio delle 11:45, ladri alla mia cassaforte
   startHacker();
   // coppie: cuori accanto ai nomi, insieme, anniversari

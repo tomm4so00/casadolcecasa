@@ -1,3 +1,4 @@
+import { countUse } from './usage.js';
 // Offerte per i pezzi da collezione sulla mensola di un altro giocatore. Chi visita la stanza
 // sceglie un pezzo e quanto offre; il proprietario riceve l'offerta (anche se è offline, la trova
 // quando rientra) e accetta o rifiuta. Se accetta, l'affare si conclude subito: i soldi passano
@@ -87,6 +88,7 @@ export function offerLabel(c: Collectible): string {
 
 /** Offerta per il pezzo `c` della mensola di `ownerId`. */
 export async function makeCollectOffer(c: Collectible, ownerId: string): Promise<void> {
+  countUse('offerta');
   if (!(await requireAccount('fare offerte agli altri giocatori'))) return;
   const state = collectState();
   const owner = state.owners[c.id];

@@ -115,6 +115,8 @@ export async function maintainGame(database: MaintenanceDatabase, now: number): 
       console.log(`World ${world} skipped:`, (error as { code?: string }).code || String(error));
     }
   }
+  const pruned = await pruneUsage(database, now);
+  if (pruned) console.log(`Usage counters removed (days): ${pruned}`);
   const removed = await removeEmptyWorlds(database, now);
   if (removed.length) console.log(`Empty worlds removed: ${removed.join(', ')}`);
 }
@@ -158,6 +160,20 @@ export async function moveSafePins(
     moved++;
   }
   return moved;
+}
+
+/** I contatori d'uso (sims_usage, vedi src/game/usage.ts) restano 60 giorni. */
+export const USAGE_KEEP_DAYS = 60;
+
+/** Toglie i giorni di contatori più vecchi di USAGE_KEEP_DAYS; restituisce quanti. */
+export async function pruneUsage(database: MaintenanceDatabase, now: number): Promise<number> {
+  const days = (await database.ref('sims_usage').get()).val();
+  if (!record(days)) return 0;
+  const oldest = new Date(now - USAGE_KEEP_DAYS * 86_400_000).toISOString().slice(0, 10);
+  const old = Object.keys(days).filter((day) => day < oldest);
+  if (old.length)
+    await database.ref('sims_usage').update(Object.fromEntries(old.map((day) => [day, null])));
+  return old.length;
 }
 
 /** Morti, lapidi, stanze liberate e pulizie di un mondo. */

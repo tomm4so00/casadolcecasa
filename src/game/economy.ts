@@ -1,3 +1,4 @@
+import { countUse } from './usage.js';
 import { game } from './context.js';
 import { lifetime } from './runtime.js';
 import { canPlaySession } from './accounts.js';
@@ -89,6 +90,7 @@ export function purchaseItem(
     return -price;
   }).then((ok) => {
     if (ok) recordActivity('shop'); // vestiti e mobili: muovono il Mini-shop in borsa
+    if (ok) countUse('acquisto:' + kind);
     return ok;
   });
 }

@@ -1,3 +1,4 @@
+import { countUse } from './usage.js';
 import { postGossip } from './gossip.js';
 import { watchRoulette } from './roulette.js';
 import { isSmoking } from './weed.js';
@@ -916,6 +917,7 @@ export async function handleSafeInteraction(..._args: GameValue[]): Promise<Game
   }
   game.theftAttempts[room.id] = (saved as TheftRecord).n;
   notePersonality('theftAttempt');
+  countUse('scasso');
   // lo scasso dura CRACK_MS: il proprietario lo vede e può fermarlo con un pugno
   const outcome = await crackFor(roomIdx, blockRef, room.ownerId);
   if (outcome === 'moved') {
@@ -1550,6 +1552,7 @@ export async function chooseOrGoToJob(
     tier = opened;
   }
   game.player.workDay = recordShift(game.player.workDay, new Date());
+  countUse('lavoro:' + jobKey);
   if (jobKey === 'ristorante') recordActivity('pizza');
   game.player.activeJobKey = jobKey;
   const pay: number = tier.base;

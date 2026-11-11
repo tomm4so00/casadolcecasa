@@ -1,3 +1,4 @@
+import { countUse } from './usage.js';
 // Sala scommesse: slot da 5 Đ e morra cinese tra due giocatori con puntata.
 import type { GameReference, GameSnapshot } from './database.js';
 import { game } from './context.js';
@@ -46,6 +47,7 @@ export function openSlot(): void {
 }
 
 export async function spinSlot(): Promise<void> {
+  countUse('slot');
   if (spinning) return;
   if (game.moneyLevel < SLOT_BET) {
     toast(`Ti servono ${SLOT_BET} Đ in cassaforte per giocare.`);
@@ -244,6 +246,7 @@ function playersOnline(): { id: string; name: string; place: string; here: boole
 }
 
 export function openRpsTable(): void {
+  countUse('morra');
   if (lastGame && watching && (lastGame.state === 'invited' || lastGame.state === 'playing')) {
     openRpsModal();
     return;
