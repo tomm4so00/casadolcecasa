@@ -130,3 +130,25 @@ for (const path of ['sims_rooms_state', 'worlds/CASA-3333/rooms_state']) {
   );
   console.log(`PASS: scambi zaino e permessi in ${path}`);
 }
+
+// la proposta arriva al compratore come messaggio: il tipo deve essere permesso dalle regole
+for (const path of ['sims_interactions', 'worlds/CASA-3333/interactions']) {
+  const message = {
+    type: 'inventoryOffer',
+    from: 'seller',
+    fromName: 'Venditore',
+    t: Date.now(),
+    offerId: 'offer',
+    room: 0,
+  };
+  assert(
+    await call('PUT', `${path}/buyer/k1`, message, 'inv_seller'),
+    'il venditore manda la proposta',
+  );
+  assert.equal(
+    await call('PUT', `${path}/buyer/k2`, message, 'inv_stranger'),
+    false,
+    'nessuno la manda a nome di un altro',
+  );
+  console.log(`PASS: proposta di scambio in ${path}`);
+}

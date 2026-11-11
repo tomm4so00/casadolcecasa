@@ -49,7 +49,7 @@ export function inventoryItems(
       unit: 'g',
       description: weed.jarStrain
         ? `Varietà dell’ultimo raccolto: ${STRAINS[weed.jarStrain].name}.`
-        : 'Erba raccolta nel tuo barattolo.',
+        : 'Erba raccolta dalle tue piante.',
     });
   if (player.drugStock > 0)
     items.push({

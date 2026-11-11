@@ -15,6 +15,7 @@ import {
   worldPoint,
 } from './primitives.js';
 import { isMyRoomNow } from '../saves.js';
+import { unreadSuggestions } from '../suggestions.js';
 import { ownsItem, wardrobeOpenAmount } from '../character.js';
 import { drawPlayerAvatar, drawShowerWater } from './avatars.js';
 import { sortIsoParts } from './iso-sort.js';
@@ -1545,8 +1546,7 @@ export function drawMapItem(
   if (item.showId) return drawShowroomItem(item, t, lights);
   // Piante e lampade sono uguali da ogni lato: la rotazione non cambia il loro aspetto.
   // Anche le casette degli animali (gabbie, teca, acquario) girano da sole il loro disegno.
-  const symmetric =
-    k === 'plant' || k === 'lamp' || k.startsWith('weedPot') || k === 'weedJar' || !!item.pet;
+  const symmetric = k === 'plant' || k === 'lamp' || k.startsWith('weedPot') || !!item.pet;
   withFurnitureRotation(symmetric ? { ...item, rot: 0 } : item, () => {
     softShadow(item.x, item.y, item.w, item.h);
     drawFurnitureByKind(k, item, t, lights);
@@ -1793,6 +1793,40 @@ export function drawGossipBoardProp(it?: GameValue, t?: GameValue): GameValue {
     }
   });
   box(it.x, it.y + 1, W + 8, 10, 3, '#3e2723', { z0: 86, top: '#5d4037' });
+}
+
+/**
+ * La cassetta "Suggerimenti e bug" del cortile: rossa, su un palo, con la fessura sul davanti.
+ * Per i collaboratori la bandierina si alza quando ci sono messaggi nuovi.
+ */
+export function drawSuggestionBoxProp(it?: GameValue, t?: GameValue): GameValue {
+  const ctx = game.view.ctx;
+  const W: number = it.w,
+    D: number = it.h;
+  // palo e cassetta
+  box(it.x, it.y, 6, 6, 42, '#4b4b4b');
+  // la scritta sta sul lato lungo, quello verso il vialetto
+  const body: GameValue = box(it.x, it.y, W, D, 34, '#c0392b', { z0: 42, top: '#e74c3c' });
+  box(it.x, it.y, W + 3, D + 3, 4, '#962d22', { z0: 76, top: '#d35445' });
+  onFace(body, 'left', (PW: number, PH: number): void => {
+    // la fessura
+    ctx.fillStyle = '#2d1512';
+    ctx.fillRect(5, 4, PW - 10, 3);
+    // la targhetta chiara con la scritta
+    ctx.fillStyle = '#fff6e0';
+    ctx.fillRect(3, 10, PW - 6, PH - 14);
+    ctx.fillStyle = '#c0392b';
+    ctx.font = 'bold 6.5px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('IDEE', PW / 2, 18);
+    ctx.fillText('E BUG', PW / 2, 26);
+  });
+  // la bandierina sul fianco: giù di solito, su (e che sventola) con messaggi nuovi
+  const up = unreadSuggestions() > 0;
+  const fx = it.x + W / 2 + 2;
+  box(fx, it.y, 2, 2, up ? 22 : 8, '#2d3436', { z0: up ? 62 : 52 });
+  const wave = up ? Math.sin((t || 0) * 6) * 1.5 : 0;
+  box(fx, it.y - 4 + wave, 2, 8, 6, '#f1c40f', { z0: up ? 78 : 54 });
 }
 
 /** Bacheca immobiliare del cortile: pannello di legno su due pali, con tettoia e annunci. */

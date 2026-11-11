@@ -4,7 +4,9 @@ import { createServer } from 'vite';
 
 const server = await createServer({ server: { host: '127.0.0.1', port: 0 } });
 await server.listen();
-const browser = await chromium.launch(process.platform === 'win32' ? { channel: 'msedge' } : {});
+const browser = await chromium.launch(
+  process.platform === 'win32' ? { channel: 'msedge', args: ['--disable-gpu'] } : {},
+);
 const page = await browser.newPage();
 const errors = [];
 page.on('pageerror', (error) => errors.push(error.message));
@@ -248,15 +250,17 @@ try {
         x < game.X1 - 12 &&
         y > game.Y0 + 12 &&
         y < game.Y1 - 12;
-      p.points.forEach((a, i) => {
-        const b = p.points[(i + 1) % p.points.length];
-        const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
-        for (let d = 0; d <= len; d += 5)
-          if (!free(a[0] + ((b[0] - a[0]) * d) / len, a[1] + ((b[1] - a[1]) * d) / len)) {
-            out.push(`${id}: tratto ${i}`);
-            break;
-          }
-      });
+      // si va da ogni punto a ognuno degli altri, non solo al successivo
+      p.points.forEach((a, i) =>
+        p.points.slice(i + 1).forEach((b, j) => {
+          const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+          for (let d = 0; d <= len; d += 5)
+            if (!free(a[0] + ((b[0] - a[0]) * d) / len, a[1] + ((b[1] - a[1]) * d) / len)) {
+              out.push(`${id}: da ${i} a ${i + 1 + j}`);
+              break;
+            }
+        }),
+      );
     }
     return out;
   });

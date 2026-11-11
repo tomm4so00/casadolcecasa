@@ -553,7 +553,7 @@ export function getMyRoomMap(..._args: GameValue[]): GameValue {
   const room: GameValue = game.roomsState[game.myAssignedRoomIdx ?? -1];
   const hung = roomPaintings(room);
   for (const slot of PAINTING_SLOTS) if (!hung[slot]) delete combined[paintingKey(slot)];
-  // pianta in vaso e barattolo d'erba, casette degli animali
+  // piante in vaso, casette degli animali
   Object.assign(combined, weedRoomItems());
   Object.assign(combined, petRoomItems());
   Object.assign(combined, limitedRoomItems());
@@ -578,7 +578,6 @@ export function publishRoomLayout(..._args: GameValue[]): GameValue {
       ...(o.wallItem ? { wallItem: true } : {}),
       ...(o.rot ? { rot: o.rot } : {}),
       ...(o.grow ? { grow: o.grow } : {}),
-      ...(o.jar ? { jar: o.jar } : {}),
       ...(o.pet ? { pet: o.pet } : {}),
     };
   });

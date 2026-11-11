@@ -8,7 +8,6 @@ import { servicePrompt } from './restaurant.js';
 import { hospitalPrompt } from './hospital.js';
 import { officePrompt } from './office.js';
 import { buySeeds, isSmoking, openGrowCounter, potIndex, potLabel, tendPot } from './weed.js';
-import { openInventory } from './inventory.js';
 import { PETS, PET_FOOD_PRICE, type PetKind, toPetCalled } from './pet-rules.js';
 import { PET_OF_KEY, buyPet, dogGatePrompt, feed, giveUpForAdoption, useDogGate } from './pets.js';
 import {
@@ -44,6 +43,7 @@ import { eatDish, food } from './food.js';
 import { canCook, canTakeRaw } from './food-rules.js';
 import { openRealtyBoard } from './realty.js';
 import { openGossipBoard } from './gossip.js';
+import { openSuggestionBox, unreadSuggestions } from './suggestions.js';
 import {
   isLimitedId,
   makeOffer,
@@ -275,13 +275,6 @@ const PLAYER_ROOM: Place = {
     const mine = isMyRoomNow();
     if (potIndex(key) >= 0)
       return { text: mine ? potLabel(potIndex(key)) : `🌱 ${item.name}`, locked: !mine };
-    if (key === 'weedJar')
-      return {
-        text: mine
-          ? `🎒 Apri lo zaino (${game.player.weed?.grams || 0} g di erba)`
-          : '🌿 Barattolo di erba',
-        locked: !mine,
-      };
     if (key === 'safe')
       return mine
         ? {
@@ -323,9 +316,6 @@ const PLAYER_ROOM: Place = {
     else if (potIndex(key) >= 0) {
       if (isMyRoomNow()) await tendPot(potIndex(key));
       else toast('🌱 Questa pianta non è tua!');
-    } else if (key === 'weedJar') {
-      if (isMyRoomNow()) openInventory();
-      else toast('🚫 Questo barattolo non è tuo!');
     } else if (key === 'bed') {
       if (!game.player.isSleeping) {
         const blocked = pillSleepBlock();
@@ -387,6 +377,12 @@ const CORTILE: Place = {
       };
     if (item.fun === 'realty') return { text: '🏘️ Bacheca immobiliare: cambia stanza' };
     if (item.fun === 'gossip') return { text: '📰 Leggi i pettegolezzi del condominio' };
+    if (item.fun === 'suggest') {
+      const n = unreadSuggestions();
+      return {
+        text: n ? `📬 Suggerimenti e bug (${n} nuovi)` : '📮 Scrivi un suggerimento o un bug',
+      };
+    }
     if (item.fun === 'fountain')
       return {
         text: `⛲ Lancia una moneta nella fontana (${COIN_PRICE} Đ)`,
@@ -410,6 +406,7 @@ const CORTILE: Place = {
     const spot = funSpots()[key];
     if (spot?.fun === 'realty') await openRealtyBoard();
     else if (spot?.fun === 'gossip') await openGossipBoard();
+    else if (spot?.fun === 'suggest') await openSuggestionBox();
     else if (spot?.fun === 'fountain') await tossCoin();
     else if (item && item.aptIdx !== undefined) {
       await throughDoor('cortile:' + key);

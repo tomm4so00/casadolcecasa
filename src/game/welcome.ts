@@ -5,7 +5,8 @@ import { openDialog } from './interface.js';
 import { toast } from './missions.js';
 import { sfx } from './audio.js';
 import { creditMoney } from './economy.js';
-import { saveGame } from './saves.js';
+import { hasRoom, saveGame } from './saves.js';
+import type { GuideDest } from './guide-rules.js';
 import { tasteHint, tasteTarget } from './taste.js';
 import {
   missionsOf,
@@ -57,6 +58,60 @@ function view(): WelcomeView {
     tasteHint: tasteStep(),
     working: !!game.activeShift || env.startsWith('lavoro_'),
   };
+}
+
+/**
+ * Dove deve arrivare il giocatore per la missione in corso (per la freccia attorno al personaggio),
+ * oppure null: nessuna missione accettata, o il passo non ha un posto (per esempio durante il turno).
+ */
+export function welcomeDest(): GuideDest | null {
+  const s = game.player.welcome;
+  if (!s || s.status !== 'active' || welcomeFinished(s)) return null;
+  const id = missionsOf(s)[s.i]?.id;
+  const p = game.player;
+  const home = hasRoom() ? game.myAssignedRoomIdx : null;
+  const myApt = home !== null ? game.aptOfRoom(home) : 0;
+  const kitchen = (key: string): GuideDest => ({ env: 'KITCHEN', apt: myApt, key });
+  const room = (key: string): GuideDest | null =>
+    home === null ? null : { env: 'PLAYER_ROOM', roomIdx: home, key };
+  switch (id) {
+    case 'taste_cook':
+      return kitchen(p.rawFood > 0 ? 'stove' : 'fridge');
+    case 'eat':
+      return kitchen(p.rawFood + p.dishes > 0 ? 'stove' : 'fridge');
+    case 'shower':
+      return { env: 'BATHROOM', apt: myApt, key: 'shower' };
+    case 'pin':
+      return room('safe');
+    case 'sleep':
+      return room('bed');
+    case 'work':
+      return game.activeShift || String(game.view.activeEnvironment).startsWith('lavoro_')
+        ? null
+        : { env: 'CORTILE', key: 'exitHouse' };
+    case 'taste_give':
+      return p.dishes > 0 ? tasteDest() : kitchen(p.rawFood > 0 ? 'stove' : 'fridge');
+    default:
+      return null;
+  }
+}
+
+/** Il vicino a cui portare l'assaggio: dove si trova lui, la sua stanza o il personaggio del gioco. */
+function tasteDest(): GuideDest | null {
+  const t = tasteTarget(false);
+  if (t.mode === 'room') return { env: 'PLAYER_ROOM', roomIdx: t.idx };
+  if (t.mode === 'online') {
+    const op = game.onlinePlayers?.[t.id];
+    if (!op || !t.env) return null;
+    const point = { x: Number(op.x) || 0, y: Number(op.y) || 0 };
+    if (t.env === 'PLAYER_ROOM' && t.roomIdx !== null)
+      return { env: t.env, roomIdx: t.roomIdx, point };
+    return { env: t.env, apt: Number(op.apt) || 0, point };
+  }
+  const bot = (game.simulationBots || []).find(
+    (b: { name?: string; env?: string }) => b.name === t.name && b.env === t.env,
+  );
+  return { env: t.env, ...(bot ? { point: { x: bot.x, y: bot.y } } : {}) };
 }
 
 /** C'è già una finestra aperta (guida, creazione del personaggio, negozio…)? */

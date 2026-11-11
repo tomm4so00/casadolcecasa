@@ -33,7 +33,9 @@ await fetch(db(''), { method: 'PUT', headers, body: 'null' });
 const server = await createServer({ server: { host: '127.0.0.1', port: 0 } });
 await server.listen();
 const url = server.resolvedUrls.local[0] + '';
-const browser = await chromium.launch(process.platform === 'win32' ? { channel: 'msedge' } : {});
+const browser = await chromium.launch(
+  process.platform === 'win32' ? { channel: 'msedge', args: ['--disable-gpu'] } : {},
+);
 const errors = [];
 
 async function newPage() {

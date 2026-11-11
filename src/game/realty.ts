@@ -67,7 +67,7 @@ ${n} ${n === 1 ? 'libera' : 'libere'}`,
       text: 'Stanze libere (il numero è quello sulla porta nel salone):',
       buttons: [
         ...(byApt.get(apt) || []).map((i) => ({
-          label: `🚪 Stanza ${(i % game.ROOMS_PER_APT) + 1}`,
+          label: `🚪 Stanza ${i + 1}`,
           value: String(i),
         })),
         { label: '⬅️ Indietro', value: 'back', color: '#57606f' },

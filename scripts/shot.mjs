@@ -22,7 +22,9 @@ const opts = optsArg ? JSON.parse(optsArg) : {};
 
 const server = await createServer({ server: { host: '127.0.0.1', port: 0 }, logLevel: 'error' });
 await server.listen();
-const browser = await chromium.launch(process.platform === 'win32' ? { channel: 'msedge' } : {});
+const browser = await chromium.launch(
+  process.platform === 'win32' ? { channel: 'msedge', args: ['--disable-gpu'] } : {},
+);
 const page = await browser.newPage({
   viewport: opts.phone
     ? opts.portrait

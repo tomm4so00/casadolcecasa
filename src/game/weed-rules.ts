@@ -107,8 +107,6 @@ export interface WeedState {
   /** Erba nello zaino (la tiene il registro della stanza) e varietà dell'ultimo raccolto. */
   grams: number;
   jarStrain?: StrainId;
-  jarX?: number;
-  jarY?: number;
   /** Semi nello zaino (non si scambiano). */
   seeds?: Partial<Record<StrainId, number>>;
   pots?: Pot[];
@@ -308,13 +306,13 @@ export function jointHappiness(smokes: readonly number[] | undefined, now: numbe
 export const afterSmoke = (smokes: readonly number[] | undefined, now: number): number[] =>
   [...(smokes ?? []).filter((t) => now - t < DAY && t <= now), now].slice(-20);
 
-/** Toglie una canna dal barattolo; null se è vuoto. */
+/** Toglie una canna dall'erba nello zaino; null se non basta. */
 export function takeJoint(state: WeedState): WeedState | null {
   if (state.grams < JOINT_GRAMS) return null;
   const grams = state.grams - JOINT_GRAMS;
   if (grams > 0) return { ...state, grams };
-  // barattolo vuoto: sparisce (e il prossimo comparirà dove c'era la pianta)
-  const { jarStrain: _s, jarX: _x, jarY: _y, ...rest } = state;
+  // finita l'erba si dimentica anche la varietà dell'ultimo raccolto
+  const { jarStrain: _s, ...rest } = state;
   return { ...rest, grams };
 }
 
@@ -361,10 +359,6 @@ export function decodeWeed(value: unknown): WeedState {
   if (Number.isSafeInteger(v.grams) && (v.grams as number) > 0)
     out.grams = Math.min(100000, v.grams as number);
   if (out.grams > 0 && isStrain(v.jarStrain)) out.jarStrain = v.jarStrain;
-  if (out.grams > 0 && num(v.jarX) && num(v.jarY)) {
-    out.jarX = clampX(v.jarX);
-    out.jarY = clampY(v.jarY);
-  }
   if (v.seeds && typeof v.seeds === 'object') {
     const seeds: Partial<Record<StrainId, number>> = {};
     for (const id of STRAIN_IDS) {

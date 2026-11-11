@@ -63,6 +63,32 @@ describe('autoplay: dove va e cosa fa', () => {
     expect(a.x).toBeGreaterThanOrEqual(Math.min(...pts.filter((_, k) => k % 2 === 0)) - 1e-6);
   });
 
+  it('in giro non sta quasi mai fermo, e non rifà sempre lo stesso giro', () => {
+    let still = 0,
+      n = 0;
+    const spots = new Set<string>();
+    let last = '';
+    const order: string[] = [];
+    for (let t = NOON; t < NOON + 4 * H; t += 1000) {
+      const v = autoplayAt(info(), t);
+      if (v.kind !== 'place') continue;
+      n++;
+      if (!v.moving) {
+        still++;
+        const at = `${v.place}:${v.x},${v.y}`;
+        spots.add(at);
+        if (at !== last) order.push(at);
+        last = at;
+      }
+    }
+    expect(n).toBeGreaterThan(0);
+    // fermo meno di un quarto del tempo (prima era l'85%)
+    expect(still / n).toBeLessThan(0.25);
+    // le soste non si ripetono a giro fisso: in fila ci sono anche tre punti diversi
+    expect(spots.size).toBeGreaterThan(3);
+    expect(order.length).toBeGreaterThan(50);
+  });
+
   it('più cresce la personalità, più va nei posti suoi', () => {
     const share = (more: Partial<AutoplayInfo>) => {
       let mine = 0;

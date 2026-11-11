@@ -11,6 +11,7 @@ import { cleanupGuests } from './guests.js';
 import { notifyHacker } from './hacker.js';
 import { notifyAnniversaries } from './couples.js';
 import { expireAuctions } from './auctions.js';
+import { forwardSuggestions, telegramFromEnv } from './suggestions.js';
 import {
   type PushSender,
   cleanOldActivity,
@@ -196,6 +197,16 @@ async function main() {
         console.log(`Auction space: timers started ${art.started}, expired removed ${art.removed}`);
     } catch (error) {
       console.log('Death warnings skipped:', (error as { code?: string }).code || 'unknown error');
+    }
+    // la cassetta dei suggerimenti: i messaggi nuovi sul gruppo Telegram dei collaboratori
+    try {
+      const telegram = telegramFromEnv();
+      if (telegram) {
+        const sent = await forwardSuggestions(getDatabase(app), telegram);
+        if (sent) console.log(`Suggestions sent to Telegram: ${sent}`);
+      }
+    } catch (error) {
+      console.log('Suggestions skipped:', (error as { code?: string }).code || 'unknown error');
     }
     await getDatabase(app)
       .ref('sims_meta/version')

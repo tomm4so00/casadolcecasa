@@ -10,6 +10,7 @@ import {
   hackerExplanation,
   hackerPhase,
   untilText,
+  type HackerPhase,
 } from '../../shared/hacker-rules.js';
 import { sfx } from './audio.js';
 import { game } from './context.js';
@@ -44,12 +45,10 @@ function markSeen(what: string, day: string): void {
   }
 }
 
-/** La riga sotto i parametri. */
+/** La riga sotto i parametri: solo con l'attacco annunciato o in corso (vuota si nasconde). */
 function tagText(now: number): { text: string; hot: boolean } {
   const d = hackerDay(now);
   switch (hackerPhase(now, d)) {
-    case 'quiet':
-      return { text: `💻 Alle 11:45 ${HACKER_SHORT} annuncia l'attacco`, hot: false };
     case 'announced':
       return {
         text: `💻 Attacco di ${HACKER_SHORT} alle ${clockText(d.startAt)} · tra ${untilText(d.startAt - now)}`,
@@ -58,7 +57,38 @@ function tagText(now: number): { text: string; hot: boolean } {
     case 'active':
       return { text: `⚠️ Casseforti indebolite · ${untilText(d.endAt - now)}`, hot: true };
     default:
-      return { text: `💻 ${HACKER_SHORT} torna domani alle 11:45`, hot: false };
+      return { text: '', hot: false };
+  }
+}
+
+/** Nelle ore tranquille, al posto della riga fissa, un promemoria ogni 2 ore. */
+const REMINDER_MS = 2 * 60 * 60000;
+const reminderKey = (): string => `${game.session.LS_PREFIX}sims_hacker_reminder`;
+function remindQuiet(now: number, phase: HackerPhase): void {
+  if (phase !== 'quiet' && phase !== 'over') return;
+  let last = 0;
+  try {
+    last = Number(localStorage.getItem(reminderKey())) || 0;
+  } catch {
+    // senza memoria del browser il promemoria resta legato alla sessione
+  }
+  if (!last) {
+    // la prima volta non si avvisa subito: si parte a contare da adesso
+    last = now;
+  } else if (now - last < REMINDER_MS) return;
+  else {
+    last = now;
+    toast(
+      phase === 'quiet'
+        ? `💻 Alle 11:45 ${HACKER_SHORT} annuncia a che ora attaccherà le casseforti`
+        : `💻 ${HACKER_SHORT} torna domani alle 11:45`,
+      6000,
+    );
+  }
+  try {
+    localStorage.setItem(reminderKey(), String(last));
+  } catch {
+    // al peggio il promemoria arriva un po' prima
   }
 }
 
@@ -86,6 +116,7 @@ export function startHacker(): void {
       if (tag.textContent !== text) tag.textContent = text;
       tag.classList.toggle('hot', hot);
     }
+    remindQuiet(now, phase);
     // l'annuncio arriva quando c'è, anche entrando più tardi (prima della fine dell'attacco)
     if ((phase === 'announced' || phase === 'active') && !seenToday('announce', d.day)) {
       if (!game.dialogResolve) {

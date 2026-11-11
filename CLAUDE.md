@@ -13,6 +13,7 @@ npm run typecheck              # tsc, con noUnusedLocals e noUnusedParameters
 node tests/browser-smoke.mjs   # prova nel browser: 64 stanze, 16 scene, salvataggi
 npm run format                 # prettier (la CI fallisce se non è formattato)
 npm run shot -- <cartella> '<scatti JSON>' ['<opzioni JSON>']   # screenshot, vedi sotto
+node scripts/suggestions.mjs   # la cassetta "Suggerimenti e bug": leggi, `letti`, `staff + <nome>`
 ```
 
 Prima di un commit basta `npm run check`: si ferma al primo controllo che fallisce.

@@ -361,6 +361,8 @@ export function getCurrentFurnitureMap(..._args: GameValue[]): SceneMap {
       Object.keys(room.layout).forEach((k?: GameValue): GameValue => {
         // cane e gatto non sono mobili: girano per la stanza (vedi pets.ts)
         if (room.layout[k]?.free) free.push(room.layout[k].free);
+        // il barattolo dell'erba non c'è più: resta solo nelle disposizioni salvate prima
+        else if (k === 'weedJar') return;
         else m[k] = Object.assign({ moveable: false }, room.layout[k]);
       });
       game.visitFreePets = free;

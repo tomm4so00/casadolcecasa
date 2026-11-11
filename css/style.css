@@ -882,6 +882,26 @@ input:-webkit-autofill:focus {
   margin-top: 6px;
   user-select: text;
 }
+/* testo lungo su più righe (la cassetta dei suggerimenti) */
+#dialog-textarea {
+  width: 100%;
+  margin-top: 6px;
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px solid #444;
+  background: #1a1a22;
+  color: white;
+  font: inherit;
+  font-size: 1rem;
+  resize: vertical;
+  user-select: text;
+  color-scheme: dark;
+}
+#dialog-textarea:focus {
+  outline: none;
+  border-color: #ff6b81;
+  box-shadow: 0 0 0 2px rgba(255, 107, 129, 0.35);
+}
 /* Schermata d'accesso: separatore fra Google e nome giocatore e password */
 .setup-divider {
   display: flex;

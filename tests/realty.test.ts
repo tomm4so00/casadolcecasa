@@ -23,7 +23,8 @@ const rooms = () => {
 describe('bacheca immobiliare', () => {
   it('nomi delle stanze come sulle porte', () => {
     expect(roomLabel(0)).toBe('Appartamento 1 · Stanza 1');
-    expect(roomLabel(13)).toBe('Appartamento 2 · Stanza 6');
+    // il numero è quello sulla porta: conta tutte le stanze del condominio
+    expect(roomLabel(13)).toBe('Appartamento 2 · Stanza 14');
   });
 
   it('sposta tutto nella stanza libera e libera quella vecchia', () => {

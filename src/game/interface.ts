@@ -17,6 +17,7 @@ import {
 } from './guest.js';
 import { openCryo, watchCryo } from './cryo.js';
 import { startHacker } from './hacker.js';
+import { startSuggestions } from './suggestions.js';
 import { leavePartner, myPartner, startCouples } from './couples.js';
 import { startTrash } from './trash.js';
 import { startTaste } from './taste.js';
@@ -75,12 +76,16 @@ export function openDialog({
 }: DialogOptions): Promise<DialogResult> {
   if (game.dialogResolve) game.dialogResolve({ action: null, value: '' });
   const modal: GameValue = dom('dialog-modal');
-  const inp: GameValue = dom('dialog-input');
+  const line: GameValue = dom('dialog-input');
+  const area: GameValue = dom('dialog-textarea');
+  // il campo su più righe prende il posto di quello normale
+  const inp: GameValue = input?.multiline ? area : line;
   const box: GameValue = dom('dialog-buttons');
   dom('dialog-title').textContent = title;
   dom('dialog-text').textContent = text;
-  inp.value = '';
-  inp.classList.toggle('hidden', !input);
+  line.value = area.value = '';
+  line.classList.toggle('hidden', !input || !!input.multiline);
+  area.classList.toggle('hidden', !input?.multiline);
   if (input) {
     inp.placeholder = input.placeholder || '';
     inp.inputMode = input.numeric ? 'numeric' : 'text';
@@ -104,8 +109,9 @@ export function openDialog({
       btn.onclick = (): GameValue => finish(b.value);
       box.appendChild(btn);
     });
+    line.onkeydown = area.onkeydown = null;
     inp.onkeydown = (e?: GameValue): GameValue => {
-      if (e.key === 'Enter') {
+      if (e.key === 'Enter' && !input?.multiline) {
         e.preventDefault();
         finish(buttons[buttons.length - 1].value);
       }
@@ -466,6 +472,8 @@ export async function startGame(..._args: GameValue[]): Promise<GameValue> {
   startHacker();
   // coppie: cuori accanto ai nomi, insieme, anniversari
   startCouples();
+  // la cassetta dei suggerimenti: i collaboratori vedono quanti messaggi nuovi ci sono
+  startSuggestions();
   // il cestino della stanza, le multe da pagare e la cassa della polizia
   startTrash();
   // assaggi di benvenuto lasciati nelle stanze

@@ -1,3 +1,4 @@
+import { drawGuideArrow } from './guide.js';
 import { autoplayLabel, shownPresence } from './autoplay.js';
 import { updateRocketTrip } from './moon.js';
 import { partVisible } from './render/moonbase.js';
@@ -945,6 +946,8 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
     .forEach((d?: GameValue): GameValue => d.draw());
   // chi è seduto su una sedia che in questo fotogramma non si è disegnata resta comunque visibile
   for (const c of game.frameChairSitters as GameValue[]) if (!c.done) c.draw();
+  // missioni di benvenuto: la freccia verso dove andare, sopra tutto perché si veda sempre
+  drawGuideArrow(animTime);
   // Giorno e notte: le luci (lampade, lampioni, lampadari) illuminano il buio
   let dark: GameValue = 0;
   if (hour >= 20 || hour < 6) dark = 0.55;

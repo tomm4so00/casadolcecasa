@@ -191,11 +191,11 @@ describe('salvataggi di prima', () => {
 });
 
 describe('canne', () => {
-  it('ogni canna toglie un grammo dal barattolo', () => {
+  it('ogni canna toglie un grammo di erba', () => {
     let s: WeedState = { grams: 2, jarStrain: 'amnesia' };
     s = takeJoint(s)!;
     expect(s.grams).toBe(1);
-    const last = takeJoint({ ...s, jarX: -20, jarY: 30 })!;
+    const last = takeJoint(s)!;
     expect(last).toEqual({ grams: 0 });
     expect(takeJoint(last)).toBeNull();
   });

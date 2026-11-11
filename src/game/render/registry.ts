@@ -99,6 +99,7 @@ import {
   drawFountainProp,
   drawRealtyBoardProp,
   drawGossipBoardProp,
+  drawSuggestionBoxProp,
   drawHeartMonitorProp,
   drawHospitalBedProp,
   drawIvStandProp,
@@ -155,7 +156,6 @@ import {
   drawGrowTent,
   drawRastaRug,
   drawWeedPot,
-  drawWeedJar,
   drawStrainDisplay,
 } from './weed-props.js';
 import { drawFridge } from './fridge.js';
@@ -264,7 +264,6 @@ export function registerDrawers(): void {
     shopHamster: drawShopPet,
     shopSnake: drawShopPet,
     shopFish: drawShopPet,
-    weedJar: drawWeedJar,
     strainLemon: drawStrainDisplay,
     strainAmnesia: drawStrainDisplay,
     strainPurple: drawStrainDisplay,
@@ -315,6 +314,7 @@ export function registerDrawers(): void {
     fountain: drawFountainProp,
     realtyBoard: drawRealtyBoardProp,
     gossipBoard: drawGossipBoardProp,
+    suggestionBox: drawSuggestionBoxProp,
     bench: drawBenchProp,
     streetlamp: drawStreetLampProp,
     flowers: drawFlowersProp,

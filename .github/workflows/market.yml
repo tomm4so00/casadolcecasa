@@ -35,6 +35,9 @@ jobs:
       - name: Publish this market slot
         env:
           FIREBASE_MARKET_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_MARKET_SERVICE_ACCOUNT }}
+          # la cassetta dei suggerimenti: i messaggi nuovi vanno sul gruppo dei collaboratori
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           FIREBASE_PROJECT_ID: ${{ vars.VITE_FIREBASE_PROJECT_ID || 'casadolcecasa-6d92a' }}
           FIREBASE_DATABASE_URL: ${{ vars.VITE_FIREBASE_DATABASE_URL || 'https://casadolcecasa-6d92a-default-rtdb.firebaseio.com' }}
         run: node server/lib/server/src/index.js

@@ -52,7 +52,7 @@ interface Spot {
   w: number;
   h: number;
   reach: number;
-  fun: 'bench' | 'stool' | 'chair' | 'fountain' | 'iceCream' | 'realty' | 'gossip';
+  fun: 'bench' | 'stool' | 'chair' | 'fountain' | 'iceCream' | 'realty' | 'gossip' | 'suggest';
   /** Sedie: la sedia e il tavolo (o la fila di sedie d'attesa) a cui appartiene. */
   chair?: Chair;
   table?: GameValue;
@@ -107,6 +107,8 @@ export function funSpots(): Record<string, Spot> {
       out.realty = { x: p.x, y: p.y, w: p.w, h: p.h, reach: 10, fun: 'realty' };
     else if (p.kind === 'gossipBoard')
       out.gossip = { x: p.x, y: p.y, w: p.w, h: p.h, reach: 10, fun: 'gossip' };
+    else if (p.kind === 'suggestionBox')
+      out.suggest = { x: p.x, y: p.y, w: p.w, h: p.h, reach: 12, fun: 'suggest' };
   }
   return out;
 }

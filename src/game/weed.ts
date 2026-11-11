@@ -61,7 +61,6 @@ const POT_SPOTS = [
   { x: 30, y: 118 },
   { x: -10, y: 118 },
 ];
-const JAR_SPOT = { x: 70, y: 82 };
 
 const weed = (): WeedState => (game.player.weed ??= emptyWeed());
 const dindini = (n: number) => `${n.toLocaleString('it-IT')} Đ`;
@@ -73,9 +72,8 @@ export const potIndex = (key: string): number => POT_KEYS.indexOf(key);
 
 /** I vasi restano gli stessi oggetti finché ci sono, così quando li sposti la posizione resta. */
 const potItems: GameValue[] = [];
-let jar: GameValue = null;
 
-/** Prima di salvare: la posizione di vasi e barattolo (spostati come mobili) torna nello stato. */
+/** Prima di salvare: la posizione dei vasi (spostati come mobili) torna nello stato. */
 export function syncWeedPot(): void {
   const w = game.player.weed;
   if (!w) return;
@@ -86,10 +84,6 @@ export function syncWeedPot(): void {
       pot.y = Math.round(item.y);
     }
   });
-  if (jar && w.grams > 0) {
-    w.jarX = Math.round(jar.x);
-    w.jarY = Math.round(jar.y);
-  }
 }
 
 const potSpot = (pot: Pot, i: number) =>
@@ -100,7 +94,7 @@ function potName(pot: Pot): string {
   return (pot.strain ? `${STRAINS[pot.strain].name} 🌱` : POTS[pot.kind].name) + lamp;
 }
 
-/** Oggetti da aggiungere alla mappa della propria stanza: i vasi e il barattolo. */
+/** Oggetti da aggiungere alla mappa della propria stanza: i vasi (l'erba sta nello zaino). */
 export function weedRoomItems(): Record<string, GameValue> {
   const w = weed();
   const items: Record<string, GameValue> = {};
@@ -117,15 +111,6 @@ export function weedRoomItems(): Record<string, GameValue> {
       !!pot.strain && !pot.legacy && potProgress(pot, now) < 1 && waterDueIn(pot, now) < 0;
     items[potKey(i)] = item;
   });
-  if (w.grams > 0) {
-    if (!jar) {
-      // dove l'ha messo il giocatore; se no al suo posto vicino ai vasi
-      const start = w.jarX !== undefined ? { x: w.jarX, y: w.jarY! } : JAR_SPOT;
-      jar = { ...start, w: 14, h: 14, z: 24, name: 'Barattolo di erba 🌿', moveable: true };
-    }
-    jar.jar = { g: w.grams, s: w.jarStrain || 'amnesia' };
-    items.weedJar = jar;
-  } else jar = null;
   return items;
 }
 
@@ -358,12 +343,6 @@ async function harvestNow(index: number): Promise<void> {
   recordActivity('raccolto');
   notePersonality('harvestWeed');
   done.state.grams = weed().grams;
-  // il primo raccolto fa comparire il barattolo accanto al vaso
-  const item = potItems[index];
-  if (item && !jar && done.state.jarX === undefined) {
-    done.state.jarX = Math.round(item.x);
-    done.state.jarY = Math.round(item.y - 36);
-  }
   game.player.weed = done.state;
   sfx('mission');
   commit();
@@ -496,5 +475,5 @@ export async function onJointRefused(who: string): Promise<void> {
   if (!(await inventoryChange((ledger) => ledger.buy('weed', 1, 0)))) return;
   saveGame(true);
   publishRoomLayout();
-  toast(`${who} non ha preso la canna: il grammo è tornato nel barattolo.`, 4000);
+  toast(`${who} non ha preso la canna: il grammo è tornato nel tuo zaino.`, 4000);
 }

@@ -1,4 +1,4 @@
-// Piante di canapa: vaso in camera, barattolo dell'erba ed espositore del grow shop.
+// Piante di canapa: vaso in camera ed espositore del grow shop.
 import { STRAINS, type StrainId, growProgress } from '../weed-rules.js';
 import { type GameValue, game } from '../context.js';
 import { isoProject, isoScale } from './primitives.js';
@@ -166,51 +166,6 @@ function drawThirstDrop(x: number, y: number, t: number): void {
   ctx.quadraticCurveTo(p.x - 5 * s, p.y, p.x, p.y - 7 * s);
   ctx.fill();
   ctx.stroke();
-}
-
-/** Barattolo di vetro con l'erba dentro: più è pieno, più sale il verde. */
-export function drawWeedJar(it?: GameValue): GameValue {
-  const ctx = game.view.ctx;
-  const s: number = isoScale();
-  const j = it.jar || { g: 0, s: 'amnesia' };
-  const st = STRAINS[j.s as StrainId] || STRAINS.amnesia;
-  const b = isoProject(it.x, it.y, 0),
-    tp = isoProject(it.x, it.y, 22);
-  const w = 9 * s;
-  const fill = Math.min(1, j.g / 100);
-  const hgt = b.y - tp.y;
-  // erba dentro
-  ctx.fillStyle = st.bud;
-  ctx.fillRect(b.x - w, b.y - hgt * 0.85 * fill, w * 2, hgt * 0.85 * fill);
-  for (let i = 0; i < 6 * fill; i++) {
-    ctx.fillStyle = game.darken(st.leaf, 0.1);
-    ctx.beginPath();
-    ctx.arc(
-      b.x - w * 0.6 + (i % 3) * w * 0.6,
-      b.y - 3 * s - Math.floor(i / 3) * 5 * s,
-      2.2 * s,
-      0,
-      6.3,
-    );
-    ctx.fill();
-  }
-  // vetro
-  ctx.fillStyle = 'rgba(210,240,255,0.28)';
-  ctx.strokeStyle = 'rgba(255,255,255,0.8)';
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.rect(b.x - w, tp.y, w * 2, hgt);
-  ctx.fill();
-  ctx.stroke();
-  // tappo ed etichetta con i grammi
-  ctx.fillStyle = '#2e7d32';
-  ctx.fillRect(b.x - w - 1, tp.y - 4 * s, w * 2 + 2, 4 * s);
-  ctx.fillStyle = '#ffffff';
-  ctx.fillRect(b.x - w * 0.75, tp.y + hgt * 0.3, w * 1.5, 7 * s);
-  ctx.fillStyle = '#2d3436';
-  ctx.font = `bold ${Math.round(5 * s)}px sans-serif`;
-  ctx.textAlign = 'center';
-  ctx.fillText(`${j.g} g`, b.x, tp.y + hgt * 0.3 + 5.5 * s);
 }
 
 /** Espositore del grow shop: cassetta di legno, pianta adulta e lampada viola che la illumina. */

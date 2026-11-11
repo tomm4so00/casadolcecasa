@@ -60,7 +60,9 @@ const SIZES = [
 await mkdir(OUT, { recursive: true });
 await writeFile(new URL('icon.svg', OUT), SVG + '\n');
 
-const browser = await chromium.launch(process.platform === 'win32' ? { channel: 'msedge' } : {});
+const browser = await chromium.launch(
+  process.platform === 'win32' ? { channel: 'msedge', args: ['--disable-gpu'] } : {},
+);
 try {
   for (const [name, size] of SIZES) {
     const page = await browser.newPage({ viewport: { width: size, height: size } });

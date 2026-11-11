@@ -34,7 +34,9 @@ await fetch(`http://127.0.0.1:9000/.json?ns=${namespace}`, {
 });
 const server = await createServer({ server: { host: '127.0.0.1', port: 0 } });
 await server.listen();
-const browser = await chromium.launch(process.platform === 'win32' ? { channel: 'msedge' } : {});
+const browser = await chromium.launch(
+  process.platform === 'win32' ? { channel: 'msedge', args: ['--disable-gpu'] } : {},
+);
 const contexts = await Promise.all([browser.newContext(), browser.newContext()]);
 const [page, other] = await Promise.all(contexts.map((c) => c.newPage()));
 const errors = [];

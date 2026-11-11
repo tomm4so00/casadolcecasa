@@ -71,7 +71,14 @@ export interface DialogOptions {
   title: string;
   text?: string;
   /** `value`: testo già scritto nel campo (per correggere un nome) */
-  input?: { placeholder?: string; numeric?: boolean; maxLength?: number; value?: string } | null;
+  /** `multiline`: campo su più righe (Invio va a capo e non conferma) */
+  input?: {
+    placeholder?: string;
+    numeric?: boolean;
+    maxLength?: number;
+    value?: string;
+    multiline?: boolean;
+  } | null;
   /** `wide`: il pulsante occupa una riga intera, sotto gli altri */
   buttons: { label: string; value: string | null; color?: string; wide?: boolean }[];
 }
@@ -157,7 +164,7 @@ export interface CharacterState {
   personality?: PersonalityState;
   /** Turni di lavoro iniziati oggi (massimo SHIFTS_PER_DAY). */
   workDay?: WorkDay;
-  /** Pianta in vaso e barattolo d'erba nella propria stanza. */
+  /** Piante in vaso nella propria stanza, erba e semi nello zaino. */
   weed?: WeedState;
   /** Influenza: in corso, in arrivo per contagio o la prossima spontanea. */
   flu?: FluState;

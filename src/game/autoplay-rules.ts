@@ -2,8 +2,8 @@
 // testabile). Ogni giocatore online calcola da sé cosa fanno gli offline: la giornata è divisa in
 // turni e il posto di ogni turno lo sceglie un "dado" che dipende solo dal codice del personaggio
 // e dall'ora, quindi tutti vedono la stessa cosa senza scrivere niente nel database.
-// Nei posti si cammina tra punti fissi, più piano di chi gioca e sempre più piano man mano che i
-// parametri calano; sotto il 20% si torna a letto. Di notte si dorme. Non si spendono soldi,
+// Nei posti si cammina da un punto fisso all'altro con soste brevi, più piano di chi gioca e
+// sempre più piano man mano che i parametri calano; sotto il 20% si torna a letto. Di notte si dorme. Non si spendono soldi,
 // tranne il Giocatore d'azzardo: 3 giocate alla slot al giorno, contate al rientro.
 import type { PersonalityId } from './personality-rules.js';
 import { SLOT_BET, reelSymbol, slotWin, type SlotSymbol } from './betting-rules.js';
@@ -19,14 +19,19 @@ export const ABANDON_MS = ABANDON_DAYS * 24 * 3600000;
 
 /** Sotto questa soglia (il parametro più basso) il personaggio torna nel suo letto. */
 export const BED_THRESHOLD = 20;
-/** Appena usciti si resta dove si era per un po' (non si sparisce sotto gli occhi degli altri). */
-export const AUTOPLAY_GRACE_MS = 3 * 60_000;
+/** Appena usciti si resta fermi dove si era per qualche secondo, poi si parte. */
+export const AUTOPLAY_GRACE_MS = 5_000;
 /** Ogni turno un posto nuovo. */
 export const SLOT_MS = 12 * 60_000;
 /** Velocità a parametri pieni: il 60% di chi gioca (130). Con i parametri al minimo, la metà. */
 export const AUTOPLAY_SPEED = 130 * 0.6;
-/** Sosta a ogni punto del percorso. */
-export const PAUSE_MS = 25_000;
+/**
+ * A ogni punto di solito si gira e si riparte subito; solo ogni tanto ci si ferma un attimo.
+ * Così si sta quasi sempre in movimento.
+ */
+export const PAUSE_CHANCE = 0.2;
+export const PAUSE_MIN_MS = 1500;
+export const PAUSE_MAX_MS = 3500;
 /** Si dorme dall'1 alle 8 (ora italiana, uguale per tutti). */
 export const NIGHT_FROM = 1;
 export const NIGHT_TO = 8;
@@ -45,21 +50,23 @@ export interface AutoplayPlace {
 export const AUTOPLAY_PLACES = {
   cortile: {
     env: 'CORTILE',
+    // a sinistra della cassetta dei suggerimenti (103, 115)
     points: [
       [-60, 70],
-      [100, 70],
-      [100, 170],
+      [70, 70],
+      [70, 170],
       [-60, 170],
     ],
     label: '🌳 passeggia nel cortile',
   },
   ronda: {
     env: 'CORTILE',
+    // a sinistra dell'albero in (-308, 120): anche le diagonali restano libere
     points: [
-      [-450, 60],
-      [-250, 60],
-      [-250, 140],
-      [-450, 140],
+      [-460, 60],
+      [-335, 60],
+      [-335, 140],
+      [-460, 140],
     ],
     label: '🕵️ fa la ronda nel cortile',
   },
@@ -286,60 +293,70 @@ export function autoplayAt(info: AutoplayInfo, t: number): AutoplayView {
   const place = placeFor(info, slot);
   const p = AUTOPLAY_PLACES[place] as AutoplayPlace;
   const speed = speedAt(needAt(info, slot * SLOT_MS));
-  // un giro tra i punti, partendo da uno a caso: cammino, sosta, cammino, sosta…
-  const n = p.points.length;
-  const start = Math.floor(dice(`${info.pid}:${slot}:via`) * n);
-  const legs = Array.from({ length: n }, (_, i) => {
-    const a = p.points[(start + i) % n],
-      b = p.points[(start + i + 1) % n];
-    return { a, b, walk: (Math.hypot(b[0] - a[0], b[1] - a[1]) / speed) * 1000 };
-  });
-  const loop = legs.reduce((s, l) => s + l.walk + PAUSE_MS, 0);
-  let left = (t - slot * SLOT_MS) % loop;
-  for (const l of legs) {
-    if (left < PAUSE_MS)
-      return {
-        kind: 'place',
-        place,
-        env: p.env,
-        x: l.a[0],
-        y: l.a[1],
-        moving: false,
-        dir: { x: 0, y: 1 },
-        speed,
-        label: p.label,
-      };
-    left -= PAUSE_MS;
-    if (left < l.walk) {
-      const k = left / l.walk;
-      const dx = l.b[0] - l.a[0],
-        dy = l.b[1] - l.a[1];
-      return {
-        kind: 'place',
-        place,
-        env: p.env,
-        x: l.a[0] + dx * k,
-        y: l.a[1] + dy * k,
-        moving: true,
-        dir: { x: dx, y: dy },
-        speed,
-        label: p.label,
-      };
-    }
-    left -= l.walk;
+  const legs = legsOf(info.pid, slot, p, speed);
+  const left = t - slot * SLOT_MS;
+  // il tratto in corso: l'ultimo che comincia prima di adesso
+  let lo = 0,
+    hi = legs.length - 1;
+  while (lo < hi) {
+    const mid = (lo + hi + 1) >> 1;
+    if (legs[mid].at <= left) lo = mid;
+    else hi = mid - 1;
   }
-  const a = legs[0].a;
-  return {
-    kind: 'place',
-    place,
-    env: p.env,
-    x: a[0],
-    y: a[1],
-    moving: false,
-    dir: { x: 0, y: 1 },
-    speed,
-    label: p.label,
-  };
+  const l = legs[lo];
+  const dx = l.b[0] - l.a[0],
+    dy = l.b[1] - l.a[1];
+  const base = { kind: 'place', place, env: p.env, speed, label: p.label } as const;
+  // sosta breve sul punto, girato da dove arrivava
+  if (left - l.at < l.pause) return { ...base, x: l.a[0], y: l.a[1], moving: false, dir: l.from };
+  const k = Math.min(1, (left - l.at - l.pause) / l.walk);
+  return { ...base, x: l.a[0] + dx * k, y: l.a[1] + dy * k, moving: true, dir: { x: dx, y: dy } };
+}
+
+interface Leg {
+  /** Inizio del tratto dall'inizio del turno (prima la sosta, poi il cammino). */
+  at: number;
+  a: readonly [number, number];
+  b: readonly [number, number];
+  pause: number;
+  walk: number;
+  /** Verso dove guardava arrivando in `a`. */
+  from: { x: number; y: number };
+}
+
+/** I tratti di un turno, calcolati una volta sola (ogni fotogramma li rilegge). */
+const legsCache = new Map<string, Leg[]>();
+
+/**
+ * Il cammino di un turno: da un punto a un altro qualunque (mai lo stesso), con soste brevi e
+ * diverse a ogni punto, finché il turno non finisce. Dipende solo da codice, turno e velocità.
+ */
+function legsOf(pid: string, slot: number, p: AutoplayPlace, speed: number): Leg[] {
+  const key = `${pid}:${slot}:${p.env}:${speed}`;
+  const hit = legsCache.get(key);
+  if (hit) return hit;
+  const n = p.points.length;
+  const legs: Leg[] = [];
+  let cur = Math.floor(dice(`${pid}:${slot}:via`) * n);
+  let from = { x: 0, y: 1 };
+  for (let at = 0, i = 0; at < SLOT_MS; i++) {
+    const next = (cur + 1 + Math.floor(dice(`${pid}:${slot}:${i}:dove`) * (n - 1))) % n;
+    const a = p.points[cur],
+      b = p.points[next];
+    const r = dice(`${pid}:${slot}:${i}:sosta`);
+    // r sotto PAUSE_CHANCE: sosta, lunga in proporzione a r
+    const pause =
+      r < PAUSE_CHANCE ? PAUSE_MIN_MS + (r / PAUSE_CHANCE) * (PAUSE_MAX_MS - PAUSE_MIN_MS) : 0;
+    const walk = (Math.hypot(b[0] - a[0], b[1] - a[1]) / speed) * 1000;
+    legs.push({ at, a, b, pause, walk, from });
+    at += pause + walk;
+    from = { x: b[0] - a[0], y: b[1] - a[1] };
+    cur = next;
+  }
+  // tiene solo i turni recenti
+  if (legsCache.size > 500) legsCache.clear();
+  legsCache.set(key, legs);
+  return legs;
 }
 
 // ---------------------------------------------------------------- al rientro

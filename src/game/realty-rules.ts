@@ -17,9 +17,12 @@ type PinHash = (pin: string, roomId: number) => string;
 /** Libera: nessun giocatore la abita. */
 export const isFreeRoom = (r: MovableRoom | undefined): boolean => !!r && !r.owner && !r.ownerId;
 
-/** Come si chiama una stanza per chi gioca: appartamento e numero sulla porta del salone. */
+/**
+ * Come si chiama una stanza per chi gioca: appartamento e numero sulla porta del salone, che conta
+ * tutte le stanze del condominio (nell'appartamento 2 le porte vanno da 9 a 16).
+ */
 export function roomLabel(idx: number, perApt = 8): string {
-  return `Appartamento ${Math.floor(idx / perApt) + 1} · Stanza ${(idx % perApt) + 1}`;
+  return `Appartamento ${Math.floor(idx / perApt) + 1} · Stanza ${idx + 1}`;
 }
 
 /**

@@ -3238,6 +3238,8 @@ export const ENV_DECOR = {
     { kind: 'realtyBoard', x: -103, y: 115, w: 58, h: 6, z: 95, label: 'Bacheca Immobiliare 🏘️' },
     // accanto, la bacheca dei pettegolezzi: i fatti del condominio compaiono da soli
     { kind: 'gossipBoard', x: -176, y: 115, w: 52, h: 6, z: 95, label: 'Pettegolezzi 📰' },
+    // dall'altra parte del vialetto, la cassetta per scrivere ai creatori del gioco
+    { kind: 'suggestionBox', x: 103, y: 115, w: 30, h: 14, z: 82, label: 'Suggerimenti e bug 📮' },
     // piazzetta della fontana
     { kind: 'fountain', x: 0, y: 0, w: 70, h: 70, label: 'Fontana ⛲', z: 60 },
     // due panchine sul bordo del vialetto che va all'ala sinistra, rivolte verso di lui
@@ -3516,7 +3518,8 @@ export const ENV_DECOR = {
     // L'archivio lascia libera la porta del commissario, l'armadio la scritta sul muro
     { kind: 'archive', x: -25, y: -228, w: 40, h: 22, z: 70, depth: -400 },
     { kind: 'printer', x: 40, y: -225, w: 30, h: 22, z: 34, depth: -400 },
-    { kind: 'gunLocker', x: 118, y: -226, w: 40, h: 24, z: 72, depth: -400 },
+    // sta dietro il divisore di destra: si disegna prima, se no copre il vetro
+    { kind: 'gunLocker', x: 118, y: -226, w: 40, h: 24, z: 72, depth: -420 },
     // l'ufficio aperto a destra: due scrivanie con l'agente seduto e la sedia per chi denuncia
     { kind: 'copDesk', x: 240, y: -100, w: 70, h: 76, z: 40, officer: 2 },
     { kind: 'copDesk', x: 240, y: 60, w: 70, h: 76, z: 40, officer: 3 },
