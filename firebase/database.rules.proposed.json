@@ -3052,7 +3052,7 @@
       "$day": {
         ".validate": "$day.matches(/^20[0-9][0-9]-[0-9][0-9]-[0-9][0-9]$/)",
         "$what": {
-          ".write": "((auth != null && (auth.token.firebase.sign_in_provider === 'google.com' || auth.token.firebase.sign_in_provider === 'anonymous' || (auth.token.firebase.sign_in_provider === 'password' && auth.token.email_verified === true))) && root.child('sims_accounts').child(auth.uid).child('playerId').isString()) && newData.exists()",
+          ".write": "(((auth != null && (auth.token.firebase.sign_in_provider === 'google.com' || auth.token.firebase.sign_in_provider === 'anonymous' || (auth.token.firebase.sign_in_provider === 'password' && auth.token.email_verified === true))) && root.child('sims_accounts').child(auth.uid).child('playerId').isString()) || $what.beginsWith('ingresso:')) && newData.exists()",
           ".validate": "$what.matches(/^[a-z0-9_:-]{1,40}$/) && newData.hasChildren(['n'])",
           "n": {
             ".validate": "newData.isNumber() && ((!data.exists() && newData.val() === 1) || newData.val() === data.val() + 1)"

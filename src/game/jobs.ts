@@ -1,4 +1,5 @@
 import { notePersonality } from './personality.js';
+import { countUse } from './usage.js';
 import { creditMoney } from './economy.js';
 import type { GameValue } from './context.js';
 import { game } from './context.js';
@@ -522,6 +523,7 @@ export async function updateShift(delta: number): Promise<void> {
       }
     }
     game.player.stats.shifts++;
+    if (game.player.stats.shifts === 1) countUse('ingresso:primo_turno');
     notePersonality('workShift');
     game.player.happinessLevel = Math.max(0, game.player.happinessLevel - 5);
     game.player.sleepLevel = Math.max(0, game.player.sleepLevel - 3);

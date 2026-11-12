@@ -15,6 +15,7 @@ import {
   withFurnitureRotation,
 } from './objects.js';
 import { nameHash } from './scenes.js';
+import { countUse } from '../usage.js';
 // ---------- piccoli aiuti per il disegno dei vestiti ----------
 type Pt = { x: number; y: number };
 /** Una direzione nel piano del pavimento (x, y). */
@@ -1133,6 +1134,8 @@ export function finishCreator(ok?: GameValue): GameValue {
   const done: GameValue = game.creatorResolve;
   game.creatorResolve = null;
   if (ok && game.creatorDraft) {
+    // il primo aspetto scelto: un passo dell'imbuto d'ingresso
+    if (!game.bodyChosen) countUse('ingresso:personaggio');
     game.myBody = Object.assign({}, game.creatorDraft);
     game.bodyChosen = true;
     if (game.session.saveReady) saveGame(true);

@@ -1,5 +1,6 @@
 // Missioni di benvenuto: proposta con tre pulsanti, istruzioni passo passo e premio in denaro.
 import { game } from './context.js';
+import { countUse } from './usage.js';
 import { dom } from './runtime.js';
 import { openDialog } from './interface.js';
 import { toast } from './missions.js';
@@ -152,6 +153,7 @@ async function finishMission(s: WelcomeState, next: WelcomeState): Promise<void>
   const m = missionsOf(s)[s.i];
   if (!(await creditMoney(m.reward))) return; // si riprova al prossimo giro
   game.player.welcome = { ...next, snoozeUntil: Date.now() + 4000 };
+  countUse(`missione:${m.id}:fine`);
   sfx('mission');
   toast(`🏆 Missione completata: ${m.title} (+${m.reward} Đ)`, 5000, false);
   if (welcomeFinished(game.player.welcome))
@@ -179,6 +181,7 @@ async function offerMission(): Promise<void> {
     // finestra chiusa da un'altra (es. un invito): si ripropone tra poco
     const answer = res.action === 'yes' || res.action === 'no' ? res.action : 'later';
     game.player.welcome = answerOffer(state(), answer, view(), Date.now());
+    countUse(`missione:${m.id}:${answer === 'yes' ? 'si' : answer === 'no' ? 'no' : 'dopo'}`);
     if (res.action !== 'yes' && res.action !== 'no' && res.action !== 'later')
       game.player.welcome.snoozeUntil = Date.now() + 60_000;
     saveGame(false);

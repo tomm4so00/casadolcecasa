@@ -9,7 +9,8 @@ import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { changeLabel, ranking } from '../shared/usage-rules.ts';
+import { changeLabel, funnel, ranking, romeDay, shareOf } from '../shared/usage-rules.ts';
+import { backNextDay } from '../shared/retention-rules.ts';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const args = process.argv.slice(2);
@@ -17,21 +18,46 @@ const PROJECT = args.includes('--prova') ? 'casadolcecasa-prova' : 'casadolcecas
 // la classifica è la stessa del resoconto del lunedì su Telegram
 export { ranking };
 
-function readUsage() {
+function read(path) {
   const dir = mkdtempSync(join(tmpdir(), 'contatori-'));
-  const file = join(dir, 'usage.json');
+  const file = join(dir, 'dati.json');
   const cli = resolve(ROOT, 'node_modules/firebase-tools/lib/bin/firebase.js');
   execFileSync(
     process.execPath,
-    [cli, 'database:get', '/sims_usage', '--project', PROJECT, '-o', file, '--non-interactive'],
+    [cli, 'database:get', path, '--project', PROJECT, '-o', file, '--non-interactive'],
     { stdio: ['ignore', 'pipe', 'pipe'] },
   );
-  return JSON.parse(readFileSync(file, 'utf8') || 'null') || {};
+  return JSON.parse(readFileSync(file, 'utf8') || 'null');
 }
 
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
 
-function page(rows, now) {
+/** L'imbuto d'ingresso: una barra per passo, larga quanto i dispositivi rispetto al primo. */
+function funnelSection(f, back) {
+  const base = f.steps[0].n;
+  if (!f.steps.some((s) => s.n))
+    return '<h2>Imbuto d&#39;ingresso</h2><p class="muted">Ancora nessun dato: i passi si contano dalla versione nuova.</p>';
+  const max = Math.max(1, ...f.steps.map((s) => s.n));
+  const row = (label, n, note = '') =>
+    `<tr><td>${esc(label)}</td><td class="num">${n}</td>` +
+    `<td class="bar"><span style="width:${Math.round((n / max) * 100)}%"></span></td>` +
+    `<td class="num">${note}</td></tr>`;
+  let html =
+    '<h2>Imbuto d&#39;ingresso</h2><p class="muted">Dispositivi diversi a ogni passo, sommati sui 7 giorni; la percentuale è rispetto a chi ha visto l&#39;ingresso.</p>' +
+    '<table><thead><tr><th>Passo</th><th class="num">Dispositivi</th><th class="bar"></th><th class="num">Sul primo</th></tr></thead><tbody>';
+  for (const [i, s] of f.steps.entries()) html += row(s.label, s.n, i ? shareOf(s.n, base) : '');
+  html +=
+    '</tbody></table><h2>Missioni di benvenuto</h2><table><thead><tr><th>Missione</th><th class="num">Accettata</th><th class="num">Rifiutata</th><th class="num">Rimandata</th><th class="num">Finita</th></tr></thead><tbody>';
+  for (const [i, m] of f.missions.entries())
+    html += `<tr><td>${i + 1}. ${esc(m.label)}</td><td class="num">${m.yes}</td><td class="num">${m.no}</td><td class="num">${m.later}</td><td class="num">${m.done}</td></tr>`;
+  html +=
+    `</tbody></table><p>Primo turno di lavoro: <b>${f.firstShift}</b>` +
+    (back ? ` · Tornati il giorno dopo: <b>${back.back}</b> su ${back.started} nuovi` : '') +
+    '</p>';
+  return html;
+}
+
+function page(rows, now, f, back) {
   const max = Math.max(1, ...rows.map((r) => r.n));
   const table = (kind, title) => {
     const list = rows.filter((r) => r.kind === kind);
@@ -71,15 +97,22 @@ th,td{padding:7px 10px;border-bottom:1px solid var(--line);text-align:left}th{fo
 <p class="muted">${PROJECT === 'casadolcecasa-prova' ? 'Gioco di prova' : 'Gioco di tutti'} · ultimi 7 giorni
 rispetto ai 7 prima · aggiornato il ${esc(when)}. "Giocatori al giorno": quanti giocatori diversi
 in media ogni giorno, senza nomi.</p>
-${table('posto', 'I posti')}${table('funzione', 'Le funzioni')}
+${funnelSection(f, back)}${table('posto', 'I posti')}${table('funzione', 'Le funzioni')}
 </main></body></html>`;
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const now = Date.now();
-  const rows = ranking(readUsage(), now);
+  const usage = read('/sims_usage') || {};
+  const rows = ranking(usage, now);
+  const f = funnel(usage, now);
+  const since = read('/sims_meta/retentionSince');
+  const back =
+    typeof since === 'string'
+      ? backNextDay(read('/sims_retention'), romeDay(now - 6 * 86_400_000), romeDay(now), since)
+      : null;
   const file = join(mkdtempSync(join(tmpdir(), 'classifica-')), 'contatori.html');
-  writeFileSync(file, page(rows, now));
+  writeFileSync(file, page(rows, now, f, back));
   if (args.includes('--testo')) {
     console.log(`Classifica (${PROJECT}), ultimi 7 giorni:`);
     for (const r of rows)
@@ -89,6 +122,19 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
           `  giocatori/giorno ${r.players}`,
       );
     if (!rows.length) console.log('Ancora nessun dato: i contatori partono con la versione nuova.');
+    console.log("Imbuto d'ingresso (dispositivi, 7 giorni):");
+    for (const [i, s] of f.steps.entries())
+      console.log(
+        `  ${s.label.padEnd(24)} ${String(s.n).padStart(5)}  ${i ? shareOf(s.n, f.steps[0].n) : ''}`,
+      );
+    for (const [i, m] of f.missions.entries())
+      console.log(
+        `  Missione ${i + 1} (${m.label}): accettata ${m.yes}, rifiutata ${m.no}, rimandata ${m.later}, finita ${m.done}`,
+      );
+    console.log(
+      `  Primo turno ${f.firstShift}` +
+        (back ? `, tornati il giorno dopo ${back.back} su ${back.started} nuovi` : ''),
+    );
   }
   // si apre nel browser predefinito
   if (!args.includes('--non-aprire'))

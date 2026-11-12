@@ -173,3 +173,22 @@ export function retentionTelegramText(r: RetentionReport): string {
   }
   return text.trim();
 }
+
+/**
+ * Per l'imbuto d'ingresso: dei nuovi iniziati fra `from` e `to` (AAAA-MM-GG) a cui il giorno dopo
+ * è già passato, quanti sono tornati il giorno dopo. Contano solo quelli iniziati da `since`.
+ */
+export function backNextDay(
+  raw: Record<string, unknown> | null | undefined,
+  from: string,
+  to: string,
+  since: string,
+): { started: number; back: number } {
+  const lo = Math.max(dayIndex(from), dayIndex(since));
+  // il giorno dopo deve essere finito: fino al giorno prima di `to`
+  const hi = dayIndex(to) - 1;
+  const list = Object.values(raw || {})
+    .filter(isEntry)
+    .filter((e) => dayIndex(e.c) >= lo && dayIndex(e.c) <= hi);
+  return { started: list.length, back: list.filter((e) => e.a['1']).length };
+}

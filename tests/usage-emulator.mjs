@@ -79,4 +79,26 @@ await check('giorno inventato', false, () =>
 await check('senza account', false, () => call('PATCH', P, { n: inc(1) }, 'nessuno'));
 await check('i giocatori non li leggono', false, () => call('GET', 'sims_usage', undefined, 'u1'));
 
-console.log('PASS contatori d’uso: si aggiunge solo 1, li legge solo il server.');
+// l'imbuto d'ingresso: i passi prima dell'account si contano anche senza accesso, solo +1
+async function anon(method, path, body) {
+  const res = await fetch(`${base}/${path}.json?ns=${ns}`, {
+    method,
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
+  return res.ok;
+}
+const I = 'sims_usage/2026-11-12/ingresso:visto';
+await check('ingresso visto, senza accesso', true, () =>
+  anon('PATCH', I, { n: inc(1), p: inc(1) }),
+);
+await check('ingresso, anche da un account senza personaggio', true, () =>
+  call('PATCH', I, { n: inc(1), p: inc(0) }, 'nessuno'),
+);
+await check('senza accesso non si salta avanti', false, () => anon('PATCH', I, { n: 50 }));
+await check('senza accesso non si cancella', false, () => anon('DELETE', I));
+await check('senza accesso solo i passi d’ingresso', false, () => anon('PATCH', P, { n: inc(1) }));
+await check('senza accesso non si legge', false, () => anon('GET', 'sims_usage'));
+
+console.log(
+  'PASS contatori d’uso: si aggiunge solo 1, li legge solo il server; ingresso anche senza account.',
+);

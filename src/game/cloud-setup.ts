@@ -1,6 +1,7 @@
 import { maskText } from '../../shared/text-filter-rules.js';
 import { wokeFromPause } from './dormancy.js';
 import { movedIn } from './move.js';
+import { countUse } from './usage.js';
 import { game } from './context.js';
 import { startGame } from './interface.js';
 import { toast } from './missions.js';
@@ -158,11 +159,15 @@ export function mountCloudSetup(root: HTMLElement): void {
   };
 
   const loginButton = el<HTMLButtonElement>('cloud-game-btn');
-  run(loginButton, () => signIn());
+  run(loginButton, () => {
+    countUse('ingresso:google');
+    return signIn();
+  });
 
   // ---- gioca subito, da ospite
   const guestNick = el<HTMLInputElement>('setup-guest-nick');
   run(el('setup-guest'), async () => {
+    countUse('ingresso:gioca_subito');
     guestNick.value ||= localStorage.getItem(game.session.LS_PREFIX + 'sims_player_nick') || '';
     show('guest');
     guestNick.focus();
@@ -175,6 +180,7 @@ export function mountCloudSetup(root: HTMLElement): void {
       return;
     }
     const user = await signInAsGuest();
+    countUse('ingresso:nome');
     access = await accessFor(user);
     await play(access.playerId ?? (await createGuestSim(access.uid)), nick);
   });
@@ -187,6 +193,7 @@ export function mountCloudSetup(root: HTMLElement): void {
   const passInput = el<HTMLInputElement>('setup-password');
   const passwordLogin = el<HTMLButtonElement>('setup-password-login');
   run(passwordLogin, async () => {
+    countUse('ingresso:email_accesso');
     await setRememberMe(remember.checked);
     await enterPasswordAccount(await signInWithPassword(userInput.value, passInput.value));
   });
@@ -203,6 +210,7 @@ export function mountCloudSetup(root: HTMLElement): void {
     regUser.focus();
   });
   run(el('setup-register'), async () => {
+    countUse('ingresso:email_nuovo');
     if (regPass.value !== regPass2.value) {
       toast('Le due password non sono uguali.');
       return;
@@ -260,7 +268,10 @@ export function mountCloudSetup(root: HTMLElement): void {
   // With "Ricordami" a returning player goes straight into the game. Anche tornando dalla pausa
   // (dormancy.ts): la pagina si è ricaricata da sola e il giocatore si aspetta il gioco. E dopo il
   // trasloco dal vecchio indirizzo (move.ts), anche senza "Ricordami": era già dentro.
-  if (remember.checked || wokeFromPause() || movedIn) {
+  const autoEnter = remember.checked || wokeFromPause() || movedIn;
+  // l'imbuto d'ingresso (usage.ts): conta chi vede davvero la schermata, non chi rientra da solo
+  if (!autoEnter) countUse('ingresso:visto');
+  if (autoEnter) {
     loginButton.disabled = true;
     loginButton.textContent = 'Accesso in corso…';
     const pageLoaded = new Promise<void>((resolve) => {

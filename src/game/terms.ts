@@ -9,6 +9,7 @@ import { saveGame } from './saves.js';
 import { signOutAccount } from './accounts.js';
 import { requestDeletion } from './deletion.js';
 import { MIN_AGE, termsToAsk } from './terms-rules.js';
+import { countUse } from './usage.js';
 
 const TEXT =
   `Casa dolce casa è solo per maggiorenni: per giocare devi avere almeno ${MIN_AGE} anni.\n\n` +
@@ -47,6 +48,7 @@ export async function ensureTerms(): Promise<boolean> {
       const now = Date.now();
       game.player.termsAt = game.player.termsAt || now;
       game.player.adultAt = now;
+      countUse('ingresso:18anni');
       void saveGame(true);
       return true;
     }

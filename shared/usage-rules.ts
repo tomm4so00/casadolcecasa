@@ -46,7 +46,8 @@ export function ranking(usage: Usage, now: number): UsageRow[] {
   const before = [...Array(7)].map((_, i) => romeDay(now - (i + 7) * DAY));
   const a = totals(usage, week);
   const b = totals(usage, before);
-  const keys = new Set([...Object.keys(a), ...Object.keys(b)]);
+  // i passi dell'imbuto d'ingresso hanno la loro tabella (funnel, sotto)
+  const keys = new Set([...Object.keys(a), ...Object.keys(b)].filter((k) => !isFunnelKey(k)));
   return [...keys]
     .map((what): UsageRow => {
       const n = a[what]?.n || 0;
@@ -62,6 +63,82 @@ export function ranking(usage: Usage, now: number): UsageRow[] {
       };
     })
     .sort((x, y) => y.n - x.n);
+}
+
+// ---------------------------------------------------------------- imbuto d'ingresso
+
+/** I passi dell'ingresso, in ordine (li conta il gioco: cloud-setup, terms, avatars, jobs). */
+export const FUNNEL_STEPS = [
+  { key: 'ingresso:visto', label: 'Ingresso visto' },
+  { key: 'ingresso:gioca_subito', label: 'Gioca subito' },
+  { key: 'ingresso:google', label: 'Accedi con Google' },
+  { key: 'ingresso:email_accesso', label: 'Entra con email' },
+  { key: 'ingresso:email_nuovo', label: 'Registrati con email' },
+  { key: 'ingresso:nome', label: 'Nome scelto (ospiti)' },
+  { key: 'ingresso:18anni', label: '18 anni confermati' },
+  { key: 'ingresso:personaggio', label: 'Personaggio creato' },
+] as const;
+
+/** Le missioni di benvenuto, in ordine (src/game/welcome-rules.ts, WELCOME_MISSIONS). */
+export const FUNNEL_MISSIONS = [
+  { id: 'taste_cook', label: "Cucina l'assaggio" },
+  { id: 'taste_give', label: "Porta l'assaggio" },
+  { id: 'pin', label: 'Cassaforte' },
+  { id: 'work', label: 'Primo stipendio' },
+  { id: 'sleep', label: 'Letto' },
+] as const;
+
+export const isFunnelKey = (key: string): boolean =>
+  key.startsWith('ingresso:') || key.startsWith('missione:');
+
+export interface Funnel {
+  /** dispositivi per passo, sommati sui 7 giorni */
+  steps: { label: string; n: number }[];
+  missions: { label: string; yes: number; no: number; later: number; done: number }[];
+  firstShift: number;
+}
+
+/** L'imbuto dei 7 giorni che finiscono con quello di `now`: quanti dispositivi a ogni passo. */
+export function funnel(usage: Usage, now: number): Funnel {
+  const t = totals(
+    usage,
+    [...Array(7)].map((_, i) => romeDay(now - i * DAY)),
+  );
+  const p = (key: string) => t[key]?.p || 0;
+  return {
+    steps: FUNNEL_STEPS.map((s) => ({ label: s.label, n: p(s.key) })),
+    missions: FUNNEL_MISSIONS.map((m) => ({
+      label: m.label,
+      yes: p(`missione:${m.id}:si`),
+      no: p(`missione:${m.id}:no`),
+      later: p(`missione:${m.id}:dopo`),
+      done: p(`missione:${m.id}:fine`),
+    })),
+    firstShift: p('ingresso:primo_turno'),
+  };
+}
+
+/** "58%" rispetto al primo passo, o "" se il primo passo è a zero. */
+export const shareOf = (n: number, base: number): string =>
+  base ? `${Math.round((n / base) * 100)}%` : '';
+
+/** Le righe dell'imbuto per Telegram; `backNextDay` dalla ritenzione, se c'è. */
+export function funnelText(
+  f: Funnel,
+  backNextDay: { started: number; back: number } | null,
+): string {
+  const base = f.steps[0].n;
+  if (!base && !f.steps.some((s) => s.n)) return '';
+  let text = `\n🚪 <b>Imbuto d'ingresso</b> (dispositivi)\n`;
+  for (const s of f.steps)
+    text += `${esc(s.label)}: <b>${s.n}</b>${s === f.steps[0] ? '' : ' ' + shareOf(s.n, base)}\n`;
+  for (const [i, m] of f.missions.entries())
+    if (m.yes || m.no || m.later || m.done)
+      text += `Missione ${i + 1} (${esc(m.label)}): accettata ${m.yes} · rifiutata ${m.no} · rimandata ${m.later} · finita <b>${m.done}</b>\n`;
+  text += `Primo turno di lavoro: <b>${f.firstShift}</b>\n`;
+  if (backNextDay)
+    text += `Tornati il giorno dopo: <b>${backNextDay.back}</b> su ${backNextDay.started} nuovi\n`;
+  return text;
 }
 
 /** "+12%", "-30%" o "nuovo". */
@@ -108,11 +185,11 @@ const shortDay = (ms: number): string => romeDay(ms).slice(5).split('-').reverse
 const LIMIT = 3800;
 
 /** Il messaggio per Telegram (HTML): posti e funzioni, dal più usato. */
-export function usageReportText(rows: UsageRow[], end: number): string {
+export function usageReportText(rows: UsageRow[], end: number, extra = ''): string {
   const head =
     `📊 <b>Contatori della settimana</b>\n` +
     `<i>dal ${shortDay(end - 6 * DAY)} al ${shortDay(end)}, rispetto ai 7 giorni prima</i>\n`;
-  if (!rows.length) return head + '\nNessun uso registrato.';
+  if (!rows.length) return (head + '\nNessun uso registrato.\n' + extra).trim();
   const line = (r: UsageRow) =>
     `${esc(r.name)} — <b>${r.n}</b> (${changeLabel(r)}) · ${r.players} gioc./giorno`;
   let text = head;
@@ -126,10 +203,11 @@ export function usageReportText(rows: UsageRow[], end: number): string {
     text += `\n${title}\n`;
     for (const r of list) {
       const next = line(r) + '\n';
-      if (text.length + next.length > LIMIT) return text + `…e altre ${left} voci`;
+      if (text.length + next.length + extra.length > LIMIT)
+        return (text + `…e altre ${left} voci\n` + extra).trim();
       text += next;
       left--;
     }
   }
-  return text.trim();
+  return (text + extra).trim();
 }
