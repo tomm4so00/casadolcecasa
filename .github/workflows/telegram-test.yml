@@ -1,5 +1,6 @@
 # Prova del gruppo Telegram: un messaggio finto per ogni notifica (commit, cassetta, segnalazioni,
-# silenzio automatico). Si lancia a mano da GitHub, o con un push di questo file sul ramo prova.
+# silenzio automatico, contatori e ritenzione del lunedì). Si lancia a mano da GitHub, o con un
+# push di questo file sul ramo prova.
 name: Prova Telegram
 
 on:

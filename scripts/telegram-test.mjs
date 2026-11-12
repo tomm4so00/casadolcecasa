@@ -6,6 +6,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { telegramText } from '../server/lib/shared/suggestion-rules.js';
 import { autoMuteTelegramText, reportTelegramText } from '../server/lib/shared/moderation-rules.js';
+import { ranking, usageReportText } from '../server/lib/shared/usage-rules.js';
+import { retentionReport, retentionTelegramText } from '../server/lib/shared/retention-rules.js';
 
 const token = process.env.TELEGRAM_BOT_TOKEN;
 const chat = process.env.TELEGRAM_CHAT_ID;
@@ -78,6 +80,46 @@ await send('segnalazione', reportTelegramText('🧪 Giocatore di prova', ['altro
 
 // 4. il silenzio automatico (3 segnalazioni in un giorno)
 await send('silenzio automatico', autoMuteTelegramText('🧪 Giocatore di prova'));
+
+// 5. il resoconto del lunedì, con contatori finti
+const yesterday = Date.now() - 86_400_000;
+const day = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Rome' }).format(yesterday);
+await send(
+  'resoconto settimanale',
+  usageReportText(
+    ranking(
+      {
+        [day]: {
+          'posto:saloon': { n: 37, p: 3 },
+          'posto:cortile': { n: 14, p: 3 },
+          chat: { n: 9, p: 2 },
+        },
+      },
+      yesterday,
+    ),
+    yesterday,
+  ).replace('Contatori della settimana', '🧪 Contatori della settimana (prova, numeri finti)'),
+);
+
+// 6. la ritenzione del lunedì, con giocatori finti
+const fake = (c, ...days) => ({ c, a: Object.fromEntries(days.map((d) => [String(d), 1])) });
+await send(
+  'ritenzione settimanale',
+  retentionTelegramText(
+    retentionReport(
+      {
+        a: fake('2026-10-05', 0, 1, 8, 31),
+        b: fake('2026-10-06', 0, 1),
+        c: fake('2026-10-07', 0),
+        d: fake('2026-10-12', 0, 1, 9),
+        e: fake('2026-11-11', 0, 1),
+        f: fake('2026-11-14', 0),
+      },
+      '2026-11-15',
+      '2026-10-05',
+    ),
+  ).replace('Ritenzione', '🧪 Ritenzione (prova, numeri finti)'),
+);
 
 if (failed) process.exit(1);
 console.log('Tutti i messaggi di prova sono partiti.');
