@@ -386,6 +386,7 @@ async function donate(amount: number, id: ProjectId = 'rocket'): Promise<boolean
       : `✅ Hai versato ${dindini(amount)} per ${id === 'rocket' ? 'il razzo' : 'la base lunare'}. Grazie!`,
     5500,
   );
+  if (id === 'rocket') game.player.stats.rocketGifts = (game.player.stats.rocketGifts || 0) + 1;
   return true;
 }
 

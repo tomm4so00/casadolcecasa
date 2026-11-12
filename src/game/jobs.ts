@@ -657,6 +657,8 @@ export async function updateShift(delta: number): Promise<void> {
       }
     }
     game.player.stats.shifts++;
+    // la paga di oggi, per la missione del giorno «Guadagna 50 Đ»
+    game.player.stats.workPay = (game.player.stats.workPay || 0) + Math.max(0, s.pay || 0);
     if (game.player.stats.shifts === 1) countUse('ingresso:primo_turno');
     notePersonality('workShift');
     game.player.happinessLevel = Math.max(0, game.player.happinessLevel - 5);

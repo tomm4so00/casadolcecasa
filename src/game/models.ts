@@ -11,6 +11,7 @@ import type { RomanceBook } from './romance-rules.js';
 import type { RelationBook } from './relations-rules.js';
 import type { WelcomeState } from './welcome-rules.js';
 import type { QuestState } from './quests-rules.js';
+import type { DailyState } from './daily-rules.js';
 import type { GameDatabase } from './database.js';
 
 export interface Point {
@@ -195,6 +196,8 @@ export interface CharacterState {
   welcome?: WelcomeState;
   /** I capitoli delle missioni e le missioni bonus (quests-rules.ts). */
   quests?: QuestState;
+  /** Le missioni del giorno e la serie di giorni (daily-rules.ts). */
+  today?: DailyState;
   /** Punti delle personalità sviluppate giocando. */
   personality?: PersonalityState;
   /** Turni di lavoro iniziati oggi (massimo SHIFTS_PER_DAY). */

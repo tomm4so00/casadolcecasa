@@ -12,6 +12,8 @@ import { missionsOf, welcomeFinished } from './welcome-rules.js';
 import { restartWelcome, welcomeHint } from './welcome.js';
 import type { GuideDest } from './guide-rules.js';
 import { questHooks } from './quest-hooks.js';
+import { bindMissionRows, esc, followButton, missionRow } from './quest-view.js';
+import { dailyQuest, dailySection, tickDaily, weekMedal } from './daily.js';
 import {
   BONUS,
   CHAPTERS,
@@ -77,8 +79,10 @@ export async function tickQuests(): Promise<void> {
       busy = false;
     }
   }
-  const trophies = earnedTrophies(state(), welcomeDone());
-  if (rewards.length || trophies.join() !== (game.player.trophies || []).join()) {
+  // le missioni del giorno, per chi ha già i capitoli aperti
+  const daily = chaptersOpen() ? await tickDaily() : false;
+  const trophies = [...earnedTrophies(state(), welcomeDone()), ...weekMedal()];
+  if (rewards.length || daily || trophies.join() !== (game.player.trophies || []).join()) {
     game.player.trophies = trophies;
     saveGame(true);
   }
@@ -116,15 +120,23 @@ const welcomeBusy = (): boolean => {
   return !!w && !welcomeFinished(w) && w.status !== 'off';
 };
 
-/** La missione seguita adesso (o null). */
+/**
+ * La missione seguita adesso (o null): quella scelta con «Segui», altrimenti il primo capitolo
+ * aperto e, finiti i capitoli, la prima missione di oggi ancora da fare.
+ */
 function followedQuest(): Quest | null {
   if (welcomeBusy()) return null;
   const s = state();
-  const id = followed(s);
-  if (!id) return null;
+  if (s.follow === 'none') return null;
+  const open = chaptersOpen();
+  if (open && s.follow?.startsWith('oggi:')) {
+    const q = dailyQuest(s.follow.slice(5));
+    if (q) return q;
+  }
+  const id = followed({ ...s, follow: s.follow?.startsWith('oggi:') ? undefined : s.follow });
   // un capitolo si segue solo quando è aperto; i bonus sempre
-  if (!chaptersOpen() && CHAPTERS.some((c) => c.id === id)) return null;
-  return currentQuest(s, id);
+  const q = id && (open || !CHAPTERS.some((c) => c.id === id)) ? currentQuest(s, id) : null;
+  return q ?? (open ? dailyQuest(null) : null);
 }
 
 /** L'istruzione della missione seguita, per la freccetta sui pulsanti (o ""). */
@@ -135,8 +147,22 @@ export function questDest(): GuideDest | null {
   const q = followedQuest();
   if (!q) return null;
   const env: string = game.view.activeEnvironment;
+  const myApt = hasRoom() ? game.aptOfRoom(game.myAssignedRoomIdx) : 0;
   switch (q.id) {
+    case 'oggi:pasti':
+      return { env: 'KITCHEN', apt: myApt, key: 'fridge' };
+    case 'oggi:doccia':
+      return { env: 'BATHROOM', apt: myApt, key: 'shower' };
+    case 'oggi:visita':
+      return { env: 'SALOON', apt: myApt };
+    case 'oggi:turno':
+    case 'oggi:due_turni':
+    case 'oggi:paga':
+      return game.activeShift || env.startsWith('lavoro_')
+        ? null
+        : { env: 'CORTILE', key: 'exitHouse' };
     case 'gossip':
+    case 'oggi:pettegolezzi':
       return { env: 'CORTILE', point: { x: -176, y: 130 } };
     case 'idea':
       return { env: 'CORTILE', point: { x: 103, y: 130 } };
@@ -154,17 +180,11 @@ export function questDest(): GuideDest | null {
 
 // ---------------------------------------------------------------- la finestra «Missioni»
 
-const esc = (s: string): string =>
-  s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
-
-function questRow(q: { title: string; reward: number }, mark: string): string {
-  return `<li><span>${mark} ${esc(q.title)}</span><span class="qs-reward">${q.reward} Đ</span></li>`;
-}
-
-function followButton(id: string, now: string | null): string {
-  return now === id
-    ? `<button type="button" class="qs-follow on" data-follow="none">🧭 La segui</button>`
-    : `<button type="button" class="qs-follow" data-follow="${id}">🧭 Segui</button>`;
+/** Quello che si segue, col nome del suo pulsante: il capitolo della missione, il bonus o oggi:… */
+function questOwner(questId: string): string {
+  if (questId.startsWith('oggi:')) return questId;
+  const c = CHAPTERS.find((x) => x.quests.some((q) => q.id === questId));
+  return c ? c.id : questId;
 }
 
 function welcomeSection(): string {
@@ -175,7 +195,16 @@ function welcomeSection(): string {
   const rows =
     s.old && !welcomeDone()
       ? '<li class="qs-note">Le sai già fare: questo capitolo vale come fatto.</li>'
-      : list.map((m, i) => questRow(m, i < (w?.i ?? 0) ? '✅' : i === w?.i ? '👉' : '⬜')).join('');
+      : list
+          .map((m, i) =>
+            missionRow(
+              i < (w?.i ?? 0) ? '✅' : i === w?.i ? '👉' : '⬜',
+              m.title,
+              m.reward,
+              m.intro,
+            ),
+          )
+          .join('');
   const now = !done && w?.status === 'active' ? welcomeHint() : '';
   const restart =
     !done && w && w.status !== 'active'
@@ -196,7 +225,9 @@ function chapterSection(c: (typeof CHAPTERS)[number], following: string | null):
   const done = chapterDone(s, c);
   const open = chaptersOpen();
   const rows = c.quests
-    .map((q, k) => questRow(q, k < i ? '✅' : k === i && open ? '👉' : '⬜'))
+    .map((q, k) =>
+      missionRow(k < i ? '✅' : k === i && open ? '👉' : '⬜', q.title, q.reward, q.hint),
+    )
     .join('');
   const now = open && !done ? c.quests[i].hint : '';
   return (
@@ -211,12 +242,14 @@ function chapterSection(c: (typeof CHAPTERS)[number], following: string | null):
 
 function bonusSection(following: string | null): string {
   const s = state();
-  const rows = BONUS.map(
-    (b) =>
-      `<li><span>${s.bonus[b.id] ? '🏅' : '⬜'} ${esc(b.title)}</span><span class="qs-reward">${b.reward} Đ</span>` +
-      (s.bonus[b.id] ? '' : followButton(b.id, following)) +
-      `</li>` +
-      (s.bonus[b.id] ? '' : `<li class="qs-now">${esc(b.hint)}</li>`),
+  const rows = BONUS.map((b) =>
+    missionRow(
+      s.bonus[b.id] ? '🏅' : '⬜',
+      b.title,
+      b.reward,
+      b.hint,
+      s.bonus[b.id] ? '' : followButton(b.id, following),
+    ),
   ).join('');
   return `<section class="qs-chapter qs-bonus"><div class="qs-head"><b>⭐ Missioni bonus</b><span>medaglie</span></div><ul>${rows}</ul></section>`;
 }
@@ -230,14 +263,17 @@ export function openQuests(): void {
     el.className = 'fullscreen-modal';
     document.body.appendChild(el);
   }
-  const s = state();
-  const following = s.follow === 'none' ? null : followed(s);
-  const trophies = earnedTrophies(s, welcomeDone()).filter((t) => t.startsWith('trofeo_')).length;
+  const now = followedQuest();
+  const following = now ? questOwner(now.id) : null;
+  const trophies = earnedTrophies(state(), welcomeDone()).filter((t) =>
+    t.startsWith('trofeo_'),
+  ).length;
   el.innerHTML =
     `<div class="card qs-card">` +
     `<h3>📋 Missioni</h3>` +
     `<div class="qs-sub">🏆 ${trophies}/6 trofei sulla mensola della tua stanza</div>` +
     `<div class="qs-list">` +
+    (chaptersOpen() ? dailySection((id) => followButton(id, following)) : '') +
     welcomeSection() +
     (chaptersOpen()
       ? ''
@@ -253,6 +289,7 @@ export function openQuests(): void {
   el.onclick = (e) => {
     if (e.target === el) close();
   };
+  bindMissionRows(el);
   el.querySelectorAll<HTMLElement>('[data-follow]').forEach((b) =>
     b.addEventListener('click', () => {
       game.player.quests = { ...state(), follow: b.dataset.follow };

@@ -39,3 +39,30 @@ export function publishVitals(levels: Record<VitalKey, number>, place: string) {
   out.place = String(place || '').slice(0, 50);
   return out;
 }
+
+// ---------------------------------------------------------------- l'elenco delle icone
+
+/** Icone dei vicini sempre in vista: con più giocatori, dopo queste c'è il pulsante «+». */
+export const ICONS_SHOWN = 4;
+
+/**
+ * Quali icone mostrare e quante ne restano nascoste. `ids` è in ordine di nome; chi ho toccato
+ * (`recent`, dal più recente) sale in cima. Chiuso l'elenco se ne vedono al massimo ICONS_SHOWN.
+ */
+export function iconOrder(
+  ids: string[],
+  recent: string[],
+  expanded: boolean,
+  max = ICONS_SHOWN,
+): { shown: string[]; hidden: number } {
+  const online = new Set(ids);
+  const first = recent.filter((id) => online.has(id));
+  const order = [...first, ...ids.filter((id) => !first.includes(id))];
+  // con uno solo in più non serve il pulsante: si mostra e basta
+  if (expanded || order.length <= max + 1) return { shown: order, hidden: 0 };
+  return { shown: order.slice(0, max), hidden: order.length - max };
+}
+
+/** Il giocatore toccato va in cima ai recenti (senza doppioni, al massimo 50). */
+export const touchRecent = (recent: string[], id: string): string[] =>
+  [id, ...recent.filter((x) => x !== id)].slice(0, 50);

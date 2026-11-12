@@ -1660,6 +1660,26 @@ function medagliaIdea(s: At): void {
   });
 }
 
+/** La settimana perfetta (7 giorni di fila con le missioni del giorno): il sole del mattino. */
+function medagliaSettimana(s: At): void {
+  medal(s, '#e67e22', GOLD, (ctx, r) => {
+    // i raggi e poi il disco del sole, simmetrici: si leggono uguali da tutte e due le pareti
+    ctx.strokeStyle = '#fff3c4';
+    ctx.lineWidth = r * 0.12;
+    for (let i = 0; i < 8; i++) {
+      const a = (i * Math.PI) / 4;
+      ctx.beginPath();
+      ctx.moveTo(Math.cos(a) * r * 0.42, Math.sin(a) * r * 0.42);
+      ctx.lineTo(Math.cos(a) * r * 0.66, Math.sin(a) * r * 0.66);
+      ctx.stroke();
+    }
+    ctx.fillStyle = '#fff3c4';
+    ctx.beginPath();
+    ctx.arc(0, 0, r * 0.32, 0, Math.PI * 2);
+    ctx.fill();
+  });
+}
+
 // ---------------------------------------------------------------- elenco
 
 const SOLIDS: Record<string, (s: At, t: number) => void> = {
@@ -1702,6 +1722,7 @@ const SOLIDS: Record<string, (s: At, t: number) => void> = {
   trofeo_progetti: trofeoProgetti,
   medaglia_luna: medagliaLuna,
   medaglia_idea: medagliaIdea,
+  medaglia_settimana: medagliaSettimana,
 };
 
 /**

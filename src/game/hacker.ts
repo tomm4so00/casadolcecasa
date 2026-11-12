@@ -1,5 +1,5 @@
-// L'attacco hacker di Zero, lo scassinatore (regole in shared/hacker-rules.ts): la riga sotto i
-// parametri, l'annuncio delle 11:45, l'effetto durante i 10 minuti, e la difesa: chi vede un ladro
+// L'attacco hacker di Zero, lo scassinatore (regole in shared/hacker-rules.ts): gli avvisi a
+// comparsa nei momenti giusti, l'annuncio delle 11:45, l'effetto durante i 10 minuti, e la difesa: chi vede un ladro
 // davanti alla propria cassaforte gli dà un pugno e quel ladro non potrà più aprirla.
 import {
   CRACK_MS,
@@ -17,7 +17,7 @@ import { game } from './context.js';
 import { postGossip } from './gossip.js';
 import { openDialog } from './interface.js';
 import { toast } from './missions.js';
-import { dom, lifetime } from './runtime.js';
+import { lifetime } from './runtime.js';
 import { hasRoom, presenceAlive } from './saves.js';
 import { getCurrentFurnitureMap, spawnAtDoor } from './world.js';
 import { worldNode } from './world-db.js';
@@ -46,19 +46,47 @@ function markSeen(what: string, day: string): void {
   }
 }
 
-/** La riga sotto i parametri: solo con l'attacco annunciato o in corso (vuota si nasconde). */
-function tagText(now: number): { text: string; hot: boolean } {
-  const d = hackerDay(now);
-  switch (hackerPhase(now, d)) {
-    case 'announced':
-      return {
-        text: `💻 Hack alle ${clockText(d.startAt)}`,
-        hot: d.startAt - now < 15 * 60000,
-      };
-    case 'active':
-      return { text: `⚠️ Casseforti indebolite · ${untilText(d.endAt - now)}`, hot: true };
-    default:
-      return { text: '', hot: false };
+/** Mentre l'attacco è annunciato o in corso, uscendo dalla propria stanza: al massimo ogni 30 minuti. */
+const LEAVE_WARN_MS = 30 * 60000;
+/** L'avviso che manca poco: una volta, un quarto d'ora prima. */
+const SOON_MS = 15 * 60000;
+let wasHome = false;
+let leaveWarnedAt = 0;
+
+/**
+ * Gli avvisi nei momenti giusti, al posto della riga fissa sotto i parametri: un quarto d'ora
+ * prima dell'attacco, uscendo di casa con dei soldi in cassaforte e a fine attacco.
+ */
+function timelyWarnings(now: number, phase: HackerPhase, d: ReturnType<typeof hackerDay>): void {
+  if (phase === 'announced' && d.startAt - now <= SOON_MS && !seenToday('soon', d.day)) {
+    markSeen('soon', d.day);
+    sfx('alarm');
+    toast(
+      `💻 Tra ${untilText(d.startAt - now)} ${HACKER_SHORT} attacca le casseforti (alle ${clockText(d.startAt)}): porta i soldi in banca o resta vicino a casa.`,
+      8000,
+    );
+  }
+  const home =
+    game.view.activeEnvironment === 'PLAYER_ROOM' && game.currentRoomIdx === game.myAssignedRoomIdx;
+  if (
+    wasHome &&
+    !home &&
+    (phase === 'announced' || phase === 'active') &&
+    game.moneyLevel > 0 &&
+    now - leaveWarnedAt > LEAVE_WARN_MS
+  ) {
+    leaveWarnedAt = now;
+    toast(
+      phase === 'active'
+        ? `⚠️ ${HACKER_SHORT} sta attaccando: in cassaforte hai ${game.moneyLevel} Đ e la stanza resta vuota.`
+        : `💻 Hack alle ${clockText(d.startAt)}: in cassaforte hai ${game.moneyLevel} Đ.`,
+      6000,
+    );
+  }
+  wasHome = home;
+  if (phase === 'over' && seenToday('start', d.day) && !seenToday('end', d.day)) {
+    markSeen('end', d.day);
+    toast(`✅ ${HACKER_SHORT} se n'è andato: le casseforti sono di nuovo sicure.`, 5000);
   }
 }
 
@@ -111,13 +139,8 @@ export function startHacker(): void {
     const now = serverNow();
     const d = hackerDay(now);
     const phase = hackerPhase(now, d);
-    const tag = dom('hacker-tag');
-    if (tag) {
-      const { text, hot } = tagText(now);
-      if (tag.textContent !== text) tag.textContent = text;
-      tag.classList.toggle('hot', hot);
-    }
     remindQuiet(now, phase);
+    timelyWarnings(now, phase, d);
     // l'annuncio arriva quando c'è, anche entrando più tardi (prima della fine dell'attacco); al
     // giocatore nuovo dopo l'arrivo (arrival.ts): nei primi minuti una cosa alla volta
     if ((phase === 'announced' || phase === 'active') && !seenToday('announce', d.day)) {

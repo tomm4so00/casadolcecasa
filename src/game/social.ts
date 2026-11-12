@@ -74,6 +74,7 @@ export async function socDo(act?: GameValue): Promise<GameValue> {
     game.player.sleepLevel = Math.max(0, game.player.sleepLevel - 3);
     saySocial(myLine('talk'));
     sendSocial(t.id, { type: 'talk' });
+    game.player.stats.talks = (game.player.stats.talks || 0) + 1;
     toast(`💬 Hai chiacchierato con ${t.name} (+felicità, +salute, −sonno)`);
     notePersonality('talk');
   } else if (act === 'praise') {

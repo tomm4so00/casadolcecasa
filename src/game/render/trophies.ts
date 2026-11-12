@@ -16,7 +16,9 @@ export const TROPHIES = [
   'trofeo_rischi',
   'trofeo_progetti',
 ] as const;
-export const MEDALS = ['medaglia_luna', 'medaglia_idea'] as const;
+export const MEDALS = ['medaglia_luna', 'medaglia_idea', 'medaglia_settimana'] as const;
+/** Dove pende ogni medaglia lungo la mensola: ai due lati e, la settimana perfetta, in mezzo. */
+const MEDAL_AT = [-24, 24, 0];
 
 /** La mensola: corta e profonda, con i trofei in due file (capitoli 1–3 dietro, 4–6 davanti). */
 export const TROPHY_SHELF_W = 76;
@@ -95,10 +97,10 @@ export function wallTrophyShelf(d: { side?: string }, t: number): void {
     ctx.fill();
     drawCollectible3d(id, p.x, p.y, SHELF_Z, TROPHY_SIZE, t || 0, back ? 0 : 1);
   }
-  // le medaglie appese sotto l'asse, ai due lati
+  // le medaglie appese sotto l'asse: le due dei bonus ai lati, la settimana perfetta in mezzo
   MEDALS.forEach((id, i) => {
     if (!have.has(id)) return;
-    const p = at((i ? 1 : -1) * 21, DEPTH + 0.8);
+    const p = at(MEDAL_AT[i], DEPTH + 0.8);
     const size = 15;
     // il nastro parte dal fondo dell'asse (il modello è alto 14 a size 20)
     drawCollectible3d(id, p.x, p.y, SHELF_Z - 3.4 - 14 * (size / 20), size, t || 0, back ? 0 : 1);

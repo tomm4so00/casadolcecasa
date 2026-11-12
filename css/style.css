@@ -37,6 +37,10 @@ html {
 #hud-top-left > * {
   pointer-events: auto;
 }
+/* con la scheda di un vicino aperta, la colonna sta sopra i pulsanti di destra */
+#hud-top-left.card-open {
+  z-index: 41;
+}
 /* Colonna con il riquadro dei parametri e, sotto, la scritta con la propria stanza */
 .hud-left-col {
   display: flex;
@@ -150,6 +154,21 @@ html {
   background: rgba(15, 15, 25, 0.85);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
 }
+/* dopo le prime icone: «+8» mostra gli altri giocatori online, «−» li nasconde */
+.po-more {
+  flex: none;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  border: 2px solid #feca57;
+  background: rgba(15, 15, 25, 0.85);
+  color: #feca57;
+  font-weight: bold;
+  font-size: 0.8rem;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+  padding: 0;
+}
 .po-icon.sel canvas {
   border-color: #feca57;
   box-shadow: 0 0 0 2px rgba(254, 202, 87, 0.45);
@@ -188,6 +207,29 @@ html {
 }
 #player-card.hidden {
   display: none;
+}
+/* piccola come i miei parametri: solo le percentuali */
+#player-card {
+  cursor: pointer;
+}
+#player-card.compact {
+  width: 124px;
+  gap: 1px;
+  padding: 5px 7px;
+}
+#player-card.compact .bar-bg {
+  display: none;
+}
+#player-card.compact .need-info {
+  margin-bottom: 0;
+}
+/* senza spazio a destra la personalità entra nella scheda */
+#player-card.tight .pers-tag {
+  position: static;
+  align-self: flex-start;
+  margin-top: 2px;
+  max-width: 100%;
+  white-space: normal;
 }
 #player-card .pc-head {
   display: flex;
@@ -1563,13 +1605,13 @@ body.coach-open #btn-arrange {
 
 /* Icona delle missioni sotto i parametri: gialla come i riquadri delle missioni */
 #mission-text {
-  font-size: 0.65rem;
+  font-size: 0.8rem;
   font-weight: bold;
   color: #2d3436;
   background: #feca57;
   border: 1px solid #f9a825;
-  border-radius: 6px;
-  padding: 3px 8px;
+  border-radius: 8px;
+  padding: 5px 12px;
   cursor: pointer;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
 }
@@ -1649,6 +1691,32 @@ body.coach-open #btn-arrange {
 .qs-chapter li > span:first-child {
   flex: 1;
 }
+/* il nome si tocca per la descrizione; il pulsante Segui, se non ci sta, va a capo a destra */
+.qs-row {
+  cursor: pointer;
+  flex-wrap: wrap;
+}
+.qs-row > .qs-follow {
+  margin-left: auto;
+}
+.qs-more {
+  color: #a4b0be;
+  font-size: 0.75em;
+}
+.qs-row.open .qs-more {
+  color: #feca57;
+}
+.qs-desc {
+  margin: 0 0 4px 22px;
+  font-size: 0.74rem;
+  color: #dfe6e9;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 6px;
+  padding: 4px 6px;
+}
+.qs-desc.hidden {
+  display: none;
+}
 .qs-reward {
   color: #feca57;
   white-space: nowrap;
@@ -1666,9 +1734,10 @@ body.coach-open #btn-arrange {
   padding: 4px 6px;
 }
 .qs-follow {
-  font-size: 0.7rem;
-  padding: 3px 8px;
-  border-radius: 6px;
+  font-size: 0.82rem;
+  font-weight: bold;
+  padding: 6px 12px;
+  border-radius: 8px;
   border: 1px solid #feca57;
   background: transparent;
   color: #feca57;
@@ -4266,33 +4335,6 @@ canvas.shake {
 }
 
 /* Zero, lo scassinatore: la riga sotto i parametri, rossa quando l'attacco è vicino o in corso */
-#hacker-tag {
-  margin-top: 4px;
-  font-size: 0.6rem;
-  color: #a3f7bf;
-  background: rgba(15, 15, 25, 0.85);
-  border: 1px solid rgba(0, 184, 148, 0.45);
-  border-radius: 6px;
-  padding: 3px 7px;
-  white-space: nowrap;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
-  font-family: 'Consolas', 'Courier New', monospace;
-}
-#hacker-tag.hot {
-  color: #fff;
-  background: rgba(192, 57, 43, 0.9);
-  border-color: #ff7675;
-  animation: hacker-pulse 1s ease-in-out infinite;
-}
-#hacker-tag:empty,
-#needs-hud.hidden ~ #hacker-tag {
-  display: none;
-}
-@keyframes hacker-pulse {
-  50% {
-    box-shadow: 0 0 12px rgba(255, 118, 117, 0.9);
-  }
-}
 /* Durante l'attacco: righe verdi che scorrono sopra il gioco, leggere, senza bloccare i tocchi */
 body.hacker-glitch::after {
   content: '';
