@@ -714,8 +714,8 @@ const MALL_SHOPS: Record<string, { facade: string; activity: string }> = {
 /** La vetrina di un negozio nel centro commerciale (per la freccia delle missioni), o null. */
 export function mallShopFacade(env: string): { x: number; y: number } | null {
   const shop = MALL_SHOPS[env];
-  const f: GameValue = shop ? game.mallFurniture?.[shop.facade] : null;
-  return f && Number.isFinite(f.x) ? { x: f.x, y: f.y } : null;
+  const f = (shop ? game.mallFurniture?.[shop.facade] : null) as { x?: number; y?: number } | null;
+  return f && Number.isFinite(f.x) && Number.isFinite(f.y) ? { x: f.x!, y: f.y! } : null;
 }
 
 /** Esce da un negozio e torna nel centro commerciale, davanti alla sua vetrina. */
