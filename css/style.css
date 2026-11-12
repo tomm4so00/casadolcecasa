@@ -646,6 +646,10 @@ input:-webkit-autofill:focus {
 #ui-setup-screen.showcase .card > h2 {
   display: none;
 }
+/* nel primo passo condizioni e privacy stanno già sotto «Gioca subito» */
+#ui-setup-screen.showcase[data-step='home'] .card > a.setup-legal {
+  display: none;
+}
 /* il primo passo: niente riquadro, solo i pulsanti sopra la scena */
 #ui-setup-screen.showcase[data-step='home'] .card {
   background: none;

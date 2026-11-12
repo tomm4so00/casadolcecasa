@@ -264,6 +264,7 @@ export function mountCloudSetup(root: HTMLElement): void {
   if (!autoEnter) countUse('ingresso:visto');
   if (autoEnter) {
     loginButton.disabled = true;
+    const label = loginButton.innerHTML;
     loginButton.textContent = 'Accesso in corso…';
     const pageLoaded = new Promise<void>((resolve) => {
       if (document.readyState === 'complete') resolve();
@@ -277,7 +278,7 @@ export function mountCloudSetup(root: HTMLElement): void {
       )
       .finally(() => {
         loginButton.disabled = false;
-        loginButton.textContent = 'Accedi con Google';
+        loginButton.innerHTML = label;
       });
   }
   run(el('setup-has-sim'), async () => {
