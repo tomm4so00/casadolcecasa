@@ -13,6 +13,8 @@ import { notifyHacker } from './hacker.js';
 import { notifyAnniversaries } from './couples.js';
 import { expireAuctions } from './auctions.js';
 import { forwardSuggestions, telegramFromEnv } from './suggestions.js';
+import { sendUsageReport } from './usage-report.js';
+import { sendRetentionReport, trackRetention, type AccountTimes } from './retention.js';
 import { moderate } from './moderation.js';
 import {
   type PushSender,
@@ -218,6 +220,42 @@ async function main() {
       }
     } catch (error) {
       console.log('Suggestions skipped:', (error as { code?: string }).code || 'unknown error');
+    }
+    // il lunedì, la classifica dei contatori d'uso della settimana sul gruppo
+    try {
+      const telegram = telegramFromEnv();
+      if (telegram) {
+        const week = await sendUsageReport(getDatabase(app), scheduledAt, telegram);
+        if (week) console.log(`Usage report sent to Telegram: week of ${week}`);
+      }
+    } catch (error) {
+      console.log('Usage report skipped:', (error as { code?: string }).code || String(error));
+    }
+    // ritenzione: i giorni giocati da ogni account, e il lunedì il resoconto sul gruppo
+    try {
+      const accounts: AccountTimes[] = [];
+      const time = (s: string | null | undefined) => (s ? Date.parse(s) || 0 : 0);
+      let pageToken: string | undefined;
+      do {
+        const page = await getAuth(app).listUsers(1000, pageToken);
+        for (const u of page.users)
+          accounts.push({
+            uid: u.uid,
+            created: time(u.metadata.creationTime),
+            // l'accesso si rinnova da solo mentre il gioco è aperto
+            lastActive: Math.max(time(u.metadata.lastRefreshTime), time(u.metadata.lastSignInTime)),
+          });
+        pageToken = page.pageToken;
+      } while (pageToken);
+      const marked = await trackRetention(getDatabase(app), accounts, scheduledAt);
+      if (marked) console.log(`Retention: ${marked} accounts marked`);
+      const telegram = telegramFromEnv();
+      if (telegram) {
+        const week = await sendRetentionReport(getDatabase(app), scheduledAt, telegram);
+        if (week) console.log(`Retention report sent to Telegram: week of ${week}`);
+      }
+    } catch (error) {
+      console.log('Retention skipped:', (error as { code?: string }).code || String(error));
     }
     // moderazione: segnalazioni sul gruppo, silenzio automatico, sospensioni (moderation.ts)
     try {

@@ -128,6 +128,8 @@ export function deletionPaths(uid: string, data: Partial<Record<string, unknown>
   add(`sims_link_requests/${uid}`);
   add(`sims_invited/${uid}`);
   add(`sims_arcade_runs/${uid}`);
+  // i giorni giocati (ritenzione): sono legati all'account
+  add(`sims_retention/${uid}`);
   // i turni di lavoro (li scrive il Worker) e l'ora dell'ultimo suggerimento
   add(`sims_jobs/${uid}`);
   add(`sims_suggest_last/${uid}`);
