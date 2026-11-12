@@ -479,6 +479,13 @@
 </div>
 
 <div id="ui-setup-screen">
+  <!-- la vetrina: il cortile disegnato dal motore del gioco (scripts/vetrina.mjs), secondo l'ora -->
+  <div id="setup-scene" class="setup-scene hidden" aria-hidden="true"></div>
+  <div id="setup-brand" class="setup-brand hidden">
+    <span class="setup-brand-house">🏠</span>
+    <h1>Casa dolce casa</h1>
+    <p>Il condominio online</p>
+  </div>
   <div class="card">
     <h2>🏠 Casa dolce casa</h2>
     <div id="setup-offline">
@@ -500,13 +507,25 @@
 
     <!-- Accesso online: un passo alla volta -->
     <div id="setup-online" class="hidden">
-      <div class="setup-step" data-step="login">
-        <button class="btn-primary btn-guest" id="setup-guest" type="button">
-          ▶️ Gioca subito
+      <div class="setup-step" data-step="home">
+        <div class="setup-online-count hidden" id="setup-online-count"><i></i><span></span></div>
+        <button class="btn-primary btn-guest btn-vetrina" id="setup-guest" type="button">
+          ▶&nbsp; Gioca subito
         </button>
-        <p class="setup-hint">Senza account: salvi il personaggio quando vuoi.</p>
-        <div class="setup-divider"><span>hai già un personaggio?</span></div>
-        <button class="btn-primary" id="cloud-game-btn" type="button">Accedi con Google</button>
+        <button class="btn-link setup-have" type="button" data-setup-login>
+          Ho già un personaggio →
+        </button>
+        <p class="setup-legal">
+          Solo per maggiorenni ·
+          <a href="./condizioni.html" target="_blank" rel="noopener">Condizioni e privacy</a>
+        </p>
+      </div>
+      <div class="setup-step hidden" data-step="login">
+        <h3 class="setup-title">Bentornato!</h3>
+        <p class="setup-hint">Entra con l'account con cui hai salvato il personaggio.</p>
+        <button class="btn-primary btn-google" id="cloud-game-btn" type="button">
+          <b>G</b> Accedi con Google
+        </button>
         <div class="setup-divider"><span>oppure con email e password</span></div>
         <div class="input-group">
           <label for="setup-username">Email</label>
@@ -540,6 +559,7 @@
           <input type="checkbox" id="setup-remember" />
           Ricordami su questo dispositivo
         </label>
+        <button class="btn-link" type="button" data-setup-home>← Indietro</button>
       </div>
       <div class="setup-step hidden" data-step="register">
         <p class="setup-text">
@@ -624,26 +644,6 @@
         </div>
         <button class="btn-primary" id="setup-add-email-send" type="button">Mandami il link</button>
         <button class="btn-link" id="setup-add-email-logout" type="button">← Esci</button>
-      </div>
-      <div class="setup-step hidden" data-step="guest">
-        <div class="input-group">
-          <label for="setup-guest-nick">Come si chiama il tuo personaggio?</label>
-          <input
-            type="text"
-            id="setup-guest-nick"
-            placeholder="Il tuo nome nel gioco"
-            maxlength="20"
-            autocomplete="nickname"
-          />
-        </div>
-        <button class="btn-primary btn-guest" id="setup-guest-start" type="button">
-          Inizia a giocare
-        </button>
-        <p class="setup-hint">
-          Il personaggio vive su questo dispositivo: dal profilo (🧑) puoi salvarlo con Google o con
-          l'email per non perderlo. Gli ospiti che non entrano per 7 giorni vengono cancellati.
-        </p>
-        <button class="btn-link" type="button" data-setup-login>← Indietro</button>
       </div>
       <div class="setup-step hidden" data-step="choice">
         <p class="setup-text">
@@ -1224,6 +1224,14 @@
 <div id="creator-modal" class="fullscreen-modal hidden">
   <div class="shop-panel">
     <div class="shop-head"><h3 id="creator-title">🎨 Crea il tuo personaggio</h3></div>
+    <div id="creator-first" class="creator-first hidden">
+      <label for="creator-name">Come ti chiamano nel condominio?</label>
+      <input type="text" id="creator-name" maxlength="20" autocomplete="nickname" />
+      <p id="creator-guest-note" class="setup-hint hidden">
+        Il personaggio vive su questo dispositivo: dal profilo (🧑) puoi salvarlo con Google o con
+        l'email. Gli ospiti che non entrano per 7 giorni vengono cancellati.
+      </p>
+    </div>
     <div class="shop-main">
       <canvas id="creator-preview" width="320" height="400"></canvas>
       <div class="shop-right">
@@ -1231,6 +1239,13 @@
         <div id="creator-options" class="creator-opts"></div>
       </div>
     </div>
+    <label id="creator-adult" class="creator-adult hidden">
+      <input type="checkbox" id="creator-adult-check" />
+      <span
+        >Ho almeno 18 anni e accetto
+        <a href="./condizioni.html" target="_blank" rel="noopener">condizioni e privacy</a></span
+      >
+    </label>
     <div class="creator-actions">
       <button
         class="btn-primary"
@@ -1247,6 +1262,7 @@
       <button
         class="btn-primary"
         style="background: #2ed573"
+        id="creator-ok"
         data-action="finishCreator"
         data-args="[true]"
       >

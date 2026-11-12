@@ -82,13 +82,10 @@ const hasRoomNow = async () => {
   );
 };
 
-/** Dopo l'accesso: condominio pubblico, personaggio, salto della guida. */
+/** Dopo l'accesso: personaggio con i 18 anni, condominio pubblico, salto della guida. */
 async function finishNewSim(page) {
+  await acceptTerms(page);
   await page.locator('#world-modal [data-w="public"]').click();
-  await page
-    .locator('#creator-modal')
-    .getByRole('button', { name: /Conferma/ })
-    .click();
   await page
     .locator('#dialog-buttons')
     .getByRole('button', { name: /^(Salta|Ho capito, si parte! ✅)$/ })
@@ -116,11 +113,11 @@ async function googleSim(page, email, nick) {
     async (e) => (await import('/tests/auth-fixture.ts')).signInTestUser(e),
     email,
   );
+  await page.locator('.setup-have').click();
   await page.locator('#cloud-game-btn').click();
   await page.locator('#setup-new-sim').click();
   await page.locator('#setup-nickname').fill(nick);
   await page.locator('#setup-create-sim').click();
-  await acceptTerms(page);
   await finishNewSim(page);
 }
 
@@ -146,6 +143,7 @@ async function passwordSim(page, email, password) {
     const a = firebaseClient.auth();
     if (!a.emulatorConfig) a.useEmulator('http://127.0.0.1:9099');
   });
+  await page.locator('.setup-have').click();
   await page.locator('#setup-username').fill(email);
   await page.locator('#setup-password').fill(password);
   await page.locator('#setup-password-login').click();
@@ -203,6 +201,7 @@ try {
     async (e) => (await import('/tests/auth-fixture.ts')).signInTestUser(e),
     'anna@example.com',
   );
+  await anna2.locator('.setup-have').click();
   await anna2.locator('#cloud-game-btn').click();
   annaExpected += BONUS;
   await waitMoney(anna2, annaExpected, 'Anna assente (al rientro)');
@@ -214,7 +213,7 @@ try {
     async (e) => (await import('/tests/auth-fixture.ts')).signInTestUser(e),
     'bruno@example.com',
   );
-  await bruno.locator('#cloud-game-btn').click();
+  // "Ricordami" è spuntato di serie: Bruno, già entrato in questa pagina, rientra da solo
   assert(await until(bruno, hasRoomNow), 'Bruno senza stanza al rientro');
   // il saldo arriva dalla stanza; poi si lascia il tempo a un eventuale bonus sbagliato
   await waitMoney(bruno, start + BONUS, 'chi gioca già, al rientro');
@@ -254,8 +253,8 @@ try {
 }
 process.exit(failed ? 1 : 0);
 
-/** Età e condizioni (terms.ts): la casella e "Gioca", la prima volta di ogni personaggio. */
+/** Il primo personaggio (first-entry.ts): la casella dei 18 anni, poi "Entra in casa". */
 async function acceptTerms(p) {
-  await p.locator('#dialog-check-box').check();
-  await p.locator('#dialog-buttons').getByRole('button', { name: '✅ Gioca' }).click();
+  await p.locator('#creator-adult-check').check();
+  await p.locator('#creator-ok').click();
 }

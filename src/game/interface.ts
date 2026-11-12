@@ -61,6 +61,7 @@ import {
   withTimeout,
 } from './saves.js';
 import { openCharacterCreator } from './render/avatars.js';
+import { openFirstCreator } from './first-entry.js';
 import { openEpitaph, rebuildGraveyard } from './render/graveyard.js';
 import { checkMissions, toast } from './missions.js';
 import { openFurnitureShopModal, resumeLastSpot, setupControls } from './world.js';
@@ -448,7 +449,9 @@ export async function startGame(..._args: GameValue[]): Promise<GameValue> {
     game.myBody = { ...currentBody() };
     game.hasSetSafePin = true;
   } else await loadGame();
-  if (!devMode && !(await ensureTerms())) return;
+  // Il primo personaggio chiede nome, aspetto e 18 anni in una schermata sola (first-entry.ts)
+  const firstCharacter = !game.bodyChosen;
+  if (!devMode && !firstCharacter && !(await ensureTerms())) return;
   if (game.player.isDead || game.player.healthLevel <= 0) {
     // morto in una sessione precedente, oppure durante l'assenza
     if (!game.player.isDead) await die();
@@ -458,11 +461,10 @@ export async function startGame(..._args: GameValue[]): Promise<GameValue> {
     showDeathScreen();
     return;
   }
+  // prima il personaggio (con la conferma dei 18 anni), poi il condominio
+  if (firstCharacter) await openFirstCreator();
   // chi entra per la prima volta sceglie il condominio (pubblico, nuovo o quello di un amico)
   if (!game.session.hadSave) await chooseFirstWorld();
-  // Il primo personaggio dell'account: solo lui può ricevere il bonus di un invito
-  const firstCharacter = !game.bodyChosen;
-  if (!game.bodyChosen) await openCharacterCreator(true);
   await claimRoom();
   if (devMode) await (await import('./dev-fixture.js')).prepareDevFixture();
   // l'ospite che ha appena salvato riceve ora il bonus dell'invito con cui era arrivato

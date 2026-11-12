@@ -2,6 +2,7 @@ import { maskText } from '../../shared/text-filter-rules.js';
 import { wokeFromPause } from './dormancy.js';
 import { movedIn } from './move.js';
 import { countUse } from './usage.js';
+import { showcase } from './showcase.js';
 import { game } from './context.js';
 import { startGame } from './interface.js';
 import { toast } from './missions.js';
@@ -36,7 +37,7 @@ import {
   useGoogleSim,
 } from './accounts.js';
 
-type Step = 'login' | 'register' | 'verify' | 'add-email' | 'choice' | 'code' | 'new' | 'guest';
+type Step = 'home' | 'login' | 'register' | 'verify' | 'add-email' | 'choice' | 'code' | 'new';
 
 // Online setup: Google first, then (only on the first access) existing Sim or new Sim.
 export function mountCloudSetup(root: HTMLElement): void {
@@ -54,7 +55,10 @@ export function mountCloudSetup(root: HTMLElement): void {
     panel.querySelectorAll<HTMLElement>('.setup-step').forEach((node) => {
       node.classList.toggle('hidden', node.dataset.step !== step);
     });
+    // la vetrina (showcase.ts) a tutto schermo solo nel primo passo; negli altri resta dietro
+    root.querySelector('#ui-setup-screen')?.setAttribute('data-step', step);
   };
+  showcase(root);
 
   // Disables the button while the action runs and reports failures without leaving the step.
   const run = (button: HTMLButtonElement, action: () => Promise<void>) => {
@@ -136,10 +140,9 @@ export function mountCloudSetup(root: HTMLElement): void {
       await play(access.playerId, savedNick());
       return;
     }
-    // ospite entrato ma senza personaggio (pagina chiusa a metà): si sceglie il nome
+    // ospite entrato ma senza personaggio (pagina chiusa a metà): il nome lo chiede la creazione
     if (access.anonymous) {
-      guestNick.value ||= savedNick();
-      show('guest');
+      await play(await createGuestSim(access.uid), savedNick());
       return;
     }
     // First access: link by itself the Sim saved on this device, or the one requested
@@ -164,28 +167,12 @@ export function mountCloudSetup(root: HTMLElement): void {
     return signIn();
   });
 
-  // ---- gioca subito, da ospite
-  const guestNick = el<HTMLInputElement>('setup-guest-nick');
+  // ---- gioca subito, da ospite: nome, aspetto e 18 anni li chiede la creazione (first-entry.ts)
   run(el('setup-guest'), async () => {
     countUse('ingresso:gioca_subito');
-    guestNick.value ||= localStorage.getItem(game.session.LS_PREFIX + 'sims_player_nick') || '';
-    show('guest');
-    guestNick.focus();
-  });
-  run(el('setup-guest-start'), async () => {
-    const nick = maskText(guestNick.value.trim());
-    if (!nick) {
-      toast('Scegli un nome per il tuo personaggio!');
-      guestNick.focus();
-      return;
-    }
     const user = await signInAsGuest();
-    countUse('ingresso:nome');
     access = await accessFor(user);
-    await play(access.playerId ?? (await createGuestSim(access.uid)), nick);
-  });
-  lifetime.listen(guestNick, 'keydown', (e: Event) => {
-    if ((e as KeyboardEvent).key === 'Enter') el<HTMLButtonElement>('setup-guest-start').click();
+    await play(access.playerId ?? (await createGuestSim(access.uid)), savedNick());
   });
 
   // ---- nome giocatore e password
@@ -265,6 +252,10 @@ export function mountCloudSetup(root: HTMLElement): void {
   panel.querySelectorAll<HTMLButtonElement>('[data-setup-login]').forEach((button) => {
     lifetime.listen(button, 'click', () => show('login'));
   });
+  panel.querySelectorAll<HTMLButtonElement>('[data-setup-home]').forEach((button) => {
+    lifetime.listen(button, 'click', () => show('home'));
+  });
+  show('home');
   // With "Ricordami" a returning player goes straight into the game. Anche tornando dalla pausa
   // (dormancy.ts): la pagina si è ricaricata da sola e il giocatore si aspetta il gioco. E dopo il
   // trasloco dal vecchio indirizzo (move.ts), anche senza "Ricordami": era già dentro.
@@ -279,7 +270,8 @@ export function mountCloudSetup(root: HTMLElement): void {
       else lifetime.listen(window, 'load', () => resolve());
     });
     void Promise.all([rememberedGoogleUser(), pageLoaded])
-      .then(([user]) => (user ? signIn(user) : undefined))
+      // nessun accesso da riprendere: è qualcuno che vede la schermata d'ingresso
+      .then(([user]) => (user ? signIn(user) : countUse('ingresso:visto')))
       .catch((error) =>
         toast(error instanceof Error ? error.message : 'Accesso non riuscito: ' + error, 6000),
       )

@@ -62,16 +62,13 @@ async function newSim(page, email, nick) {
     async (e) => (await import('/tests/auth-fixture.ts')).signInTestUser(e),
     email,
   );
+  await page.locator('.setup-have').click();
   await page.locator('#cloud-game-btn').click();
   await page.locator('#setup-new-sim').click();
   await page.locator('#setup-nickname').fill(nick);
   await page.locator('#setup-create-sim').click();
   await acceptTerms(page);
   await page.locator('#world-modal [data-w="public"]').click();
-  await page
-    .locator('#creator-modal')
-    .getByRole('button', { name: /Conferma/ })
-    .click();
   await page
     .locator('#dialog-buttons')
     .getByRole('button', { name: /^(Salta|Ho capito, si parte! ✅)$/ })
@@ -211,8 +208,8 @@ try {
 }
 process.exit(failed ? 1 : 0);
 
-/** Età e condizioni (terms.ts): la casella e "Gioca", la prima volta di ogni personaggio. */
+/** Il primo personaggio (first-entry.ts): la casella dei 18 anni, poi "Entra in casa". */
 async function acceptTerms(p) {
-  await p.locator('#dialog-check-box').check();
-  await p.locator('#dialog-buttons').getByRole('button', { name: '✅ Gioca' }).click();
+  await p.locator('#creator-adult-check').check();
+  await p.locator('#creator-ok').click();
 }

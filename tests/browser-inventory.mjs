@@ -28,11 +28,8 @@ try {
   await page.locator('#nickname').fill('Prova zaino');
   await page.locator('#start-game-btn').click();
   // giocatore nuovo: si entra nel condominio di sempre
+  await page.locator('#creator-modal').locator('#creator-ok').click();
   await page.locator('#world-modal [data-w="public"]').click();
-  await page
-    .locator('#creator-modal')
-    .getByRole('button', { name: /Conferma/ })
-    .click();
   await page
     .locator('#dialog-buttons')
     .getByRole('button', { name: /^(Salta|Ho capito, si parte! ✅)$/ })

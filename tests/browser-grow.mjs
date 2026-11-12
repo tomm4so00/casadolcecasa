@@ -36,11 +36,8 @@ try {
   await page.goto(server.resolvedUrls.local[0] + '?offline=1');
   await page.locator('#nickname').fill('Prova orto');
   await page.locator('#start-game-btn').click();
+  await page.locator('#creator-modal').locator('#creator-ok').click();
   await page.locator('#world-modal [data-w="public"]').click();
-  await page
-    .locator('#creator-modal')
-    .getByRole('button', { name: /Conferma/ })
-    .click();
   await page
     .locator('#dialog-buttons')
     .getByRole('button', { name: /^(Salta|Ho capito, si parte! ✅)$/ })

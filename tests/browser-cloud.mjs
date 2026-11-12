@@ -84,6 +84,7 @@ try {
   );
   assert.equal(denied.ok, false, 'a browser must not be able to change market quotes');
   await signIn(page);
+  await page.locator('.setup-have').click();
   await page.locator('#cloud-game-btn').click();
   await page.locator('#setup-new-sim').click();
   await page.locator('#setup-nickname').fill('Profilo cloud v8');
@@ -91,10 +92,6 @@ try {
   await acceptTerms(page);
   // personaggio nuovo: prima sceglie il condominio (qui c'è solo quello di sempre)
   await page.locator('#world-modal [data-w="public"]').click();
-  await page
-    .locator('#creator-modal')
-    .getByRole('button', { name: /Conferma/ })
-    .click();
   await page
     .locator('#dialog-buttons')
     .getByRole('button', { name: /^(Salta|Ho capito, si parte! ✅)$/ })
@@ -110,6 +107,7 @@ try {
   await other.goto(url);
   await signIn(other);
   // The latest access wins: the first device is blocked and stops saving.
+  await other.locator('.setup-have').click();
   await other.locator('#cloud-game-btn').click();
   await page.locator('#session-lost-banner').waitFor({ state: 'visible' });
   assert.equal(
@@ -281,6 +279,7 @@ try {
     }
   }, legacyId);
   assert.equal(stolen, false);
+  await isolated.locator('.setup-have').click();
   await isolated.locator('#cloud-game-btn').click();
   // chi ritrova un Sim che c'era già non vede la guida iniziale: è solo per i nuovi
   await isolated.waitForFunction(async (id) => {
@@ -370,8 +369,8 @@ try {
   await server.close();
 }
 
-/** Età e condizioni (terms.ts): la casella e "Gioca", la prima volta di ogni personaggio. */
+/** Il primo personaggio (first-entry.ts): la casella dei 18 anni, poi "Entra in casa". */
 async function acceptTerms(p) {
-  await p.locator('#dialog-check-box').check();
-  await p.locator('#dialog-buttons').getByRole('button', { name: '✅ Gioca' }).click();
+  await p.locator('#creator-adult-check').check();
+  await p.locator('#creator-ok').click();
 }

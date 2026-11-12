@@ -1,7 +1,8 @@
 // Worker di Cloudflare del gioco. Fa due cose:
 // - riceve da Stripe la conferma dei pagamenti della criogenesi e allunga il pass dell'account;
 // - versa la paga dei turni di lavoro (/lavoro/…), al posto del browser (job-shift.ts);
-// - durante l'attacco di Zero dice la prima cifra del PIN privato (/scasso/…, safe-hint.ts).
+// - durante l'attacco di Zero dice la prima cifra del PIN privato (/scasso/…, safe-hint.ts);
+// - dice quanti giocatori sono collegati, per la prima schermata (/online, online.ts).
 // Configurazione in docs/criogenesi.md:
 //   STRIPE_WEBHOOK_SECRET      segreto "whsec_…" del webhook               (wrangler secret put)
 //   FIREBASE_SERVICE_ACCOUNT   chiave JSON di un account di servizio        (wrangler secret put)
@@ -20,6 +21,7 @@ import {
   restDatabase,
 } from './firebase-rest.js';
 import { type JobDatabase, type JobReply, endJob, startJob } from './job-shift.js';
+import { type OnlineReader, onlineNow } from './online.js';
 import { safeHint } from './safe-hint.js';
 import { verifyStripeSignature } from './stripe-signature.js';
 
@@ -159,11 +161,46 @@ export async function handleJob(
   return reply({ status: 404, body: { ok: false, error: 'indirizzo', message: 'Non trovato' } });
 }
 
+// ---------------------------------------------------------------- chi è online
+
+/** GET /online → { n }: il numero dei giocatori collegati, per chiunque apra il gioco. */
+export async function handleOnline(
+  request: Request,
+  env: Env,
+  now: number,
+  read: OnlineReader,
+): Promise<Response> {
+  const headers: Record<string, string> = {
+    ...cors(request, env),
+    'access-control-allow-methods': 'GET, OPTIONS',
+    'cache-control': 'public, max-age=60',
+  };
+  if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers });
+  if (request.method !== 'GET') return new Response('Solo GET', { status: 405, headers });
+  try {
+    return Response.json({ n: await onlineNow(read, now) }, { headers });
+  } catch (error) {
+    console.error('Online non letti', String(error));
+    return Response.json({ n: null }, { status: 503, headers });
+  }
+}
+
 export default {
   fetch(request: Request, env: Env): Promise<Response> {
     const account = () => JSON.parse(env.FIREBASE_SERVICE_ACCOUNT) as ServiceAccount;
     const token = () => accessToken(account(), Date.now());
     const path = new URL(request.url).pathname;
+    if (path === '/online')
+      return handleOnline(request, env, Date.now(), async (node, shallow) => {
+        const url = new URL(env.FIREBASE_DATABASE_URL);
+        url.pathname = '/' + node + '.json';
+        if (shallow) url.searchParams.set('shallow', 'true');
+        const response = await fetch(url, {
+          headers: { authorization: `Bearer ${await token()}` },
+        });
+        if (!response.ok) throw new Error(`Lettura di ${node} rifiutata: ${response.status}`);
+        return response.json();
+      });
     if (path.startsWith('/lavoro/') || path.startsWith('/scasso/')) {
       const now = Date.now();
       return handleJob(

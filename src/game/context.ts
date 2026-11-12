@@ -293,6 +293,8 @@ interface GameContext {
   creatorDraft: GameValue;
   creatorTab: string;
   creatorResolve: GameValue;
+  /** Il primo personaggio: controlla nome e 18 anni prima di chiudere (first-entry.ts). */
+  creatorCheck: (() => boolean) | null;
   creatorRaf: GameValue;
   OUTDOOR_ENVS: GameValue;
   BOT_LINES: GameValue;

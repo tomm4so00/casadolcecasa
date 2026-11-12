@@ -112,8 +112,9 @@ function googleAuth() {
 
 const REMEMBER_KEY = 'sims_remember_me';
 
+// "Ricordami" è spuntato finché il giocatore non lo toglie (allora resta '0')
 export function rememberMe(): boolean {
-  return localStorage.getItem(REMEMBER_KEY) === '1';
+  return localStorage.getItem(REMEMBER_KEY) !== '0';
 }
 
 // "Ricordami": the Google sign-in survives closing the browser; otherwise it lasts for this tab only.

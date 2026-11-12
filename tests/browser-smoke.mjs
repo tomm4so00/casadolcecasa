@@ -16,13 +16,10 @@ try {
   await page.goto(server.resolvedUrls.local[0] + '?offline=1');
   await page.locator('#nickname').fill('Verifica v8');
   await page.locator('#start-game-btn').click();
-  // giocatore nuovo: prima sceglie il condominio (in prova c'è solo quello di sempre, CASA-0001)
-  await page.locator('#world-modal [data-w="public"]').click();
+  // giocatore nuovo: prima il personaggio, poi il condominio (in prova c'è solo CASA-0001)
   await page.locator('#creator-modal').waitFor({ state: 'visible' });
-  await page
-    .locator('#creator-modal')
-    .getByRole('button', { name: /Conferma/ })
-    .click();
+  await page.locator('#creator-modal').locator('#creator-ok').click();
+  await page.locator('#world-modal [data-w="public"]').click();
   await page.waitForFunction(async () => {
     const { game } = await import('/src/game/context.ts');
     return (

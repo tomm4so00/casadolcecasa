@@ -76,6 +76,7 @@ const pause = (p) =>
 /** Entra nel gioco con il personaggio già creato, da un altro dispositivo. */
 async function enter(p) {
   await signIn(p);
+  await p.locator('.setup-have').click();
   await p.locator('#cloud-game-btn').click();
   await started(p);
 }
@@ -84,16 +85,13 @@ try {
   // ---------------------------------------------------------------- personaggio nuovo
   await page.goto(url);
   await signIn(page);
+  await page.locator('.setup-have').click();
   await page.locator('#cloud-game-btn').click();
   await page.locator('#setup-new-sim').click();
   await page.locator('#setup-nickname').fill('Dormiglione');
   await page.locator('#setup-create-sim').click();
   await acceptTerms(page);
   await page.locator('#world-modal [data-w="public"]').click();
-  await page
-    .locator('#creator-modal')
-    .getByRole('button', { name: /Conferma/ })
-    .click();
   await page
     .locator('#dialog-buttons')
     .getByRole('button', { name: /^(Salta|Ho capito, si parte! ✅)$/ })
@@ -173,8 +171,8 @@ try {
   await server.close();
 }
 
-/** Età e condizioni (terms.ts): la casella e "Gioca", la prima volta di ogni personaggio. */
+/** Il primo personaggio (first-entry.ts): la casella dei 18 anni, poi "Entra in casa". */
 async function acceptTerms(p) {
-  await p.locator('#dialog-check-box').check();
-  await p.locator('#dialog-buttons').getByRole('button', { name: '✅ Gioca' }).click();
+  await p.locator('#creator-adult-check').check();
+  await p.locator('#creator-ok').click();
 }

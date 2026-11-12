@@ -658,6 +658,7 @@ export function initializeGame() {
   game.creatorDraft = null;
   game.creatorTab = 'skin';
   game.creatorResolve = null;
+  game.creatorCheck = null;
   game.creatorRaf = null;
   game.OUTDOOR_ENVS = ['passeggiata', 'viaggio', 'lavoro_cantiere', 'CORTILE', 'CIMITERO'];
   game.BOT_LINES = [

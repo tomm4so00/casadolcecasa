@@ -1130,6 +1130,8 @@ export function startCreatorLoop(..._args: GameValue[]): GameValue {
 }
 
 export function finishCreator(ok?: GameValue): GameValue {
+  // il primo personaggio: senza nome o senza i 18 anni la finestra resta aperta
+  if (ok && game.creatorCheck && !game.creatorCheck()) return;
   dom('creator-modal').classList.add('hidden');
   const done: GameValue = game.creatorResolve;
   game.creatorResolve = null;
