@@ -31,10 +31,11 @@ const base: WelcomeView = {
 };
 
 describe('missioni di benvenuto', () => {
-  it("sono 5, con un piccolo premio: l'assaggio di benvenuto, poi cassaforte, lavoro e letto", () => {
+  it("sono 6, con un piccolo premio: l'assaggio, la doccia, poi cassaforte, lavoro e letto", () => {
     expect(WELCOME_MISSIONS.map((m) => m.id)).toEqual([
       'taste_cook',
       'taste_give',
+      'shower',
       'pin',
       'work',
       'sleep',
@@ -58,15 +59,19 @@ describe('missioni di benvenuto', () => {
     expect(answerOffer(s, 'yes', base, 1000).status).toBe('active');
   });
 
-  it("si completano facendo davvero la cosa: cucinare, regalare l'assaggio, PIN, lavoro, letto", () => {
+  it("si completano facendo davvero la cosa: cucinare, regalare l'assaggio, doccia, PIN, lavoro, letto", () => {
     let s = answerOffer(newWelcome(), 'yes', base, 0);
     expect(completeIfDone(s, base)).toBeNull();
     s = completeIfDone(s, { ...base, dishes: 1 })!;
-    expect(s).toEqual({ i: 1, status: 'offer', base: 0, snoozeUntil: 0, v: 2 });
+    expect(s).toEqual({ i: 1, status: 'offer', base: 0, snoozeUntil: 0, v: 3 });
     // l'assaggio: conta solo quello regalato dopo aver accettato la missione
     s = answerOffer(s, 'yes', { ...base, tastes: 1 }, 0);
     expect(completeIfDone(s, { ...base, tastes: 1 })).toBeNull();
     s = completeIfDone(s, { ...base, tastes: 2 })!;
+    // la doccia: conta quella fatta dopo aver accettato
+    s = answerOffer(s, 'yes', { ...base, showers: 4 }, 0);
+    expect(completeIfDone(s, { ...base, showers: 4 })).toBeNull();
+    s = completeIfDone(s, { ...base, showers: 5 })!;
     s = answerOffer(s, 'yes', base, 0);
     s = completeIfDone(s, { ...base, pinSet: true })!;
     s = answerOffer(s, 'yes', base, 0);
@@ -84,7 +89,10 @@ describe('missioni di benvenuto', () => {
     expect(cook.hint({ ...base, env: 'KITCHEN', rawFood: 1 })).toContain('zaino');
     // a chi portarlo lo decide il gioco (chi c'è online): qui si mostra e basta
     expect(WELCOME_MISSIONS[1].hint(base)).toContain('Marco');
-    const work = WELCOME_MISSIONS[3];
+    const shower = WELCOME_MISSIONS[2];
+    expect(shower.hint(base)).toContain('bagno');
+    expect(shower.hint({ ...base, env: 'BATHROOM' })).toContain('«Fai la doccia»');
+    const work = WELCOME_MISSIONS[4];
     expect(work.hint({ ...base, env: 'CORTILE' })).toContain('uscita del condominio');
     expect(work.hint({ ...base, working: true })).toContain('turno');
   });
@@ -94,7 +102,11 @@ describe('missioni di benvenuto', () => {
     expect(old.v).toBeUndefined();
     expect(missionsOf(old)).toBe(LEGACY_WELCOME_MISSIONS);
     expect(missionsOf(old)[old.i].id).toBe('sleep');
-    expect(decodeWelcome({ i: 1, status: 'offer', v: 2 }, false).v).toBe(2);
+    // le missioni senza doccia (v 2): chi era già oltre l'assaggio la salta
+    expect(decodeWelcome({ i: 1, status: 'offer', v: 2 }, false)).toMatchObject({ i: 1, v: 3 });
+    const pin = decodeWelcome({ i: 2, status: 'active', base: 0, v: 2 }, false);
+    expect(missionsOf(pin)[pin.i].id).toBe('pin');
+    expect(decodeWelcome({ i: 5, status: 'offer', v: 2 }, false).i).toBe(WELCOME_MISSIONS.length);
     expect(missionsOf(newWelcome())).toBe(WELCOME_MISSIONS);
   });
 

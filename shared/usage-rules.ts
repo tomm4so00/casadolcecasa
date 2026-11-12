@@ -87,6 +87,7 @@ export const FUNNEL_STEPS = [
 export const FUNNEL_MISSIONS = [
   { id: 'taste_cook', label: "Cucina l'assaggio" },
   { id: 'taste_give', label: "Porta l'assaggio" },
+  { id: 'shower', label: 'Doccia' },
   { id: 'pin', label: 'Cassaforte' },
   { id: 'work', label: 'Primo stipendio' },
   { id: 'sleep', label: 'Letto' },

@@ -35,8 +35,7 @@ const state = (): WelcomeState => (game.player.welcome ??= newWelcome());
  */
 function tasteStep(): string {
   const s = game.player.welcome;
-  if (!s || s.v !== 2 || s.status !== 'active' || missionsOf(s)[s.i]?.id !== 'taste_give')
-    return '';
+  if (!s || !s.v || s.status !== 'active' || missionsOf(s)[s.i]?.id !== 'taste_give') return '';
   return tasteHint(tasteTarget(true));
 }
 

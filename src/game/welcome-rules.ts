@@ -150,6 +150,19 @@ export const WELCOME_MISSIONS: WelcomeMission[] = [
     hint: (v) => v.tasteHint,
   },
   {
+    id: 'shower',
+    title: '🚿 Una bella doccia',
+    reward: 20,
+    intro:
+      '🚿 Dopo il trasloco ci vuole una bella doccia! Il bagno è una delle porte del salone: lavarti fa risalire l’Igiene.',
+    counter: 'showers',
+    done: (v, base) => v.showers > base,
+    hint: (v) =>
+      v.env !== 'BATHROOM'
+        ? '🚿 Vai in bagno: è una delle porte del salone del tuo appartamento.'
+        : '🧼 Avvicinati alla doccia e premi «Fai la doccia».',
+  },
+  {
     id: 'pin',
     title: '🔐 Proteggi i tuoi soldi',
     reward: 25,
@@ -201,8 +214,11 @@ export interface WelcomeState {
   status: 'offer' | 'active' | 'off';
   /** Valore del contatore quando la missione è stata accettata. */
   base: number;
-  /** 2 = il tutorial dell'assaggio; senza = le missioni di prima (LEGACY_WELCOME_MISSIONS). */
-  v?: 2;
+  /**
+   * 3 = il tutorial dell'assaggio con la doccia; 2 = lo stesso senza doccia (si legge come 3, vedi
+   * decodeWelcome); senza = le missioni di prima (LEGACY_WELCOME_MISSIONS).
+   */
+  v?: 2 | 3;
   /** "Più tardi": prima di quest'ora la proposta non ricompare. */
   snoozeUntil: number;
 }
@@ -214,12 +230,12 @@ export const newWelcome = (): WelcomeState => ({
   status: 'offer',
   base: 0,
   snoozeUntil: 0,
-  v: 2,
+  v: 3,
 });
 
 /** Le missioni dello stato: quelle nuove, o quelle di prima per chi le aveva cominciate. */
 export const missionsOf = (s: WelcomeState): WelcomeMission[] =>
-  s.v === 2 ? WELCOME_MISSIONS : LEGACY_WELCOME_MISSIONS;
+  s.v ? WELCOME_MISSIONS : LEGACY_WELCOME_MISSIONS;
 
 export const welcomeFinished = (s: WelcomeState): boolean => s.i >= missionsOf(s).length;
 
@@ -256,14 +272,17 @@ export function decodeWelcome(value: unknown, veteran: boolean): WelcomeState {
   if (!value || typeof value !== 'object')
     return veteran ? { ...newWelcome(), i: WELCOME_MISSIONS.length } : newWelcome();
   const v = value as Record<string, unknown>;
-  const list = v.v === 2 ? WELCOME_MISSIONS : LEGACY_WELCOME_MISSIONS;
-  const i = Number.isSafeInteger(v.i) ? Math.max(0, Math.min(list.length, v.i as number)) : 0;
+  const list = v.v === 2 || v.v === 3 ? WELCOME_MISSIONS : LEGACY_WELCOME_MISSIONS;
+  let i = Number.isSafeInteger(v.i) ? (v.i as number) : 0;
+  // la doccia è entrata al terzo posto: chi era già oltre l'assaggio la salta
+  if (v.v === 2 && i >= 2) i++;
+  i = Math.max(0, Math.min(list.length, i));
   const status = v.status === 'active' || v.status === 'off' ? v.status : 'offer';
   return {
     i,
     status,
     base: Number.isFinite(v.base) ? (v.base as number) : 0,
     snoozeUntil: Number.isFinite(v.snoozeUntil) ? (v.snoozeUntil as number) : 0,
-    ...(v.v === 2 ? { v: 2 as const } : {}),
+    ...(v.v === 2 || v.v === 3 ? { v: 3 as const } : {}),
   };
 }
