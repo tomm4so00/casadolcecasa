@@ -213,7 +213,9 @@ try {
     async (e) => (await import('/tests/auth-fixture.ts')).signInTestUser(e),
     'bruno@example.com',
   );
-  // "Ricordami" è spuntato di serie: Bruno, già entrato in questa pagina, rientra da solo
+  // "Ricordami" è spuntato di serie: Bruno, già entrato in questa pagina, tocca "Gioca subito"
+  // e ritrova il suo account Google, non un ospite nuovo
+  await bruno.locator('#setup-guest').click();
   assert(await until(bruno, hasRoomNow), 'Bruno senza stanza al rientro');
   // il saldo arriva dalla stanza; poi si lascia il tempo a un eventuale bonus sbagliato
   await waitMoney(bruno, start + BONUS, 'chi gioca già, al rientro');

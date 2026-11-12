@@ -167,8 +167,15 @@ export function mountCloudSetup(root: HTMLElement): void {
     return signIn();
   });
 
-  // ---- gioca subito, da ospite: nome, aspetto e 18 anni li chiede la creazione (first-entry.ts)
+  // ---- gioca subito: chi torna riprende il suo accesso; chi arriva entra da ospite, e nome,
+  // aspetto e 18 anni li chiede la creazione (first-entry.ts)
   run(el('setup-guest'), async () => {
+    // chi ha già un accesso in questo browser (Google, email o ospite) riprende il suo personaggio
+    const known = await restored;
+    if (known) {
+      await signIn(known);
+      return;
+    }
     countUse('ingresso:gioca_subito');
     const user = await signInAsGuest();
     access = await accessFor(user);
@@ -256,23 +263,22 @@ export function mountCloudSetup(root: HTMLElement): void {
     lifetime.listen(button, 'click', () => show('home'));
   });
   show('home');
-  // With "Ricordami" a returning player goes straight into the game. Anche tornando dalla pausa
-  // (dormancy.ts): la pagina si è ricaricata da sola e il giocatore si aspetta il gioco. E dopo il
-  // trasloco dal vecchio indirizzo (move.ts), anche senza "Ricordami": era già dentro.
-  const autoEnter = remember.checked || wokeFromPause() || movedIn;
-  // l'imbuto d'ingresso (usage.ts): conta chi vede davvero la schermata, non chi rientra da solo
-  if (!autoEnter) countUse('ingresso:visto');
-  if (autoEnter) {
+  // L'accesso già salvato in questo browser (con "Ricordami"), quando Firebase l'ha caricato.
+  const pageLoaded = new Promise<void>((resolve) => {
+    if (document.readyState === 'complete') resolve();
+    else lifetime.listen(window, 'load', () => resolve());
+  });
+  const restored: Promise<firebase.User | null> = remember.checked
+    ? Promise.all([rememberedGoogleUser(), pageLoaded]).then(([user]) => user)
+    : Promise.resolve(null);
+  // Si entra da soli solo tornando dalla pausa (dormancy.ts: la pagina si è ricaricata da sola) o
+  // dal trasloco (move.ts): il giocatore era già dentro. Gli altri toccano "Gioca subito".
+  if (wokeFromPause() || movedIn) {
     loginButton.disabled = true;
     const label = loginButton.innerHTML;
     loginButton.textContent = 'Accesso in corso…';
-    const pageLoaded = new Promise<void>((resolve) => {
-      if (document.readyState === 'complete') resolve();
-      else lifetime.listen(window, 'load', () => resolve());
-    });
     void Promise.all([rememberedGoogleUser(), pageLoaded])
-      // nessun accesso da riprendere: è qualcuno che vede la schermata d'ingresso
-      .then(([user]) => (user ? signIn(user) : countUse('ingresso:visto')))
+      .then(([user]) => (user ? signIn(user) : undefined))
       .catch((error) =>
         toast(error instanceof Error ? error.message : 'Accesso non riuscito: ' + error, 6000),
       )
@@ -280,6 +286,9 @@ export function mountCloudSetup(root: HTMLElement): void {
         loginButton.disabled = false;
         loginButton.innerHTML = label;
       });
+  } else {
+    // l'imbuto d'ingresso (usage.ts): chi arriva senza accesso, a parte chi torna
+    void restored.then((user) => countUse(user ? 'ingresso:rientro' : 'ingresso:visto'));
   }
   run(el('setup-has-sim'), async () => {
     if (!codeInput.value) codeInput.value = localLegacySimCode() || '';
