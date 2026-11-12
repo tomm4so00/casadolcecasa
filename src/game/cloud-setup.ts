@@ -1,5 +1,6 @@
 import { maskText } from '../../shared/text-filter-rules.js';
 import { wokeFromPause } from './dormancy.js';
+import { movedIn } from './move.js';
 import { game } from './context.js';
 import { startGame } from './interface.js';
 import { toast } from './missions.js';
@@ -257,8 +258,9 @@ export function mountCloudSetup(root: HTMLElement): void {
     lifetime.listen(button, 'click', () => show('login'));
   });
   // With "Ricordami" a returning player goes straight into the game. Anche tornando dalla pausa
-  // (dormancy.ts): la pagina si è ricaricata da sola e il giocatore si aspetta il gioco.
-  if (remember.checked || wokeFromPause()) {
+  // (dormancy.ts): la pagina si è ricaricata da sola e il giocatore si aspetta il gioco. E dopo il
+  // trasloco dal vecchio indirizzo (move.ts), anche senza "Ricordami": era già dentro.
+  if (remember.checked || wokeFromPause() || movedIn) {
     loginButton.disabled = true;
     loginButton.textContent = 'Accesso in corso…';
     const pageLoaded = new Promise<void>((resolve) => {

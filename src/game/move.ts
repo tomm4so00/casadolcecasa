@@ -3,6 +3,9 @@
 import { FIREBASE_CONFIG } from '../firebase-config.js';
 import { authStorageKey, readMove } from './move-rules.js';
 
+/** Vero se è appena arrivato un accesso dal vecchio indirizzo: si entra da soli, senza tocchi. */
+export let movedIn = false;
+
 export function receiveMove(): void {
   if (!location.hash.includes('trasloco=')) return;
   const payload = readMove(location.hash, Date.now(), String(FIREBASE_CONFIG.apiKey));
@@ -21,6 +24,7 @@ export function receiveMove(): void {
           key,
           JSON.stringify(payload.user),
         );
+        movedIn = true;
       }
     }
   } catch {
