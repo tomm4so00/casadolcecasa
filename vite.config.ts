@@ -18,6 +18,8 @@ export default defineConfig({
   ],
   build: {
     rollupOptions: {
+      // il gioco e la pagina del trasloco (src/game/move-rules.ts)
+      input: { main: 'index.html', trasloco: 'trasloco.html' },
       output: {
         manualChunks: {
           firebase: ['firebase/compat/app', 'firebase/compat/database', 'firebase/compat/auth'],

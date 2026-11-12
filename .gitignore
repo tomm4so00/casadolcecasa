@@ -21,3 +21,6 @@ firebase/backups/
 
 # Impostazioni personali di Claude Code
 .claude/settings.local.json
+
+# configurazioni temporanee di scripts/deploy-site.mjs
+firebase.*.json

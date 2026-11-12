@@ -18,7 +18,7 @@ STRIPE_CRYO_LIFETIME_LINK = "plink_1UZxmCED0NNIO3xr17CItjl9"
 # progetto Firebase: i token dei giocatori devono essere suoi
 FIREBASE_PROJECT_ID = "casadolcecasa-6d92a"
 # i siti da cui il gioco chiama /lavoro/ (il browser blocca gli altri); separati da virgole
-GAME_ORIGINS = "https://tomm4so00.github.io,http://127.0.0.1:5173,http://localhost:5173"
+GAME_ORIGINS = "https://casadolcecasa.web.app,https://tomm4so00.github.io,http://127.0.0.1:5173,http://localhost:5173"
 
 [observability]
 enabled = true
@@ -36,6 +36,6 @@ name = "casadolcecasa-prova"
 # il progetto Firebase di prova (casadolcecasa-prova)
 FIREBASE_DATABASE_URL = "https://casadolcecasa-prova-default-rtdb.firebaseio.com"
 FIREBASE_PROJECT_ID = "casadolcecasa-prova"
-GAME_ORIGINS = "https://casadolcecasa-prova.web.app,https://casadolcecasa-prova.firebaseapp.com"
+GAME_ORIGINS = "https://casadolcecasa-prova.web.app,https://casadolcecasa-prova.firebaseapp.com,https://casadolcecasa-prova-nuovo.web.app"
 STRIPE_CRYO_PAYMENT_LINK = ""
 STRIPE_CRYO_LIFETIME_LINK = ""

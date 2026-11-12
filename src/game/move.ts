@@ -1,0 +1,29 @@
+// Il nuovo sito riceve il trasloco (vedi move-rules.ts): prima che Firebase parta, salva l'accesso e
+// la memoria del gioco arrivati dal vecchio indirizzo, e toglie subito i dati dal link.
+import { FIREBASE_CONFIG } from '../firebase-config.js';
+import { authStorageKey, readMove } from './move-rules.js';
+
+export function receiveMove(): void {
+  if (!location.hash.includes('trasloco=')) return;
+  const payload = readMove(location.hash, Date.now(), String(FIREBASE_CONFIG.apiKey));
+  // i dati non restano nel link né nella cronologia
+  history.replaceState(null, '', location.pathname + location.search);
+  if (!payload) return;
+  try {
+    // la memoria del gioco: solo dove questo sito non ha già qualcosa di suo
+    for (const [key, value] of Object.entries(payload.ls))
+      if (localStorage.getItem(key) === null) localStorage.setItem(key, value);
+    if (payload.user) {
+      const key = authStorageKey(String(FIREBASE_CONFIG.apiKey));
+      // se qui c'è già un accesso, vince quello: Firebase lo trova prima
+      if (localStorage.getItem(key) === null && sessionStorage.getItem(key) === null) {
+        (payload.session ? sessionStorage : localStorage).setItem(
+          key,
+          JSON.stringify(payload.user),
+        );
+      }
+    }
+  } catch {
+    // memoria del browser bloccata: si entra come chi arriva per la prima volta
+  }
+}

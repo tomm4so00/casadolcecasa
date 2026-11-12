@@ -118,3 +118,46 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4
+
+  # Il nuovo indirizzo, casadolcecasa.web.app (Firebase Hosting): stesso gioco, pubblicato dopo il
+  # controllo delle regole. Finché c'è anche GitHub Pages, un errore qui non ferma l'altro.
+  firebase-hosting:
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    needs: [build, rules]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    env:
+      FIREBASE_PROJECT: ${{ vars.VITE_FIREBASE_PROJECT_ID || 'casadolcecasa-6d92a' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # alla radice del sito: niente sottocartella come su GitHub Pages
+      - name: Build
+        env:
+          VITE_FIREBASE_API_KEY: ${{ vars.VITE_FIREBASE_API_KEY }}
+          VITE_FIREBASE_AUTH_DOMAIN: ${{ vars.VITE_FIREBASE_AUTH_DOMAIN }}
+          VITE_FIREBASE_DATABASE_URL: ${{ vars.VITE_FIREBASE_DATABASE_URL }}
+          VITE_FIREBASE_PROJECT_ID: ${{ vars.VITE_FIREBASE_PROJECT_ID }}
+          VITE_FIREBASE_APP_ID: ${{ vars.VITE_FIREBASE_APP_ID }}
+          VITE_FIREBASE_EMULATORS: 'false'
+        run: npm run build -- --base=/
+
+      - name: Pubblica su casadolcecasa.web.app
+        env:
+          SERVICE_ACCOUNT: ${{ secrets.FIREBASE_MARKET_SERVICE_ACCOUNT }}
+        run: |
+          printf '%s' "$SERVICE_ACCOUNT" > "$RUNNER_TEMP/firebase-key.json"
+          export GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/firebase-key.json"
+          node scripts/deploy-site.mjs casadolcecasa "main ${GITHUB_SHA::7}"

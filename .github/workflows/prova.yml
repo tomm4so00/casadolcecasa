@@ -30,6 +30,8 @@ jobs:
       VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ vars.PROVA_FIREBASE_MESSAGING_SENDER_ID }}
       VITE_WORKER_URL: ${{ vars.PROVA_WORKER_URL }}
       VITE_GAME_URL: ${{ vars.PROVA_GAME_URL }}
+      # la pagina del trasloco (trasloco.html) porta al secondo sito di prova
+      VITE_MOVE_TO: https://casadolcecasa-prova-nuovo.web.app/
       VITE_STAGE: prova
       VITE_FIREBASE_EMULATORS: 'false'
       FIREBASE_PROJECT: ${{ vars.PROVA_FIREBASE_PROJECT_ID }}
@@ -90,3 +92,7 @@ jobs:
           node node_modules/firebase-tools/lib/bin/firebase.js deploy --only hosting
           --project "$FIREBASE_PROJECT" --non-interactive
           --message "prova ${GITHUB_SHA::7}"
+
+      # il secondo sito di prova: lì si prova il trasloco (casadolcecasa-prova.web.app/trasloco.html)
+      - name: Secondo sito di prova
+        run: node scripts/deploy-site.mjs casadolcecasa-prova-nuovo "prova ${GITHUB_SHA::7}"
