@@ -8,6 +8,8 @@ import { readFile } from 'node:fs/promises';
 import { strict as assert } from 'node:assert';
 import { chromium } from '@playwright/test';
 import { createServer } from 'vite';
+// le regole come si pubblicano: compattate (firebase/compact-rules.mjs)
+import { compactRules } from '../firebase/compact-rules.mjs';
 
 if (!process.env.FIREBASE_DATABASE_EMULATOR_HOST || !process.env.FIREBASE_AUTH_EMULATOR_HOST)
   throw new Error('Test consentito solo con gli emulatori.');
@@ -24,9 +26,8 @@ const headers = { Authorization: 'Bearer owner' };
 const rulesLoaded = await fetch(`http://127.0.0.1:9000/.settings/rules.json?ns=${ns}`, {
   method: 'PUT',
   headers,
-  body: await readFile(
-    new URL('../firebase/database.rules.proposed.json', import.meta.url),
-    'utf8',
+  body: compactRules(
+    await readFile(new URL('../firebase/database.rules.proposed.json', import.meta.url), 'utf8'),
   ),
 });
 assert.equal(rulesLoaded.ok, true, 'rules rejected: ' + (await rulesLoaded.text()));

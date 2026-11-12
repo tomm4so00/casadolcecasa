@@ -1,6 +1,7 @@
 // Controlla e pubblica le regole del Realtime Database usando la Firebase CLI già installata.
 //   node firebase/rules.mjs check   → confronta le regole online con firebase/database.rules.proposed.json
-//   node firebase/rules.mjs deploy  → salva una copia di quelle online, pubblica le nuove e ricontrolla
+//   node firebase/rules.mjs deploy  → salva una copia di quelle online, pubblica le nuove (compattate,
+//                                     vedi compact-rules.mjs) e ricontrolla
 // Serve un accesso fatto una volta con "npx firebase login". Nei workflow di GitHub invece la
 // chiave di un account di servizio, nel file indicato da GOOGLE_APPLICATION_CREDENTIALS.
 // FIREBASE_PROJECT sceglie il progetto (quello di prova: vedi docs/ambiente-di-prova.md).
@@ -8,6 +9,7 @@ import { execFileSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
+import { RULES_LIMIT, compactRules, sameMeaning } from './compact-rules.mjs';
 
 const PROJECT = process.env.FIREBASE_PROJECT || 'casadolcecasa-6d92a';
 const RULES = resolve('firebase/database.rules.proposed.json');
@@ -29,7 +31,8 @@ function liveRules() {
   return readFileSync(file, 'utf8');
 }
 
-const same = (a, b) => JSON.stringify(JSON.parse(a)) === JSON.stringify(JSON.parse(b));
+// online le regole sono compattate (compact-rules.mjs): si confrontano compattate tutte e due
+const same = (a, b) => compactRules(a) === compactRules(b);
 
 function check() {
   const live = liveRules();
@@ -55,10 +58,19 @@ function deploy() {
     console.log('✅ Le regole online erano già aggiornate: niente da pubblicare.');
     return true;
   }
+  // Si pubblicano compattate: Firebase accetta al massimo 256 KB di regole.
+  const text = readFileSync(RULES, 'utf8');
+  const small = compactRules(text);
+  if (!sameMeaning(text, small)) throw new Error('La compattazione ha cambiato le regole.');
+  const size = Buffer.byteLength(small);
+  if (size > RULES_LIMIT) throw new Error(`Regole troppo grandi: ${size} byte su ${RULES_LIMIT}.`);
+  console.log(`📦 Regole compattate: ${(size / 1024).toFixed(1)} KB su ${RULES_LIMIT / 1024} KB.`);
   // Configurazione temporanea: firebase.json del progetto non pubblica le regole per errore.
   const dir = mkdtempSync(join(tmpdir(), 'rules-deploy-'));
+  const compacted = join(dir, 'database.rules.json');
+  writeFileSync(compacted, small);
   const config = join(dir, 'firebase.json');
-  writeFileSync(config, JSON.stringify({ database: { rules: RULES } }));
+  writeFileSync(config, JSON.stringify({ database: { rules: compacted } }));
   console.log(firebase(['deploy', '--only', 'database', '--config', config]));
   return check();
 }

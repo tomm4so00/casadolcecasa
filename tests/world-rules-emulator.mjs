@@ -3,6 +3,8 @@
 //   npx firebase emulators:exec --only database --project demo-casadolcecasa "node tests/world-rules-emulator.mjs"
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+// le regole come si pubblicano: compattate (firebase/compact-rules.mjs)
+import { compactRules } from '../firebase/compact-rules.mjs';
 
 const ns = 'demo-casadolcecasa-default-rtdb';
 const base = 'http://127.0.0.1:9000';
@@ -12,7 +14,9 @@ const admin = { Authorization: 'Bearer owner' };
 const loaded = await fetch(`${base}/.settings/rules.json?ns=${ns}`, {
   method: 'PUT',
   headers: admin,
-  body: readFileSync(new URL('../firebase/database.rules.proposed.json', import.meta.url), 'utf8'),
+  body: compactRules(
+    readFileSync(new URL('../firebase/database.rules.proposed.json', import.meta.url), 'utf8'),
+  ),
 });
 assert.equal(loaded.ok, true, 'rules rejected: ' + (await loaded.text()));
 

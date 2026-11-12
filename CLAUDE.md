@@ -53,7 +53,8 @@ Un oggetto di scena che compare come un blocco grigio ha il `kind` non registrat
   e decorazione a parete).
 - `*-rules.ts`: regole senza dipendenze dal browser, coperte dai test.
 - `firebase/database.rules.proposed.json`: regole del database. Si pubblicano con
-  `node firebase/rules.mjs deploy` (salva prima una copia di quelle online). Da Git Bash il CLI
+  `node firebase/rules.mjs deploy` (salva prima una copia di quelle online), compattate da
+  `firebase/compact-rules.mjs`: Firebase ne accetta al massimo 256 KB. Da Git Bash il CLI
   di Firebase vuole `MSYS_NO_PATHCONV=1`.
 - `server/`: manutenzione periodica (mercato, notifiche), eseguita da `market.yml`.
 
