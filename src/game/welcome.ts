@@ -239,47 +239,22 @@ function welcomeHudText(): string | null {
   return `📋 ${m.title}: ${m.hint(view())} (+${m.reward} Đ)`;
 }
 
-/** Tocco sulla scritta delle missioni: elenco, e riattivazione o inizio della missione. */
-export async function openWelcomeList(): Promise<void> {
-  const s = state();
-  const lines = missionsOf(s)
-    .map((m, i) => `${i < s.i ? '✅' : i === s.i ? '👉' : '🔒'} ${m.title} · ${m.reward} Đ`)
-    .join('\n');
-  const finished = welcomeFinished(s);
-  const res = await openDialog({
-    title: `📋 Missioni di benvenuto (${Math.min(s.i, missionsOf(s).length)}/${missionsOf(s).length})`,
-    text:
-      lines +
-      (finished
-        ? '\n\n🎉 Le hai completate tutte!'
-        : s.status === 'active'
-          ? `\n\nOra: ${missionsOf(s)[s.i].hint(view())}`
-          : '\n\nSi sbloccano una alla volta.'),
-    buttons: [
-      { label: 'Chiudi', value: null, color: '#57606f' },
-      ...(!finished && s.status !== 'active'
-        ? [
-            {
-              label: s.status === 'off' ? '▶️ Riattiva le missioni' : '▶️ Inizia ora',
-              value: 'start',
-              color: '#2ed573',
-            },
-          ]
-        : []),
-    ],
-  });
-  if (res.action === 'start') {
-    game.player.welcome = { ...state(), status: 'offer', snoozeUntil: 0 };
-    void offerMission();
-  }
+/** Riattiva le missioni di benvenuto (o propone subito la prossima). */
+export function restartWelcome(): void {
+  game.player.welcome = { ...state(), status: 'offer', snoozeUntil: 0 };
+  void offerMission();
 }
 
-/** Aggiorna la scritta delle missioni nel riquadro dei parametri. */
+/**
+ * L'icona «Missioni» sotto i parametri: il passo da fare è nella sua finestra e lo indicano le
+ * frecce. Si illumina quando c'è da guardarci: la guida dell'arrivo ridotta o una missione da
+ * iniziare.
+ */
 export function updateWelcomeHud(): void {
   const el = dom('mission-text');
   if (!el) return;
-  // durante l'arrivo il passo è nel riquadro in basso (o nella riga gialla, se l'ha ridotto)
-  const text = arrivalActive() ? arrivalHudText() : welcomeHudText();
-  el.style.display = text ? '' : 'none';
-  if (text && el.textContent !== text) el.textContent = text;
+  const s = state();
+  const alert = arrivalActive() ? !!arrivalHudText() : !welcomeFinished(s) && s.status === 'offer';
+  el.classList.toggle('alert', alert);
+  el.title = (arrivalActive() ? arrivalHudText() : welcomeHudText()) || 'Apri le missioni';
 }

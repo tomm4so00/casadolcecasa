@@ -740,6 +740,11 @@
             ".validate": "$slot.matches(/^p[1-3]$/) && newData.isString() && (newData.val().length === 4800 || newData.val().length === 1200) && newData.val().matches(/^[0-9a-f]+$/)"
           }
         },
+        "trophies": {
+          "$i": {
+            ".validate": "$i.matches(/^[0-7]$/) && newData.isString() && newData.val().matches(/^(trofeo|medaglia)_[a-z]{3,12}$/)"
+          }
+        },
         "sale": {
           "$slot": {
             ".validate": "$slot.matches(/^p[1-3]$/) && newData.hasChildren(['price','t','nextOfferAt']) && newData.child('price').isNumber() && newData.child('price').val() >= 1 && newData.child('price').val() <= 100000 && newData.child('t').isNumber() && newData.child('nextOfferAt').isNumber() && (!newData.child('round').exists() || newData.child('round').isNumber())"
@@ -2144,6 +2149,11 @@
             "paintings": {
               "$slot": {
                 ".validate": "$slot.matches(/^p[1-3]$/) && newData.isString() && (newData.val().length === 4800 || newData.val().length === 1200) && newData.val().matches(/^[0-9a-f]+$/)"
+              }
+            },
+            "trophies": {
+              "$i": {
+                ".validate": "$i.matches(/^[0-7]$/) && newData.isString() && newData.val().matches(/^(trofeo|medaglia)_[a-z]{3,12}$/)"
               }
             },
             "sale": {

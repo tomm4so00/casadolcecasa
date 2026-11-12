@@ -1418,6 +1418,248 @@ function robot(s: At, t: number): void {
   sphere(s, 0, 0, 17.6, 0.7, Math.floor(t * 2) % 2 ? '#e74c3c' : '#c0392b');
 }
 
+// ---------------------------------------------------------------- trofei e medaglie
+
+// I trofei dei capitoli delle missioni e le medaglie bonus (mensola dei trofei, trophies.ts):
+// piccoli, su un piedistallo di legno scuro con la targhetta d'oro.
+const GOLD = '#f1c40f';
+const SILVER = '#bdc3c7';
+
+/** Il piedistallo comune, alto 3: legno scuro con la targhetta d'oro davanti. */
+function plinth(s: At): void {
+  const b = B(s, 0, 0, 0, 10, 7, 3, '#4e342e', { top: '#6d4c41' });
+  onFace(b, 'left', (W: number, H: number) => {
+    const ctx = ctxOf();
+    ctx.fillStyle = '#d4ac0d';
+    ctx.fillRect(W * 0.25, H * 0.3, W * 0.5, H * 0.4);
+  });
+}
+
+/** Una forma piatta con lo spessore (cuore, scudo): tanti strati dal fondo in avanti. */
+function thickShape(
+  s: At,
+  dz: number,
+  thick: number,
+  color: string,
+  path: (ctx: Ctx) => void,
+  face?: (ctx: Ctx) => void,
+): void {
+  const steps = 4;
+  for (let i = 0; i <= steps; i++) {
+    const y = -thick / 2 + (thick * i) / steps;
+    front(s, 0, y, dz, (ctx) => {
+      ctx.fillStyle = i === steps ? color : dark(color, 0.2 + 0.06 * (steps - i));
+      ctx.beginPath();
+      path(ctx);
+      ctx.fill();
+      if (i === steps && face) face(ctx);
+    });
+  }
+}
+
+function trofeoBenvenuto(s: At): void {
+  plinth(s);
+  // una casetta d'oro: le mura, la porticina e il tetto a punta
+  const walls = B(s, 0, 0, 3, 7, 6, 5.5, GOLD, { top: light(GOLD, 0.2) });
+  onFace(walls, 'left', (W: number, H: number) => {
+    const ctx = ctxOf();
+    ctx.fillStyle = '#7e5109';
+    ctx.fillRect(W * 0.38, H * 0.35, W * 0.24, H * 0.65);
+  });
+  lathe(
+    s,
+    0,
+    0,
+    8.5,
+    [
+      [5.6, 0],
+      [0, 4.5],
+    ],
+    '#d68910',
+    { segments: 4, cap: false },
+  );
+}
+
+function trofeoCitta(s: At): void {
+  plinth(s);
+  // la coppa d'argento: gambo, coppa svasata e le due anse
+  lathe(
+    s,
+    0,
+    0,
+    3,
+    [
+      [2.4, 0],
+      [0.8, 1.2],
+      [0.7, 4],
+      [1.6, 5],
+      [3.6, 7.2],
+      [4.2, 10.5],
+    ],
+    SILVER,
+    { cap: false },
+  );
+  // il bordo chiaro e l'interno scuro della coppa
+  disc(s, 0, 0, 13.5, 4.2, light(SILVER, 0.35));
+  disc(s, 0, 0, 13.55, 3.5, dark(SILVER, 0.45));
+  for (const sd of [-1, 1]) {
+    rod(s, [sd * 3.8, 0, 12.6], [sd * 5.6, 0, 11], SILVER, 0.9);
+    rod(s, [sd * 5.6, 0, 11], [sd * 3.4, 0, 9], SILVER, 0.9);
+  }
+}
+
+function trofeoVicini(s: At): void {
+  plinth(s);
+  cyl(s, 0, 0, 3, 0.6, 3.5, GOLD, { cap: false });
+  // il cuore rosso, in piedi verso chi guarda
+  // i due lobi in alto e la punta in basso (nel piano davanti y va verso l'alto)
+  thickShape(s, 10.5, 2, '#e74c3c', (ctx) => {
+    ctx.moveTo(0, -4.4);
+    ctx.bezierCurveTo(-1.5, -2.8, -4.6, -0.6, -4.6, 1.6);
+    ctx.bezierCurveTo(-4.6, 3.4, -3.2, 4.4, -2.1, 4.4);
+    ctx.bezierCurveTo(-1, 4.4, -0.2, 3.7, 0, 2.8);
+    ctx.bezierCurveTo(0.2, 3.7, 1, 4.4, 2.1, 4.4);
+    ctx.bezierCurveTo(3.2, 4.4, 4.6, 3.4, 4.6, 1.6);
+    ctx.bezierCurveTo(4.6, -0.6, 1.5, -2.8, 0, -4.4);
+    ctx.closePath();
+  });
+}
+
+function trofeoLavoro(s: At): void {
+  plinth(s);
+  // una pila di monete d'oro, un po' storta
+  const offs = [0, 0.4, -0.3, 0.5, 0.1];
+  offs.forEach((o, i) => cyl(s, o, 0, 3 + i * 1.3, 3.4, 1.2, GOLD, { cap: light(GOLD, 0.3) }));
+  // l'ultima moneta in piedi, con la Đ
+  standingDisc(s, 0, 13.2, 3.2, 1, '#d4ac0d', (ctx, r) => {
+    ctx.fillStyle = '#9a7d0a';
+    ctx.font = 'bold ' + r * 1.4 + 'px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.save();
+    // nel piano davanti y va verso l'alto: si raddrizza
+    ctx.scale(1, -1);
+    ctx.fillText('Đ', 0, 0.2);
+    ctx.restore();
+  });
+}
+
+function trofeoRischi(s: At): void {
+  plinth(s);
+  // lo scudo blu con il bordo d'oro e il lucchetto
+  const shield = (ctx: Ctx, k: number) => {
+    ctx.moveTo(-4.6 * k, 4.6 * k);
+    ctx.lineTo(4.6 * k, 4.6 * k);
+    ctx.lineTo(4.6 * k, 0.5 * k);
+    ctx.quadraticCurveTo(4.2 * k, -3.8 * k, 0, -5.6 * k);
+    ctx.quadraticCurveTo(-4.2 * k, -3.8 * k, -4.6 * k, 0.5 * k);
+    ctx.closePath();
+  };
+  thickShape(
+    s,
+    9.2,
+    1.6,
+    GOLD,
+    (ctx) => shield(ctx, 1),
+    (ctx) => {
+      ctx.fillStyle = '#2e86de';
+      ctx.beginPath();
+      shield(ctx, 0.78);
+      ctx.fill();
+      // il lucchetto
+      ctx.fillStyle = '#f5f6fa';
+      ctx.fillRect(-1.4, -1.6, 2.8, 2.4);
+      ctx.strokeStyle = '#f5f6fa';
+      ctx.lineWidth = 0.6;
+      ctx.beginPath();
+      ctx.arc(0, 0.9, 1, 0, Math.PI);
+      ctx.stroke();
+    },
+  );
+}
+
+function trofeoProgetti(s: At): void {
+  plinth(s);
+  // il razzo: le alette, il corpo bianco con l'oblò e la punta rossa
+  for (const [x, y] of [
+    [-2.6, 0],
+    [2.6, 0],
+    [0, 1.6],
+  ])
+    B(s, x, y, 3, x ? 1 : 2.4, x ? 2.4 : 1, 3.5, '#c0392b');
+  lathe(
+    s,
+    0,
+    0,
+    3,
+    [
+      [2.2, 0],
+      [2.4, 6],
+      [2.2, 8],
+    ],
+    '#ecf0f1',
+    { cap: false },
+  );
+  lathe(
+    s,
+    0,
+    0,
+    11,
+    [
+      [2.2, 0],
+      [1.4, 2],
+      [0, 4],
+    ],
+    '#e74c3c',
+    { cap: false },
+  );
+  standingDisc(s, 0, 8, 0.9, 0.4, '#2e86de', (ctx, r) => {
+    ctx.fillStyle = '#85c1e9';
+    ctx.beginPath();
+    ctx.arc(0, 0, r * 0.7, 0, Math.PI * 2);
+    ctx.fill();
+  });
+}
+
+/** La medaglia: il nastro che scende dalla mensola e il disco con il simbolo. */
+function medal(s: At, ribbon: string, metal: string, symbol: (ctx: Ctx, r: number) => void): void {
+  rod(s, [-1.2, 0, 14], [0, 0, 7.5], ribbon, 1.6);
+  rod(s, [1.2, 0, 14], [0, 0, 7.5], dark(ribbon, 0.2), 1.6);
+  standingDisc(s, 0, 4.8, 3.6, 0.8, metal, (ctx, r) => {
+    ctx.fillStyle = dark(metal, 0.12);
+    ctx.beginPath();
+    ctx.arc(0, 0, r * 0.82, 0, Math.PI * 2);
+    ctx.fill();
+    symbol(ctx, r);
+  });
+}
+
+function medagliaLuna(s: At): void {
+  medal(s, '#2e86de', GOLD, (ctx, r) => {
+    // la falce di luna
+    ctx.fillStyle = '#fffbe6';
+    ctx.beginPath();
+    ctx.arc(0, 0, r * 0.55, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = dark(GOLD, 0.12);
+    ctx.beginPath();
+    ctx.arc(r * 0.25, r * 0.15, r * 0.48, 0, Math.PI * 2);
+    ctx.fill();
+  });
+}
+
+function medagliaIdea(s: At): void {
+  medal(s, '#27ae60', SILVER, (ctx, r) => {
+    // la lampadina: il bulbo giallo e l'attacco
+    ctx.fillStyle = '#f9e79f';
+    ctx.beginPath();
+    ctx.arc(0, r * 0.15, r * 0.4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#7f8c8d';
+    ctx.fillRect(-r * 0.2, -r * 0.55, r * 0.4, r * 0.32);
+  });
+}
+
 // ---------------------------------------------------------------- elenco
 
 const SOLIDS: Record<string, (s: At, t: number) => void> = {
@@ -1451,6 +1693,15 @@ const SOLIDS: Record<string, (s: At, t: number) => void> = {
   col_vaso: vaso,
   col_maschera: maschera,
   col_robot: robot,
+  // la mensola dei trofei (trophies.ts)
+  trofeo_benvenuto: trofeoBenvenuto,
+  trofeo_citta: trofeoCitta,
+  trofeo_vicini: trofeoVicini,
+  trofeo_lavoro: trofeoLavoro,
+  trofeo_rischi: trofeoRischi,
+  trofeo_progetti: trofeoProgetti,
+  medaglia_luna: medagliaLuna,
+  medaglia_idea: medagliaIdea,
 };
 
 /**

@@ -43,6 +43,7 @@ import { bestOwnedByProp } from './furniture-tiers.js';
 import { decodeRomance } from './romance-rules.js';
 import { decodeRelations } from './relations-rules.js';
 import { decodeWelcome } from './welcome-rules.js';
+import { decodeQuests } from './quests-rules.js';
 import { limitedFurnitureProps, limitedRoomItems } from './limited.js';
 import {
   decodePersonality,
@@ -66,6 +67,9 @@ import { decodeFood, encodeFood } from './food-rules.js';
 /** Segna la presenza come offline, con l'ora del server in cui il giocatore è uscito. */
 export const OFFLINE_MARK = { offline: true, offAt: { '.sv': 'timestamp' } };
 /** Livello della mia cassaforte (2 con la cassaforte livello 2 del negozio di mobili). */
+/** Da quanto deve vivere un personaggio per contare come giocatore di prima dei capitoli. */
+const OLD_PLAYER_MS = 86_400_000;
+
 export const mySafeLevel = (): 1 | 2 => safeLevel(game.player.ownedFurniture);
 
 export { hashPin };
@@ -181,6 +185,7 @@ export function buildSaveData(): SaveV8 {
     data.relations = game.player.relations;
   if (game.player.personality) data.personality = game.player.personality;
   if (game.player.welcome) data.welcome = game.player.welcome;
+  if (game.player.quests) data.quests = game.player.quests;
   if (game.player.workDay) data.workDay = game.player.workDay;
   // fin dove si è letta la chat: vale su tutti i dispositivi, non solo su questo
   if (game.chatReadT > 0) data.chatReadT = game.chatReadT;
@@ -323,6 +328,10 @@ export function applySave(value: unknown): void {
   // missioni di benvenuto: a chi ha già mangiato, fatto la doccia e lavorato non si propongono
   const st = game.player.stats;
   game.player.welcome = decodeWelcome(s.welcome, st.meals > 0 && st.showers > 0 && st.shifts > 0);
+  // capitoli delle missioni: chi giocava già da un giorno salta il Capitolo 1 (la sopravvivenza)
+  game.player.quests = decodeQuests(s.quests);
+  const born = game.player.bornAt;
+  if (!s.quests && (!born || Date.now() - born > OLD_PLAYER_MS)) game.player.quests.old = true;
   game.player.ownedItems = s.ownedItems || {};
   game.player.ownedFurniture = s.ownedFurniture || {};
   if (s.equipped) {
@@ -601,13 +610,26 @@ export function publishRoomLayout(): void {
   // cane e gatto (chi visita la stanza li vede girare)
   Object.assign(layout, freePetsForLayout());
   const key = JSON.stringify(layout);
-  if (key === game.lastLayoutKey) return;
+  if (key === game.lastLayoutKey) return publishTrophies();
   game.lastLayoutKey = key;
   // dal JSON, non dall'oggetto: Firebase rifiuta tutta la scrittura se un campo è undefined (la
   // mensola dei collezionabili non ha colore), e JSON.stringify quei campi li toglie
   game.session.db
     .ref(`${worldNode('rooms_state')}/${game.myAssignedRoomIdx}/layout`)
     .set(JSON.parse(key));
+  publishTrophies();
+}
+
+let lastTrophiesKey = '';
+/** I trofei della mensola, perché li veda anche chi viene in visita (render/trophies.ts). */
+function publishTrophies(): void {
+  const list = (game.player.trophies || []).slice(0, 8);
+  const key = `${game.myAssignedRoomIdx}:${list.join(',')}`;
+  if (key === lastTrophiesKey) return;
+  lastTrophiesKey = key;
+  game.session.db
+    .ref(`${worldNode('rooms_state')}/${game.myAssignedRoomIdx}/trophies`)
+    .set(list.length ? list : null);
 }
 
 /** L'elenco delle stanze sempre completo: quelle che mancano nel database sono libere. */

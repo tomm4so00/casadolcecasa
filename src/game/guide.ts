@@ -6,6 +6,7 @@ import { GUIDE_NEAR, type GuideDest, guideStep } from './guide-rules.js';
 import { isoProject } from './render/primitives.js';
 import { welcomeDest } from './welcome.js';
 import { arrivalGuide } from './arrival.js';
+import { questDest } from './quests.js';
 import { getCurrentFurnitureMap, mallShopFacade } from './world.js';
 
 /** La meta si ricalcola ogni tanto, non a ogni fotogramma (il vicino dell'assaggio costa). */
@@ -14,7 +15,8 @@ let cached: { at: number; dest: GuideDest | null } = { at: -Infinity, dest: null
 
 function dest(): GuideDest | null {
   const now = performance.now();
-  if (now - cached.at > REFRESH_MS) cached = { at: now, dest: arrivalGuide() ?? welcomeDest() };
+  if (now - cached.at > REFRESH_MS)
+    cached = { at: now, dest: arrivalGuide() ?? welcomeDest() ?? questDest() };
   return cached.dest;
 }
 

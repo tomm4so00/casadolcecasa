@@ -1676,6 +1676,18 @@ export const PLAYER_ROOM_FURNITURE = {
     moveable: true,
     wallItem: true,
   },
+  // Mensola dei trofei delle missioni (render/trophies.ts): 6 trofei in due file, 2 medaglie sotto;
+  // scorre lungo le pareti come i quadri. Parte sulla parete di sinistra, verso la stanza.
+  trophyShelf: {
+    x: -185,
+    y: 110,
+    w: 76,
+    h: 8,
+    z: 80,
+    name: 'Mensola dei trofei 🏆',
+    moveable: true,
+    wallItem: true,
+  },
   // Cassaforte a muro (parete di sinistra): non si sposta e non ingombra.
   safe: {
     x: -182,
@@ -3627,6 +3639,7 @@ export const ENV_STYLE = {
       back: [
         { t: 'roomPainting', side: 'back' },
         { t: 'collectShelf', side: 'back' },
+        { t: 'trophyShelf', side: 'back' },
         { t: 'window', u: 200, w: 64, h: 52 },
         { t: 'windowDepth', side: 'back', u: 200, w: 64, h: 52, curtains: true },
       ],
@@ -3635,6 +3648,7 @@ export const ENV_STYLE = {
         { t: 'rocketPlaque', side: 'left', u: 85 },
         { t: 'roomPainting', side: 'left' },
         { t: 'collectShelf', side: 'left' },
+        { t: 'trophyShelf', side: 'left' },
       ],
     },
     lights: [],

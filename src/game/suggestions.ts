@@ -152,6 +152,7 @@ async function writeSuggestion(): Promise<void> {
     return;
   }
   toast('📮 Grazie! Il tuo messaggio è nella cassetta.', 4000);
+  game.player.stats.suggestions = (game.player.stats.suggestions || 0) + 1;
 }
 
 /** Quanto tempo fa, in breve. */

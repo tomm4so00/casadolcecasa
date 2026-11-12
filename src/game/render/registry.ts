@@ -11,6 +11,7 @@ import {
   drawWheelbarrowProp,
 } from './construction.js';
 import { drawCollectStand, wallCollectShelf } from './collectibles.js';
+import { wallTrophyShelf } from './trophies.js';
 import {
   drawBookshelfProp,
   drawBottleShelfProp,
@@ -440,6 +441,7 @@ export function registerDrawers(): void {
     rocketPlaque: wallRocketPlaque,
     adScreen: wallAdScreen,
     collectShelf: wallCollectShelf,
+    trophyShelf: wallTrophyShelf,
     // i quadri della mostra cambiano mentre si guarda: si disegnano a ogni fotogramma
     galleryPainting: wallGalleryPainting,
     // commissariato: la cassa della polizia, con il contatore che cambia

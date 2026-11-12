@@ -1456,14 +1456,133 @@ body.coach-open #btn-arrange {
   color: #a4b0be;
 }
 
+/* Icona delle missioni sotto i parametri: gialla come i riquadri delle missioni */
 #mission-text {
-  font-size: 0.6rem;
-  color: #feca57;
-  border-top: 1px solid rgba(255, 255, 255, 0.12);
-  padding-top: 4px;
-  margin-top: 2px;
+  font-size: 0.65rem;
+  font-weight: bold;
+  color: #2d3436;
+  background: #feca57;
+  border: 1px solid #f9a825;
+  border-radius: 6px;
+  padding: 3px 8px;
   cursor: pointer;
-  line-height: 1.3;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+#mission-text.alert {
+  animation: guide-glow 1.2s ease-in-out infinite;
+  outline: 2px solid #fff3c4;
+}
+#needs-hud.hidden ~ #mission-text {
+  display: none;
+}
+
+/* Finestra delle missioni: i capitoli uno sotto l'altro, con il pulsante Segui */
+.qs-card {
+  max-width: 440px;
+  width: 94%;
+  max-height: 92vh;
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+  padding: 12px;
+}
+.qs-card h3 {
+  margin: 0 0 2px;
+  text-align: center;
+}
+.qs-sub {
+  text-align: center;
+}
+.qs-sub {
+  font-size: 0.75rem;
+  color: #feca57;
+  margin-bottom: 8px;
+}
+.qs-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.qs-chapter {
+  border: 1px solid rgba(254, 202, 87, 0.35);
+  border-radius: 10px;
+  padding: 8px 10px;
+  background: rgba(254, 202, 87, 0.06);
+}
+.qs-chapter.done {
+  border-color: rgba(46, 213, 115, 0.45);
+  background: rgba(46, 213, 115, 0.07);
+}
+.qs-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+}
+.qs-head span {
+  color: #a4b0be;
+  font-size: 0.75rem;
+}
+.qs-head button {
+  margin-left: auto;
+}
+.qs-chapter ul {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+  font-size: 0.78rem;
+}
+.qs-chapter li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 0;
+}
+.qs-chapter li > span:first-child {
+  flex: 1;
+}
+.qs-reward {
+  color: #feca57;
+  white-space: nowrap;
+}
+.qs-note {
+  color: #a4b0be;
+  font-size: 0.7rem;
+}
+.qs-now {
+  margin-top: 4px;
+  font-size: 0.74rem;
+  color: #dfe6e9;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 6px;
+  padding: 4px 6px;
+}
+.qs-follow {
+  font-size: 0.7rem;
+  padding: 3px 8px;
+  border-radius: 6px;
+  border: 1px solid #feca57;
+  background: transparent;
+  color: #feca57;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.qs-follow.on {
+  background: #feca57;
+  color: #2d3436;
+  font-weight: bold;
+}
+.qs-lock {
+  font-size: 0.75rem;
+  color: #a4b0be;
+  text-align: center;
+}
+.qs-close {
+  margin-top: 8px;
+  flex: none;
 }
 
 /* Boutique e armadio */

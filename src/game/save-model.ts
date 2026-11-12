@@ -49,6 +49,7 @@ export interface SaveV8 {
   relations?: unknown;
   personality?: unknown;
   welcome?: unknown;
+  quests?: unknown;
   workDay?: unknown;
   /** ora dell'ultimo messaggio della chat letto (su qualsiasi dispositivo) */
   chatReadT?: unknown;

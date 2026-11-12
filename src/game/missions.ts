@@ -9,7 +9,8 @@ import { saveGame, withTimeout } from './saves.js';
 import { openDialog } from './interface.js';
 import { RELAX_COOLDOWN_MS, RELAX_GAIN } from './furniture-benefits.js';
 import { tierOfPlaced } from './furniture-tiers.js';
-import { openWelcomeList, tickWelcome, updateWelcomeHud } from './welcome.js';
+import { tickWelcome, updateWelcomeHud } from './welcome.js';
+import { openQuests, tickQuests } from './quests.js';
 import { livedRows, wealthRows } from './leaderboard-rules.js';
 import { showLeaderboard } from './leaderboard.js';
 import { worldNode } from './world-db.js';
@@ -65,6 +66,7 @@ export async function checkMissions(..._args: GameValue[]): Promise<void> {
   tickArrival();
   if (!game.MISSIONS.length) {
     await tickWelcome();
+    await tickQuests();
     updateWelcomeHud();
     return;
   }
@@ -87,9 +89,9 @@ export async function checkMissions(..._args: GameValue[]): Promise<void> {
 }
 
 export function openMissions(..._args: GameValue[]): GameValue {
-  // durante l'arrivo la riga gialla riapre il riquadro della guida
+  // durante l'arrivo l'icona riapre il riquadro della guida, se era stato ridotto
   if (reopenCoach()) return void updateWelcomeHud();
-  if (!game.MISSIONS.length) return void openWelcomeList();
+  if (!game.MISSIONS.length) return void openQuests();
   const lines: GameValue = game.MISSIONS.map(
     (m?: GameValue, i?: GameValue): GameValue =>
       `${i < game.player.missionIndex ? '✅' : i === game.player.missionIndex ? '👉' : '⬜'} ${m.text} · ${m.reward} Đ`,

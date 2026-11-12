@@ -10,6 +10,7 @@ import type { WorkDay } from './job-pay.js';
 import type { RomanceBook } from './romance-rules.js';
 import type { RelationBook } from './relations-rules.js';
 import type { WelcomeState } from './welcome-rules.js';
+import type { QuestState } from './quests-rules.js';
 import type { GameDatabase } from './database.js';
 
 export interface Point {
@@ -188,8 +189,12 @@ export interface CharacterState {
   romance?: RomanceBook;
   /** Come lo hanno trattato gli altri giocatori: amici e nemici. */
   relations?: RelationBook;
+  /** Trofei dei capitoli e medaglie delle missioni bonus (render/trophies.ts). */
+  trophies?: string[];
   /** Missioni di benvenuto: a che punto si è. */
   welcome?: WelcomeState;
+  /** I capitoli delle missioni e le missioni bonus (quests-rules.ts). */
+  quests?: QuestState;
   /** Punti delle personalità sviluppate giocando. */
   personality?: PersonalityState;
   /** Turni di lavoro iniziati oggi (massimo SHIFTS_PER_DAY). */

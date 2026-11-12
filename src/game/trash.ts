@@ -127,6 +127,8 @@ export function trashPrompt(): { text: string; locked?: boolean } {
 }
 
 export async function trashAct(): Promise<void> {
+  // anche se è già vuoto: la missione insegna dov'è il cestino e a cosa serve
+  if (isMyRoomNow()) game.player.stats.trashEmptied = (game.player.stats.trashEmptied || 0) + 1;
   if (isMyRoomNow()) await emptyMyTrash();
   else await rummage();
 }

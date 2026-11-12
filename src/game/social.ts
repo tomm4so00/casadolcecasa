@@ -80,6 +80,7 @@ export async function socDo(act?: GameValue): Promise<GameValue> {
     saySocial(myLine('praise'));
     sendSocial(t.id, { type: 'praise' });
     toast(`😍 Hai fatto un complimento a ${t.name}`);
+    game.player.stats.praises = (game.player.stats.praises || 0) + 1;
     notePersonality('compliment');
   } else if (act === 'insult') {
     saySocial(myLine('insult'));

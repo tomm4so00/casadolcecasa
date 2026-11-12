@@ -84,6 +84,7 @@ export function startGossip(): void {
 
 /** Apre la bacheca: i fatti più recenti in alto. */
 export async function openGossipBoard(): Promise<void> {
+  game.player.stats.gossipRead = (game.player.stats.gossipRead || 0) + 1;
   const now = serverNow();
   const list = entries.slice().reverse();
   const read = Number(localStorage.getItem(game.session.LS_PREFIX + READ_KEY)) || 0;
