@@ -4298,3 +4298,35 @@ body.hacker-glitch::after {
   font-size: 1rem;
   cursor: pointer;
 }
+
+/* La freccetta delle missioni (guide-pointer.ts): il pulsante da toccare si illumina */
+.guide-target {
+  outline: 3px solid #ffd166 !important;
+  outline-offset: 2px;
+  box-shadow: 0 0 18px rgba(255, 209, 102, 0.75) !important;
+  animation: guide-glow 1.2s ease-in-out infinite;
+}
+@keyframes guide-glow {
+  50% {
+    box-shadow: 0 0 6px rgba(255, 209, 102, 0.35);
+  }
+}
+#guide-pointer {
+  position: fixed;
+  z-index: 99999;
+  width: 32px;
+  height: 28px;
+  pointer-events: none;
+  background: #ffd166;
+  clip-path: polygon(0 32%, 55% 32%, 55% 0, 100% 50%, 55% 100%, 55% 68%, 0 68%);
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.6));
+  animation: guide-nudge 0.8s ease-in-out infinite;
+}
+#guide-pointer.hidden {
+  display: none;
+}
+@keyframes guide-nudge {
+  50% {
+    transform: translateX(6px);
+  }
+}

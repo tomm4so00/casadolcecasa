@@ -63,6 +63,7 @@ import {
 import { openCharacterCreator } from './render/avatars.js';
 import { openFirstCreator } from './first-entry.js';
 import { bindCoach, startArrival } from './arrival.js';
+import { startGuidePointer } from './guide-pointer.js';
 import { openEpitaph, rebuildGraveyard } from './render/graveyard.js';
 import { checkMissions, toast } from './missions.js';
 import { openFurnitureShopModal, resumeLastSpot, setupControls } from './world.js';
@@ -477,6 +478,8 @@ export async function startGame(..._args: GameValue[]): Promise<GameValue> {
   if (!devMode && !game.player.isSleeping && !game.fainted) await resumeLastSpot();
   // il personaggio nuovo arriva in cortile con la valigia e le chiavi (arrival.ts)
   bindCoach();
+  // la freccetta gialla sul pulsante che il passo della missione dice di toccare
+  startGuidePointer();
   if (!devMode && firstCharacter && !game.session.hadSave) startArrival();
   if (game.player.isSleeping && hasRoom()) {
     // si riprende nel letto in cui ci si era addormentati, anche se è di un altro giocatore

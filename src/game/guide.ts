@@ -6,7 +6,7 @@ import { GUIDE_NEAR, type GuideDest, guideStep } from './guide-rules.js';
 import { isoProject } from './render/primitives.js';
 import { welcomeDest } from './welcome.js';
 import { arrivalGuide } from './arrival.js';
-import { getCurrentFurnitureMap } from './world.js';
+import { getCurrentFurnitureMap, mallShopFacade } from './world.js';
 
 /** La meta si ricalcola ogni tanto, non a ogni fotogramma (il vicino dell'assaggio costa). */
 const REFRESH_MS = 400;
@@ -23,6 +23,8 @@ function target(): { x: number; y: number } | null {
   const d = dest();
   if (!d) return null;
   const env: string = game.view.activeEnvironment;
+  // nel centro commerciale, verso la vetrina del negozio della meta
+  if (env === 'centro_commerciale' && d.env !== env) return mallShopFacade(d.env);
   const step = guideStep(
     {
       env,

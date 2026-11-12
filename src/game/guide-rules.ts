@@ -66,3 +66,84 @@ export function guideStep(here: GuideHere, dest: GuideDest, perApt = 8): GuideSt
 
 /** Sotto questa distanza dalla meta la freccia sparisce: ci si è già. */
 export const GUIDE_NEAR = 70;
+
+// ---------------------------------------------------------------- la freccetta sui pulsanti
+
+/** Le azioni che il passo della missione scrive tra «…»: sono i pulsanti da toccare. */
+export function quotedActions(hint: string): string[] {
+  return [...hint.matchAll(/«([^»]{1,40})»/g)].map((m) => m[1].trim()).filter(Boolean);
+}
+
+/** Il testo di un pulsante senza emoji, segni e maiuscole: "💼 Lavoro" → "lavoro". */
+export const plainLabel = (s: string): string =>
+  s
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N} ]+/gu, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+/**
+ * Quale pulsante evidenziare tra quelli visibili (testo per testo): prima quello che si chiama
+ * proprio come l'azione, poi quello che la contiene ("Continua Lavoro"). -1 se nessuno.
+ */
+export function pickAction(labels: string[], actions: string[]): number {
+  for (const exact of [true, false])
+    for (const a of actions.map(plainLabel).filter(Boolean)) {
+      const i = labels.findIndex((l) =>
+        exact ? plainLabel(l) === a : ` ${plainLabel(l)} `.includes(` ${a} `),
+      );
+      if (i >= 0) return i;
+    }
+  return -1;
+}
+
+/**
+ * Il passo chiede di aprire lo zaino adesso, nel posto giusto (taste.ts: "Sei nella stanza di…",
+ * "Avvicinati a…"): la freccetta va sull'icona 🎒. Non mentre si sta ancora andando dal vicino.
+ */
+export const wantsBackpack = (hint: string): boolean =>
+  /apri lo zaino/i.test(hint) && /^\S*\s*(Sei nella stanza|Avvicinati a)/u.test(hint);
+
+// ---------------------------------------------------------------- fuori dal condominio
+
+/** I negozi del centro commerciale (world.ts, MALL_SHOPS): ci si arriva dal centro commerciale. */
+export const MALL_ENVS = [
+  'centro_commerciale',
+  'negozio_mobili',
+  'negozio_vestiti',
+  'scommesse',
+  'sala_giochi',
+  'growshop',
+  'negozio_animali',
+  'collezionismo',
+  'usato',
+];
+
+/** I posti delle "Attività ricreative" e il loro pulsante. */
+const FUN_BUTTONS: Record<string, string> = {
+  passeggiata: 'btn-act-walk',
+  bar: 'btn-act-bar',
+  viaggio: 'btn-act-trip',
+  discoteca: 'btn-act-disco',
+};
+
+/** Gli altri posti del menu dell'uscita e il loro pulsante. */
+const EXIT_BUTTONS: Record<string, string> = {
+  banca: 'btn-act-bank',
+  commissariato: 'btn-act-police',
+  laboratorio: 'btn-act-art',
+  ingegneria: 'btn-act-eng',
+  CIMITERO: 'btn-act-cemetery',
+};
+
+/**
+ * Nel menu dell'uscita del condominio, il pulsante che porta verso `env` (o null): il centro
+ * commerciale per i suoi negozi, "Attività ricreative" e poi il posto per bar, discoteca…
+ */
+export function exitMenuButton(env: string, submenu: string): string | null {
+  if (env.startsWith('lavoro_')) return submenu ? 'btn-act-back' : 'btn-act-work';
+  if (FUN_BUTTONS[env]) return submenu === 'fun' ? FUN_BUTTONS[env] : 'btn-act-fun';
+  const id = MALL_ENVS.includes(env) ? 'btn-act-mall' : EXIT_BUTTONS[env];
+  if (!id) return null;
+  return submenu ? 'btn-act-back' : id;
+}
