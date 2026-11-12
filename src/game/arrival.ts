@@ -158,10 +158,14 @@ function showCoach(): void {
     box.classList.toggle('coach-wide', !!c.button);
   }
   box.classList.remove('hidden');
+  // il pulsante "Arreda" della stanza sale sopra il riquadro, finché il riquadro c'è
+  document.body.classList.add('coach-open');
+  document.body.style.setProperty('--coach-h', box.offsetHeight + 'px');
 }
 
 function hideCoach(): void {
   dom('coach')?.classList.add('hidden');
+  document.body.classList.remove('coach-open');
 }
 
 /** Chiude l'arrivo: la ✕ di chi vuole fare da solo (e gli script degli screenshot). */

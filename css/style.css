@@ -869,6 +869,10 @@ input:-webkit-autofill:focus {
 #btn-arrange.on {
   background: #2ed573;
 }
+/* durante l'arrivo (arrival.ts) il riquadro della guida sta in basso: il pulsante sale sopra */
+body.coach-open #btn-arrange {
+  bottom: calc(var(--coach-h, 90px) + 30px);
+}
 
 /* Modali & UI Browser */
 .fullscreen-modal {
