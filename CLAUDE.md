@@ -1,8 +1,9 @@
 # Casa Dolce Casa — note per lavorare sul codice
 
 Gioco multiplayer da browser (TypeScript, Vite, Firebase Realtime Database) con una scena
-isometrica disegnata su canvas. Un push su `main` pubblica il gioco su Firebase Hosting e la
-pagina del trasloco su GitHub Pages (`.github/workflows/pages.yml`), dopo i controlli e solo se
+isometrica disegnata su canvas. `main` è protetto: ci si arriva solo con una Pull Request da
+`prova` con i controlli verdi, e l'unione pubblica il gioco su Firebase Hosting e la
+pagina del trasloco su GitHub Pages (`.github/workflows/pages.yml`), solo se
 le regole del database online sono quelle della repo; un push sul ramo `prova` pubblica il gioco di prova, con il suo progetto Firebase
 (`prova.yml`, vedi `docs/ambiente-di-prova.md`). Fai commit e push solo quando l'utente lo chiede.
 

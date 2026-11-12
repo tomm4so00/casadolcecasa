@@ -115,6 +115,8 @@ export async function startAuction(code: string, opt: { resale?: boolean } = {})
     return false;
   }
   sfx('success');
+  // le aste avviate, per la missione del giorno
+  game.player.stats.auctionsStarted = (game.player.stats.auctionsStarted || 0) + 1;
   if (!opt.resale) {
     game.player.stats.paintings = (game.player.stats.paintings || 0) + 1;
     notePersonality('paint');
@@ -538,6 +540,8 @@ export async function placeBid(a: Auction): Promise<void> {
     return;
   }
   sfx('coin');
+  // le offerte fatte, per la missione del giorno
+  game.player.stats.auctionBids = (game.player.stats.auctionBids || 0) + 1;
   toast(`📨 Hai offerto ${dindini(amt)}: ora decide ${a.name}.`, 4000);
   const before = prev as Auction['bid'] | null;
   if (before && before.by !== me())

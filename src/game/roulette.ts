@@ -276,6 +276,8 @@ async function placeChip(key: string): Promise<void> {
     return;
   }
   sfx('coin');
+  // le puntate, per la missione del giorno
+  game.player.stats.rouletteBets = (game.player.stats.rouletteBets || 0) + 1;
   const list = pending();
   if (!list.includes(p.round)) setPending([...list, p.round]);
   // per "Ripeti": le puntate di questo giro come le ha salvate il database

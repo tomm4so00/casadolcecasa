@@ -414,6 +414,8 @@ function loop(now: number): void {
         s.paying = false;
         if (ok) {
           s.paid = true;
+          // le partite alla console, per la missione del giorno
+          game.player.stats.consoleGames = (game.player.stats.consoleGames || 0) + 1;
           sfx('coin');
         } else toast(`🪙 Ti servono ${s.coin} Đ in cassaforte per giocare.`, 3000);
       });

@@ -11,6 +11,7 @@ import { announceOnlineVersion, siteVersion } from './app-version.js';
 import { cleanupGuests } from './guests.js';
 import { notifyHacker } from './hacker.js';
 import { notifyAnniversaries } from './couples.js';
+import { notifyDailyMissions } from './daily.js';
 import { expireAuctions } from './auctions.js';
 import { forwardSuggestions, telegramFromEnv } from './suggestions.js';
 import { sendUsageReport } from './usage-report.js';
@@ -196,6 +197,9 @@ async function main() {
       // anniversari delle coppie, la mattina
       const anniversaries = await notifyAnniversaries(getDatabase(app), scheduledAt, send);
       if (anniversaries >= 0) console.log(`Anniversary notifications sent: ${anniversaries}`);
+      // le missioni del giorno, alle 10
+      const daily = await notifyDailyMissions(getDatabase(app), scheduledAt, send);
+      if (daily >= 0) console.log(`Daily mission notifications sent: ${daily}`);
       const rocket = await notifyRocketAlmostReady(getDatabase(app), scheduledAt, send);
       if (rocket >= 0) console.log(`Rocket almost ready, notifications sent: ${rocket}`);
       const warned = await sendDeathWarnings(getDatabase(app), scheduledAt, send);

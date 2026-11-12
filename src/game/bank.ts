@@ -62,6 +62,7 @@ async function askDeposit(): Promise<void> {
     return;
   }
   if (!(await bankDeposit(amount))) return;
+  game.player.stats.deposits = (game.player.stats.deposits || 0) + 1;
   sfx('coin');
   saveGame(true);
   toast(`✅ Hai depositato ${dindini(amount)}. Sul conto: ${dindini(game.bankBalance)}`, 4500);

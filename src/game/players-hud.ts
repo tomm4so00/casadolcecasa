@@ -7,7 +7,13 @@ import { bodyFromName, legacyLook, parseBody, parseLook, resolveLook } from './c
 import { drawPlayerAvatar } from './render/avatars.js';
 import { escapeHtmlSafe } from './needs.js';
 import type { OnlinePlayer } from './network-model.js';
-import { onlineVitals, type VitalKey } from './players-hud-rules.js';
+import {
+  ICONS_SHOWN,
+  iconOrder,
+  onlineVitals,
+  touchRecent,
+  type VitalKey,
+} from './players-hud-rules.js';
 import { roomLabel } from './realty-rules.js';
 import { relationKind } from './relations-rules.js';
 import { coupleText } from './couples.js';
@@ -22,17 +28,31 @@ import {
 const FULL_KEY = 'sims_hud_full';
 const ICON_PX = 64; // risoluzione del disegno; a schermo è 32 px
 
-/** Click sul riquadro dei parametri: passa da solo percentuali a percentuali con le barre. */
+/**
+ * Passa da solo percentuali a percentuali con le barre: i miei parametri e la scheda del vicino
+ * aperta cambiano insieme.
+ */
+function toggleCompact(): void {
+  const nowCompact = dom('needs-hud').classList.toggle('compact');
+  try {
+    localStorage.setItem(FULL_KEY, nowCompact ? '0' : '1');
+  } catch {
+    // senza memoria del browser vale fino alla chiusura
+  }
+  refresh(); // le icone si spostano: riposiziona subito la scheda
+}
+
+/** Tocco sul riquadro dei parametri: piccolo o con le barre. */
 function setupHudToggle(): void {
   const hud: HTMLElement = dom('needs-hud');
-  const full = localStorage.getItem(FULL_KEY) === '1';
+  let full = false;
+  try {
+    full = localStorage.getItem(FULL_KEY) === '1';
+  } catch {
+    // senza memoria del browser si parte piccoli
+  }
   hud.classList.toggle('compact', !full);
-  lifetime.listen(hud, 'click', (e: Event) => {
-    if (e.target instanceof Element && e.target.closest('#mission-text')) return; // apre le missioni
-    const nowCompact = hud.classList.toggle('compact');
-    localStorage.setItem(FULL_KEY, nowCompact ? '0' : '1');
-    refresh(); // le icone si spostano: riposiziona subito la scheda
-  });
+  lifetime.listen(hud, 'click', toggleCompact);
 }
 
 /** Disegna la testa del giocatore in una piccola icona tonda. */
@@ -72,6 +92,10 @@ function onlineList(): [string, OnlinePlayer][] {
 
 const lookKeys = new Map<string, string>();
 let openId: string | null = null;
+/** I vicini toccati, dal più recente: salgono in cima all'elenco. */
+let recent: string[] = [];
+/** L'elenco aperto con il pulsante «+». */
+let expanded = false;
 
 const VITAL_LABEL: Record<VitalKey, [string, string]> = {
   health: ['❤️ Salute', '#ff4757'],
@@ -134,15 +158,39 @@ function renderCard(op: OnlinePlayer, icon: HTMLElement, id: string): void {
     rows +
     personalityTag(op.pers, op.persLv) +
     (coupleText(id) ? `<div class="pc-couple">${escapeHtmlSafe(coupleText(id))}</div>` : '');
-  const list: HTMLElement = dom('players-online');
-  card.style.left = list.offsetLeft + list.offsetWidth + 6 + 'px';
-  card.style.top = Math.max(0, icon.offsetTop - list.scrollTop) + 'px';
+  // piccola o con le barre, come i miei parametri
+  card.classList.toggle('compact', dom('needs-hud').classList.contains('compact'));
   card.classList.remove('hidden');
+  placeCard(card, icon);
+}
+
+/** Spazio da lasciare a destra per l'etichetta della personalità, accanto alla scheda. */
+const TAG_ROOM = 96;
+
+/**
+ * Accanto alle icone dei giocatori, ma sempre dentro lo schermo: se a destra non c'è spazio la
+ * scheda si sposta verso sinistra (sopra i miei parametri: si chiude con ✕) e la personalità
+ * entra nella scheda invece di stare fuori.
+ */
+function placeCard(card: HTMLElement, icon: HTMLElement): void {
+  const list: HTMLElement = dom('players-online');
+  const hostLeft = (card.offsetParent as HTMLElement | null)?.getBoundingClientRect().left ?? 0;
+  const room = window.innerWidth - hostLeft - 6;
+  const want = list.offsetLeft + list.offsetWidth + 6;
+  card.classList.toggle('tight', want + card.offsetWidth + TAG_ROOM > room);
+  card.style.left = Math.max(0, Math.min(want, room - card.offsetWidth)) + 'px';
+  // all'altezza dell'icona, ma senza scendere oltre il fondo dello schermo
+  const hostTop = (card.offsetParent as HTMLElement | null)?.getBoundingClientRect().top ?? 0;
+  const bottom = window.innerHeight - hostTop - card.offsetHeight - 8;
+  card.style.top = Math.max(0, Math.min(icon.offsetTop - list.scrollTop, bottom)) + 'px';
+  // sopra i pulsanti di destra (zaino, audio…), che altrimenti coprirebbero la ✕
+  dom('hud-top-left').classList.add('card-open');
 }
 
 function closeCard(): void {
   openId = null;
   dom('player-card').classList.add('hidden');
+  dom('hud-top-left').classList.remove('card-open');
   (dom('players-online') as HTMLElement)
     .querySelectorAll('.po-icon.sel')
     .forEach((el) => el.classList.remove('sel'));
@@ -167,16 +215,25 @@ function refresh(): void {
   const list: HTMLElement = dom('players-online');
   const hudHidden = dom('needs-hud').classList.contains('hidden');
   updatePersonalityTag(hudHidden);
-  const players = hudHidden ? [] : onlineList();
-  list.classList.toggle('hidden', !players.length);
-  const ids = new Set(players.map(([id]) => id));
-  // toglie chi non è più online
+  const online = hudHidden ? [] : onlineList();
+  list.classList.toggle('hidden', !online.length);
+  const byId = new Map(online);
+  // al massimo ICONS_SHOWN icone, chi ho toccato per primo; le altre dietro al pulsante «+»
+  const { shown, hidden } = iconOrder(
+    online.map(([id]) => id),
+    recent,
+    expanded,
+  );
+  const players = shown.map((id) => [id, byId.get(id)!] as [string, OnlinePlayer]);
+  const ids = new Set(shown);
+  // toglie chi non è più online o non è in vista
   list.querySelectorAll<HTMLElement>('.po-icon').forEach((el) => {
     if (!ids.has(el.dataset.pid || '')) {
       lookKeys.delete(el.dataset.pid || '');
       el.remove();
     }
   });
+  updateMoreButton(list, online.length > ICONS_SHOWN + 1, hidden);
   players.forEach(([id, op], i) => {
     let el = list.querySelector<HTMLElement>(`.po-icon[data-pid="${CSS.escape(id)}"]`);
     if (!el) {
@@ -206,6 +263,9 @@ function refresh(): void {
       drawHeadIcon(el.querySelector('canvas') as HTMLCanvasElement, op);
     }
   });
+  // il pulsante «+» resta sempre in fondo
+  const more = list.querySelector('.po-more');
+  if (more && list.lastElementChild !== more) list.append(more);
   if (openId) {
     const op = ids.has(openId) ? game.onlinePlayers[openId] : null;
     const icon = list.querySelector<HTMLElement>(`.po-icon[data-pid="${CSS.escape(openId)}"]`);
@@ -214,19 +274,51 @@ function refresh(): void {
   }
 }
 
+/** Il pulsante dopo le icone: «+8» apre l'elenco intero, «−» lo richiude. */
+function updateMoreButton(list: HTMLElement, needed: boolean, hidden: number): void {
+  let btn = list.querySelector<HTMLElement>('.po-more');
+  if (!needed) {
+    btn?.remove();
+    expanded = false;
+    return;
+  }
+  if (!btn) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'po-more';
+    list.append(b);
+    btn = b;
+  }
+  const text = expanded ? '−' : '+' + hidden;
+  if (btn.textContent !== text) btn.textContent = text;
+  btn.title = expanded ? 'Mostra meno giocatori' : `Mostra altri ${hidden} giocatori online`;
+}
+
 export function startPlayersHud(): void {
   setupHudToggle();
   const list: HTMLElement = dom('players-online');
   lifetime.listen(list, 'click', (e: Event) => {
+    if (e.target instanceof Element && e.target.closest('.po-more')) {
+      expanded = !expanded;
+      closeCard();
+      list.scrollTop = 0;
+      return refresh();
+    }
     const icon = e.target instanceof Element ? e.target.closest<HTMLElement>('.po-icon') : null;
     if (!icon) return;
     const id = icon.dataset.pid || '';
     if (openId === id) return closeCard();
+    // chi tocco sale in cima e l'elenco si richiude: le icone non restano a metà schermo
     openId = id;
+    recent = touchRecent(recent, id);
+    expanded = false;
+    list.scrollTop = 0;
     refresh();
   });
+  // la ✕ chiude la scheda; il resto la fa piccola o grande, insieme ai miei parametri
   lifetime.listen(dom('player-card'), 'click', (e: Event) => {
     if (e.target instanceof Element && e.target.closest('.pc-close')) closeCard();
+    else toggleCompact();
   });
   refresh();
   lifetime.setInterval(refresh, 1000);

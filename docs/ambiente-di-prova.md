@@ -21,10 +21,18 @@ crea le 64 stanze; gli amici creano un personaggio nuovo.
 1. Le modifiche si uniscono nel ramo `prova` e si fa push: in pochi minuti il gioco di prova è
    aggiornato (regole comprese).
 2. Si prova con gli amici sul sito di prova.
-3. Si pubblicano le regole vere (`npm run rules:deploy`), poi si unisce `prova` in `main`. Se le
-   regole online non sono quelle della repo, `pages.yml` si ferma prima di pubblicare: online
-   resta il gioco di prima. Si pubblicano le regole e si rilancia il workflow (Actions → il run
-   fermo → Re-run jobs).
+3. Si apre una Pull Request da `prova` verso `main` (`gh pr create --base main --head prova`):
+   la sua pagina su GitHub mostra cosa cambia e fa girare i controlli, senza pubblicare niente.
+4. Si pubblicano le regole vere (`npm run rules:deploy`), poi si unisce la Pull Request con il
+   pulsante verde «Merge pull request» (o `gh pr merge --merge`): l'unione è il push su `main`
+   che pubblica il gioco. Se le regole online non sono quelle della repo, `pages.yml` si ferma
+   prima di pubblicare: online resta il gioco di prima. Si pubblicano le regole e si rilancia il
+   workflow (Actions → il run fermo → Re-run jobs).
+
+`main` è protetto: nessuno (amministratori compresi) può fare push direttamente, si entra solo con
+una Pull Request che abbia superato i controlli (`checks / check`). Chi lavora a una cosa sua può
+farsi un ramo (`git switch -c feature/nome`) e aprire la Pull Request verso `prova` per provarla
+con le altre, o verso `main` quando è pronta.
 
 ## Da fare una volta
 

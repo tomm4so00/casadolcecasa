@@ -196,6 +196,7 @@ export async function bizInvest(id: BusinessId): Promise<void> {
   )
     return;
   toast(`✅ Hai investito ${amt} Đ in ${b.name}`);
+  game.player.stats.trades = (game.player.stats.trades || 0) + 1;
   if (amt >= 1000)
     postGossip(
       `${game.player.myData.nick} ha investito ${amt.toLocaleString('it-IT')} Đ in ${b.name} 📈 Chissà cosa sa…`,
@@ -264,6 +265,7 @@ export async function bizWithdraw(id: BusinessId): Promise<void> {
     return;
   const amt = amount;
   toast(`💰 Hai ritirato ${amt} Đ da ${b.name}`);
+  game.player.stats.trades = (game.player.stats.trades || 0) + 1;
   saveGame(true);
   bizUpdate();
 }

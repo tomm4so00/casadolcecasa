@@ -284,7 +284,10 @@ export function decodeQuests(value: unknown): QuestState {
 }
 
 const followable = (id: string): boolean =>
-  id === 'none' || CHAPTERS.some((c) => c.id === id) || BONUS.some((b) => b.id === id);
+  id === 'none' ||
+  /^oggi:[a-z_]{2,20}$/.test(id) ||
+  CHAPTERS.some((c) => c.id === id) ||
+  BONUS.some((b) => b.id === id);
 
 export const chapterDone = (s: QuestState, c: Chapter): boolean =>
   (s.ch[c.id] ?? 0) >= c.quests.length;
