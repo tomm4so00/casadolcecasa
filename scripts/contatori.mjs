@@ -9,51 +9,13 @@ import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { changeLabel, ranking } from '../shared/usage-rules.ts';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const args = process.argv.slice(2);
 const PROJECT = args.includes('--prova') ? 'casadolcecasa-prova' : 'casadolcecasa-6d92a';
-const DAY = 86_400_000;
-
-/** Il giorno (AAAA-MM-GG) a Roma, come lo scrive il gioco. */
-const romeDay = (ms) =>
-  new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Rome' }).format(new Date(ms));
-
-/** Somma usi (n) e giocatori-giorno (p) per voce, nei giorni dati. */
-export function totals(usage, days) {
-  const out = {};
-  for (const day of days)
-    for (const [what, v] of Object.entries(usage?.[day] || {})) {
-      const t = (out[what] ??= { n: 0, p: 0 });
-      t.n += Number(v?.n) || 0;
-      t.p += Number(v?.p) || 0;
-    }
-  return out;
-}
-
-/** La classifica: voce, usi della settimana, prima, variazione, giocatori al giorno. */
-export function ranking(usage, now) {
-  const week = [...Array(7)].map((_, i) => romeDay(now - i * DAY));
-  const before = [...Array(7)].map((_, i) => romeDay(now - (i + 7) * DAY));
-  const a = totals(usage, week);
-  const b = totals(usage, before);
-  const keys = new Set([...Object.keys(a), ...Object.keys(b)]);
-  return [...keys]
-    .map((what) => {
-      const n = a[what]?.n || 0;
-      const prev = b[what]?.n || 0;
-      return {
-        what,
-        kind: what.startsWith('posto:') ? 'posto' : 'funzione',
-        name: what.replace(/^posto:/, ''),
-        n,
-        prev,
-        change: prev ? Math.round(((n - prev) / prev) * 100) : null,
-        players: Math.round(((a[what]?.p || 0) / 7) * 10) / 10,
-      };
-    })
-    .sort((x, y) => y.n - x.n);
-}
+// la classifica è la stessa del resoconto del lunedì su Telegram
+export { ranking };
 
 function readUsage() {
   const dir = mkdtempSync(join(tmpdir(), 'contatori-'));
@@ -85,7 +47,7 @@ function page(rows, now) {
             `<td class="bar"><span style="width:${Math.round((r.n / max) * 100)}%"></span></td>` +
             `<td class="num">${r.prev}</td>` +
             `<td class="num ${r.change > 0 ? 'up' : r.change < 0 ? 'down' : ''}">` +
-            `${r.change === null ? 'nuovo' : (r.change > 0 ? '+' : '') + r.change + '%'}</td>` +
+            `${changeLabel(r)}</td>` +
             `<td class="num">${r.players}</td></tr>`,
         )
         .join('') +
@@ -123,7 +85,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     for (const r of rows)
       console.log(
         `${r.kind.padEnd(8)} ${r.name.padEnd(28)} ${String(r.n).padStart(6)} usi` +
-          `  (prima ${r.prev}, ${r.change === null ? 'nuovo' : (r.change > 0 ? '+' : '') + r.change + '%'})` +
+          `  (prima ${r.prev}, ${changeLabel(r)})` +
           `  giocatori/giorno ${r.players}`,
       );
     if (!rows.length) console.log('Ancora nessun dato: i contatori partono con la versione nuova.');
