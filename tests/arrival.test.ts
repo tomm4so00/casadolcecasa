@@ -3,6 +3,7 @@ import {
   type ArrivalView,
   arrivalDest,
   coachFor,
+  coachPill,
   lowNeed,
   nextArrival,
 } from '../src/game/arrival-rules';
@@ -17,7 +18,10 @@ const at = (v: Partial<ArrivalView>): ArrivalView => ({
 
 describe("l'arrivo del giocatore nuovo", () => {
   it('va avanti solo arrivando nel posto giusto', () => {
-    expect(nextArrival('keys', at({ env: 'SALOON' }))).toBe('keys');
+    // nessun pulsante da toccare: entrando nel proprio salone si passa al passo dopo
+    expect(nextArrival('keys', at({}))).toBe('keys');
+    expect(nextArrival('keys', at({ env: 'SALOON', inMyApt: false }))).toBe('keys');
+    expect(nextArrival('keys', at({ env: 'SALOON' }))).toBe('room');
     expect(nextArrival('door', at({}))).toBe('door');
     expect(nextArrival('door', at({ env: 'SALOON', inMyApt: false }))).toBe('door');
     expect(nextArrival('door', at({ env: 'SALOON' }))).toBe('room');
@@ -37,11 +41,13 @@ describe("l'arrivo del giocatore nuovo", () => {
 
   it('i testi approvati, con nome, appartamento e stanza', () => {
     const c = { nick: 'Tommaso', apt: 0, room: 5, mission: 0, hint: '' };
-    expect(coachFor('keys', c)).toMatchObject({
+    expect(coachFor('keys', c)).toEqual({
+      label: 'PASSO 1 DI 5',
       title: '🔑 Benvenuto a casa, Tommaso!',
       text: 'Da oggi abiti qui: Appartamento 1 · Stanza 5. Ecco le chiavi! La freccia gialla ti porta al portone.',
-      button: 'Andiamo! 🏠',
     });
+    // ridotto con la ✕: la riga gialla sotto i parametri
+    expect(coachPill(coachFor('room', c)!)).toBe('📋 Passo 2 di 5 · tocca per riaprire la guida');
     expect(coachFor('door', c)?.label).toBe('PASSO 1 DI 5');
     expect(coachFor('room', c)?.text).toBe(
       '🏠 La porta numero 5 è la tua stanza: entra a dare un’occhiata.',

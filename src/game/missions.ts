@@ -1,5 +1,5 @@
 import { creditMoney } from './economy.js';
-import { tickArrival } from './arrival.js';
+import { reopenCoach, tickArrival } from './arrival.js';
 import type { LeaderboardScope } from './leaderboard.js';
 import type { GameValue } from './context.js';
 import { game } from './context.js';
@@ -87,6 +87,8 @@ export async function checkMissions(..._args: GameValue[]): Promise<void> {
 }
 
 export function openMissions(..._args: GameValue[]): GameValue {
+  // durante l'arrivo la riga gialla riapre il riquadro della guida
+  if (reopenCoach()) return void updateWelcomeHud();
   if (!game.MISSIONS.length) return void openWelcomeList();
   const lines: GameValue = game.MISSIONS.map(
     (m?: GameValue, i?: GameValue): GameValue =>

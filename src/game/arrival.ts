@@ -16,11 +16,18 @@ import {
   type ArrivalStep,
   arrivalDest,
   coachFor,
+  coachPill,
   isArrivalStep,
   lowNeed,
   nextArrival,
 } from './arrival-rules.js';
-import { acceptWelcomeMission, welcomeIndex, welcomeHint, welcomeOffering } from './welcome.js';
+import {
+  acceptWelcomeMission,
+  updateWelcomeHud,
+  welcomeIndex,
+  welcomeHint,
+  welcomeOffering,
+} from './welcome.js';
 
 const key = (what: string): string => `${game.session.LS_PREFIX}sims_arrival_${what}`;
 const read = (what: string): string | null => {
@@ -68,7 +75,7 @@ const myApt = (): number => {
   return room === null ? 0 : game.aptOfRoom(room);
 };
 
-/** Il personaggio nuovo arriva in cortile, davanti all'uscita, con le chiavi in mano. */
+/** Il personaggio nuovo arriva in cortile con la valigia e le chiavi in mano. */
 export function startArrival(): void {
   // già fatto su questo dispositivo (anche con un personaggio di prima): non si ripete
   if (!hasRoom() || read('step') === 'done') return;
@@ -130,12 +137,10 @@ export function tickArrival(): void {
   showCoach();
 }
 
-/** Il riquadro in basso: si aggiorna solo quando cambia il testo. */
-function showCoach(): void {
-  const box = dom('coach');
-  if (!box) return;
+/** Il riquadro del passo di adesso (o null). */
+function coachNow() {
   const room = myRoom();
-  const c = coachFor(current(), {
+  return coachFor(current(), {
     nick: String(game.player.myData.nick || ''),
     apt: myApt(),
     // lo stesso numero della porta e della riga sotto i parametri (su tutto il condominio)
@@ -143,6 +148,32 @@ function showCoach(): void {
     mission: welcomeIndex(),
     hint: welcomeHint(),
   });
+}
+
+/** Ridotto con la ✕: resta la riga gialla sotto i parametri, che lo riapre. */
+const collapsed = (): boolean => read('min') === '1';
+
+/** La riga gialla sotto i parametri (welcome.ts), solo con il riquadro ridotto. */
+export function arrivalHudText(): string | null {
+  if (!arrivalActive() || !collapsed()) return null;
+  const c = coachNow();
+  return c ? coachPill(c) : null;
+}
+
+/** Tocco sulla riga gialla: il riquadro si riapre. Vero se c'era da riaprire. */
+export function reopenCoach(): boolean {
+  if (!arrivalActive() || !collapsed()) return false;
+  write('min', '0');
+  showCoach();
+  return true;
+}
+
+/** Il riquadro in basso: si aggiorna solo quando cambia il testo. */
+function showCoach(): void {
+  const box = dom('coach');
+  if (!box) return;
+  if (collapsed()) return hideCoach();
+  const c = coachNow();
   if (!c) return hideCoach();
   const sig = JSON.stringify(c);
   if (box.dataset.sig !== sig) {
@@ -152,10 +183,6 @@ function showCoach(): void {
     dom('coach-title').textContent = c.title || '';
     dom('coach-title').classList.toggle('hidden', !c.title);
     dom('coach-text').textContent = c.text;
-    dom('coach-go').textContent = c.button || '';
-    dom('coach-go').classList.toggle('hidden', !c.button);
-    dom('coach-close').classList.toggle('hidden', !!c.button);
-    box.classList.toggle('coach-wide', !!c.button);
   }
   box.classList.remove('hidden');
   // il pulsante "Arreda" della stanza sale sopra il riquadro, finché il riquadro c'è
@@ -168,23 +195,19 @@ function hideCoach(): void {
   document.body.classList.remove('coach-open');
 }
 
-/** Chiude l'arrivo: la ✕ di chi vuole fare da solo (e gli script degli screenshot). */
+/** Chiude l'arrivo (gli script degli screenshot). */
 export function finishArrival(): void {
   loaded = true;
   setStep('done');
   hideCoach();
 }
 
-/** I pulsanti del riquadro: "Andiamo!" e la ✕ di chi vuole fare da solo. */
+/** La ✕ del riquadro: lo riduce alla riga gialla sotto i parametri (la guida va avanti lo stesso). */
 export function bindCoach(): void {
-  lifetime.listen(dom('coach-go'), 'click', () => {
-    if (current() !== 'keys') return;
-    setStep('door');
-    showCoach();
-  });
   lifetime.listen(dom('coach-close'), 'click', () => {
-    finishArrival();
-    toast('Va bene! Le missioni restano sotto i parametri.', 4000);
+    write('min', '1');
+    hideCoach();
+    updateWelcomeHud();
   });
 }
 

@@ -78,7 +78,6 @@ export const FUNNEL_STEPS = [
   { key: 'ingresso:18anni', label: '18 anni confermati' },
   { key: 'ingresso:personaggio', label: 'Personaggio creato' },
   // l'arrivo in cortile (src/game/arrival.ts)
-  { key: 'ingresso:arrivo_door', label: 'Chiavi prese (Andiamo!)' },
   { key: 'ingresso:arrivo_room', label: 'Arrivato nel salone' },
   { key: 'ingresso:arrivo_gift', label: 'Entrato nella sua stanza' },
   { key: 'ingresso:arrivo_cook', label: 'Arrivato in cucina' },

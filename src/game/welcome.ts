@@ -9,7 +9,7 @@ import { creditMoney } from './economy.js';
 import { hasRoom, saveGame } from './saves.js';
 import type { GuideDest } from './guide-rules.js';
 import { tasteHint, tasteTarget } from './taste.js';
-import { arrivalActive } from './arrival.js';
+import { arrivalActive, arrivalHudText } from './arrival.js';
 import {
   missionsOf,
   type WelcomeState,
@@ -279,8 +279,8 @@ export async function openWelcomeList(): Promise<void> {
 export function updateWelcomeHud(): void {
   const el = dom('mission-text');
   if (!el) return;
-  // durante l'arrivo il passo è nel riquadro in basso
-  const text = arrivalActive() ? null : welcomeHudText();
+  // durante l'arrivo il passo è nel riquadro in basso (o nella riga gialla, se l'ha ridotto)
+  const text = arrivalActive() ? arrivalHudText() : welcomeHudText();
   el.style.display = text ? '' : 'none';
   if (text && el.textContent !== text) el.textContent = text;
 }

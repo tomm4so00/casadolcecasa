@@ -23,9 +23,11 @@ export interface ArrivalView {
   mission: number;
 }
 
-/** Il passo dopo questo, guardando dove si è; 'keys' aspetta il tocco su "Andiamo!". */
+/** Il passo dopo questo, guardando dove si è: si va avanti da soli, arrivando nel posto giusto. */
 export function nextArrival(step: ArrivalStep, v: ArrivalView): ArrivalStep {
   switch (step) {
+    // 'door' è il passo di prima (con il pulsante "Andiamo!"): chi l'ha salvato va avanti lo stesso
+    case 'keys':
     case 'door':
       return v.env === 'SALOON' && v.inMyApt ? 'room' : step;
     case 'room':
@@ -55,12 +57,10 @@ export function arrivalDest(step: ArrivalStep, apt: number, room: number | null)
 }
 
 export interface Coach {
-  /** "PASSO 1 DI 5" (vuoto nel primo riquadro, quello con il titolo). */
+  /** "PASSO 1 DI 5". */
   label: string;
   title?: string;
   text: string;
-  /** Il pulsante per andare avanti (solo all'inizio). */
-  button?: string;
 }
 
 /**
@@ -75,10 +75,9 @@ export function coachFor(
   switch (step) {
     case 'keys':
       return {
-        label: '',
+        label: 'PASSO 1 DI 5',
         title: `🔑 Benvenuto a casa, ${c.nick}!`,
         text: `Da oggi abiti qui: ${aptName} · Stanza ${c.room}. Ecco le chiavi! La freccia gialla ti porta al portone.`,
-        button: 'Andiamo! 🏠',
       };
     case 'door':
       return {
@@ -114,6 +113,10 @@ export function coachFor(
       return null;
   }
 }
+
+/** La riga gialla sotto i parametri quando il riquadro è chiuso con la ✕: si tocca per riaprirlo. */
+export const coachPill = (c: Coach): string =>
+  `📋 ${c.label ? c.label.charAt(0) + c.label.slice(1).toLowerCase() : 'Benvenuto'} · tocca per riaprire la guida`;
 
 /** I parametri che, sotto questa soglia, fanno comparire la spiegazione una volta. */
 export const LOW_NEED = 30;
