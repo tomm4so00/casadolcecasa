@@ -4,6 +4,9 @@ import { lifetime } from './runtime.js';
 import { setDevelopmentRaid } from './dealer-rules.js';
 import { DEV_PIN } from './dev-fixture.js';
 import { saveGame } from './saves.js';
+import { game } from './context.js';
+import { mgStop } from './jobs.js';
+import { chooseOrGoToJob } from './world.js';
 
 /** Base comune; ogni scenario aggiunge soltanto stato e comandi propri. */
 export async function startDevGame(): Promise<void> {
@@ -53,6 +56,47 @@ export async function startDevGame(): Promise<void> {
     panel.append(button);
   }
   document.body.append(panel);
+  const workChoices = document.createElement('div');
+  workChoices.id = 'dev-work-choices';
+  workChoices.hidden = true;
+  workChoices.style.cssText = 'flex-basis:100%;display:none;gap:6px;flex-wrap:wrap';
+  const workButton = document.createElement('button');
+  workButton.textContent = 'Scenario lavori';
+  workButton.setAttribute('aria-expanded', 'false');
+  workButton.onclick = () => {
+    workChoices.hidden = !workChoices.hidden;
+    workChoices.style.display = workChoices.hidden ? 'none' : 'flex';
+    workButton.setAttribute('aria-expanded', String(!workChoices.hidden));
+  };
+  for (const [key, title] of Object.entries({
+    cantiere: 'Cantiere',
+    ospedale: 'Ospedale',
+    ristorante: 'Ristorante',
+    ufficio: 'Ufficio',
+  })) {
+    const button = document.createElement('button');
+    button.textContent = title;
+    button.onclick = async () => {
+      if (!devMode) return;
+      mgStop();
+      game.activeShift = null;
+      game.player.activeJobKey = null;
+      game.player.workDay = undefined;
+      game.player.healthLevel = game.player.sleepLevel = game.player.hungerLevel = 100;
+      await chooseOrGoToJob(key, title);
+      workChoices.hidden = true;
+      workChoices.style.display = 'none';
+      workButton.setAttribute('aria-expanded', 'false');
+      // Lascia libera la parte alta per compito e tempo del lavoro.
+      panel.style.top = 'auto';
+      panel.style.bottom = '8px';
+      panel.style.left = '8px';
+      panel.style.transform = 'none';
+      panel.style.maxWidth = 'min(240px, 45vw)';
+    };
+    workChoices.append(button);
+  }
+  panel.append(workButton, workChoices);
   lifetime.add(() => {
     panel.remove();
     Reflect.deleteProperty(window, 'testGame');

@@ -1,6 +1,6 @@
 {
   "name": "casa-dolce-casa",
-  "version": "0.37.0",
+  "version": "0.38.0",
   "private": true,
   "type": "module",
   "engines": {
@@ -18,7 +18,13 @@
     "test": "vitest run",
     "test:browser": "node tests/browser-smoke.mjs",
     "test:dev-mode": "node tests/browser-dev-mode.mjs",
-    "check": "npm run format:check && npm run typecheck && vitest run && node tests/browser-smoke.mjs",
+    "setup:deps": "npm ci && npm ci --prefix server && npm ci --prefix worker",
+    "test:browsers": "npm run test:browser && npm run test:dev-mode",
+    "check:dependencies": "node scripts/dependency-cycles.mjs",
+    "check:client": "npm run typecheck && npm run check:dependencies && npm test && npm run test:browsers",
+    "check:server": "npm run build --prefix server",
+    "check:worker": "npm run check --prefix worker",
+    "check": "npm run format:check && npm run check:client && npm run check:server && npm run check:worker",
     "shot": "node scripts/shot.mjs",
     "gamevalue:budget": "node scripts/gamevalue-budget.mjs",
     "test:cloud": "npm run build:server && firebase emulators:exec --only auth,database --project demo-casadolcecasa \"node tests/browser-cloud.mjs\"",

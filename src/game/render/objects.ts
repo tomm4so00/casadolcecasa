@@ -1,4 +1,4 @@
-import { PANEL_DOOR, PORTONE, doorOpenAmount } from './doors.js';
+﻿import { PANEL_DOOR, PORTONE, doorOpenAmount } from './doors.js';
 import { drawShowroomItem } from './showroom.js';
 import { clockText } from '../game-clock.js';
 import { drawBar } from './bar.js';
@@ -2375,25 +2375,29 @@ export function drawRestCounterProp(it?: GameValue, t?: GameValue): GameValue {
   }
 }
 
+/** Acciaio spazzolato: il riflesso scende in diagonale sulla faccia. */
+function paintSteel(W: number, H: number): void {
+  const ctx = game.view.ctx;
+  const g = ctx.createLinearGradient(0, 0, W, 0);
+  g.addColorStop(0, '#dfe6e9');
+  g.addColorStop(0.5, '#b2bec3');
+  g.addColorStop(1, '#d1d8dc');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, W, H);
+}
+
 /**
  * Fornelli in acciaio: manopole, sportello del forno col vetro e la luce, piano scuro con quattro
- * fuochi. `glow` è la luce del forno (0-1), `flame` accende un fuoco. Lo usano la cucina di casa e
+ * fuochi. `glow` è la luce del forno (0-1), `flame` accende il fuoco numero `flameAt`. Lo usano la cucina di casa e
  * il ristorante; pentole e padelle le aggiunge chi lo usa.
  */
-function drawSteelStove(it: GameValue, glow: number, flame: boolean): void {
+function drawSteelStove(it: GameValue, glow: number, flame: boolean, flameAt = 2): void {
   const ctx = game.view.ctx;
   // `facing: 'x'`: contro il muro di sinistra, con il davanti verso la sala
   const front = it.facing === 'x' ? 'right' : 'left';
   const side = it.facing === 'x' ? 'left' : 'right';
   const body: GameValue = box(it.x, it.y, it.w, it.h, it.z - 4, '#c8d0d4');
-  const steel = (W: number, H: number): void => {
-    const g = ctx.createLinearGradient(0, 0, W, 0);
-    g.addColorStop(0, '#dfe6e9');
-    g.addColorStop(0.5, '#b2bec3');
-    g.addColorStop(1, '#d1d8dc');
-    ctx.fillStyle = g;
-    ctx.fillRect(0, 0, W, H);
-  };
+  const steel = paintSteel;
   onFace(body, front, (W: number, H: number): void => {
     steel(W, H);
     // striscia delle manopole
@@ -2434,8 +2438,8 @@ function drawSteelStove(it: GameValue, glow: number, flame: boolean): void {
       const cx = W * u,
         cy = H * v,
         r = Math.min(W, H) * 0.17;
-      // il fuoco acceso (quello davanti a sinistra) ha la fiamma blu e arancio
-      ctx.fillStyle = flame && n === 2 ? '#e67e22' : '#1e272e';
+      // il fuoco acceso (di solito quello davanti a sinistra) ha la fiamma blu e arancio
+      ctx.fillStyle = flame && n === flameAt ? '#e67e22' : '#1e272e';
       ctx.beginPath();
       ctx.arc(cx, cy, r, 0, 6.3);
       ctx.fill();
@@ -2451,43 +2455,470 @@ function drawSteelStove(it: GameValue, glow: number, flame: boolean): void {
   });
 }
 
-export function drawChefStoveProp(it?: GameValue, t?: GameValue): GameValue {
+/** Come appare la pentola della pasta: la disegna il ristorante, sul lavello, in mano o sul fuoco. */
+export interface PotLook {
+  /** livello dell'acqua, 0-1 */
+  water: number;
+  /** quanto bolle, 0-1 */
+  boil: number;
+  /** la pasta: -1 non c'è ancora, poi da 0 (appena buttata, dritta) a 1 (cotta) */
+  pasta: number;
+  /** grandezza, 0-1: la pentola compare e sparisce rimpicciolendo */
+  size: number;
+  /** schizzi d'acqua dal bordo (0-1, poi spariscono), quando la si posa sul fuoco */
+  splash?: number;
+  /** vapore in più, a parte quello del bollore */
+  steam?: number;
+  /** quanto sta sopra il fuoco mentre la si posa */
+  lift?: number;
+}
+
+/** Dove sono le pentole della cucina del ristorante e se scorre l'acqua del lavello. */
+export interface ChefPots {
+  sink?: PotLook;
+  stove?: PotLook;
+  pour?: boolean;
+}
+
+let chefPots: (() => ChefPots) | null = null;
+/** Il ristorante dice dove sta la pentola: nel lavello mentre si riempie o sul fuoco. */
+export function setChefPots(fn: (() => ChefPots) | null): void {
+  chefPots = fn;
+}
+
+const POT_R = 11,
+  POT_H = 13;
+
+/** Una piccola pseudo-casualità fissa per bolle e spaghetti (sempre uguale per lo stesso i). */
+const jitter = (i: number): number => {
+  const v = Math.sin(i * 127.1 + 31.7) * 43758.5453;
+  return v - Math.floor(v);
+};
+
+/**
+ * Pentola tonda d'acciaio con i manici, vista dall'alto di sbieco: dentro l'acqua al suo livello, le
+ * bolle quando bolle, gli spaghetti (dritti appena buttati, poi molli e giù nell'acqua) e il vapore.
+ * (x, y, z) è il centro del fondo.
+ */
+function drawStockPot(x: number, y: number, z: number, p: PotLook, t: number): void {
+  if (p.size <= 0.02) return;
   const ctx = game.view.ctx;
-  drawSteelStove(it, 0.6, true);
-  // la pentola della pasta (col vapore) e una padella sul fuoco
-  const s: GameValue = isoScale();
-  const burner = (u: number, v: number): [number, number] => [
-    it.x + it.w * (u - 0.5),
-    it.y + it.h * (v - 0.5),
-  ];
-  const [px, py] = burner(0.28, 0.27);
-  const pot: GameValue = box(px, py, 16, 16, 12, '#95a5a6', { z0: it.z });
-  onFace(pot, 'top', (W: number, H: number): void => {
-    ctx.fillStyle = '#74b9ff';
-    ctx.fillRect(2, 2, W - 4, H - 4);
-    ctx.strokeStyle = '#ffeaa7';
-    ctx.lineWidth = 1;
-    for (let k = 0; k < 4; k++) {
+  const s: number = isoScale();
+  const c0 = isoProject(x, y, z),
+    c1 = isoProject(x, y, z + POT_H);
+  const ex = isoProject(x + POT_R, y, z),
+    ey = isoProject(x, y + POT_R, z);
+  const rx = Math.hypot(ex.x - c0.x, ey.x - c0.x),
+    ry = Math.hypot(ex.y - c0.y, ey.y - c0.y);
+  /** quanto sale sullo schermo un'unità di quota */
+  const kz = (c0.y - c1.y) / POT_H;
+  ctx.save();
+  ctx.translate(c0.x, c0.y);
+  ctx.scale(p.size, p.size);
+  ctx.translate(-c0.x, -c0.y);
+  // i manici ai due lati, sotto il bordo
+  ctx.fillStyle = '#636e72';
+  for (const side of [-1, 1]) {
+    ctx.beginPath();
+    ctx.ellipse(c0.x + side * rx, c1.y + 3 * kz, 3 * s, 1.6 * s, 0, 0, 6.3);
+    ctx.fill();
+  }
+  // il fianco: dal mezzo ellisse davanti del fondo a quello del bordo
+  const g = ctx.createLinearGradient(c0.x - rx, 0, c0.x + rx, 0);
+  g.addColorStop(0, '#8395a7');
+  g.addColorStop(0.35, '#e8ecee');
+  g.addColorStop(0.7, '#b2bec3');
+  g.addColorStop(1, '#7f8c8d');
+  ctx.fillStyle = g;
+  ctx.beginPath();
+  ctx.moveTo(c0.x - rx, c1.y);
+  ctx.lineTo(c0.x - rx, c0.y);
+  ctx.ellipse(c0.x, c0.y, rx, ry, 0, Math.PI, 0, true);
+  ctx.lineTo(c0.x + rx, c1.y);
+  ctx.ellipse(c1.x, c1.y, rx, ry, 0, 0, Math.PI, false);
+  ctx.fill();
+  // una riga scura a metà, come le pentole da ristorante
+  ctx.strokeStyle = 'rgba(45,52,54,0.25)';
+  ctx.lineWidth = 0.8 * s;
+  ctx.beginPath();
+  ctx.ellipse(c0.x, c0.y - POT_H * 0.35 * kz, rx, ry, 0, 0, Math.PI, false);
+  ctx.stroke();
+  // dentro: il fondo scuro, poi l'acqua al suo livello (si vede solo dentro il bordo)
+  ctx.save();
+  ctx.beginPath();
+  ctx.ellipse(c1.x, c1.y, rx * 0.9, ry * 0.9, 0, 0, 6.3);
+  ctx.fillStyle = '#3d4548';
+  ctx.fill();
+  ctx.clip();
+  if (p.water > 0.02) {
+    const wy = c1.y + (1 - p.water) * (POT_H - 1.5) * kz;
+    const hot = Math.min(1, p.boil);
+    ctx.fillStyle = `rgb(${116 + 90 * hot},${185 + 40 * hot},${255})`;
+    ctx.beginPath();
+    ctx.ellipse(c1.x, wy, rx * 0.9, ry * 0.9, 0, 0, 6.3);
+    ctx.fill();
+    // il riflesso che ondeggia
+    ctx.strokeStyle = 'rgba(255,255,255,0.55)';
+    ctx.lineWidth = 0.9 * s;
+    ctx.beginPath();
+    ctx.ellipse(
+      c1.x - rx * 0.2,
+      wy - ry * 0.25,
+      rx * 0.35,
+      ry * 0.18,
+      Math.sin(t * 3) * 0.2,
+      3.6,
+      5.4,
+    );
+    ctx.stroke();
+    // gli spaghetti molli che girano nell'acqua
+    if (p.pasta >= 0) {
+      ctx.strokeStyle = '#f5c542';
+      ctx.lineWidth = 1 * s;
+      const soft = Math.min(1, p.pasta);
+      for (let i = 0; i < 9; i++) {
+        const a = jitter(i) * 6.3 + t * (0.4 + p.boil * 0.8);
+        const rr = 0.25 + jitter(i + 9) * 0.5;
+        const sx = c1.x + Math.cos(a) * rx * rr,
+          sy = wy + Math.sin(a) * ry * rr;
+        ctx.beginPath();
+        ctx.moveTo(sx - 3 * s, sy);
+        ctx.quadraticCurveTo(
+          sx,
+          sy + (2 + soft * 2) * s * Math.sin(t * 4 + i),
+          sx + 3.5 * s,
+          sy - s,
+        );
+        ctx.stroke();
+      }
+    }
+    // le bolle: crescono e scoppiano, sempre di più col bollore
+    const n = Math.round(p.boil * 9);
+    for (let i = 0; i < n; i++) {
+      const ph = (t * (1.8 + jitter(i) * 1.4) + jitter(i + 3)) % 1;
+      const a = jitter(i + 7) * 6.3 + Math.floor(t * 0.8 + jitter(i)) * 2.1;
+      const rr = Math.sqrt(jitter(i + 11)) * 0.75;
+      const bx = c1.x + Math.cos(a) * rx * rr,
+        by = wy + Math.sin(a) * ry * rr;
+      ctx.strokeStyle = `rgba(255,255,255,${0.9 * (1 - ph)})`;
+      ctx.lineWidth = 0.8 * s;
       ctx.beginPath();
-      ctx.moveTo(3 + k * 3, 4);
-      ctx.quadraticCurveTo(W / 2, H / 2 + k, W - 4, H - 4 - k);
+      ctx.arc(bx, by - ph * 1.5 * s, (0.6 + ph * 1.6) * s, 0, 6.3);
+      ctx.stroke();
+    }
+  }
+  ctx.restore();
+  // il bordo lucido
+  ctx.strokeStyle = '#f5f6fa';
+  ctx.lineWidth = 1.3 * s;
+  ctx.beginPath();
+  ctx.ellipse(c1.x, c1.y, rx, ry, 0, 0, 6.3);
+  ctx.stroke();
+  // appena buttati gli spaghetti spuntano dritti dal bordo, poi si ammorbidiscono e scendono
+  if (p.pasta >= 0 && p.pasta < 1) {
+    const stiff = 1 - p.pasta;
+    ctx.strokeStyle = '#e1b12c';
+    ctx.lineWidth = 0.9 * s;
+    for (let i = 0; i < 8; i++) {
+      const bx = c1.x + (jitter(i + 20) - 0.5) * rx * 0.5,
+        by = c1.y + 2 * kz;
+      const lean = (jitter(i + 30) - 0.3) * 7 * s;
+      const len = (6 + jitter(i + 40) * 6) * stiff * kz;
+      ctx.beginPath();
+      ctx.moveTo(bx, by);
+      ctx.quadraticCurveTo(
+        bx + lean * 0.3,
+        by - len * 0.6,
+        bx + lean * (1 + p.pasta),
+        by - len + p.pasta * 4 * s,
+      );
+      ctx.stroke();
+    }
+  }
+  // schizzi quando la pentola tocca il fuoco
+  if (p.splash !== undefined && p.splash > 0 && p.splash < 1) {
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * 6.3 + 0.3;
+      const k = p.splash;
+      ctx.fillStyle = `rgba(160,210,255,${0.9 * (1 - k)})`;
+      ctx.beginPath();
+      ctx.arc(
+        c1.x + Math.cos(a) * rx * (0.6 + k * 0.9),
+        c1.y + Math.sin(a) * ry * (0.6 + k * 0.9) - Math.sin(k * Math.PI) * 6 * s,
+        1.2 * s,
+        0,
+        6.3,
+      );
+      ctx.fill();
+    }
+  }
+  ctx.restore();
+  // il vapore sale anche quando la pentola sparisce
+  const steam = Math.min(1, Math.max(p.boil * 0.9, p.steam || 0));
+  if (steam > 0.05) {
+    for (let k = 0; k < 4; k++) {
+      const ph = (t * 0.6 + k / 4) % 1;
+      const sp = isoProject(x + Math.sin(t + k * 2) * 2, y, z + POT_H + 2 + ph * 26);
+      ctx.fillStyle = `rgba(255,255,255,${0.42 * steam * (1 - ph)})`;
+      ctx.beginPath();
+      ctx.arc(sp.x + Math.sin(ph * 5 + k) * 3 * s, sp.y, (2.5 + ph * 5) * s, 0, 6.3);
+      ctx.fill();
+    }
+  }
+}
+
+/** Il fuoco sotto la pentola: quello in fondo verso la sala. */
+const CHEF_POT_BURNER: [number, number] = [0.72, 0.27];
+
+/** Dove sta il fondo della pentola sui fornelli del ristorante. */
+export function chefStovePotAt(it: { x: number; y: number; w: number; h: number; z: number }): {
+  x: number;
+  y: number;
+  z: number;
+} {
+  return {
+    x: it.x + it.w * (CHEF_POT_BURNER[0] - 0.5),
+    y: it.y + it.h * (CHEF_POT_BURNER[1] - 0.5),
+    z: it.z,
+  };
+}
+
+/** I fornelli del ristorante, puliti: sopra c'è solo la pentola della pasta, quando cuoce. */
+export function drawChefStoveProp(it?: GameValue, t?: GameValue): GameValue {
+  const pot = chefPots?.().stove;
+  // il fuoco si accende solo sotto la pentola
+  drawSteelStove(it, 0.6, !!pot, 1);
+  if (pot) {
+    const at = chefStovePotAt(it);
+    drawStockPot(at.x, at.y, at.z + (pot.lift || 0), pot, t || 0);
+  }
+}
+
+/** Quanto è profonda la vasca del lavello del ristorante. */
+const SINK_DEPTH = 9;
+
+/** Le misure di un pezzo della stazione di cucina. */
+type StationProp = { x: number; y: number; w: number; h: number; z: number };
+
+/**
+ * Lavello da cucina professionale, accanto ai fornelli e alto come loro: mobile in acciaio con le
+ * ante, vasca profonda, rubinetto a collo di cigno e la doccetta a molla per sciacquare i piatti.
+ * Sta contro il muro di sinistra con il davanti verso la sala, come i fornelli.
+ */
+export function drawChefSinkProp(it: StationProp, t = 0): void {
+  const ctx = game.view.ctx;
+  const s: number = isoScale();
+  const body = box(it.x, it.y, it.w, it.h, it.z - 4, '#c8d0d4');
+  onFace(body, 'right', (W: number, H: number): void => {
+    paintSteel(W, H);
+    // due ante con le maniglie lunghe e lo zoccolo scuro
+    ctx.strokeStyle = 'rgba(45,52,54,0.45)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(3, 6, W / 2 - 4.5, H - 14);
+    ctx.strokeRect(W / 2 + 1.5, 6, W / 2 - 4.5, H - 14);
+    ctx.fillStyle = '#636e72';
+    ctx.fillRect(W / 2 - 6, 10, 2, H * 0.35);
+    ctx.fillRect(W / 2 + 4, 10, 2, H * 0.35);
+    ctx.fillStyle = '#2d3436';
+    ctx.fillRect(0, H - 5, W, 5);
+  });
+  onFace(body, 'left', (W: number, H: number): void => {
+    paintSteel(W, H);
+    ctx.fillStyle = '#2d3436';
+    ctx.fillRect(0, H - 5, W, 5);
+  });
+  // piano in acciaio con il bordo, la vasca incassata e lo scolapiatti
+  const top = box(it.x, it.y, it.w, it.h, 4, '#dfe6e9', { z0: it.z - 4 });
+  /** La vasca sul piano (in frazioni del piano) e quanto è profonda. */
+  const basin = (W: number, H: number) => ({ bx: W * 0.3, by: H * 0.3, bw: W * 0.58, bh: H * 0.6 });
+  onFace(top, 'top', (W: number, H: number): void => {
+    ctx.fillStyle = '#e4e9eb';
+    ctx.fillRect(0, 0, W, H);
+    ctx.strokeStyle = '#95a5a6';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(1, 1, W - 2, H - 2);
+    const { bx, by, bw, bh } = basin(W, H);
+    // Dentro la vasca si vedono le due pareti di fondo e il fondo, più in basso: scendere di D
+    // sul piano disegnato equivale a spostarsi di D verso chi guarda su tutti e due gli assi.
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(bx, by, bw, bh);
+    ctx.clip();
+    ctx.fillStyle = '#7f8c8d'; // la parete contro il muro, in ombra
+    ctx.fillRect(bx, by, bw, bh);
+    ctx.fillStyle = '#95a5a6'; // la parete dalla parte dei fornelli, un po' più chiara
+    ctx.beginPath();
+    ctx.moveTo(bx, by);
+    ctx.lineTo(bx + bw, by);
+    ctx.lineTo(bx + bw + SINK_DEPTH, by + SINK_DEPTH);
+    ctx.lineTo(bx + SINK_DEPTH, by + SINK_DEPTH);
+    ctx.closePath();
+    ctx.fill();
+    const g = ctx.createLinearGradient(bx + SINK_DEPTH, 0, bx + bw + SINK_DEPTH, 0);
+    g.addColorStop(0, '#9aa5a9');
+    g.addColorStop(1, '#bcc6ca');
+    ctx.fillStyle = g;
+    ctx.fillRect(bx + SINK_DEPTH, by + SINK_DEPTH, bw, bh);
+    ctx.fillStyle = '#2d3436';
+    ctx.beginPath();
+    ctx.arc(
+      bx + SINK_DEPTH + (bw - SINK_DEPTH) / 2,
+      by + SINK_DEPTH + (bh - SINK_DEPTH) / 2,
+      2,
+      0,
+      6.3,
+    );
+    ctx.fill();
+    ctx.restore();
+    ctx.strokeStyle = '#636e72';
+    ctx.lineWidth = 0.8;
+    ctx.strokeRect(bx, by, bw, bh);
+    // lo scolapiatti, dalla parte dei fornelli
+    ctx.strokeStyle = 'rgba(99,110,114,0.5)';
+    for (let v = 4; v < by - 2; v += 2.5) {
+      ctx.beginPath();
+      ctx.moveTo(bx, v);
+      ctx.lineTo(bx + bw, v);
       ctx.stroke();
     }
   });
-  for (let k = 0; k < 2; k++) {
-    const ph = ((t || 0) * 0.7 + k / 2) % 1;
-    const p = isoProject(px, py, it.z + 16 + ph * 18);
-    ctx.fillStyle = `rgba(255,255,255,${0.4 * (1 - ph)})`;
-    ctx.beginPath();
-    ctx.arc(p.x, p.y, (3 + ph * 4) * s, 0, 6.3);
-    ctx.fill();
+  // rubinetto a collo di cigno, attaccato dietro e sopra la vasca
+  const fx = it.x - it.w / 2 + 6;
+  const fy = it.y + it.h * 0.1;
+  box(fx, fy, 3, 3, 24, '#b2bec3', { z0: it.z });
+  box(fx + 7, fy, 14, 3, 3, '#b2bec3', { z0: it.z + 21 });
+  box(fx + 13, fy, 3, 3, 4, '#95a5a6', { z0: it.z + 17 });
+  // la doccetta: un tubo alto con la molla che scende fino alla pistola
+  const sy = it.y + it.h * 0.36;
+  box(fx, sy, 3, 3, 40, '#b2bec3', { z0: it.z });
+  ctx.strokeStyle = '#7f8c8d';
+  ctx.lineWidth = 1.4 * s;
+  ctx.beginPath();
+  for (let k = 0; k <= 16; k++) {
+    const p = isoProject(fx + 4 + (k % 2 ? 2.5 : -2.5), sy, it.z + 40 - k * 1.4);
+    if (k) ctx.lineTo(p.x, p.y);
+    else ctx.moveTo(p.x, p.y);
   }
-  const [fx, fy] = burner(0.72, 0.73);
-  const pan: GameValue = box(fx, fy, 15, 15, 4, '#2d3436', { z0: it.z });
-  onFace(pan, 'top', (W: number, H: number): void => {
-    ctx.fillStyle = '#e17055';
-    ctx.fillRect(2, 2, W - 4, H - 4);
+  ctx.stroke();
+  box(fx + 6, sy, 4, 4, 6, '#636e72', { z0: it.z + 12 });
+  const pots = chefPots?.();
+  // la pentola nella vasca, sotto il rubinetto
+  // la pentola poggia sul fondo della vasca: il bordo del piano davanti ne copre la parte bassa
+  const potZ = it.z - SINK_DEPTH;
+  if (pots?.sink) {
+    drawStockPot(it.x + 4, fy, potZ, pots.sink, t);
+    onFace(top, 'top', (W: number, H: number): void => {
+      const { bx, by, bw, bh } = basin(W, H);
+      ctx.fillStyle = '#e4e9eb';
+      ctx.fillRect(0, by + bh, W, H - by - bh);
+      ctx.fillRect(bx + bw, 0, W - bx - bw, H);
+      ctx.strokeStyle = '#95a5a6';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(1, 1, W - 2, H - 2);
+      ctx.strokeStyle = '#636e72';
+      ctx.lineWidth = 0.8;
+      ctx.beginPath();
+      ctx.moveTo(bx, by + bh);
+      ctx.lineTo(bx + bw, by + bh);
+      ctx.lineTo(bx + bw, by);
+      ctx.stroke();
+    });
+  }
+  if (pots?.pour) {
+    // l'acqua che scende dal rubinetto: finisce nella pentola, o nella vasca se non c'è
+    const end = pots.sink ? potZ + 1 + pots.sink.water * (POT_H - 2) : it.z - SINK_DEPTH;
+    const from = isoProject(fx + 13, fy, it.z + 17),
+      to = isoProject(fx + 13, fy, end);
+    ctx.strokeStyle = 'rgba(116,185,255,0.9)';
+    ctx.lineWidth = 2.4 * s;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(from.x, from.y);
+    ctx.lineTo(to.x + Math.sin(t * 20) * 0.4 * s, to.y);
+    ctx.stroke();
+    ctx.lineCap = 'butt';
+  }
+}
+
+/**
+ * La parete della stazione di cucina, dietro fornelli e lavello: piastrelle bianche sopra il
+ * piano, la cappa d'acciaio sopra i fuochi (la metà in fondo) e sopra il lavello una mensola con
+ * i piatti e i mestoli appesi (la metà davanti). È sottile e attaccata al muro di sinistra.
+ */
+export function drawChefWallProp(it: StationProp): void {
+  const ctx = game.view.ctx;
+  const wall = box(it.x, it.y, it.w, it.h, 42, '#ecf0f1', { z0: 55 });
+  onFace(wall, 'right', (W: number, H: number): void => {
+    ctx.fillStyle = '#f5f6fa';
+    ctx.fillRect(0, 0, W, H);
+    ctx.strokeStyle = 'rgba(149,165,166,0.55)';
+    ctx.lineWidth = 0.8;
+    for (let r = 0, v = 0; v < H; r++, v += 7) {
+      ctx.beginPath();
+      ctx.moveTo(0, v);
+      ctx.lineTo(W, v);
+      ctx.stroke();
+      for (let u = r % 2 ? 7 : 0; u < W; u += 14) {
+        ctx.beginPath();
+        ctx.moveTo(u, v);
+        ctx.lineTo(u, v + 7);
+        ctx.stroke();
+      }
+    }
   });
+  const x0 = it.x + it.w / 2;
+  // metà in fondo sopra i fornelli, metà davanti sopra il lavello: lunghe quanto loro
+  const half = it.h / 2;
+  const stoveY = it.y - half / 2,
+    sinkY = it.y + half / 2;
+  // cappa: lunga quanto i fornelli, con la feritoia del filtro sul davanti
+  const HOOD_Z = 100,
+    HOOD_D = 34,
+    HOOD_H = 12;
+  const hood = box(x0 + HOOD_D / 2, stoveY, HOOD_D, half - 2, HOOD_H, '#b2bec3', { z0: HOOD_Z });
+  onFace(hood, 'right', (W: number, H: number): void => {
+    paintSteel(W, H);
+    ctx.fillStyle = '#636e72';
+    ctx.fillRect(4, H - 4, W - 8, 2);
+  });
+  onFace(hood, 'left', paintSteel);
+  onFace(hood, 'top', (W: number, H: number): void => {
+    ctx.fillStyle = '#ced6da';
+    ctx.fillRect(0, 0, W, H);
+  });
+  // sopra il lavello: la barra dei mestoli sulle piastrelle, più in alto la mensola alla stessa altezza
+  // della cappa (i due piani finiscono in linea) con le staffe, i piatti e le ciotole
+  const tools: [number, 'ladle' | 'spatula' | 'skimmer'][] = [
+    [-23, 'ladle'],
+    [-16, 'skimmer'],
+    [-9, 'spatula'],
+    [-2, 'ladle'],
+  ];
+  // la barra si ferma prima del rubinetto e della doccetta, che salgono dal lavello
+  box(x0 + 1.5, sinkY - 12.5, 2, 27, 2, '#7f8c8d', { z0: 92 });
+  for (const [dy, kind] of tools) {
+    const ty = sinkY + dy;
+    box(x0 + 2.5, ty, 1.2, 1.2, 12, '#95a5a6', { z0: 81 });
+    if (kind === 'ladle') box(x0 + 3.5, ty, 4, 4, 2.5, '#7f8c8d', { z0: 78.5 });
+    else if (kind === 'skimmer') box(x0 + 3.5, ty, 5, 5, 1, '#636e72', { z0: 80 });
+    else box(x0 + 2.5, ty, 1, 4, 6, '#7f8c8d', { z0: 75 });
+  }
+  const SHELF_D = 16;
+  const shelfZ = HOOD_Z + HOOD_H - 3;
+  for (const dy of [-(half / 2 - 5), half / 2 - 5]) {
+    box(x0 + 1, sinkY + dy, 2, 2, 10, '#95a5a6', { z0: shelfZ - 10 });
+    box(x0 + SHELF_D / 2, sinkY + dy, SHELF_D - 2, 2, 2, '#95a5a6', { z0: shelfZ - 2 });
+  }
+  const shelf = box(x0 + SHELF_D / 2, sinkY, SHELF_D, half - 2, 3, '#b2bec3', { z0: shelfZ });
+  onFace(shelf, 'right', paintSteel);
+  onFace(shelf, 'left', paintSteel);
+  const onShelf = shelfZ + 3;
+  for (let k = 0; k < 4; k++)
+    box(x0 + SHELF_D / 2, sinkY - 12, 12, 12, 1.6, k % 2 ? '#ecf0f1' : '#ffffff', {
+      z0: onShelf + k * 1.6,
+    });
+  box(x0 + SHELF_D / 2, sinkY + 10, 9, 9, 4, '#ffffff', { z0: onShelf });
+  box(x0 + SHELF_D / 2, sinkY + 10, 7, 7, 3, '#dfe6e9', { z0: onShelf + 4 });
 }
 
 let tableGuest: ((it: GameValue) => void) | null = null;

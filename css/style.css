@@ -1163,6 +1163,96 @@ body.coach-open #btn-arrange {
   -webkit-user-select: none;
   pointer-events: none;
 }
+/* ufficio e ristorante: il riquadro in alto, sotto il nome della stanza */
+#minigame.mg-office,
+#minigame.mg-rest {
+  top: max(64px, env(safe-area-inset-top));
+  bottom: auto;
+}
+/* ufficio e ristorante: un tasto tondo grande in basso, comodo per il pollice, con l'icona
+   dell'azione dentro e la scritta sotto; quando si può usare respira piano */
+.popup-interact.work-interact {
+  top: auto;
+  bottom: max(46px, calc(env(safe-area-inset-bottom) + 30px));
+  transform: translateX(-50%);
+  align-items: center;
+}
+.work-interact #btn-act-main {
+  position: relative;
+  width: 84px;
+  height: 84px;
+  padding: 0;
+  border-radius: 50%;
+  border: 3px solid rgba(255, 255, 255, 0.9);
+  background: radial-gradient(circle at 35% 30%, #7bed9f, #2ed573 55%, #1e9e55);
+  box-shadow:
+    0 6px 18px rgba(0, 0, 0, 0.55),
+    0 0 0 0 rgba(46, 213, 115, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  touch-action: none;
+  animation: wkready 1.4s ease-in-out infinite;
+  transition: transform 0.08s;
+}
+.work-interact #btn-act-main:active {
+  transform: scale(0.92);
+}
+.work-interact #btn-act-main .wk-ico {
+  font-size: 2.3rem;
+  line-height: 1;
+  filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.35));
+}
+.work-interact #btn-act-main .wk-lbl {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  padding: 2px 10px;
+  border-radius: 10px;
+  background: rgba(15, 15, 25, 0.85);
+  font-size: 0.8rem;
+}
+.work-interact #btn-act-main.btn-pop-locked {
+  background: radial-gradient(circle at 35% 30%, #a4b0be, #718093 60%, #57606f) !important;
+  border-color: rgba(255, 255, 255, 0.45);
+  animation: none;
+}
+.work-interact #btn-act-main.btn-pop-locked .wk-ico {
+  filter: grayscale(1);
+  opacity: 0.6;
+}
+.work-interact #btn-act-main.btn-pop-locked .wk-lbl {
+  color: #dfe4ea;
+}
+@keyframes wkready {
+  0%,
+  100% {
+    box-shadow:
+      0 6px 18px rgba(0, 0, 0, 0.55),
+      0 0 0 0 rgba(46, 213, 115, 0.55);
+  }
+  50% {
+    box-shadow:
+      0 6px 18px rgba(0, 0, 0, 0.55),
+      0 0 0 10px rgba(46, 213, 115, 0);
+  }
+}
+#work-start {
+  position: absolute;
+  top: 40%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 51;
+  padding: 12px 24px;
+  border-radius: 16px;
+  background: rgba(15, 15, 25, 0.9);
+  color: #fff;
+  font-size: clamp(1.8rem, 6vw, 3rem);
+  font-weight: bold;
+  pointer-events: none;
+}
 #minigame .mg-top {
   display: flex;
   align-items: center;
@@ -1299,6 +1389,21 @@ body.coach-open #btn-arrange {
     bottom: 12px;
     width: min(300px, 70vw);
     padding: 5px 10px 6px;
+  }
+  /* sul telefono il riquadro sta in cima (in basso c'è il tasto) e il tasto è un po' più piccolo */
+  #minigame.mg-office,
+  #minigame.mg-rest {
+    top: max(12px, env(safe-area-inset-top));
+  }
+  .popup-interact.work-interact {
+    bottom: max(36px, calc(env(safe-area-inset-bottom) + 26px));
+  }
+  .work-interact #btn-act-main {
+    width: 72px;
+    height: 72px;
+  }
+  .work-interact #btn-act-main .wk-ico {
+    font-size: 2rem;
   }
   #minigame .mg-top {
     font-size: 0.64rem;

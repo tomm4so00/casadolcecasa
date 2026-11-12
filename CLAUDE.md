@@ -1,15 +1,19 @@
 # Casa Dolce Casa — note per lavorare sul codice
 
 Gioco multiplayer da browser (TypeScript, Vite, Firebase Realtime Database) con una scena
-isometrica disegnata su canvas. Un push su `main` pubblica subito il gioco su GitHub Pages
-(`.github/workflows/pages.yml`), ma solo se le regole del database online sono quelle della
-repo; un push sul ramo `prova` pubblica il gioco di prova, con il suo progetto Firebase
+isometrica disegnata su canvas. Un push su `main` pubblica il gioco su Firebase Hosting e la
+pagina del trasloco su GitHub Pages (`.github/workflows/pages.yml`), dopo i controlli e solo se
+le regole del database online sono quelle della repo; un push sul ramo `prova` pubblica il gioco di prova, con il suo progetto Firebase
 (`prova.yml`, vedi `docs/ambiente-di-prova.md`). Fai commit e push solo quando l'utente lo chiede.
 
 ## Comandi
 
 ```sh
-npm run check                  # tutto: formattazione, tipi, vitest, prova nel browser (~10 s)
+npm run setup:deps             # installa client, server e Worker dai rispettivi lockfile
+npm run check                  # formattazione, client, test browser e scenari, server e Worker
+npm run check:client           # tipi client, vitest, smoke browser e scenari di sviluppo
+npm run check:server           # compila il server
+npm run check:worker           # controlla i tipi del Worker
 npx vitest run                 # test unitari (le regole pure stanno nei file *-rules.ts)
 npm run typecheck              # tsc, con noUnusedLocals e noUnusedParameters
 node tests/browser-smoke.mjs   # prova nel browser: 64 stanze, 16 scene, salvataggi

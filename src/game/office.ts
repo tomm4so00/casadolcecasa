@@ -1,3 +1,4 @@
+import type { WorkHost } from './work-model.js';
 // Turno in ufficio, oltre ai compiti da prendere e consegnare: la goccia della sete (si beve al
 // distributore), le stampe chieste dai colleghi, in parallelo ai compiti, e ogni tanto la visita del
 // capo. Il capo esce dalla sua stanza con due assistenti in panico, tutto si ferma per un attimo e
@@ -7,7 +8,6 @@ import type { GameValue } from './context.js';
 import { game } from './context.js';
 import { sfx } from './audio.js';
 import { botLook, parseLook, resolveLook } from './character.js';
-import { mgHud, mgPop, mgScore, mgSpawnTask } from './jobs.js';
 import { drawPlayerAvatar } from './render/avatars.js';
 import { isoProject, isoScale } from './render/primitives.js';
 import {
@@ -88,7 +88,10 @@ export const officeOn = (): boolean => !!off;
 /** Appena davanti alla porta del capo, dentro l'ufficio. */
 const doorFront = (o: Office): Pt => ({ x: o.door ? o.door.x : 0, y: game.Y0 + 22 });
 
-export function startOffice(): void {
+let host: WorkHost;
+
+export function startOffice(controller: WorkHost): void {
+  host = controller;
   const props = (game.ENV_PROPS[game.view.activeEnvironment] || []) as GameValue[];
   const find = (kind: string) => props.find((p) => p.kind === kind);
   // i colleghi: alle scrivanie (tranne la prima, che è quella dei compiti) e su uno sgabello
@@ -174,7 +177,7 @@ const currentRequest = (): BossRequest | null => {
 
 /** Emoji e nome di una richiesta del capo. */
 function requestLabel(req: BossRequest): { e: string; label: string } {
-  if (req.kind === 'print') return { e: '📄', label: 'Foglio stampato' };
+  if (req.kind === 'print') return { e: '🖨️', label: 'Documento da stampare' };
   const def = game.MG.cfg?.pool?.[req.id];
   return def ? { e: def[0], label: def[1] } : { e: '❓', label: req.id };
 }
@@ -223,8 +226,8 @@ function tickPrint(p: { phase: PrintPhase; left: number } | null, delta: number)
   if (p.left > 0) return;
   p.phase = 'ready';
   sfx('door');
-  mgPop('📄 Foglio stampato');
-  mgHud();
+  host.pop('📄 Documento stampato: prendilo e portalo');
+  host.hud();
 }
 
 /** A ogni fotogramma del turno: sete, stampe, capo e colleghi. */
@@ -237,21 +240,21 @@ export function tickOffice(delta: number): void {
   if (!boss) o.thirst = thirstAfter(o.thirst, delta);
   if (o.thirst < THIRST_WARN && !o.warned) {
     o.warned = true;
-    mgPop('💧 Bevi, ti stai disidratando!', false);
+    host.pop('💧 Bevi, ti stai disidratando!', false);
   }
   if (o.thirst <= 0) {
     o.slowUntil = o.clock + SLOW_SECONDS;
     o.thirst = 0.4;
     o.warned = false;
-    mgScore(-0.5);
+    host.score(-0.5);
     sfx('error');
-    mgPop('🥵 Disidratato: rallenti!', false);
+    host.pop('🥵 Disidratato: rallenti!', false);
   }
   // stampe dei colleghi, in parallelo ai compiti (non mentre c'è il capo)
   if (!boss) {
     if (!o.print && o.clock >= o.nextPrintAt && o.colleagues.length) {
       o.print = { who: Math.floor(Math.random() * o.colleagues.length), phase: 'order', left: 0 };
-      mgPop('🖨️ Un collega vuole una stampa');
+      host.pop('🖨️ Un collega: «Stampami il documento e portamelo»');
     }
     tickPrint(o.print, delta);
   } else tickPrint(o.boss?.print ?? null, delta);
@@ -290,22 +293,22 @@ function nextRequest(o: Office, b: Boss): void {
   if (req) {
     b.timer = b.total = bossRequestSeconds(req);
     const { e, label } = requestLabel(req);
-    mgPop(`😡 Ora vuole: ${e} ${label}`, false);
+    host.pop(`😡 Ora vuole: ${e} ${label}`, false);
   } else {
     b.phase = 'leave';
     if (b.ok === b.reqs.length) {
-      const shift: GameValue = game.activeShift;
+      const shift = game.activeShift;
       const bonus = bossBonus(shift?.perItem ?? 0);
       if (shift) shift.tips = (shift.tips || 0) + bonus;
-      mgPop(`😌 Il capo è soddisfatto: bonus +${bonus} Đ`);
+      host.pop(`😌 Il capo è soddisfatto: bonus +${bonus} Đ`);
     } else {
-      const shift: GameValue = game.activeShift;
+      const shift = game.activeShift;
       const fine = bossFine(shift?.perItem ?? 0);
       if (shift) shift.fine = (shift.fine || 0) + fine;
-      mgPop(`💢 Il capo se ne va scontento: multa −${fine} Đ`, false);
+      host.pop(`💢 Il capo se ne va scontento: multa −${fine} Đ`, false);
     }
   }
-  mgHud();
+  host.hud();
   void o;
 }
 
@@ -319,7 +322,7 @@ function tickBoss(o: Office, delta: number): void {
     openBossDoor();
     sfx('error');
     shakeScreen(true);
-    mgHud();
+    host.hud();
   } else if (b.phase === 'freeze') {
     openBossDoor();
     b.timer -= delta;
@@ -347,11 +350,11 @@ function tickBoss(o: Office, delta: number): void {
     b.x = BOSS_SPOT.x + Math.sin(o.clock * 0.9) * 45;
     const before = Math.ceil(b.timer);
     b.timer -= delta;
-    if (Math.ceil(b.timer) !== before) mgHud();
+    if (Math.ceil(b.timer) !== before) host.hud();
     if (b.timer <= 0) {
-      mgScore(-0.5);
+      host.score(-0.5);
       sfx('error');
-      mgPop('💢 Troppo lento!', false);
+      host.pop('💢 Troppo lento!', false);
       nextRequest(o, b);
     }
   } else if (b.phase === 'leave') {
@@ -363,7 +366,7 @@ function tickBoss(o: Office, delta: number): void {
       b.phase = 'done';
       openBossDoor();
       // si riprende con un compito nuovo: alcuni oggetti li ha voluti il capo
-      mgSpawnTask();
+      host.spawnTask();
     }
   }
   // colleghi e assistenti: in panico mentre c'è il capo, poi i colleghi tornano a sedersi
@@ -393,30 +396,23 @@ function shakeScreen(on: boolean): void {
 /** Testo del pulsante vicino agli oggetti dell'ufficio. */
 export function officePrompt(item: GameValue): { text: string; locked?: boolean } {
   const o = off;
-  const c: GameValue = game.MG.carry;
+  const c = game.MG.carry;
   if (!o) return { text: '', locked: true };
-  if (item.kind === 'cooler') return { text: '💧 Bevi un bicchiere d’acqua' };
+  if (item.kind === 'cooler') return { text: 'Bevi' };
   if (item.kind === 'printer') {
     const p = activePrint(o);
-    const forBoss = bossHere();
-    if (!p) return { text: '🖨️ Nessuno ha chiesto stampe', locked: true };
-    if (p.phase === 'printing') return { text: '⏳ Sta stampando…', locked: true };
+    if (!p) return { text: 'Nessuna stampa', locked: true };
+    if (p.phase === 'printing') return { text: 'In stampa', locked: true };
     if (p.phase === 'ready')
-      return c
-        ? { text: '🤲 Hai già le mani occupate', locked: true }
-        : { text: '📄 Prendi il foglio' };
-    return { text: `🖨️ Stampa per ${forBoss ? 'il capo' : o.colleagues[o.print!.who].name}` };
+      return c ? { text: 'Mani occupate', locked: true } : { text: 'Prendi' };
+    return { text: 'Stampa' };
   }
-  if (item.kind === 'printDesk')
-    return { text: `📄 Dai il foglio a ${o.colleagues[o.print!.who].name}` };
+  if (item.kind === 'printDesk') return { text: 'Consegna' };
   if (item.kind === 'boss') {
     const req = currentRequest();
     if (!req) return { text: '', locked: true };
-    const { e, label } = requestLabel(req);
     const ok = req.kind === 'print' ? c?.id === 'foglio' : c?.id === req.id;
-    return ok
-      ? { text: `${e} Dai ${label} al capo` }
-      : { text: `😡 Il capo vuole: ${e} ${label}`, locked: true };
+    return ok ? { text: 'Consegna' } : { text: 'Prima l’oggetto', locked: true };
   }
   return { text: '', locked: true };
 }
@@ -425,15 +421,15 @@ export function officePrompt(item: GameValue): { text: string; locked?: boolean 
 export function officeInteract(item: GameValue): void {
   const o = off;
   if (!o || officeFrozen()) return;
-  const c: GameValue = game.MG.carry;
-  const shift: GameValue = game.activeShift;
+  const c = game.MG.carry;
+  const shift = game.activeShift;
   const perItem: number = shift?.perItem ?? 0;
   if (item.kind === 'cooler') {
     o.thirst = 1;
     o.warned = false;
     o.slowUntil = 0;
     sfx('shower');
-    mgPop('💧 Che sete! Ora va meglio');
+    host.pop('💧 Che sete! Ora va meglio');
   } else if (item.kind === 'printer') {
     const p = activePrint(o);
     if (p?.phase === 'order') {
@@ -443,7 +439,7 @@ export function officeInteract(item: GameValue): void {
     } else if (p?.phase === 'ready' && !c) {
       // il foglio si prende solo se qualcuno l'ha chiesto (vedi activePrint)
       p.phase = 'carried';
-      game.MG.carry = { id: 'foglio', e: '📄', label: 'Foglio', office: true };
+      game.MG.carry = { id: 'foglio', e: '📄', label: 'Documento stampato', office: true };
       sfx('door');
     }
   } else if (item.kind === 'printDesk' && c?.id === 'foglio' && o.print) {
@@ -451,9 +447,9 @@ export function officeInteract(item: GameValue): void {
     o.print = null;
     o.nextPrintAt = o.clock + printGap(Math.random());
     if (shift) shift.delivered = (shift.delivered || 0) + 1;
-    mgScore(1);
+    host.score(1);
     sfx('coin');
-    mgPop(`📄 Stampa consegnata +${perItem} Đ`);
+    host.pop(`📄 Stampa consegnata +${perItem} Đ`);
   } else if (item.kind === 'boss' && o.boss) {
     const req = currentRequest();
     const ok = req && (req.kind === 'print' ? c?.id === 'foglio' : c?.id === req.id);
@@ -461,13 +457,13 @@ export function officeInteract(item: GameValue): void {
     game.MG.carry = null;
     o.boss.ok++;
     if (shift) shift.delivered = (shift.delivered || 0) + 1;
-    mgScore(1);
+    host.score(1);
     sfx('coin');
-    mgPop(`😤 Il capo prende: +${perItem} Đ`);
+    host.pop(`😤 Il capo prende: +${perItem} Đ`);
     nextRequest(o, o.boss);
   }
   refreshMap();
-  mgHud();
+  host.hud();
 }
 
 /** Il riquadro del turno mentre c'è il capo: al posto del compito di adesso. */

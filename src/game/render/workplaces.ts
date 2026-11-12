@@ -532,8 +532,135 @@ export function drawBookshelfProp(it?: GameValue): GameValue {
   onFace(b, 'left', (W: number, FH: number) => paint(W, FH, x - y));
 }
 
-/** Forno a legna per la pizza: base in mattoni, cupola, bocca col fuoco verso la sala (+x) e il
- * comignolo in cima, col fumo. */
+/** Come appaiono la pizza e la pala del forno a legna: le decide il turno al ristorante. */
+export interface OvenLook {
+  /** la pizza dentro il forno: -1 non c'è, poi da 0 (cruda) a 1 (cotta) */
+  inside: number;
+  /** la pala: `pos` 0 tutta fuori (in mano a chi inforna), 1 alla bocca del forno; `pizza` come
+   *  `inside` per quella che porta; `fade` 0 si vede tutta, 1 è sparita */
+  peel?: { pos: number; pizza: number; fade: number };
+}
+
+let ovenLook: (() => OvenLook | null) | null = null;
+/** Il ristorante dice dov'è la pizza: sulla pala, dentro il forno o da nessuna parte. */
+export function setPizzaOven(fn: (() => OvenLook | null) | null): void {
+  ovenLook = fn;
+}
+
+/** Il colore a metà strada tra due '#rrggbb' (k da 0 a 1). */
+function mixHex(a: string, b: string, k: number): string {
+  const c = (h: string, i: number) => parseInt(h.slice(1 + i * 2, 3 + i * 2), 16);
+  const v = [0, 1, 2].map((i) => Math.round(c(a, i) + (c(b, i) - c(a, i)) * k));
+  return `rgb(${v[0]},${v[1]},${v[2]})`;
+}
+
+/** I colori della pizza mentre cuoce: cornicione e mozzarella da pallidi a dorati. */
+const pizzaColors = (cooked: number) => ({
+  crust: mixHex('#f3dcaa', '#d48a2e', cooked),
+  cheese: mixHex('#fdfdf5', '#f6c453', cooked * 0.8),
+});
+
+/** Un cerchio steso a terra (alla quota z), già chiuso: poi lo si riempie. */
+function flatCircle(x: number, y: number, z: number, r: number): void {
+  const ctx = game.view.ctx;
+  ctx.beginPath();
+  for (let k = 0; k < 20; k++) {
+    const a = (k / 20) * Math.PI * 2;
+    const p = isoProject(x + Math.cos(a) * r, y + Math.sin(a) * r, z);
+    if (k) ctx.lineTo(p.x, p.y);
+    else ctx.moveTo(p.x, p.y);
+  }
+  ctx.closePath();
+}
+
+/**
+ * Una pizza in 3D: il disco ha il suo spessore, il cornicione è rialzato e il pomodoro sta più in
+ * basso dentro il bordo; sopra la mozzarella a bolle col riflesso e due foglie di basilico. Cotta,
+ * il cornicione si dora e prende le macchie scure del forno a legna. (x, y, z) è il centro del fondo.
+ */
+function drawPizzaDisc(x: number, y: number, z: number, r: number, cooked: number): void {
+  const ctx = game.view.ctx;
+  const s: number = isoScale();
+  const { crust, cheese } = pizzaColors(cooked);
+  const T = 2.2;
+  // lo spessore: cerchi uno sull'altro, più scuri sotto
+  for (let h = 0; h < T; h += 0.4) {
+    ctx.fillStyle = mixHex('#b07a3c', '#7a4a1e', cooked);
+    flatCircle(x, y, z + h, r);
+    ctx.fill();
+  }
+  // il cornicione, poi il suo bordo interno in ombra e il pomodoro un po' più giù
+  ctx.fillStyle = crust;
+  flatCircle(x, y, z + T, r);
+  ctx.fill();
+  ctx.fillStyle = mixHex('#c9a06a', '#a8651f', cooked);
+  flatCircle(x, y, z + T - 0.2, r * 0.8);
+  ctx.fill();
+  ctx.fillStyle = '#b8322a';
+  flatCircle(x, y, z + T - 0.7, r * 0.74);
+  ctx.fill();
+  // le macchie del forno sul cornicione, quando è cotta
+  if (cooked > 0.4) {
+    ctx.fillStyle = `rgba(60,30,10,${(cooked - 0.4) * 0.9})`;
+    for (let i = 0; i < 7; i++) {
+      const a = i * 0.9 + 0.3;
+      const p = isoProject(x + Math.cos(a) * r * 0.9, y + Math.sin(a) * r * 0.9, z + T);
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 0.7 * s, 0, 6.3);
+      ctx.fill();
+    }
+  }
+  // la mozzarella: bolle tonde con l'ombra sotto e il riflesso sopra
+  for (let i = 0; i < 5; i++) {
+    const a = i * 1.26 + 0.4;
+    const p = isoProject(x + Math.cos(a) * r * 0.42, y + Math.sin(a) * r * 0.42, z + T - 0.2);
+    ctx.fillStyle = 'rgba(0,0,0,0.18)';
+    ctx.beginPath();
+    ctx.ellipse(p.x, p.y + 0.5 * s, 2.4 * s, 1.4 * s, 0, 0, 6.3);
+    ctx.fill();
+    ctx.fillStyle = cheese;
+    ctx.beginPath();
+    ctx.ellipse(p.x, p.y - 0.4 * s, 2.3 * s, 1.5 * s, 0, 0, 6.3);
+    ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.7)';
+    ctx.beginPath();
+    ctx.ellipse(p.x - 0.7 * s, p.y - 0.9 * s, 0.8 * s, 0.4 * s, 0, 0, 6.3);
+    ctx.fill();
+  }
+  ctx.fillStyle = '#27ae60';
+  for (const a of [1, 4]) {
+    const p = isoProject(x + Math.cos(a) * r * 0.2, y + Math.sin(a) * r * 0.2, z + T);
+    ctx.beginPath();
+    ctx.ellipse(p.x, p.y, 1.7 * s, 0.9 * s, 0.5, 0, 6.3);
+    ctx.fill();
+  }
+}
+
+/** Il raggio della pala: passa giusta dalla bocca del forno. */
+const PEEL_R = 9;
+
+/** La pala di legno, con il suo spessore e il manico lungo verso la sala; sopra la pizza se la porta. */
+function drawPeel(x: number, y: number, z: number, pizza: number): void {
+  const ctx = game.view.ctx;
+  for (let h = -1.2; h < 0; h += 0.4) {
+    ctx.fillStyle = '#9c7449';
+    flatCircle(x, y, z + h, PEEL_R);
+    ctx.fill();
+  }
+  ctx.fillStyle = '#c69c6d';
+  flatCircle(x, y, z, PEEL_R);
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(93,64,55,0.45)';
+  ctx.lineWidth = 0.8;
+  ctx.stroke();
+  if (pizza >= 0) drawPizzaDisc(x, y, z + 0.2, 7, pizza);
+  box(x + PEEL_R + 13, y, 26, 2.6, 1.6, '#8d6e63', { z0: z - 1.2 });
+}
+
+/**
+ * Forno a legna per la pizza: base in mattoni, cupola grande col comignolo e il fumo, e davanti,
+ * verso la sala (+x), il portale con la bocca ad arco: dentro il piano, la pizza e il fuoco in fondo.
+ */
 export function drawPizzaOvenProp(it?: GameValue, t?: GameValue): GameValue {
   const ctx = game.view.ctx;
   const time = t || 0;
@@ -555,22 +682,89 @@ export function drawPizzaOvenProp(it?: GameValue, t?: GameValue): GameValue {
       }
     }
   };
-  onFace(base, 'right', (W: number, H: number): void => {
-    bricks(W, H);
-    // la legna nella nicchia sotto il piano
-    ctx.fillStyle = '#3e2723';
-    ctx.fillRect(W * 0.2, H * 0.45, W * 0.6, H * 0.45);
-    ctx.fillStyle = '#a1887f';
-    for (let i = 0; i < 4; i++) {
-      ctx.beginPath();
-      ctx.arc(W * 0.3 + i * W * 0.13, H * 0.78, 2.6, 0, 6.3);
-      ctx.fill();
-    }
-  });
+  onFace(base, 'right', bricks);
   onFace(base, 'left', bricks);
-  // cupola: anelli veri (cerchi nel mondo, non ellissi sullo schermo) che salgono e si stringono
-  const R = (Math.min(it.w, it.h) / 2) * 0.92,
-    HD = R * 0.95;
+  // la nicchia della legna sotto il piano: un buco vero sul davanti della base, con dentro il fondo,
+  // il pavimento e la parete di lato, e i tronchi impilati di punta
+  {
+    const fx = it.x + it.w / 2;
+    const yLo = it.y - it.h * 0.3,
+      yHi = it.y + it.h * 0.3;
+    const zLo = baseH * 0.1,
+      zHi = baseH * 0.58;
+    const depth = 20;
+    const poly = (pts: [number, number, number][]): void => {
+      ctx.beginPath();
+      pts.forEach(([x, y, z], i) => {
+        const p = isoProject(x, y, z);
+        if (i) ctx.lineTo(p.x, p.y);
+        else ctx.moveTo(p.x, p.y);
+      });
+      ctx.closePath();
+    };
+    ctx.save();
+    poly([
+      [fx, yHi, zLo],
+      [fx, yHi, zHi],
+      [fx, yLo, zHi],
+      [fx, yLo, zLo],
+    ]);
+    ctx.clip();
+    // il fondo in ombra, poi la parete di lato e il pavimento, un po' più chiari
+    ctx.fillStyle = '#1e120d';
+    ctx.fill();
+    ctx.fillStyle = '#2e1d15';
+    poly([
+      [fx, yLo, zLo],
+      [fx, yLo, zHi],
+      [fx - depth, yLo, zHi],
+      [fx - depth, yLo, zLo],
+    ]);
+    ctx.fill();
+    ctx.fillStyle = '#3a261b';
+    poly([
+      [fx, yLo, zLo],
+      [fx, yHi, zLo],
+      [fx - depth, yHi, zLo],
+      [fx - depth, yLo, zLo],
+    ]);
+    ctx.fill();
+    // i tronchi: cilindri coricati verso la sala, la corteccia e la faccia tagliata con gli anelli
+    const r = 3.4;
+    const log = (y: number, z: number): void => {
+      const ring = (x: number, rr: number): void => {
+        ctx.beginPath();
+        for (let k = 0; k <= 14; k++) {
+          const a = (k / 14) * Math.PI * 2;
+          const p = isoProject(x, y + Math.cos(a) * rr, z + Math.sin(a) * rr);
+          if (k) ctx.lineTo(p.x, p.y);
+          else ctx.moveTo(p.x, p.y);
+        }
+        ctx.closePath();
+      };
+      for (let x = fx - depth + 2; x < fx - 1; x += 1) {
+        ctx.fillStyle = x < fx - 3 ? '#4e342e' : '#5d4037';
+        ring(x, r);
+        ctx.fill();
+      }
+      ctx.fillStyle = '#c8a27a';
+      ring(fx - 1, r - 0.3);
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(120,80,45,0.6)';
+      ctx.lineWidth = 0.7 * isoScale();
+      ring(fx - 1, r * 0.55);
+      ctx.stroke();
+    };
+    // quattro sotto e tre sopra, centrati nella nicchia, dalla più lontana alla più vicina
+    const base0 = zLo + r;
+    for (const y of [-3 * r, -r, r, 3 * r]) log(it.y + y, base0);
+    for (const y of [-2 * r, 0, 2 * r]) log(it.y + y, base0 + r * 1.7);
+    ctx.restore();
+  }
+  // cupola: anelli veri (cerchi nel mondo, non ellissi sullo schermo) che salgono e si stringono;
+  // larga quasi quanto la base e alta
+  const R = (Math.min(it.w, it.h) / 2) * 1.0,
+    HD = R * 1.45;
   const ring = (r: number, z: number): void => {
     ctx.beginPath();
     for (let k = 0; k <= 24; k++) {
@@ -581,49 +775,15 @@ export function drawPizzaOvenProp(it?: GameValue, t?: GameValue): GameValue {
     }
     ctx.fill();
   };
-  const layers = 10;
+  const layers = 12;
   for (let i = 0; i <= layers; i++) {
     const a = (i / layers) * (Math.PI / 2);
     ctx.fillStyle = i % 2 ? '#b5532f' : '#c0623a';
     ring(R * Math.cos(a) + 0.4, baseH + HD * Math.sin(a));
   }
-  // bocca ad arco sul davanti della cupola, verso la sala, col fuoco dentro
-  const mw = R * 1.05,
-    mh = HD * 0.62;
-  setPlane([it.x + R * 0.82, it.y + mw / 2, baseH + mh], [0, -1, 0], [0, 0, -1]);
-  const arch = (inset: number): void => {
-    ctx.beginPath();
-    ctx.moveTo(inset, mh);
-    ctx.lineTo(inset, mh * 0.45);
-    ctx.quadraticCurveTo(mw / 2, -mh * 0.35 + inset * 2, mw - inset, mh * 0.45);
-    ctx.lineTo(mw - inset, mh);
-    ctx.closePath();
-  };
-  ctx.fillStyle = '#7b3a1f';
-  arch(-2);
-  ctx.fill();
-  ctx.fillStyle = '#1b0f0a';
-  arch(1.5);
-  ctx.fill();
-  const glow = ctx.createRadialGradient(mw / 2, mh, 1, mw / 2, mh, mw * 0.6);
-  glow.addColorStop(0, 'rgba(255,170,60,0.85)');
-  glow.addColorStop(1, 'rgba(255,90,0,0)');
-  ctx.fillStyle = glow;
-  arch(1.5);
-  ctx.fill();
-  for (let f = 0; f < 5; f++) {
-    const fl = 5 + Math.sin(time * 11 + f * 1.7) * 2.5;
-    ctx.fillStyle = f % 2 ? 'rgba(255,210,0,0.95)' : 'rgba(255,100,0,0.95)';
-    ctx.beginPath();
-    ctx.moveTo(mw * 0.18 + f * mw * 0.13, mh);
-    ctx.lineTo(mw * 0.24 + f * mw * 0.13, mh - fl);
-    ctx.lineTo(mw * 0.3 + f * mw * 0.13, mh);
-    ctx.fill();
-  }
-  resetPlane();
   // comignolo tondo al centro della cupola: anelli uno sull'altro, col bordo e la bocca scura
   const top = baseH + HD;
-  const cr = 4.5;
+  const cr = 7;
   for (let z = top - 3; z <= top + 13; z += 1) {
     ctx.fillStyle = z % 4 < 2 ? '#7b5341' : '#6d4c41';
     ring(cr, z);
@@ -639,6 +799,140 @@ export function drawPizzaOvenProp(it?: GameValue, t?: GameValue): GameValue {
     ctx.beginPath();
     ctx.arc(p.x + Math.sin(time + k) * 3, p.y, (3 + ph * 5) * isoScale(), 0, 6.3);
     ctx.fill();
+  }
+  // la bocca ad arco verso la sala: dentro il piano del forno, la pizza e la luce del fuoco
+  const mw = R * 0.85,
+    mh = HD * 0.5;
+  const front = it.x + it.w / 2;
+  const zs = baseH + mh * 0.55;
+  /** L'arco largo `grow` in più dell'apertura, sul piano verticale x, come percorso sullo schermo. */
+  const archPath = (grow: number, x = front): void => {
+    const half = mw / 2 + grow;
+    ctx.beginPath();
+    const at = (y: number, z: number) => isoProject(x, it.y + y, z);
+    let p = at(half, baseH);
+    ctx.moveTo(p.x, p.y);
+    for (let k = 0; k <= 16; k++) {
+      const a = (k / 16) * Math.PI;
+      p = at(Math.cos(a) * half, zs + Math.sin(a) * (mh * 0.45 + grow));
+      ctx.lineTo(p.x, p.y);
+    }
+    p = at(-half, baseH);
+    ctx.lineTo(p.x, p.y);
+    ctx.closePath();
+  };
+  // la cornice: un arco di mattoni spesso, della stessa forma del buco, che esce dalla cupola.
+  // Lo spessore si fa ripetendo la sua forma dal fondo al davanti.
+  const RIM = 5,
+    RIM_D = 8;
+  for (let d = RIM_D; d > 0; d -= 1) {
+    ctx.fillStyle = '#9c5434';
+    archPath(RIM, front - d);
+    ctx.fill();
+  }
+  ctx.fillStyle = '#a65a3a';
+  archPath(RIM);
+  ctx.fill();
+  // I mattoni della cornice sono gli stessi davanti e sullo spessore, come in un arco vero: ogni
+  // mattone dell'arco è un cuneo sul davanti e prosegue dritto per tutto lo spessore; i piedritti
+  // sono file di mattoni interi, con le fughe alla stessa altezza davanti e di lato.
+  ctx.strokeStyle = 'rgba(0,0,0,0.22)';
+  ctx.lineWidth = 0.8 * isoScale();
+  const line = (a: [number, number, number], b: [number, number, number]): void => {
+    const p = isoProject(a[0], it.y + a[1], a[2]),
+      q = isoProject(b[0], it.y + b[1], b[2]);
+    ctx.beginPath();
+    ctx.moveTo(p.x, p.y);
+    ctx.lineTo(q.x, q.y);
+    ctx.stroke();
+  };
+  const back = front - RIM_D;
+  const VOUSSOIRS = 11;
+  for (let k = 1; k < VOUSSOIRS; k++) {
+    const a = (k / VOUSSOIRS) * Math.PI;
+    const inner = [Math.cos(a) * (mw / 2), zs + Math.sin(a) * mh * 0.45] as const;
+    const outer = [Math.cos(a) * (mw / 2 + RIM), zs + Math.sin(a) * (mh * 0.45 + RIM)] as const;
+    // il cuneo sul davanti e la sua fuga lungo lo spessore, sopra
+    line([front, inner[0], inner[1]], [front, outer[0], outer[1]]);
+    line([back, outer[0], outer[1]], [front, outer[0], outer[1]]);
+  }
+  // le file dei piedritti, fino all'imposta dell'arco (zs)
+  const course = (zs - baseH) / 3;
+  for (const z of [baseH + course, baseH + course * 2, zs]) {
+    for (const side of [-1, 1])
+      line([front, side * (mw / 2), z], [front, side * (mw / 2 + RIM), z]);
+    // sul fianco che si vede (+y) la stessa fuga corre lungo lo spessore
+    line([back, mw / 2 + RIM, z], [front, mw / 2 + RIM, z]);
+  }
+  const look = ovenLook?.();
+  // Lo sguardo scende in diagonale (1,1,1): un punto del piano profondo d dietro la bocca si vede
+  // nell'arco spostato di d lungo y e alzato di d. La bocca è piccola: la pala entra dritta, appena
+  // a destra del mezzo, e la pizza cuoce subito dietro la bocca, così si vede tutta nell'arco.
+  const pizzaX = front - 6;
+  const backX = front - 20;
+  const inY = it.y - 2;
+  const fireY = it.y - 10;
+  const peelX = (pos: number) => pizzaX + (1 - pos) * (front + 26 - pizzaX);
+  const peel = look?.peel && look.peel.fade < 1 ? look.peel : null;
+  const drawPeelNow = (): void => {
+    if (!peel) return;
+    ctx.save();
+    ctx.globalAlpha = 1 - peel.fade;
+    drawPeel(peelX(peel.pos), inY, baseH + 1, peel.pizza);
+    ctx.restore();
+  };
+  // l'interno, visto solo attraverso l'apertura
+  ctx.save();
+  archPath(0);
+  ctx.clip();
+  ctx.fillStyle = '#1b0f0a';
+  ctx.fill();
+  // il piano del forno, dalla bocca fino in fondo
+  const floor = [
+    [front, it.y - R],
+    [front, it.y + R],
+    [backX, it.y + R],
+    [backX, it.y - R],
+  ].map(([x, y]) => isoProject(x, y, baseH));
+  ctx.fillStyle = '#7a4a30';
+  ctx.beginPath();
+  floor.forEach((q, i) => (i ? ctx.lineTo(q.x, q.y) : ctx.moveTo(q.x, q.y)));
+  ctx.fill();
+  // il fuoco non si vede, sta in fondo a destra: arriva solo la sua luce su pareti e piano
+  const fire = isoProject(backX + 4, fireY, baseH + 4);
+  const sc: number = isoScale();
+  const glow = ctx.createRadialGradient(fire.x, fire.y, 1, fire.x, fire.y, 34 * sc);
+  glow.addColorStop(0, 'rgba(255,170,60,0.9)');
+  glow.addColorStop(0.5, 'rgba(255,110,20,0.35)');
+  glow.addColorStop(1, 'rgba(255,90,0,0)');
+  ctx.fillStyle = glow;
+  ctx.fillRect(fire.x - 40 * sc, fire.y - 40 * sc, 80 * sc, 80 * sc);
+  // la pizza che cuoce sul piano, e la pala per la parte che è già dentro
+  if (look && look.inside >= 0) drawPizzaDisc(pizzaX, inY, baseH + 0.2, 7, look.inside);
+  drawPeelNow();
+  ctx.restore();
+  // il bordo dell'arco, in mattoni più chiari
+  ctx.strokeStyle = '#d7a07a';
+  ctx.lineWidth = 2.2 * sc;
+  archPath(0.8);
+  ctx.stroke();
+  // la pala per la parte ancora fuori dal forno, davanti al portale
+  if (peel) {
+    const z = baseH + 1;
+    const a = isoProject(front, it.y - 200, z),
+      b = isoProject(front, it.y + 200, z),
+      c = isoProject(front + 200, it.y + 200, z),
+      d = isoProject(front + 200, it.y - 200, z);
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(a.x, a.y);
+    ctx.lineTo(b.x, b.y);
+    ctx.lineTo(c.x, c.y);
+    ctx.lineTo(d.x, d.y);
+    ctx.closePath();
+    ctx.clip();
+    drawPeelNow();
+    ctx.restore();
   }
 }
 
