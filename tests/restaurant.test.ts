@@ -7,9 +7,26 @@ import {
   orderFor,
   patienceFor,
   tipFor,
+  serviceBudget,
+  DISHES,
+  WATER_SECONDS,
+  isDishId,
 } from '../src/game/restaurant-rules';
 
 describe('turno al ristorante', () => {
+  it('la pentola piena non è un piatto servibile né già in cottura', () => {
+    expect(isDishId('water')).toBe(false);
+    expect(isDishId('pasta')).toBe(true);
+    expect(isDishId('pizza')).toBe(true);
+    expect(isDishId('toString')).toBe(false);
+  });
+  it('lascia tempo per acqua, cottura, spostamenti e ordini in coda', () => {
+    const pasta = serviceBudget(['pasta']);
+    expect(pasta).toBeGreaterThan(WATER_SECONDS + DISHES.pasta.cook + 6);
+    expect(serviceBudget(['pasta'], ['pasta', 'pizza'])).toBeGreaterThan(pasta);
+    expect(serviceBudget(['pasta', 'vino'])).toBeGreaterThan(pasta);
+    expect(serviceBudget(['pasta'])).toBeGreaterThan(serviceBudget(['vino']));
+  });
   it('la pazienza cala e i clienti arrivano più spesso verso la fine', () => {
     expect(patienceFor(0)).toBe(24);
     expect(patienceFor(1)).toBe(16);

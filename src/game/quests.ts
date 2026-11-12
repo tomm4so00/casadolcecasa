@@ -11,6 +11,7 @@ import { relationKind } from './relations-rules.js';
 import { missionsOf, welcomeFinished } from './welcome-rules.js';
 import { restartWelcome, welcomeHint } from './welcome.js';
 import type { GuideDest } from './guide-rules.js';
+import { questHooks } from './quest-hooks.js';
 import {
   BONUS,
   CHAPTERS,
@@ -264,3 +265,6 @@ export function openQuests(): void {
     restartWelcome();
   });
 }
+
+// le missioni, la freccia e la freccetta ci chiamano attraverso il ponte (quest-hooks.ts)
+Object.assign(questHooks, { tick: tickQuests, open: openQuests, dest: questDest, hint: questHint });

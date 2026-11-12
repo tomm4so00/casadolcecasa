@@ -193,6 +193,9 @@ function cornerDepth(p: GameValue): number {
   return 0;
 }
 
+/** Ambienti dove gli oggetti di scena non mostrano il nome: si capisce dal disegno. */
+const NO_PROP_LABELS = new Set(['lavoro_ufficio', 'lavoro_ristorante']);
+
 /** I pezzi della base lunare si vedono solo dalla loro fase in poi (gli altri oggetti sempre). */
 const shownPart = (p: GameValue): boolean =>
   p.stage === undefined || partVisible(p, game.moonBaseStage || 0);
@@ -456,6 +459,8 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
         (f) => Math.abs(f.seat.x - c.x) < 3 && Math.abs(f.seat.y - c.y) < 3,
       ),
     );
+  // in ufficio e al ristorante postazioni e macchinari non hanno la targhetta col nome
+  const propLabels = !NO_PROP_LABELS.has(game.view.activeEnvironment);
   (game.ENV_PROPS[game.view.activeEnvironment] || [])
     .concat(game.ENV_DECOR[game.view.activeEnvironment] || [])
     .filter(shownPart)
@@ -467,7 +472,7 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
         p.w,
         p.h,
         p.z || 50,
-        p.label,
+        propLabels ? p.label : '',
         (): GameValue => {
           if (
             !p.flat &&

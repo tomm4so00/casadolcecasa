@@ -1,3 +1,4 @@
+import type { WorkHost } from './work-model.js';
 // Turno in ospedale: due pazienti nei letti chiedono ognuno una cura. Le quattro postazioni sono
 // fisse: il monitor dei parametri e i farmaci si prendono in mano e si portano al letto (flusso A);
 // i carrelli delle medicazioni e della biancheria si spingono fino al letto, si lasciano accanto
@@ -8,7 +9,6 @@ import { game } from './context.js';
 import { sfx } from './audio.js';
 import { botLook } from './character.js';
 import { openDialog } from './interface.js';
-import { mgHud, mgPop, mgScore } from './jobs.js';
 import { dom } from './runtime.js';
 import { drawAvatarSleeping } from './render/avatars.js';
 import { isoProject, isoScale } from './render/primitives.js';
@@ -80,7 +80,10 @@ const PUSH_GAP = 26;
 /** Durata del lampo della scarica. */
 const SHOCK_FLASH = 0.7;
 
-export function startHospital(): void {
+let host: WorkHost;
+
+export function startHospital(controller: WorkHost): void {
+  host = controller;
   const props = (game.ENV_PROPS[game.view.activeEnvironment] || []) as GameValue[];
   const beds = props
     .filter((p) => p.kind === 'hospitalBed')
@@ -130,7 +133,7 @@ export function startHospital(): void {
   // nel riepilogo di fine turno la penalità non è una multa del capo
   if (game.activeShift) game.activeShift.fineLabel = 'di penalità per i codici rossi';
   rebuildMap();
-  mgHud();
+  host.hud();
 }
 
 /** Fine turno: monitor, carrelli e defibrillatore tornano al loro posto per il turno dopo. */
@@ -215,7 +218,7 @@ export function tickHospital(delta: number): void {
   if (!s) return;
   s.clock += delta;
   let hud = false;
-  const shift: GameValue = game.activeShift;
+  const shift = game.activeShift;
   const perItem: number = shift?.perItem ?? 0;
   s.patients.forEach((p, i) => {
     if (p.shock > 0) p.shock -= delta;
@@ -225,7 +228,7 @@ export function tickHospital(delta: number): void {
       p.red = CODE_RED.seconds;
       closeChoice();
       sfx('alarm');
-      mgPop(`🚨 Codice rosso: ${patientName(i)}!`, false);
+      host.pop(`🚨 Codice rosso: ${patientName(i)}!`, false);
       hud = true;
       return;
     }
@@ -236,9 +239,9 @@ export function tickHospital(delta: number): void {
         p.red = 0;
         const fine = codeRedPenalty(perItem);
         if (shift) shift.fine = (shift.fine || 0) + fine;
-        mgScore(-1);
+        host.score(-1);
         sfx('error');
-        mgPop(`🚑 Tempo scaduto per ${patientName(i)} · −${fine} Đ`, false);
+        host.pop(`🚑 Tempo scaduto per ${patientName(i)} · −${fine} Đ`, false);
         hud = true;
       }
       return;
@@ -276,7 +279,7 @@ export function tickHospital(delta: number): void {
     }
   }
   rebuildMap();
-  if (hud) mgHud();
+  if (hud) host.hud();
   updateRedHud(s);
 }
 
@@ -308,39 +311,29 @@ export function hospitalPrompt(item: GameValue): { text: string; locked?: boolea
   const s = hs;
   if (!s) return { text: '', locked: true };
   const h = s.hands;
-  if (item.hosp === 'release') return { text: '✋ Lascia il carrello qui' };
-  if (item.hosp === 'defib')
-    return {
-      text:
-        h.kind === 'defib' ? '↩️ Rimetti a posto il defibrillatore' : '⚡ Prendi il defibrillatore',
-    };
+  if (item.hosp === 'release') return { text: 'Lascia' };
+  if (item.hosp === 'defib') return { text: h.kind === 'defib' ? 'Riponi' : 'Prendi' };
   if (item.hosp === 'station') {
     const st: StationId = item.station;
     if (!canUseStation(h, st))
-      return {
-        text: h.kind === 'cart' ? '🛒 Prima lascia il carrello' : `🤲 Hai in mano ${handsText(h)}`,
-        locked: true,
-      };
-    if (h.kind === 'monitor') return { text: '↩️ Rimetti a posto il monitor' };
-    if (h.kind === 'drug') return { text: `↩️ Rimetti nell'armadio ${actionText(h.drug)}` };
-    if (st === 'monitor') return { text: '🖥️ Prendi il monitor dei parametri' };
-    if (st === 'farmaci') return { text: "💊 Apri l'armadio dei farmaci" };
-    return { text: `🛒 Spingi il ${STATIONS[st].label.toLowerCase()}` };
+      return { text: h.kind === 'cart' ? 'Prima lascia' : 'Mani occupate', locked: true };
+    if (h.kind === 'monitor' || h.kind === 'drug') return { text: 'Riponi' };
+    if (st === 'monitor') return { text: 'Prendi' };
+    if (st === 'farmaci') return { text: 'Apri' };
+    return { text: 'Spingi' };
   }
   const p = s.patients[item.idx];
   if (!p) return { text: '', locked: true };
-  const who = patientName(item.idx);
   if (inCodeRed(p))
     return h.kind === 'defib'
-      ? { text: '⚡ Avvia scarica elettrica' }
-      : { text: `🚨 ${who}: prendi il defibrillatore!`, locked: true };
-  if (h.kind === 'defib') return { text: `💚 ${who} non è in codice rosso`, locked: true };
-  if (!p.need) return { text: `😊 ${who} sta bene`, locked: true };
-  if (h.kind === 'monitor') return { text: `🖥️ Misura i parametri · ${who}` };
-  if (h.kind === 'drug')
-    return { text: `${ACTIONS[h.drug].e} Dai ${ACTIONS[h.drug].label.toLowerCase()} · ${who}` };
-  if (h.kind === 'cart') return { text: `🛒 Porta il carrello da ${who}` };
-  return { text: `${who}: ${actionText(p.need)}`, locked: true };
+      ? { text: 'Scarica' }
+      : { text: 'Serve defibrillatore', locked: true };
+  if (h.kind === 'defib') return { text: 'Non serve', locked: true };
+  if (!p.need) return { text: 'Sta bene', locked: true };
+  if (h.kind === 'monitor') return { text: 'Misura' };
+  if (h.kind === 'drug') return { text: 'Somministra' };
+  if (h.kind === 'cart') return { text: 'Assisti' };
+  return { text: 'Prima prendi', locked: true };
 }
 
 /** Menu di scelta (le voci del monitor, dell'armadio o del carrello). */
@@ -373,7 +366,7 @@ export async function hospitalInteract(item: GameValue): Promise<void> {
       s.hands = { kind: 'empty' };
     }
     sfx('door');
-    mgHud();
+    host.hud();
     return;
   }
   if (item.hosp === 'defib') return useDefib(s);
@@ -393,24 +386,24 @@ function useDefib(s: Shift): void {
     s.hands = { kind: 'empty' };
     d.empty = false;
     sfx('door');
-    mgHud();
+    host.hud();
     return;
   }
   const dropped = droppedForDefib(h);
   if (dropped === 'monitor') s.props.monitor.empty = false;
   else if (dropped === 'cart' && h.kind === 'cart') s.parked = h.station;
-  if (dropped) mgPop(`🤲 Hai posato ${handsText(h)}`);
+  if (dropped) host.pop(`🤲 Hai posato ${handsText(h)}`);
   s.hands = { kind: 'defib' };
   d.empty = true;
   sfx('door');
-  mgHud();
+  host.hud();
 }
 
 async function useStation(s: Shift, st: StationId): Promise<void> {
   const h = s.hands;
   if (!canUseStation(h, st)) {
     sfx('error');
-    mgPop(
+    host.pop(
       h.kind === 'cart' ? '🛒 Prima lascia il carrello' : `🤲 Hai già in mano ${handsText(h)}`,
       false,
     );
@@ -422,7 +415,7 @@ async function useStation(s: Shift, st: StationId): Promise<void> {
     s.hands = { kind: 'empty' };
     if (h.kind === 'monitor') p.empty = false;
     sfx('door');
-    mgHud();
+    host.hud();
     return;
   }
   if (st === 'monitor') {
@@ -443,7 +436,7 @@ async function useStation(s: Shift, st: StationId): Promise<void> {
     if (s.parked === st) s.parked = null;
   }
   sfx('door');
-  mgHud();
+  host.hud();
 }
 
 /** Accanto al letto, dal lato del paravento (destra): dove si lascia il carrello. */
@@ -453,15 +446,15 @@ function bedSide(bed: GameValue, cart: GameValue): Pt {
 
 /** La scarica col defibrillatore: il paziente si salva e la paga ha il doppio di una cura. */
 function shockPatient(p: Patient, idx: number): void {
-  const shift: GameValue = game.activeShift;
+  const shift = game.activeShift;
   const bonus = codeRedBonus(shift?.perItem ?? 0);
   if (shift) shift.tips = (shift.tips || 0) + bonus;
   p.red = 0;
   p.shock = SHOCK_FLASH;
-  mgScore(2);
+  host.score(2);
   sfx('shock');
-  mgPop(`⚡ ${patientName(idx)} salvato! +${bonus} Đ`);
-  mgHud();
+  host.pop(`⚡ ${patientName(idx)} salvato! +${bonus} Đ`);
+  host.hud();
 }
 
 async function careAtBed(s: Shift, idx: number): Promise<void> {
@@ -473,18 +466,18 @@ async function careAtBed(s: Shift, idx: number): Promise<void> {
     if (h.kind === 'defib') shockPatient(p, idx);
     else {
       sfx('error');
-      mgPop(`🚨 Prendi il defibrillatore!`, false);
+      host.pop(`🚨 Prendi il defibrillatore!`, false);
     }
     return;
   }
   if (h.kind === 'defib') {
-    mgPop(`💚 ${who} non è in codice rosso`, false);
+    host.pop(`💚 ${who} non è in codice rosso`, false);
     return;
   }
   if (!p.need) return;
   let done: ActionId | null = null;
   if (h.kind === 'empty') {
-    mgPop(`${who}: ${actionText(p.need)}`, false);
+    host.pop(`${who}: ${actionText(p.need)}`, false);
     return;
   }
   if (h.kind === 'drug') done = h.drug;
@@ -499,29 +492,29 @@ async function careAtBed(s: Shift, idx: number): Promise<void> {
     s.hands = { kind: 'empty' };
     s.parked = h.station;
     sfx('door');
-    mgHud();
+    host.hud();
     done = await choose(`${STATIONS[h.station].e} ${who}`, 'Cosa fai?', choicesAtBed(h));
   }
   // nel frattempo il turno può essere finito, il paziente già curato o in codice rosso
   if (!done || hs !== s || !p.need || inCodeRed(p)) return;
   if (!rightCare(p.need, done)) {
-    mgScore(-0.5);
+    host.score(-0.5);
     sfx('error');
-    mgPop(`❌ ${who} aveva bisogno di: ${actionText(p.need)}`, false);
-    mgHud();
+    host.pop(`❌ ${who} aveva bisogno di: ${actionText(p.need)}`, false);
+    host.hud();
     return;
   }
-  const shift: GameValue = game.activeShift;
+  const shift = game.activeShift;
   const perItem: number = shift?.perItem ?? 0;
   if (shift) shift.delivered = (shift.delivered || 0) + 1;
   s.hands = handsAfterCare(s.hands);
   p.need = null;
   p.cured = CURED_SECONDS;
   s.cured++;
-  mgScore(1);
+  host.score(1);
   sfx('coin');
-  mgPop(`✅ ${reading(done)} · +${perItem} Đ`);
-  mgHud();
+  host.pop(`✅ ${reading(done)} · +${perItem} Đ`);
+  host.hud();
 }
 
 /** Quello che si legge sul monitor (o si è fatto): per la scritta che sale dal riquadro. */

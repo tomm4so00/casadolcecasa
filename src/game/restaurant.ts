@@ -1,18 +1,27 @@
+import type { WorkHost } from './work-model.js';
 // Turno al ristorante: i clienti entrano dal portone, si siedono e ordinano con un fumetto. La pizza
 // si cuoce nel forno a legna e la pasta sui fornelli; vino, dolce e caffè si prendono da
 // cantina, carrello e bancone; poi si portano ai tavoli. Chi aspetta troppo se ne va.
 // Le regole stanno in restaurant-rules.ts.
 import type { GameValue } from './context.js';
 import { game } from './context.js';
+import { dom } from './runtime.js';
 import { sfx } from './audio.js';
 import { botLook } from './character.js';
-import { mgHud, mgPop, mgScore } from './jobs.js';
+import { CHAIR_HALF } from './chair-rules.js';
 import { drawPlayerAvatar } from './render/avatars.js';
-import { setTableGuestDrawer } from './render/objects.js';
+import {
+  type ChefPots,
+  chefStovePotAt,
+  setChefPots,
+  setTableGuestDrawer,
+} from './render/objects.js';
 import { isoProject, isoScale } from './render/primitives.js';
+import { type OvenLook, setPizzaOven } from './render/workplaces.js';
 import {
   type CookStation,
   DISHES,
+  isDishId,
   type DishId,
   EAT_SECONDS,
   MAX_GUESTS,
@@ -25,6 +34,8 @@ import {
   orderFor,
   patienceFor,
   tipFor,
+  WATER_SECONDS,
+  serviceBudget,
 } from './restaurant-rules.js';
 
 type Pt = { x: number; y: number };
@@ -34,12 +45,13 @@ const STATION_OF: Record<string, Station> = {
   pizzaOven: 'oven',
   wineRack: 'cellar',
   chefStove: 'stove',
+  chefSink: 'sink',
   bottleShelf: 'cellar',
   dessertCart: 'dessert',
   restCounter: 'counter',
 };
 /** Cosa si prende subito da ogni postazione (forno e fornelli invece cucinano). */
-type InstantStation = Exclude<Station, CookStation>;
+type InstantStation = Exclude<Station, CookStation | 'sink'>;
 const INSTANT: Record<InstantStation, DishId> = {
   cellar: 'vino',
   dessert: 'dolce',
@@ -68,6 +80,14 @@ interface Guest {
 }
 
 interface Service {
+  /** la pentola che si riempie al lavello: quanto manca e quando la si è messa sotto il rubinetto */
+  water: { left: number; ready: boolean; at: number } | null;
+  /** quando la pentola è stata posata sul fuoco, e quando è sparita prendendo la pasta */
+  potAt: number | null;
+  potGoneAt: number | null;
+  /** quando la pizza è entrata nel forno, e quando la si è ritirata */
+  ovenAt: number | null;
+  ovenGoneAt: number | null;
   clock: number;
   nextAt: number;
   guests: Guest[];
@@ -86,13 +106,90 @@ interface Service {
 }
 
 let svc: Service | null = null;
+let waterHeld = false;
+let waterControls: AbortController | null = null;
+
+function stopWaterHold(): void {
+  waterHeld = false;
+  if (svc) svc.water = null;
+}
+
+/** Mouse, touch e tastiera: il riempimento avanza solo finché il comando è premuto. */
+function bindWaterHold(): void {
+  waterControls?.abort();
+  waterControls = new AbortController();
+  const options = { signal: waterControls.signal };
+  const button = dom('btn-act-main') as HTMLButtonElement;
+  let sinkGesture = false;
+  const begin = () => {
+    if (host.starting()) return false;
+    const item = game.MG.map[game.activeTargetProp];
+    if (item?.station !== 'sink' || servicePrompt(item).locked) return false;
+    sinkGesture = true;
+    waterHeld = true;
+    if (svc) svc.water = { left: WATER_SECONDS, ready: false, at: svc.t };
+    return true;
+  };
+  button.addEventListener(
+    'pointerdown',
+    (event) => {
+      sinkGesture = false;
+      if (event.button !== 0 || !begin()) return;
+      button.setPointerCapture(event.pointerId);
+      event.preventDefault();
+    },
+    options,
+  );
+  for (const type of ['pointerup', 'pointercancel', 'lostpointercapture'])
+    button.addEventListener(type, stopWaterHold, options);
+  button.addEventListener(
+    'keydown',
+    (event) => {
+      if ((event.key === ' ' || event.key === 'Enter') && (sinkGesture || begin())) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+    },
+    options,
+  );
+  button.addEventListener(
+    'keyup',
+    (event) => {
+      if (sinkGesture && (event.key === ' ' || event.key === 'Enter')) {
+        event.preventDefault();
+        stopWaterHold();
+        sinkGesture = false;
+      }
+    },
+    options,
+  );
+  button.addEventListener(
+    'click',
+    (event) => {
+      if (!sinkGesture) return;
+      sinkGesture = false;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+    },
+    { ...options, capture: true },
+  );
+  window.addEventListener('blur', stopWaterHold, options);
+}
 
 export const serviceOn = (): boolean => !!svc;
 
-export function startService(): void {
+let host: WorkHost;
+
+export function startService(controller: WorkHost): void {
+  host = controller;
   const props = (game.ENV_PROPS[game.view.activeEnvironment] || []) as GameValue[];
   const entrance: GameValue = props.find((p) => p.kind === 'wallEntrance');
   svc = {
+    water: null,
+    potAt: null,
+    potGoneAt: null,
+    ovenAt: null,
+    ovenGoneAt: null,
     clock: 0,
     nextAt: 1,
     guests: [],
@@ -113,18 +210,26 @@ export function startService(): void {
   };
   game.MG.carry = null;
   setTableGuestDrawer(drawSeatedGuest);
+  setChefPots(potsNow);
+  setPizzaOven(ovenNow);
+  bindWaterHold();
   rebuildMap();
-  mgHud();
+  host.hud();
 }
 
 export function stopService(): void {
+  waterControls?.abort();
+  waterControls = null;
+  stopWaterHold();
   svc = null;
   setTableGuestDrawer(null);
+  setChefPots(null);
+  setPizzaOven(null);
 }
 
 /** Parte del turno già passata: 0 all'inizio, 1 alla fine. */
 function progress(): number {
-  const s: GameValue = game.activeShift;
+  const s = game.activeShift;
   return s ? 1 - s.remaining / game.SHIFT_SECONDS : 0;
 }
 
@@ -160,17 +265,31 @@ function rebuildMap(): void {
   game.MG.map = map;
 }
 
-/** Un cliente nuovo: entra dal portone e va alla sedia dietro il tavolo, passando dal lato destro. */
+/**
+ * Un cliente nuovo: entra dal portone e va alla sedia dietro il tavolo, passando dal lato destro e
+ * poi in un corridoio dietro la sedia, così non sfiora il bordo del tavolo; da lì si siede.
+ */
 function addGuest(table: number): void {
   if (!svc) return;
   const t = svc.tables[table];
   const door = svc.door;
   const seat = { x: t.x, y: t.y - t.h / 2 - 2 };
   const side = t.x + t.w / 2 + 22;
-  const path = [door, { x: side, y: door.y + 30 }, { x: side, y: seat.y }, seat];
+  const lane = seat.y - CHAIR_HALF - 10;
+  const path = [
+    door,
+    { x: side, y: door.y + 30 },
+    { x: side, y: lane },
+    { x: seat.x, y: lane },
+    seat,
+  ];
   openEntrance();
   const p = progress();
-  const max = patienceFor(p);
+  const order = orderFor(p, Math.random(), Math.random(), Math.random());
+  const queue = svc.guests
+    .filter((g) => g.state === 'wait' || g.state === 'in')
+    .flatMap((g) => missing(g.order, g.served));
+  const max = Math.max(patienceFor(p), serviceBudget(order, queue));
   svc.guests.push({
     name: NAMES[svc.seq++ % NAMES.length],
     table,
@@ -180,7 +299,7 @@ function addGuest(table: number): void {
     y: door.y,
     dir: { x: 0, y: -1 },
     state: 'in',
-    order: orderFor(p, Math.random(), Math.random(), Math.random()),
+    order,
     served: [],
     patience: max,
     max,
@@ -227,15 +346,41 @@ export function tickService(delta: number): void {
   const s = svc;
   if (!s) return;
   s.clock += delta;
-  const shift: GameValue = game.activeShift;
+  if (s.water && !s.water.ready) {
+    const sink = Object.values(game.MG.map).find(
+      (it: GameValue) => it.station === 'sink',
+    ) as GameValue;
+    if (
+      !waterHeld ||
+      game.MG.carry ||
+      !sink ||
+      Math.hypot(game.playerPos.x - sink.x, game.playerPos.y - sink.y) - (sink.reach || 0) >= 65
+    ) {
+      stopWaterHold();
+    } else {
+      s.water.left = Math.max(0, s.water.left - delta);
+      if (s.water.left === 0) {
+        game.MG.carry = { id: 'water', e: '🫕', label: 'Pentola con acqua' };
+        s.water = null;
+        waterHeld = false;
+        sfx('door');
+        host.pop('💧 Pentola piena: portala sui fornelli');
+        host.hud();
+      }
+    }
+  }
+  const shift = game.activeShift;
   if (s.clock >= s.nextAt) {
     const busy = new Set(s.guests.map((g) => g.table));
     const free = s.tables.map((_, i) => i).filter((i) => !busy.has(i));
     const inRoom = s.guests.filter((g) => g.state !== 'out').length;
     // negli ultimi secondi non entra più nessuno: non farebbe in tempo a mangiare
-    if (free.length && inRoom < MAX_GUESTS && (shift?.remaining ?? 0) > 8)
+    if (free.length && inRoom < MAX_GUESTS && (shift?.remaining ?? 0) > 22)
       addGuest(free[Math.floor(Math.random() * free.length)]);
-    s.nextAt = s.clock + arrivalGap(progress(), Math.random());
+    const queue = s.guests
+      .filter((g) => g.state === 'wait' || g.state === 'in')
+      .flatMap((g) => missing(g.order, g.served));
+    s.nextAt = s.clock + arrivalGap(progress(), Math.random()) + queue.length * 1.5;
   }
   for (const st of ['oven', 'stove'] as CookStation[]) {
     const c = s.cooking[st];
@@ -246,7 +391,7 @@ export function tickService(delta: number): void {
       s.ready[st] = c.dish;
       delete s.cooking[st];
       sfx('door');
-      mgPop(`🔔 ${d.e} ${d.label} pronta`);
+      host.pop(`🔔 ${d.e} ${d.label} pronta`);
     }
   }
   for (const g of s.guests) {
@@ -257,10 +402,10 @@ export function tickService(delta: number): void {
       if (g.patience <= 0) {
         leave(g, true);
         s.lost++;
-        mgScore(-0.5);
+        host.score(-0.5);
         sfx('error');
-        mgPop('😠 Cliente perso', false);
-        mgHud();
+        host.pop('😠 Cliente perso', false);
+        host.hud();
       }
     } else if (g.state === 'eat') {
       g.timer -= delta;
@@ -285,7 +430,7 @@ function cookBusy(st: CookStation): DishId[] {
     r = svc.ready[st];
   if (c) out.push(c.dish);
   if (r) out.push(r);
-  if (game.MG.carry) out.push(game.MG.carry.id);
+  if (game.MG.carry && isDishId(game.MG.carry.id)) out.push(game.MG.carry.id);
   return out;
 }
 
@@ -303,99 +448,123 @@ const carryOf = (d: DishId) => ({ id: d, e: DISHES[d].e, label: DISHES[d].label 
 /** Testo del pulsante vicino a una postazione o a un tavolo. */
 export function servicePrompt(item: GameValue): { text: string; locked?: boolean } {
   const s = svc;
-  const c: GameValue = game.MG.carry;
+  const c = game.MG.carry;
   if (!s) return { text: '', locked: true };
   if (item.kind === 'station') {
-    if (c) return { text: `↩️ Posa ${c.e} ${c.label}` };
+    if (item.station === 'sink') {
+      if (c) return { text: 'Mani occupate', locked: true };
+      if (s.water)
+        return s.water.ready ? { text: 'Prendi' } : { text: 'Tieni premuto', locked: true };
+      return nextFor('stove') && !s.cooking.stove && !s.ready.stove
+        ? { text: 'Riempi · tieni premuto' }
+        : { text: 'Nessun ordine', locked: true };
+    }
+    if (c?.id === 'water' && item.station === 'stove')
+      return {
+        text: 'Cuoci',
+        locked: !!(s.cooking.stove || s.ready.stove),
+      };
+    if (c) return { text: 'Posa' };
     const st: Station = item.station;
     if (isCook(st)) {
       const ready = s.ready[st],
         cooking = s.cooking[st];
-      if (ready) return { text: `✋ Prendi ${DISHES[ready].e} ${DISHES[ready].label}` };
+      if (ready) return { text: 'Prendi' };
       if (cooking) {
-        const d = DISHES[cooking.dish];
-        return { text: `⏳ ${d.e} ${d.label} sul fuoco…`, locked: true };
+        return { text: 'In cottura', locked: true };
       }
       const next = nextFor(st);
-      const verb = st === 'oven' ? '🔥 Inforna' : '🍳 Cucina';
-      if (next) return { text: `${verb} ${DISHES[next].e} ${DISHES[next].label}` };
+      if (st === 'stove' && next) return { text: 'Prima l’acqua', locked: true };
+      if (next) return { text: st === 'oven' ? 'Inforna' : 'Cuoci' };
       return {
-        text: st === 'oven' ? '🔥 Nessuno aspetta la pizza' : '🍳 Nessuno aspetta la pasta',
+        text: 'Nessun ordine',
         locked: true,
       };
     }
-    const d = DISHES[INSTANT[st]];
-    return { text: `✋ Prendi ${d.e} ${d.label}` };
+    return { text: 'Prendi' };
   }
   const g = guestAt(item.idx);
   if (!g) return { text: '', locked: true };
-  if (g.state === 'eat') return { text: '😋 Sta mangiando', locked: true };
+  if (g.state === 'eat') return { text: 'Sta mangiando', locked: true };
   const want = missing(g.order, g.served);
-  if (c && want.includes(c.id)) return { text: `🍽️ Servi ${c.e} ${c.label}` };
-  return { text: `📝 Vuole ${want.map((d) => DISHES[d].e).join(' ')}`, locked: true };
+  if (c && isDishId(c.id) && want.includes(c.id)) return { text: 'Servi' };
+  return { text: 'Prima il piatto', locked: true };
 }
 
 /** Pulsante premuto vicino a una postazione o a un tavolo. */
 export function serviceInteract(item: GameValue): void {
   const s = svc;
   if (!s) return;
-  const c: GameValue = game.MG.carry;
+  if (servicePrompt(item).locked) return;
+  const c = game.MG.carry;
   if (item.kind === 'station') {
-    if (c) {
+    if (item.station === 'sink') {
+      return;
+    } else if (c?.id === 'water' && item.station === 'stove') {
       game.MG.carry = null;
-      mgPop(`↩️ ${c.e} posato`);
+      s.cooking.stove = { dish: 'pasta', left: DISHES.pasta.cook, total: DISHES.pasta.cook };
+      s.potAt = s.t;
+      sfx('door');
+    } else if (c) {
+      game.MG.carry = null;
+      host.pop(`↩️ ${c.e} posato`);
     } else if (isCook(item.station)) {
       const st: CookStation = item.station;
       const ready = s.ready[st];
       if (ready) {
         game.MG.carry = carryOf(ready);
         delete s.ready[st];
+        // la pasta va nel piatto e la pentola sparisce in una nuvola di vapore
+        if (st === 'stove') s.potGoneAt = s.t;
+        // la pizza esce dal forno sulla pala
+        if (st === 'oven') s.ovenGoneAt = s.t;
         sfx('door');
-      } else if (!s.cooking[st]) {
+      } else if (st !== 'stove' && !s.cooking[st]) {
         const next = nextFor(st);
         if (!next) return;
         s.cooking[st] = { dish: next, left: DISHES[next].cook, total: DISHES[next].cook };
+        if (st === 'oven') s.ovenAt = s.t;
         sfx('door');
       }
     } else {
       game.MG.carry = carryOf(INSTANT[item.station as InstantStation]);
       sfx('door');
     }
-    mgHud();
+    host.hud();
     return;
   }
   const g = guestAt(item.idx);
   if (!g || g.state !== 'wait') return;
   const want = missing(g.order, g.served);
-  if (!c || !want.includes(c.id)) {
+  if (!c || !isDishId(c.id) || !want.includes(c.id)) {
     sfx('error');
-    mgPop(`❌ Vuole ${want.map((d) => DISHES[d].e).join(' ')}`, false);
+    host.pop(`❌ Vuole ${want.map((d) => DISHES[d].e).join(' ')}`, false);
     return;
   }
-  const shift: GameValue = game.activeShift;
+  const shift = game.activeShift;
   const perItem: number = shift?.perItem ?? 0;
   g.served.push(c.id);
   game.MG.carry = null;
   s.served++;
   if (shift) shift.delivered = (shift.delivered || 0) + 1;
-  mgScore(1);
+  host.score(1);
   sfx('coin');
-  if (missing(g.order, g.served).length) mgPop(`✅ +${perItem} Đ`);
+  if (missing(g.order, g.served).length) host.pop(`✅ +${perItem} Đ`);
   else {
     const tip = tipFor(g.patience / g.max, perItem);
     if (shift) shift.tips = (shift.tips || 0) + tip;
     g.state = 'eat';
     g.timer = EAT_SECONDS;
-    mgPop(`😋 +${perItem} Đ${tip ? ` · mancia ${tip} Đ` : ''}`);
+    host.pop(`😋 +${perItem} Đ${tip ? ` · mancia ${tip} Đ` : ''}`);
   }
-  mgHud();
+  host.hud();
 }
 
 /** Riga del riquadro del turno. */
 export function serviceHudLine(): string {
   const s = svc;
   if (!s) return '';
-  const c: GameValue = game.MG.carry;
+  const c = game.MG.carry;
   const hand = c ? `🤲 ${c.e} ${c.label}` : '🧑‍🍳 Servi i clienti';
   return `<span class="${c ? 'held' : ''}">${hand}</span> <small>😋${s.served} 😠${s.lost}</small>`;
 }
@@ -422,8 +591,116 @@ export function serviceDrawables(drawables: GameValue[], t: number): void {
   for (const p of s.stations) {
     const st = STATION_OF[p.kind];
     if (isCook(st) && (s.cooking[st] || s.ready[st]))
-      drawables.push({ depth: 1e9 - 2, draw: () => drawStoveState(p, st, t) });
+      drawables.push({
+        depth: 1e9 - 2,
+        draw: () => drawStoveState(p, st, t),
+      });
+    if (st === 'sink' && s.water)
+      drawables.push({
+        depth: 1e9 - 2,
+        draw: () => drawStoveState(p, 'sink', t),
+      });
   }
+}
+
+const clamp01 = (v: number): number => Math.min(1, Math.max(0, v));
+/** Compare con un piccolo rimbalzo: supera un po' la misura e torna giusta. */
+const popIn = (k: number): number => {
+  const c = 2.2;
+  const u = clamp01(k) - 1;
+  return 1 + (c + 1) * u * u * u + c * u * u;
+};
+/** Fin dove arriva l'acqua nella pentola piena: un dito sotto il bordo. */
+const POT_FULL = 0.85;
+/** Quanto dura la caduta della pentola sul fuoco, e la nuvola quando sparisce (secondi). */
+const POT_DROP = 0.28,
+  POT_VANISH = 0.5;
+
+/**
+ * Dov'è la pentola della pasta e com'è: nel lavello mentre si riempie, poi sul fuoco, dove
+ * cade dall'alto con uno schizzo, scalda l'acqua fino al bollore e poi accoglie gli spaghetti,
+ * dritti all'inizio e molli alla fine. Quando si prende la pasta sparisce nel vapore.
+ */
+function potsNow(): ChefPots {
+  const s = svc;
+  if (!s) return {};
+  const t = s.t;
+  const out: ChefPots = {};
+  if (s.water) {
+    out.sink = {
+      water: (1 - s.water.left / WATER_SECONDS) * POT_FULL,
+      boil: 0,
+      pasta: -1,
+      size: popIn((t - s.water.at) / 0.3),
+    };
+    out.pour = waterHeld;
+  }
+  const c = s.cooking.stove;
+  if (c || s.ready.stove) {
+    const k = c ? 1 - c.left / c.total : 1;
+    const since = s.potAt === null ? 9 : t - s.potAt;
+    const fall = clamp01(since / POT_DROP);
+    out.stove = {
+      water: POT_FULL,
+      boil: clamp01(k / 0.3),
+      pasta: k < 0.3 ? -1 : clamp01((k - 0.3) / 0.6),
+      size: 1,
+      lift: (1 - fall * fall) * 18,
+      splash: since >= POT_DROP ? (since - POT_DROP) / 0.45 : undefined,
+    };
+  } else if (s.potGoneAt !== null && t - s.potGoneAt < POT_VANISH) {
+    const k = (t - s.potGoneAt) / POT_VANISH;
+    out.stove = { water: POT_FULL, boil: 1, pasta: 1, size: 1 - k * k, steam: 1 };
+  }
+  return out;
+}
+
+/** Quanto ci mette la pala a entrare nel forno, e a uscirne. */
+const PEEL_IN = 0.45,
+  PEEL_OUT = 0.45;
+const easeInOut = (k: number): number => {
+  const u = clamp01(k);
+  return u * u * (3 - 2 * u);
+};
+
+/**
+ * La pizza e la pala del forno a legna. Infornando, la pala porta la pizza cruda nella bocca e
+ * torna fuori vuota; poi la pizza si vede dentro mentre si dora. Ritirandola, la pala entra vuota,
+ * esce con la pizza cotta e sparisce: la pizza è passata in mano.
+ */
+function ovenNow(): OvenLook | null {
+  const s = svc;
+  if (!s) return null;
+  const t = s.t;
+  const c = s.cooking.oven;
+  if (c || s.ready.oven) {
+    const k = c ? 1 - c.left / c.total : 1;
+    const since = s.ovenAt === null ? 9 : t - s.ovenAt;
+    if (since < PEEL_IN)
+      return {
+        inside: -1,
+        peel: { pos: easeInOut(since / PEEL_IN), pizza: 0, fade: 1 - clamp01(since / 0.12) },
+      };
+    const out = (since - PEEL_IN) / PEEL_OUT;
+    if (out < 1)
+      return {
+        inside: k,
+        peel: { pos: 1 - easeInOut(out), pizza: -1, fade: clamp01(out * 2 - 1) },
+      };
+    return { inside: k };
+  }
+  if (s.ovenGoneAt !== null) {
+    const since = t - s.ovenGoneAt;
+    if (since < PEEL_IN)
+      return { inside: 1, peel: { pos: easeInOut(since / PEEL_IN), pizza: -1, fade: 0 } };
+    const out = (since - PEEL_IN) / PEEL_OUT;
+    if (out < 1.4)
+      return {
+        inside: -1,
+        peel: { pos: 1 - easeInOut(out), pizza: 1, fade: clamp01((out - 1) / 0.4) },
+      };
+  }
+  return null;
 }
 
 /** Il cliente seduto dietro questo tavolo: si disegna tra la sedia e il piano del tavolo. */
@@ -495,16 +772,28 @@ function drawGuestBubble(g: Guest): void {
 }
 
 /** Sopra il fornello: il piatto che cuoce con il cerchio che si riempie, o quello pronto. */
-function drawStoveState(stove: GameValue, st: CookStation, t: number): void {
+function drawStoveState(stove: GameValue, st: CookStation | 'sink', t: number): void {
   const s = svc;
   if (!s) return;
   const ctx = game.view.ctx;
   const sc: number = isoScale();
-  const cooking = s.cooking[st];
-  const dish = cooking ? cooking.dish : s.ready[st];
+  const cooking =
+    st === 'sink'
+      ? s.water && !s.water.ready
+        ? { dish: 'pasta' as const, left: s.water.left, total: WATER_SECONDS }
+        : null
+      : s.cooking[st];
+  const dish = st === 'sink' ? s.water && 'pasta' : cooking ? cooking.dish : s.ready[st];
   if (!dish) return;
   const bob = cooking ? 0 : Math.sin(t * 5) * 2;
-  const p = isoProject(stove.x, stove.y, (stove.z || 55) + 26 + bob);
+  // sopra la pentola, sul fuoco o nel lavello, così non copre il piano
+  const at =
+    st === 'stove'
+      ? chefStovePotAt(stove)
+      : st === 'sink'
+        ? { x: stove.x + 1, y: stove.y + stove.h * 0.1, z: stove.z }
+        : { x: stove.x, y: stove.y, z: (stove.z || 55) - 14 };
+  const p = isoProject(at.x, at.y, at.z + 40 + bob);
   ctx.save();
   ctx.fillStyle = 'rgba(255,255,255,0.92)';
   ctx.beginPath();
@@ -528,6 +817,6 @@ function drawStoveState(stove: GameValue, st: CookStation, t: number): void {
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillStyle = '#000';
-  ctx.fillText(DISHES[dish].e, p.x, p.y + 1);
+  ctx.fillText(st === 'sink' ? '💧' : DISHES[dish].e, p.x, p.y + 1);
   ctx.restore();
 }

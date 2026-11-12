@@ -1,4 +1,5 @@
 import { DOG_GATE, DOG_PARK, dogParkFence } from '../dog-park-rules.js';
+import type { WorkConfig } from '../work-model.js';
 
 export const SHOP_CATALOG = [
   {
@@ -2817,7 +2818,7 @@ export const COURTYARD_DOORS = {
 
 export { BUSINESSES as BIZ } from '../../../shared/market.js';
 
-export const WORK_JOBS = {
+export const WORK_JOBS: Record<string, WorkConfig> = {
   cantiere: {
     title: '🏗️ Cantiere',
     targets: [
@@ -2919,8 +2920,9 @@ export const WORK_JOBS = {
       { id: 'scrivania', label: 'Scrivania', x: -100, y: -70, w: 70, h: 46 },
       { id: 'archivio', label: 'Archivio', x: 145, y: 40, w: 36, h: 50 },
     ],
+    // niente documento tra gli oggetti: il documento è quello che esce dalla stampante
     pool: {
-      documento: ['📄', 'Documento'],
+      calcolatrice: ['🧮', 'Calcolatrice'],
       penna: ['🖊️', 'Penna'],
       cartella: ['📁', 'Cartella'],
       etichetta: ['🏷️', 'Etichetta'],
@@ -2929,9 +2931,13 @@ export const WORK_JOBS = {
     },
     tasks: [
       {
-        title: 'Firma il contratto',
+        title: 'Firma il bilancio',
         steps: [
-          { item: 'documento', target: 'scrivania', text: 'Porta il 📄 documento alla scrivania' },
+          {
+            item: 'calcolatrice',
+            target: 'scrivania',
+            text: 'Porta la 🧮 calcolatrice alla scrivania',
+          },
           { item: 'penna', target: 'scrivania', text: 'Porta la 🖊️ penna per firmarlo' },
         ],
       },
@@ -3191,16 +3197,37 @@ export const ENV_PROPS = {
     },
     { kind: 'coatRack', x: 185, y: -125, w: 12, h: 12, z: 72 },
     // a sinistra, contro il muro e girate verso la sala: forno per la pizza e fornelli per la pasta
-    { kind: 'pizzaOven', x: -172, y: -100, w: 50, h: 56, z: 70, label: 'Forno a legna 🍕' },
+    { kind: 'pizzaOven', x: -170, y: -102, w: 56, h: 62, z: 80, label: 'Forno a legna 🍕' },
+    // la stazione di cucina: fornelli e lavello attaccati in fila sotto la cappa. I centri distano
+    // 50 perché la stanza si allarga di 1,2: diventano 60, quanto sono lunghi.
+    {
+      kind: 'chefWall',
+      x: -197,
+      y: -10,
+      w: 4,
+      h: 120,
+      z: 100,
+      solid: false,
+      depth: -1e4,
+    },
     {
       kind: 'chefStove',
       x: -175,
-      y: 0,
+      y: -35,
       w: 46,
       h: 60,
       z: 55,
       facing: 'x',
       label: 'Fornelli 🍝',
+    },
+    {
+      kind: 'chefSink',
+      x: -175,
+      y: 15,
+      w: 46,
+      h: 60,
+      z: 55,
+      label: 'Lavello 🚰',
     },
     // i vini contro il muro, accanto ai fornelli: la cantinetta a rombi e una botte
     { kind: 'wineRack', x: -188, y: 80, w: 18, h: 52, z: 92, label: 'Cantina 🍷' },

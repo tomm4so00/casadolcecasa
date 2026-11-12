@@ -13,6 +13,7 @@ import type {
   SceneMap,
 } from './models.js';
 import type { OnlinePlayer } from './network-model.js';
+import type { WorkConfig, WorkShift, WorkState } from './work-model.js';
 
 /** Dynamic values at the boundary with the v8 save format and scene catalogues. */
 export type GameValue = any;
@@ -118,7 +119,7 @@ interface GameContext {
   remoteSmooth: GameValue;
   currentRoomIdx: number | null;
   GAME_MINUTES_PER_SEC: GameValue;
-  activeShift: GameValue;
+  activeShift: WorkShift | null;
   SHIFT_SECONDS: number;
   mySay: string;
   mySayT: number;
@@ -256,8 +257,8 @@ interface GameContext {
   alertLevel: GameValue;
   wakeAlertSent: boolean;
   SKILL_PAY: boolean;
-  MG: GameValue;
-  WORK_JOBS: GameValue;
+  MG: WorkState;
+  WORK_JOBS: Record<string, WorkConfig>;
   previewRaf: GameValue;
   shopState: GameValue;
   wardrobeAnim: GameValue;

@@ -5,8 +5,13 @@ import { dom } from './runtime.js';
 import { toast } from './missions.js';
 import { sendNotify } from './needs.js';
 import { sfx } from './audio.js';
-import { marketSnapshot } from './market-client.js';
-import { BUSINESSES, eventAt, MARKET_EVENT_EFFECT, type MarketEvent } from '../../shared/market.js';
+import {
+  BUSINESSES,
+  eventAt,
+  MARKET_EVENT_EFFECT,
+  type MarketEvent,
+  type MarketSnapshot,
+} from '../../shared/market.js';
 
 const SEEN_KEY = 'sims_market_event_seen';
 let shownStart = 0;
@@ -30,8 +35,7 @@ function tickerText(e: MarketEvent): string {
 }
 
 /** Mostra o nasconde il ticker e, la prima volta che si vede un evento, avvisa il giocatore. */
-export function updateMarketEvent(): void {
-  const snap = marketSnapshot();
+export function updateMarketEvent(snap: MarketSnapshot | null): void {
   const e = snap ? eventAt(snap, snap.updatedAt) : null;
   const bar = dom('market-ticker');
   if (!bar) return;

@@ -2,6 +2,8 @@ import '../css/style.css';
 import { mountLatestGame } from './game/application.js';
 import { serviceWorker } from './game/push.js';
 import { receiveMove } from './game/move.js';
+// i capitoli delle missioni si agganciano al gioco (game/quest-hooks.ts)
+import './game/quests.js';
 
 // prima di tutto: un eventuale trasloco dal vecchio indirizzo, prima che Firebase parta
 receiveMove();

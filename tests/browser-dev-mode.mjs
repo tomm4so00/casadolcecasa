@@ -41,6 +41,32 @@ try {
   assert.equal(await page.getByRole('button', { name: 'Senza droga', exact: true }).count(), 0);
   assert.equal(await page.locator('#creator-modal').isVisible(), false);
   assert.equal(await page.locator('#world-modal').isVisible(), false);
+  for (const [key, title] of Object.entries({
+    cantiere: 'Cantiere',
+    ospedale: 'Ospedale',
+    ristorante: 'Ristorante',
+    ufficio: 'Ufficio',
+  })) {
+    await page.getByRole('button', { name: 'Scenario lavori', exact: true }).click();
+    await page
+      .locator('#dev-work-choices')
+      .getByRole('button', { name: title, exact: true })
+      .click();
+    await page.locator('#work-start').waitFor({ state: 'visible' });
+    const shift = await page.evaluate(async () => {
+      const { game } = await import('/src/game/context.ts');
+      return {
+        environment: game.view.activeEnvironment,
+        job: game.activeShift.jobKey,
+        remaining: game.activeShift.remaining,
+        duration: game.SHIFT_SECONDS,
+      };
+    });
+    assert.equal(shift.environment, 'lavoro_' + key);
+    assert.equal(shift.job, key);
+    assert.equal(shift.remaining, shift.duration);
+    await page.locator('#work-start').waitFor({ state: 'detached' });
+  }
   await page.getByRole('button', { name: 'Scenario poliziotto', exact: true }).click();
   await page.locator('#dev-test-tools[data-scenario="police"]').waitFor();
   // L'inseguimento non scade per tempo, distanza o ostacoli: termina uscendo dal luogo.

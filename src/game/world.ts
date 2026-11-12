@@ -65,7 +65,7 @@ import {
   startMovingFurniture,
 } from './character.js';
 import { footprintOf, isoProject, isoScale } from './render/primitives.js';
-import { mgStart } from './jobs.js';
+import { mgButtonIcon, mgCanDeliver, mgStart } from './jobs.js';
 import { promptSetSafePin } from './needs.js';
 import {} from './render/graveyard.js';
 import { sfx } from './audio.js';
@@ -401,6 +401,7 @@ export function checkProximity(..._args: GameValue[]): GameValue {
   let map = getCurrentFurnitureMap();
   let found: GameValue = null;
   let bestDist: GameValue = 65;
+  let delivery = false;
   // le porte che si passano camminando non hanno pulsante
   const walkable = walkThroughKeys();
   Object.keys(map).forEach((key?: GameValue): GameValue => {
@@ -410,9 +411,11 @@ export function checkProximity(..._args: GameValue[]): GameValue {
     // gli oggetti molto grandi (il razzo) si raggiungono anche dal bordo: `reach` allunga la portata
     let d: GameValue =
       Math.hypot(game.playerPos.x - obj.x, game.playerPos.y - obj.y) - (obj.reach || 0);
-    if (d < bestDist) {
+    const canDeliver = !arrange && mgCanDeliver(obj);
+    if (d < 65 && ((canDeliver && !delivery) || (canDeliver === delivery && d < bestDist))) {
       bestDist = d;
       found = key;
+      delivery = canDeliver;
     } // l'oggetto più vicino
   });
   // cane e gatto che girano per la propria stanza
@@ -457,7 +460,20 @@ export function checkProximity(..._args: GameValue[]): GameValue {
       ? paintingTitleOf(found) || item.name
       : item.name;
     const p = arrange ? { text: `🖐️ Sposta ${name}` } : promptFor(found, item);
-    btnMain.innerText = p.text;
+    const icon = arrange ? '' : mgButtonIcon(item);
+    const shown = icon ? `${icon}|${p.text}` : '';
+    if (!icon) btnMain.innerText = p.text;
+    else if (btnMain.dataset.wk !== shown) {
+      // tasto tondo dei lavori: l'icona dentro, la scritta sotto (si rifà solo se cambia)
+      const ico = document.createElement('span'),
+        lbl = document.createElement('span');
+      ico.className = 'wk-ico';
+      ico.textContent = icon;
+      lbl.className = 'wk-lbl';
+      lbl.textContent = p.text;
+      btnMain.replaceChildren(ico, lbl);
+    }
+    btnMain.dataset.wk = shown;
     btnMain.classList.toggle('btn-pop-locked', !!p.locked);
     if (p.sub) {
       btnSub.innerText = p.sub;

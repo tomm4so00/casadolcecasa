@@ -1,7 +1,14 @@
 // Regole del turno al ristorante: piatti, pazienza dei clienti, mance e ritmo degli arrivi.
 // Niente browser qui: le usa restaurant.ts e le controllano i test.
 
-export type Station = 'oven' | 'stove' | 'cellar' | 'dessert' | 'counter';
+export type Station = 'oven' | 'stove' | 'sink' | 'cellar' | 'dessert' | 'counter';
+export const WATER_SECONDS = 1.5;
+
+/** Budget prudente: preparazione in coda, spostamenti e servizio, con un margine. */
+export function serviceBudget(order: readonly DishId[], queue: readonly DishId[] = []): number {
+  const seconds = (d: DishId) => DISHES[d].cook + (d === 'pasta' ? WATER_SECONDS + 2 : 0) + 6;
+  return Math.ceil(6 + [...queue, ...order].reduce((sum, d) => sum + seconds(d), 0));
+}
 /** Le postazioni dove si cucina (le altre danno il piatto subito). */
 export type CookStation = 'oven' | 'stove';
 export type DishId = 'pizza' | 'pasta' | 'vino' | 'dolce' | 'caffe';
@@ -22,6 +29,7 @@ export const DISHES: Record<DishId, Dish> = {
   caffe: { e: '☕', label: 'Caffè', station: 'counter', cook: 0 },
 };
 export const DISH_IDS = Object.keys(DISHES) as DishId[];
+export const isDishId = (id: string): id is DishId => Object.hasOwn(DISHES, id);
 
 /** Clienti seduti al massimo nello stesso momento: da telefono non deve diventare frenetico. */
 export const MAX_GUESTS = 3;

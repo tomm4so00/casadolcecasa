@@ -88,6 +88,48 @@ try {
   await page.evaluate(async () =>
     (await import('/src/game/world.ts')).chooseOrGoToJob('ufficio', 'Ufficio'),
   );
+  await page.locator('#work-start').waitFor({ state: 'visible' });
+  const officeLayout = await page.evaluate(() => {
+    const task = document.querySelector('#minigame').getBoundingClientRect();
+    const action = document.querySelector('#pop-interaction');
+    return {
+      taskTop: task.top,
+      taskBottom: task.bottom,
+      height: innerHeight,
+      actionAtBottom: action.classList.contains('work-interact'),
+    };
+  });
+  assert(officeLayout.taskTop >= 0 && officeLayout.taskBottom < officeLayout.height / 2);
+  assert(officeLayout.actionAtBottom);
+  await page.locator('#work-start').waitFor({ state: 'detached' });
+  const deliveryPriority = await page.evaluate(async () => {
+    const { game } = await import('/src/game/context.ts');
+    const { checkProximity } = await import('/src/game/world.ts');
+    const previousMap = game.MG.map;
+    const step = game.MG.task.steps[game.MG.stepIdx];
+    const { x, y } = game.playerPos;
+    const pickup = { kind: 'pickup', x, y, item: { id: 'decoy', e: '📦', label: 'Altro' } };
+    const target = { kind: 'target', id: step.target, label: 'Consegna', x: x + 50, y };
+    game.MG.map = { pickup, target };
+    game.MG.carry = { id: step.item, e: '📄', label: 'Documento' };
+    checkProximity();
+    const delivery = game.activeTargetProp;
+    target.x = x + 80;
+    checkProximity();
+    const outOfReach = game.activeTargetProp;
+    target.x = x + 50;
+    game.MG.carry = null;
+    checkProximity();
+    const emptyHands = game.activeTargetProp;
+    game.MG.map = previousMap;
+    checkProximity();
+    return { delivery, outOfReach, emptyHands };
+  });
+  assert.deepEqual(deliveryPriority, {
+    delivery: 'target',
+    outOfReach: 'pickup',
+    emptyHands: 'pickup',
+  });
   const shift = await page.evaluate(async () => {
     const { game } = await import('/src/game/context.ts');
     game.activeShift.remaining = 0.1;
@@ -102,6 +144,72 @@ try {
   assert.deepEqual(shift, { turns: 1, owned: true, bed: true, invest: 100 });
   // A fine turno compare il riepilogo della paga: lo chiude come farebbe il giocatore.
   await page.locator('#dialog-buttons').getByRole('button', { name: 'Ok', exact: true }).click();
+  const pastaSteps = await page.evaluate(async () => {
+    const { game } = await import('/src/game/context.ts');
+    const service = await import('/src/game/restaurant.ts');
+    const previousEnvironment = game.view.activeEnvironment;
+    const previousMG = { ...game.MG };
+    const previousShift = game.activeShift;
+    const previousPosition = { ...game.playerPos };
+    const random = Math.random;
+    try {
+      game.view.activeEnvironment = 'lavoro_ristorante';
+      game.MG.active = true;
+      game.activeShift = { remaining: game.SHIFT_SECONDS, pay: 0 };
+      const controller = await import('/src/game/jobs.ts');
+      service.startService({
+        hud: controller.mgHud,
+        pop: controller.mgPop,
+        score: controller.mgScore,
+        spawnTask: controller.mgSpawnTask,
+        starting: controller.mgStarting,
+      });
+      Math.random = () => 0.25; // il primo cliente ordina pasta
+      service.tickService(1);
+      Math.random = random;
+      const sink = Object.values(game.MG.map).find((it) => it.station === 'sink');
+      const stove = Object.values(game.MG.map).find((it) => it.station === 'stove');
+      service.serviceInteract(stove);
+      const needsWater = service.servicePrompt(stove).locked;
+      const sinkKey = Object.keys(game.MG.map).find((key) => game.MG.map[key].station === 'sink');
+      game.activeTargetProp = sinkKey;
+      game.playerPos.x = sink.x;
+      game.playerPos.y = sink.y;
+      const button = document.querySelector('#btn-act-main');
+      const key = (type) =>
+        button.dispatchEvent(new KeyboardEvent(type, { key: ' ', cancelable: true }));
+      key('keydown');
+      service.tickService(0.5);
+      key('keyup');
+      service.tickService(2);
+      const releasedEarly = game.MG.carry === null;
+      key('keydown');
+      const filling = service.servicePrompt(sink).locked;
+      service.tickService(1.6);
+      const water = game.MG.carry.id;
+      key('keyup');
+      service.serviceInteract(stove);
+      const cooking = service.servicePrompt(stove).locked;
+      service.tickService(2.1);
+      service.serviceInteract(stove);
+      return { needsWater, releasedEarly, filling, water, cooking, dish: game.MG.carry.id };
+    } finally {
+      Math.random = random;
+      service.stopService();
+      Object.assign(game.MG, previousMG);
+      game.activeShift = previousShift;
+      Object.assign(game.playerPos, previousPosition);
+      game.view.activeEnvironment = previousEnvironment;
+    }
+  });
+  assert.deepEqual(pastaSteps, {
+    needsWater: true,
+    releasedEarly: true,
+    filling: true,
+    water: 'water',
+    cooking: true,
+    dish: 'pasta',
+  });
   await page.evaluate(async () => (await import('/src/game/chat.ts')).openGlobalChat());
   await page.locator('#gchat-input').fill('Messaggio di prova offline');
   await page.evaluate(async () => (await import('/src/game/chat.ts')).sendChat());

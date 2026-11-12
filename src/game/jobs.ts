@@ -4,6 +4,9 @@ import { creditMoney } from './economy.js';
 import type { GameValue } from './context.js';
 import { game } from './context.js';
 import { dom, lifetime } from './runtime.js';
+
+let workStartLeft = 0;
+export const mgStarting = (): boolean => workStartLeft > 0;
 import { collidesAt, getSolidObstacles } from './engine.js';
 import { toast } from './missions.js';
 import { sfx } from './audio.js';
@@ -15,6 +18,7 @@ import { nextPayMessage, shiftsLeftToday } from './job-pay.js';
 import { claimServerPay, flushPendingPay } from './job-server.js';
 import { applyRoomBounds } from './room-size.js';
 import { type Prop, hiddenBehind } from './work-spawn-rules.js';
+import type { WorkHost } from './work-model.js';
 import {
   serviceDrawables,
   serviceHudLine,
@@ -49,21 +53,21 @@ import {
   stopHospital,
   tickHospital,
 } from './hospital.js';
-export function mgFlash(ok?: GameValue): GameValue {
+export function mgFlash(ok = false): void {
   if (!game.MG.el) return;
   game.MG.el.classList.remove('mg-flash-ok', 'mg-flash-ko');
   void game.MG.el.offsetWidth;
   game.MG.el.classList.add(ok ? 'mg-flash-ok' : 'mg-flash-ko');
 }
 
-export function mgScore(delta?: GameValue): GameValue {
+export function mgScore(delta = 0): void {
   game.MG.score = Math.max(0, game.MG.score + delta);
   mgFlash(delta > 0);
 }
 
 /** Scritta breve che sale dal riquadro del lavoro e sparisce: al posto dei messaggi in alto. */
 export function mgPop(text: string, ok = true): void {
-  const el: GameValue = game.MG.el;
+  const el = game.MG.el;
   if (!el) return;
   const p = document.createElement('div');
   p.className = 'mg-pop ' + (ok ? 'ok' : 'ko');
@@ -72,11 +76,11 @@ export function mgPop(text: string, ok = true): void {
   el.appendChild(p);
 }
 
-export function mgRating(..._args: GameValue[]): GameValue {
+export function mgRating(): number {
   return Math.max(0, Math.min(1, game.MG.score / game.MG.target));
 }
 
-export function mgMultiplier(r?: GameValue): GameValue {
+export function mgMultiplier(r = 0): number {
   // Bonus prestazione (×1,2 dal 50%, ×1,4 dal 75%): disattivato con SKILL_PAY = false.
   return !game.SKILL_PAY ? 1 : r < 0.5 ? 1 : r < 0.75 ? 1.2 : 1.4;
 }
@@ -102,6 +106,7 @@ export function mgHud(..._args: GameValue[]): GameValue {
     return;
   }
   const { cfg, task, stepIdx, carry } = game.MG;
+  if (!cfg || !task) return;
   const st: GameValue = task.steps[stepIdx];
   const [e, label] = cfg.pool[st.item];
   const target: GameValue = cfg.targets.find((t: GameValue) => t.id === st.target);
@@ -132,7 +137,7 @@ const MG_TOP = `<div class="mg-top"><span id="mg-time"></span><div class="mg-bar
 
 /** Tempo e paga del turno nel riquadro del lavoro (a ogni fotogramma). */
 function mgShiftHud(): void {
-  const s: GameValue = game.activeShift;
+  const s = game.activeShift;
   const time = dom('mg-time');
   if (!s || !time) return;
   time.textContent = `⏱ ${Math.ceil(Math.max(0, s.remaining))}s`;
@@ -148,7 +153,8 @@ function mgShiftHud(): void {
 export function mgSpawnTask(..._args: GameValue[]): GameValue {
   // il turno parte appena cambiato ambiente: i bordi sono ancora quelli del posto da cui si arriva
   applyRoomBounds(game.view.activeEnvironment);
-  const cfg: GameValue = game.MG.cfg;
+  const cfg = game.MG.cfg;
+  if (!cfg || !cfg.tasks.length) return;
   let ti: GameValue;
   do {
     ti = Math.floor(Math.random() * cfg.tasks.length);
@@ -157,7 +163,7 @@ export function mgSpawnTask(..._args: GameValue[]): GameValue {
   game.MG.task = cfg.tasks[ti];
   game.MG.stepIdx = 0;
   game.MG.carry = null;
-  const need: GameValue = game.MG.task.steps.map((s?: GameValue): GameValue => s.item);
+  const need = cfg.tasks[ti].steps.map((s) => s.item);
   const decoys: GameValue = Object.keys(cfg.pool)
     .filter((k?: GameValue): GameValue => !need.includes(k))
     .sort((): GameValue => Math.random() - 0.5)
@@ -225,29 +231,53 @@ export function mgSpawnTask(..._args: GameValue[]): GameValue {
 export function mgStart(jobKey?: GameValue): GameValue {
   mgStop();
   if (!game.WORK_JOBS[jobKey]) return;
-  game.MG.el = dom('minigame');
+  const el = document.getElementById('minigame');
+  if (!el) return;
+  game.MG.el = el;
   game.MG.active = true;
   game.MG.job = jobKey;
   game.MG.cfg = game.WORK_JOBS[jobKey];
   game.MG.score = 0;
   game.MG.lastTask = -1;
-  game.MG.el.classList.remove('hidden');
+  el.classList.remove('hidden');
+  el.classList.toggle('mg-office', jobKey === 'ufficio');
+  // ufficio e ristorante: il riquadro in alto e il tasto tondo in basso, sotto il pollice
+  el.classList.toggle('mg-rest', jobKey === 'ristorante');
+  dom('pop-interaction').classList.toggle('work-interact', roundButtonJob(jobKey));
+  {
+    workStartLeft = 1.5;
+    const intro = document.createElement('div');
+    intro.id = 'work-start';
+    intro.setAttribute('role', 'status');
+    intro.textContent = 'Pronti…';
+    el.insertAdjacentElement('afterend', intro);
+  }
   // durante il turno il ritorno a casa è un'icona in un angolo, lontana dal riquadro
   dom('btn-return-home').classList.add('compact');
   // il ristorante ha il servizio ai tavoli, gli altri lavori i compiti da portare al cerchio
-  if (game.MG.cfg.mode === 'service') startService();
+  const host: WorkHost = {
+    hud: mgHud,
+    pop: mgPop,
+    score: mgScore,
+    spawnTask: mgSpawnTask,
+    starting: mgStarting,
+  };
+  if (game.MG.cfg.mode === 'service') startService(host);
   // l'ospedale ha i due pazienti a letto e le postazioni fisse
   else if (game.MG.cfg.mode === 'hospital') {
     applyRoomBounds(game.view.activeEnvironment);
-    startHospital();
+    startHospital(host);
   } else {
     // l'ufficio ha in più sete, stampe e la visita del capo
-    if (jobKey === 'ufficio') startOffice();
+    if (jobKey === 'ufficio') startOffice(host);
     mgSpawnTask();
   }
 }
 
 export function mgStop(..._args: GameValue[]): GameValue {
+  workStartLeft = 0;
+  dom('work-start')?.remove();
+  dom('pop-interaction')?.classList.remove('work-interact');
   stopService();
   stopOffice();
   stopHospital();
@@ -257,6 +287,7 @@ export function mgStop(..._args: GameValue[]): GameValue {
   dom('btn-return-home')?.classList.remove('compact');
   const el: GameValue = dom('minigame');
   if (el) {
+    el.classList.remove('mg-office');
     el.classList.add('hidden');
     el.innerHTML = '';
   }
@@ -268,23 +299,87 @@ export function mgTick(delta: number): void {
   tickHospital(delta);
 }
 
+/** I lavori con il tasto tondo grande in basso al posto del pulsante normale. */
+const roundButtonJob = (jobKey: string): boolean => jobKey === 'ufficio' || jobKey === 'ristorante';
+
+/** Le postazioni del ristorante e degli uffici, con l'icona del loro tasto. */
+const STATION_ICON: Record<string, string> = {
+  sink: '🚰',
+  stove: '🍝',
+  oven: '🍕',
+  cellar: '🍷',
+  dessert: '🍰',
+  counter: '☕',
+};
+const OFFICE_ICON: Record<string, string> = {
+  cooler: '💧',
+  printer: '🖨️',
+  printDesk: '📄',
+  boss: '👔',
+};
+
+/**
+ * L'icona del tasto tondo vicino a un oggetto del lavoro, o '' se il lavoro usa il pulsante
+ * normale. Con qualcosa in mano, al tavolo o al bersaglio si vede quello che si porta.
+ */
+/** Quello che serve a scegliere l'icona: l'oggetto vicino e quello che si ha in mano. */
+interface IconTarget {
+  kind?: string;
+  station?: string;
+  office?: boolean;
+  item?: { e?: string };
+}
+
+export function mgButtonIcon(item?: IconTarget): string {
+  if (!game.MG.active || !roundButtonJob(game.MG.job) || !item) return '';
+  const carry: { id?: string; e?: string } | null = game.MG.carry;
+  if (item.kind === 'station') {
+    if (carry?.id === 'water' && item.station === 'stove') return '🔥';
+    return STATION_ICON[item.station || ''] || '✋';
+  }
+  if (item.kind === 'table') return carry?.e || '🍽️';
+  if (item.office) return OFFICE_ICON[item.kind || ''] || carry?.e || '✋';
+  if (item.kind === 'pickup') return item.item?.e || '✋';
+  if (item.kind === 'target') return carry?.e || '🎯';
+  return '✋';
+}
+
 export function mgButtonText(item?: GameValue): GameValue {
   if (serviceOn()) return servicePrompt(item).text;
   if (hospitalOn()) return hospitalPrompt(item).text;
-  if (officeOn() && officeFrozen()) return '⏸️ Arriva il capo…';
+  if (officeOn() && officeFrozen()) return 'Aspetta';
   if (item.office) return officePrompt(item).text;
-  if (officeOn() && officeBossActive() && item.kind === 'target') return '😡 Prima il capo!';
-  if (item.kind === 'pickup')
-    return game.MG.carry
-      ? `🔁 Scambia con ${item.item.e} ${item.item.label}`
-      : `✋ Raccogli ${item.item.e} ${item.item.label}`;
-  return game.MG.carry
-    ? `⬇️ Consegna ${game.MG.carry.e} ${game.MG.carry.label} → ${item.label}`
-    : `🎯 ${item.label} (prima prendi un oggetto)`;
+  if (officeOn() && officeBossActive() && item.kind === 'target') return 'Prima il capo';
+  if (item.kind === 'pickup') return game.MG.carry ? 'Scambia' : 'Prendi';
+  return game.MG.carry ? 'Consegna' : 'Prima prendi';
+}
+
+/** Una consegna valida viene prima degli oggetti da raccogliere o scambiare. */
+export function mgCanDeliver(item: GameValue): boolean {
+  if (!game.MG.active || workStartLeft > 0) return false;
+  const carry = game.MG.carry;
+  if (!carry) return false;
+  if (serviceOn())
+    return (
+      (item.kind !== 'station' || (carry.id === 'water' && item.station === 'stove')) &&
+      !servicePrompt(item).locked
+    );
+  if (hospitalOn()) return false;
+  if (officeOn()) {
+    if (officeFrozen()) return false;
+    if (item.office) {
+      if (item.kind === 'boss') return !officePrompt(item).locked;
+      return item.kind === 'printDesk' && carry.id === 'foglio';
+    }
+    if (officeBossActive() || carry.office) return false;
+  }
+  const step = game.MG.task?.steps[game.MG.stepIdx];
+  return item.kind === 'target' && carry.id === step?.item && item.id === step?.target;
 }
 
 export function mgInteract(item?: GameValue, key?: GameValue): GameValue {
   if (!game.MG.active) return;
+  if (workStartLeft > 0) return;
   if (serviceOn()) return serviceInteract(item);
   if (hospitalOn()) return void hospitalInteract(item);
   // appena arriva il capo tutto si ferma per un attimo
@@ -318,7 +413,9 @@ export function mgInteract(item?: GameValue, key?: GameValue): GameValue {
     mgPop('🤚 Prima prendi un oggetto', false);
     return;
   }
-  const st: GameValue = game.MG.task.steps[game.MG.stepIdx];
+  const task = game.MG.task;
+  if (!task) return;
+  const st = task.steps[game.MG.stepIdx];
   if (game.MG.carry.id === st.item && item.id === st.target) {
     mgScore(1);
     sfx('coin');
@@ -326,7 +423,7 @@ export function mgInteract(item?: GameValue, key?: GameValue): GameValue {
     if (game.activeShift) game.activeShift.delivered = (game.activeShift.delivered || 0) + 1;
     game.MG.carry = null;
     game.MG.stepIdx++;
-    const done = game.MG.stepIdx >= game.MG.task.steps.length;
+    const done = game.MG.stepIdx >= task.steps.length;
     if (done) mgSpawnTask();
     else mgHud();
     mgPop((done ? '🎉 ' : '✅ ') + (perItem ? `+${perItem} Đ` : ''));
@@ -432,7 +529,36 @@ export function mgAddDrawables(
         game.view.ctx.textAlign = 'center';
         game.view.ctx.textBaseline = 'middle';
         game.view.ctx.fillStyle = '#000';
-        game.view.ctx.fillText(e, p.x + 18 * s, p.y + 1);
+        if (game.MG.carry?.id === 'water') {
+          const ctx = game.view.ctx;
+          ctx.save();
+          ctx.translate(p.x + 18 * s, p.y);
+          ctx.scale(s, s);
+          // Manici, corpo in acciaio e bordo aperto con acqua azzurra.
+          ctx.strokeStyle = '#4b5964';
+          ctx.lineWidth = 2;
+          ctx.strokeRect(-13, -2, 5, 6);
+          ctx.strokeRect(8, -2, 5, 6);
+          ctx.fillStyle = '#8799a6';
+          ctx.beginPath();
+          ctx.roundRect(-9, -3, 18, 13, 4);
+          ctx.fill();
+          ctx.fillStyle = '#dce5ea';
+          ctx.beginPath();
+          ctx.ellipse(0, -3, 10, 5, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = '#299edb';
+          ctx.beginPath();
+          ctx.ellipse(0, -3, 7.5, 3.5, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.strokeStyle = '#bceeff';
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.moveTo(-4, -3);
+          ctx.quadraticCurveTo(0, -5, 4, -3);
+          ctx.stroke();
+          ctx.restore();
+        } else game.view.ctx.fillText(e, p.x + 18 * s, p.y + 1);
         game.view.ctx.textBaseline = 'alphabetic';
       },
     });
@@ -446,7 +572,7 @@ function addTaskDrawables(addThing: GameValue, drawables: GameValue, t: GameValu
   // con il capo in ufficio i cerchi del compito spariscono: gli oggetti a terra li vuole lui
   const boss = officeOn() && officeBossActive();
   if (!boss)
-    game.MG.cfg.targets.forEach((tg?: GameValue): GameValue => {
+    game.MG.cfg?.targets.forEach((tg?: GameValue): GameValue => {
       if (tg.draw)
         addThing(tg.x, tg.y, tg.w, tg.h, tg.z || 30, tg.label, (): GameValue => drawWorkTarget(tg));
       if (st && tg.id === st.target) {
@@ -475,12 +601,20 @@ export async function updateShift(delta: number): Promise<void> {
     mgStop();
     return;
   }
+  if (workStartLeft > 0) {
+    workStartLeft = Math.max(0, workStartLeft - delta);
+    const intro = dom('work-start');
+    if (workStartLeft === 0) intro?.remove();
+    else if (intro) intro.textContent = workStartLeft <= 0.5 ? 'Via!' : 'Pronti…';
+    mgShiftHud();
+    return;
+  }
   // mentre il capo esce dalla sua stanza anche il tempo del turno si ferma
   if (!(officeOn() && officeFrozen())) game.activeShift.remaining -= delta;
   mgTick(delta);
   mgShiftHud();
   if (game.activeShift.remaining <= 0) {
-    const s: GameValue = game.activeShift;
+    const s = game.activeShift;
     game.activeShift = null;
     const rating: GameValue = mgRating(),
       mult: GameValue = mgMultiplier(rating);

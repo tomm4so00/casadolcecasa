@@ -31,7 +31,7 @@ export function startMarket() {
           () => legacyNoise(9001, Math.floor(Date.now() / 60000)),
           { roll: Math.random(), kind: Math.random() },
         ) ?? snapshot;
-      updateMarketEvent();
+      updateMarketEvent(snapshot);
     };
     step();
     lifetime.setInterval(step, 60000);
@@ -45,8 +45,8 @@ export function startMarket() {
   });
   game.session.db.ref('sims_market').on('value', (value) => {
     snapshot = decodeMarket(value.val());
-    updateMarketEvent();
+    updateMarketEvent(snapshot);
   });
   // il ticker sparisce da solo quando finisce l'ora anche se non arrivano nuove quotazioni
-  lifetime.setInterval(updateMarketEvent, 15000);
+  lifetime.setInterval(() => updateMarketEvent(snapshot), 15000);
 }

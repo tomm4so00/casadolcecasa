@@ -5,7 +5,7 @@ import { lifetime } from './runtime.js';
 import { game } from './context.js';
 import { exitMenuButton, pickAction, quotedActions, wantsBackpack } from './guide-rules.js';
 import { welcomeDest, welcomeHint } from './welcome.js';
-import { questDest, questHint } from './quests.js';
+import { questHooks } from './quest-hooks.js';
 
 const CHECK_MS = 300;
 /** Dove non si cerca: i pulsanti fissi a destra, i parametri e il riquadro della guida. */
@@ -23,7 +23,7 @@ const visible = (el: HTMLElement): boolean => {
 
 /** Il pulsante da indicare adesso, o null. */
 function target(): HTMLElement | null {
-  const hint = welcomeHint() || questHint();
+  const hint = welcomeHint() || questHooks.hint();
   if (!hint) return null;
   const inventory = document.getElementById('inventory-modal');
   const backpackOpen = !!inventory && !inventory.classList.contains('hidden');
@@ -38,7 +38,7 @@ function target(): HTMLElement | null {
   );
   if (i >= 0) return buttons[i];
   // nel menu dell'uscita del condominio: il pulsante verso il posto della missione
-  const dest = game.view.isOutsideMenuOpen ? (welcomeDest() ?? questDest()) : null;
+  const dest = game.view.isOutsideMenuOpen ? (welcomeDest() ?? questHooks.dest()) : null;
   const id = dest ? exitMenuButton(dest.env, game.view.outsideSubmenu || '') : null;
   const el = id ? document.getElementById(id) : null;
   return el && visible(el) ? el : null;
