@@ -2,8 +2,9 @@
 
 Gioco multiplayer da browser: un condominio disegnato in isometrico, dove ognuno ha la sua
 stanza, un personaggio da far vivere e dei soldi da guadagnare (o perdere) insieme agli altri.
-Si gioca su <https://tomm4so00.github.io/casadolcecasa/>, anche dal telefono (si installa come
-app).
+Si gioca su <https://casadolcecasa.web.app/>, anche dal telefono (si installa come app). Il
+vecchio indirizzo, <https://tomm4so00.github.io/casadolcecasa/>, porta lì con il proprio accesso
+(pagina del trasloco, `src/game/move-rules.ts`).
 
 TypeScript e Vite per il gioco, Firebase Realtime Database per i dati condivisi, una scena
 disegnata su canvas. Niente framework.

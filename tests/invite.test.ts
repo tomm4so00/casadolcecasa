@@ -14,10 +14,8 @@ import {
 
 describe('inviti', () => {
   it('il link porta il codice di chi invita; in modalità prova è il link nudo', () => {
-    expect(inviteLink('player_abc123')).toBe(
-      'https://tomm4so00.github.io/casadolcecasa/?invito=player_abc123',
-    );
-    expect(inviteLink(null)).toBe('https://tomm4so00.github.io/casadolcecasa/');
+    expect(inviteLink('player_abc123')).toBe('https://casadolcecasa.web.app/?invito=player_abc123');
+    expect(inviteLink(null)).toBe('https://casadolcecasa.web.app/');
     expect(parseInviteCode('player_<script>')).toBeNull();
     expect(parseInviteCode('qualcosa')).toBeNull();
     expect(inviteMessage('Anna')).toContain('Sono «Anna»');

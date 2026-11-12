@@ -3,8 +3,7 @@
 // chiamare chi gioca già: in quel caso nessun bonus, solo l'invito.
 
 /** Il sito del gioco: nel gioco di prova è il suo (VITE_GAME_URL, vedi docs/ambiente-di-prova.md). */
-export const GAME_URL: string =
-  import.meta.env.VITE_GAME_URL || 'https://tomm4so00.github.io/casadolcecasa/';
+export const GAME_URL: string = import.meta.env.VITE_GAME_URL || 'https://casadolcecasa.web.app/';
 export const INVITE_BONUS = 300;
 /** Bonus massimi per chi invita: crearsi account finti non deve diventare un mestiere. */
 export const INVITE_MAX_PAID = 10;

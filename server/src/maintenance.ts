@@ -460,8 +460,11 @@ export async function tidyDeadPlayers(
  */
 export const DEATH_AFTER_MS = ABANDON_MS + 8 * 3600000;
 export const WARN_BEFORE_MS = 12 * 3600000;
-/** Il sito del gioco nei link delle notifiche: quello di prova lo dà il workflow (GAME_URL). */
-export const GAME_URL = process.env.GAME_URL || 'https://tomm4so00.github.io/casadolcecasa/';
+/**
+ * Il sito del gioco nei link delle notifiche: quello di prova lo dà il workflow (GAME_URL). Il
+ * vecchio indirizzo (GitHub Pages) porta qui con la pagina del trasloco.
+ */
+export const GAME_URL = process.env.GAME_URL || 'https://casadolcecasa.web.app/';
 
 export type PushResult = 'sent' | 'gone' | 'error';
 export type PushSender = (
