@@ -69,10 +69,6 @@ async function newSim(page, email, nick) {
   await page.locator('#setup-create-sim').click();
   await acceptTerms(page);
   await page.locator('#world-modal [data-w="public"]').click();
-  await page
-    .locator('#dialog-buttons')
-    .getByRole('button', { name: /^(Salta|Ho capito, si parte! ✅)$/ })
-    .click();
   assert(
     await until(page, async () => {
       const { game } = await import('/src/game/context.ts');

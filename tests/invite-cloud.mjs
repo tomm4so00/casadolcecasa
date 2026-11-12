@@ -86,10 +86,6 @@ const hasRoomNow = async () => {
 async function finishNewSim(page) {
   await acceptTerms(page);
   await page.locator('#world-modal [data-w="public"]').click();
-  await page
-    .locator('#dialog-buttons')
-    .getByRole('button', { name: /^(Salta|Ho capito, si parte! ✅)$/ })
-    .click();
   if (!(await until(page, hasRoomNow)))
     assert.fail(
       'stanza non assegnata: ' +

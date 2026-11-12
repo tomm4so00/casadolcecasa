@@ -92,10 +92,6 @@ try {
   await acceptTerms(page);
   // personaggio nuovo: prima sceglie il condominio (qui c'è solo quello di sempre)
   await page.locator('#world-modal [data-w="public"]').click();
-  await page
-    .locator('#dialog-buttons')
-    .getByRole('button', { name: /^(Salta|Ho capito, si parte! ✅)$/ })
-    .click();
   await page.evaluate(async () => {
     const { game } = await import('/src/game/context.ts');
     game.pinPromptMoneyThreshold = 1e9;

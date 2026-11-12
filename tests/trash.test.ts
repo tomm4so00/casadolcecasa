@@ -111,7 +111,10 @@ describe('salvataggio', () => {
     const proof = { k: 'clip', who: 'player_ada1', name: 'Ada', w: 'CASA-0001', t: 3 };
     expect(
       decodeTrashSave({ placed: true, emptied: '2026-11-11', proofs: [proof, { k: 'x' }] }),
-    ).toEqual({ placed: true, emptied: '2026-11-11', proofs: [proof] });
+    ).toEqual({ placed: true, told: true, emptied: '2026-11-11', proofs: [proof] });
+    // la spiegazione: letta da chi aveva scelto il posto, oppure segnata dopo la prima volta
+    expect(decodeTrashSave({ told: true })).toEqual({ told: true });
+    expect(decodeTrashSave({ told: 'sì' })).toEqual({});
     expect(decodeTrashSave(undefined)).toEqual({});
     const many = Array.from({ length: MAX_PROOFS + 5 }, (_, i) => ({ ...proof, t: i }));
     expect(decodeTrashSave({ proofs: many }).proofs).toHaveLength(MAX_PROOFS);

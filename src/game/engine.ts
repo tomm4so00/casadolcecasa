@@ -1,4 +1,5 @@
 import { drawGuideArrow } from './guide.js';
+import { drawGiftGlow, drawSuitcase } from './arrival.js';
 import { autoplayLabel, shownPresence } from './autoplay.js';
 import { updateRocketTrip } from './moon.js';
 import { partVisible } from './render/moonbase.js';
@@ -968,6 +969,8 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
   updateSocialPanel();
   game.showerFog +=
     ((game.frameShowerActors.length ? 1 : 0) - game.showerFog) * Math.min(1, delta * 1.5);
+  // l'arrivo: la valigia accanto al personaggio nuovo, in cortile (arrival.ts)
+  drawables.push({ depth: game.playerPos.x + game.playerPos.y + 26, draw: drawSuitcase });
   drawables
     .sort((a?: GameValue, b?: GameValue): GameValue => a.depth - b.depth)
     .forEach((d?: GameValue): GameValue => d.draw());
@@ -975,6 +978,7 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
   for (const c of game.frameChairSitters as GameValue[]) if (!c.done) c.draw();
   // missioni di benvenuto: la freccia verso dove andare, sopra tutto perché si veda sempre
   drawGuideArrow(animTime);
+  drawGiftGlow(animTime);
   // Giorno e notte: le luci (lampade, lampioni, lampadari) illuminano il buio
   let dark: GameValue = 0;
   if (hour >= 20 || hour < 6) dark = 0.55;

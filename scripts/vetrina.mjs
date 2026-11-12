@@ -37,10 +37,8 @@ try {
     await page.locator('#start-game-btn').click({ force: true });
     await page.locator('#creator-modal').locator('#creator-ok').click({ force: true });
     await page.locator('#world-modal [data-w="public"]').click({ force: true });
-    await page
-      .locator('#dialog-buttons')
-      .getByRole('button', { name: /^(Salta|Ho capito, si parte! ✅)$/ })
-      .click({ force: true });
+    // niente arrivo del giocatore nuovo (riquadro e valigia) nelle foto
+    await page.evaluate(async () => (await import('/src/game/arrival.ts')).finishArrival());
     await page.evaluate(async (spot) => {
       const { game } = await import('/src/game/context.ts');
       const { applyRoomBounds } = await import('/src/game/room-size.ts');

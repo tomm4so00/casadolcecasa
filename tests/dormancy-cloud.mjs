@@ -92,11 +92,15 @@ try {
   await page.locator('#setup-create-sim').click();
   await acceptTerms(page);
   await page.locator('#world-modal [data-w="public"]').click();
-  await page
-    .locator('#dialog-buttons')
-    .getByRole('button', { name: /^(Salta|Ho capito, si parte! ✅)$/ })
-    .click();
   await started(page);
+  // la presenza si scrive al primo giro (ogni secondo): prima di andare in pausa deve esserci
+  const me = await page.evaluate(
+    async () => (await import('/src/game/context.ts')).game.session.myPlayerId,
+  );
+  for (let i = 0; !(await read(`sims_online_players/${me}`)); i++) {
+    assert(i < 40, 'la presenza non è mai stata scritta');
+    await page.waitForTimeout(250);
+  }
 
   // ---------------------------------------------------------------- in pausa
   await setHidden(page, true);

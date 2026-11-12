@@ -4243,3 +4243,71 @@ body.hacker-glitch::after {
 .pp-list small {
   color: #a4b0be;
 }
+
+/* L'arrivo (arrival.ts): il riquadro con il passo da fare, in basso a sinistra, accanto ai
+   pulsanti; il primo, con il pulsante "Andiamo!", occupa tutta la larghezza. */
+.coach {
+  position: fixed;
+  left: 12px;
+  right: 84px;
+  bottom: max(18px, env(safe-area-inset-bottom));
+  z-index: 900;
+  max-width: 460px;
+  padding: 11px 32px 12px 13px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 209, 102, 0.55);
+  border-left: 4px solid #ffd166;
+  background: rgba(18, 18, 30, 0.95);
+  color: #f1f2f6;
+  font-size: 0.92rem;
+  font-weight: 600;
+  line-height: 1.35;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  animation: coach-in 0.35s ease-out;
+}
+.coach.coach-wide {
+  right: 12px;
+  padding-right: 13px;
+}
+@keyframes coach-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+}
+.coach-label {
+  margin-bottom: 3px;
+  color: #ffd166;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+.coach-title {
+  margin-bottom: 4px;
+  font-size: 1.15rem;
+  font-weight: 800;
+}
+.coach-go {
+  display: block;
+  width: 100%;
+  margin-top: 10px;
+  padding: 12px;
+  border: 0;
+  border-radius: 12px;
+  background: #2ed573;
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+.coach-close {
+  position: absolute;
+  top: 4px;
+  right: 6px;
+  padding: 4px 6px;
+  border: 0;
+  background: none;
+  color: #8d93ab;
+  font-size: 1rem;
+  cursor: pointer;
+}

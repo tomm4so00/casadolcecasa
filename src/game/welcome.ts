@@ -9,6 +9,7 @@ import { creditMoney } from './economy.js';
 import { hasRoom, saveGame } from './saves.js';
 import type { GuideDest } from './guide-rules.js';
 import { tasteHint, tasteTarget } from './taste.js';
+import { arrivalActive } from './arrival.js';
 import {
   missionsOf,
   type WelcomeState,
@@ -115,6 +116,29 @@ function tasteDest(): GuideDest | null {
   return { env: t.env, ...(bot ? { point: { x: bot.x, y: bot.y } } : {}) };
 }
 
+// ---------------------------------------------------------------- per l'arrivo (arrival.ts)
+
+/** La missione di benvenuto a cui si è arrivati (WELCOME_MISSIONS.length = finite). */
+export const welcomeIndex = (): number => state().i;
+/** La missione è da proporre (non accettata, non rifiutata). */
+export const welcomeOffering = (): boolean =>
+  !welcomeFinished(state()) && state().status === 'offer';
+/** L'istruzione del passo della missione in corso, o "". */
+export function welcomeHint(): string {
+  const s = state();
+  if (welcomeFinished(s) || s.status !== 'active') return '';
+  return missionsOf(s)[s.i].hint(view());
+}
+/** Accetta la missione proposta senza la finestra: durante l'arrivo si segue il riquadro. */
+export function acceptWelcomeMission(): void {
+  const s = state();
+  if (welcomeFinished(s) || s.status !== 'offer') return;
+  game.player.welcome = answerOffer(s, 'yes', view(), Date.now());
+  countUse(`missione:${missionsOf(s)[s.i].id}:si`);
+  saveGame(false);
+  updateWelcomeHud();
+}
+
 /** C'è già una finestra aperta (guida, creazione del personaggio, negozio…)? */
 const screenBusy = (): boolean =>
   !!game.dialogResolve || !!document.querySelector('.fullscreen-modal:not(.hidden)');
@@ -139,6 +163,8 @@ export async function tickWelcome(): Promise<void> {
     // Il prossimo passo è già visibile nel riquadro delle missioni.
     return;
   }
+  // l'arrivo (arrival.ts) accetta da sé le missioni dell'assaggio
+  if (arrivalActive()) return;
   if (
     shouldOffer(s, Date.now()) &&
     !offering &&
@@ -253,7 +279,8 @@ export async function openWelcomeList(): Promise<void> {
 export function updateWelcomeHud(): void {
   const el = dom('mission-text');
   if (!el) return;
-  const text = welcomeHudText();
+  // durante l'arrivo il passo è nel riquadro in basso
+  const text = arrivalActive() ? null : welcomeHudText();
   el.style.display = text ? '' : 'none';
   if (text && el.textContent !== text) el.textContent = text;
 }

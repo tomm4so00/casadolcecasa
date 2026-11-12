@@ -67,7 +67,7 @@ export function ranking(usage: Usage, now: number): UsageRow[] {
 
 // ---------------------------------------------------------------- imbuto d'ingresso
 
-/** I passi dell'ingresso, in ordine (li conta il gioco: cloud-setup, terms, avatars, jobs). */
+/** I passi dell'ingresso, in ordine (li conta il gioco: cloud-setup, first-entry, arrival, jobs). */
 export const FUNNEL_STEPS = [
   { key: 'ingresso:visto', label: 'Ingresso visto' },
   { key: 'ingresso:gioca_subito', label: 'Gioca subito' },
@@ -77,6 +77,11 @@ export const FUNNEL_STEPS = [
   { key: 'ingresso:nome', label: 'Nome scelto (ospiti)' },
   { key: 'ingresso:18anni', label: '18 anni confermati' },
   { key: 'ingresso:personaggio', label: 'Personaggio creato' },
+  // l'arrivo in cortile (src/game/arrival.ts)
+  { key: 'ingresso:arrivo_door', label: 'Chiavi prese (Andiamo!)' },
+  { key: 'ingresso:arrivo_room', label: 'Arrivato nel salone' },
+  { key: 'ingresso:arrivo_gift', label: 'Entrato nella sua stanza' },
+  { key: 'ingresso:arrivo_cook', label: 'Arrivato in cucina' },
 ] as const;
 
 /** Le missioni di benvenuto, in ordine (src/game/welcome-rules.ts, WELCOME_MISSIONS). */

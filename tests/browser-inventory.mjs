@@ -30,10 +30,6 @@ try {
   // giocatore nuovo: si entra nel condominio di sempre
   await page.locator('#creator-modal').locator('#creator-ok').click();
   await page.locator('#world-modal [data-w="public"]').click();
-  await page
-    .locator('#dialog-buttons')
-    .getByRole('button', { name: /^(Salta|Ho capito, si parte! ✅)$/ })
-    .click();
   const before = await page.evaluate(async () => {
     const { game } = await import('/src/game/context.ts');
     await (await import('/src/game/economy.ts')).creditMoney(500);

@@ -27,10 +27,6 @@ try {
       game.roomsState[game.myAssignedRoomIdx]?.ownerId === game.session.myPlayerId
     );
   });
-  await page
-    .locator('#dialog-buttons')
-    .getByRole('button', { name: /^(Salta|Ho capito, si parte! ✅)$/ })
-    .click();
   const catalog = await page.evaluate(async () => {
     const { game } = await import('/src/game/context.ts');
     game.pinPromptMoneyThreshold = 1e9;

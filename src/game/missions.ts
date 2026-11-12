@@ -1,4 +1,5 @@
 import { creditMoney } from './economy.js';
+import { tickArrival } from './arrival.js';
 import type { LeaderboardScope } from './leaderboard.js';
 import type { GameValue } from './context.js';
 import { game } from './context.js';
@@ -60,6 +61,8 @@ export function updateMissionHud(..._args: GameValue[]): GameValue {
 
 export async function checkMissions(..._args: GameValue[]): Promise<void> {
   if (!game.session.saveReady) return;
+  // l'arrivo del giocatore nuovo (arrival.ts) guida anche le prime missioni
+  tickArrival();
   if (!game.MISSIONS.length) {
     await tickWelcome();
     updateWelcomeHud();

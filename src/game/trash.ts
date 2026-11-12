@@ -18,7 +18,6 @@ import { openDialog } from './interface.js';
 import { sfx } from './audio.js';
 import { postGossip } from './gossip.js';
 import { requireAccount } from './guest.js';
-import { startMovingFurniture } from './character.js';
 import { bankWithdraw, flushEconomy, spendMoney, transferMoney } from './economy.js';
 import { levelOf, reporterShare, todayKey } from './personality-rules.js';
 import {
@@ -106,6 +105,7 @@ export function dropInTrash(k: TrashKind): void {
   void ref
     .update({ ...Object.fromEntries(drop.map((d) => [d, null])), [id]: { k, t: serverNow() } })
     .catch((e: unknown) => console.warn('[cestino]', e));
+  void explainTrash();
 }
 
 // ---------------------------------------------------------------- il cestino nella stanza
@@ -385,64 +385,43 @@ async function payFines(): Promise<void> {
   }
 }
 
-// ---------------------------------------------------------------- dove mettere il cestino
+// ---------------------------------------------------------------- il cestino nella stanza
 
-let asking = false;
-let placing = false;
+let explaining = false;
 
-/** Chi entra nella sua stanza con la versione nuova sceglie dove mettere il cestino. */
+/**
+ * Chi entra nella sua stanza con la versione nuova trova il cestino già al suo posto: nei primi
+ * minuti di gioco niente finestre (si sposta con "Arreda"). La spiegazione arriva con la prima
+ * cosa che ci finisce dentro (explainTrash).
+ */
 function tick(): void {
-  if (placing) {
-    if (!game.isMovingFurnitureMode) {
-      placing = false;
-      state().placed = true;
-      saveGame(true);
-    }
-    return;
-  }
-  if (
-    asking ||
-    state().placed ||
-    !hasRoom() ||
-    game.view.activeEnvironment !== 'PLAYER_ROOM' ||
-    !isMyRoomNow() ||
-    game.dialogResolve ||
-    game.isMovingFurnitureMode ||
-    game.arrangeMode ||
-    game.player.isSleeping ||
-    !getBin()
-  )
-    return;
-  void askToPlace();
+  if (state().placed || !hasRoom() || !getBin()) return;
+  state().placed = true;
+  saveGame(true);
 }
 
 const getBin = (): SceneMap[string] | undefined => game.playerRoomFurniture?.trashBin;
 
-async function askToPlace(): Promise<void> {
-  asking = true;
+/** La prima volta che qualcosa finisce nel cestino: cosa vuol dire e come non lasciare tracce. */
+async function explainTrash(): Promise<void> {
+  if (state().told || explaining) return;
+  explaining = true;
   try {
+    state().told = true;
+    saveGame(true);
     await openDialog({
       title: '🗑️ Il tuo cestino',
       text:
-        'Nella tua stanza adesso c’è un cestino. Attento a cosa ci lasci dentro!\n\n' +
-        `🛍️ Ogni volta che vendi erba o pillole ci finisce una bustina per lo spaccio vuota.\n` +
+        'Nella tua stanza c’è un cestino. Attento a cosa ci lasci dentro!\n\n' +
+        '🛍️ Ogni volta che vendi erba o pillole ci finisce una bustina per lo spaccio vuota.\n' +
         '📎 Dopo un furto riuscito ci butti la graffetta con cui hai scassinato.\n\n' +
         'Chi entra nella tua stanza può frugare nel cestino e portare le prove al commissariato: ' +
         `ti arriva una multa di ${TRASH.bag.fine} Đ per ogni bustina e di ${TRASH.clip.fine} Đ per ogni graffetta.\n\n` +
         '🧹 Per non lasciare tracce svuotalo: puoi farlo una volta al giorno. Ogni lunedì mattina ' +
-        'passa lo spazzino e svuota i cestini di tutti.\n\nOra scegli dove metterlo.',
-      buttons: [{ label: '🖐️ Scegli il posto', value: 'ok', color: '#1f3a68' }],
+        'passa lo spazzino e svuota i cestini di tutti. Puoi spostarlo con «Arreda».',
+      buttons: [{ label: 'Ho capito', value: 'ok', color: '#1f3a68' }],
     });
-    if (!isMyRoomNow() || game.view.activeEnvironment !== 'PLAYER_ROOM') return;
-    game.activeTargetProp = 'trashBin';
-    startMovingFurniture();
-    placing = game.isMovingFurnitureMode;
-    // senza la modalità sposta (non dovrebbe succedere) il cestino resta dov'è
-    if (!placing) {
-      state().placed = true;
-      saveGame(true);
-    }
   } finally {
-    asking = false;
+    explaining = false;
   }
 }

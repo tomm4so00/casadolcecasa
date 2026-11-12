@@ -209,8 +209,10 @@ export function payable(
 
 /** Quello che il giocatore si porta dietro nel salvataggio. */
 export interface TrashSave {
-  /** Ha già scelto dove mettere il cestino. */
+  /** Il cestino è al suo posto (lo si sposta con "Arreda"). */
   placed?: boolean;
+  /** Ha già letto la spiegazione del cestino (la prima volta che ci finisce qualcosa). */
+  told?: boolean;
   /** Il giorno (todayKey) in cui l'ha svuotato l'ultima volta. */
   emptied?: string;
   /** Le prove trovate nei cestini degli altri. */
@@ -222,6 +224,8 @@ export function decodeTrashSave(value: unknown): TrashSave {
   if (!v || typeof v !== 'object') return {};
   const out: TrashSave = {};
   if (v.placed === true) out.placed = true;
+  // chi aveva scelto il posto con la versione di prima la spiegazione l'ha già letta
+  if (v.told === true || v.placed === true) out.told = true;
   if (typeof v.emptied === 'string' && v.emptied.length <= 20) out.emptied = v.emptied;
   const proofs = decodeProofs(v.proofs);
   if (proofs.length) out.proofs = proofs;

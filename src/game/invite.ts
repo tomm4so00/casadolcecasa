@@ -23,6 +23,7 @@ import { toast } from './missions.js';
 import { browser, lifetime } from './runtime.js';
 import { hasRoom } from './saves.js';
 import { isGuest, requireAccount } from './guest.js';
+import { arrivalActive } from './arrival.js';
 
 const PENDING_KEY = 'sims_invite_from';
 const WORLD_KEY = 'sims_invite_world';
@@ -34,6 +35,8 @@ const REMINDER_AFTER_MS = 9000;
 export function remindInvite(): void {
   lifetime.setTimeout(
     () =>
+      // durante l'arrivo del giocatore nuovo (arrival.ts) un avviso alla volta
+      !arrivalActive() &&
       toast(
         `💌 Invita qualcuno a giocare: apri il profilo (🧑) e tocca «Invita amici». Se è la sua prima volta, ricevete ${INVITE_BONUS}Đ a testa!`,
         8000,

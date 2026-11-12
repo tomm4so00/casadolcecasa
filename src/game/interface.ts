@@ -62,6 +62,7 @@ import {
 } from './saves.js';
 import { openCharacterCreator } from './render/avatars.js';
 import { openFirstCreator } from './first-entry.js';
+import { bindCoach, startArrival } from './arrival.js';
 import { openEpitaph, rebuildGraveyard } from './render/graveyard.js';
 import { checkMissions, toast } from './missions.js';
 import { openFurnitureShopModal, resumeLastSpot, setupControls } from './world.js';
@@ -474,6 +475,9 @@ export async function startGame(..._args: GameValue[]): Promise<GameValue> {
   game.view.currentRoomTitle = game.saloonTitle();
   // si riparte dall'ultima posizione (chi dorme o è svenuto ha già il suo posto, qui sotto)
   if (!devMode && !game.player.isSleeping && !game.fainted) await resumeLastSpot();
+  // il personaggio nuovo arriva in cortile con la valigia e le chiavi (arrival.ts)
+  bindCoach();
+  if (!devMode && firstCharacter && !game.session.hadSave) startArrival();
   if (game.player.isSleeping && hasRoom()) {
     // si riprende nel letto in cui ci si era addormentati, anche se è di un altro giocatore
     // (l'elenco delle stanze non è ancora arrivato: si legge solo quella stanza)
@@ -559,7 +563,7 @@ export async function startGame(..._args: GameValue[]): Promise<GameValue> {
   updateNotifyButton();
   checkMissions();
   lifetime.setInterval(checkMissions, 1000);
-  if (!devMode) showIntro(); // guida iniziale (solo la prima volta; sempre rileggibile dal ❓)
+  // la guida lunga non si apre più da sola: i primi passi li fa l'arrivo; resta sul pulsante ❓
   lifetime.setInterval((): GameValue => saveGame(false), 3000);
   lifetime.setInterval((): GameValue => {
     if (hasRoom() && !game.session.dormant)

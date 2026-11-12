@@ -22,6 +22,7 @@ import { hasRoom, presenceAlive } from './saves.js';
 import { getCurrentFurnitureMap, spawnAtDoor } from './world.js';
 import { worldNode } from './world-db.js';
 import { notePersonality } from './personality.js';
+import { arrivalActive } from './arrival.js';
 
 /** Ora del server: l'attacco è uguale per tutti, anche con l'orologio del telefono sbagliato. */
 const serverNow = (): number => Date.now() + (game.session.serverOffset || 0);
@@ -117,9 +118,10 @@ export function startHacker(): void {
       tag.classList.toggle('hot', hot);
     }
     remindQuiet(now, phase);
-    // l'annuncio arriva quando c'è, anche entrando più tardi (prima della fine dell'attacco)
+    // l'annuncio arriva quando c'è, anche entrando più tardi (prima della fine dell'attacco); al
+    // giocatore nuovo dopo l'arrivo (arrival.ts): nei primi minuti una cosa alla volta
     if ((phase === 'announced' || phase === 'active') && !seenToday('announce', d.day)) {
-      if (!game.dialogResolve) {
+      if (!game.dialogResolve && !arrivalActive()) {
         markSeen('announce', d.day);
         void announce(d.startAt);
       }
