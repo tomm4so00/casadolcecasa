@@ -269,6 +269,7 @@
           }
         },
         "vaultMoney": {
+          ".read": "auth != null && auth.uid === 'job-worker'",
           ".write": "auth != null && auth.uid === 'job-worker'",
           ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1000000 && (!data.exists() || newData.val() >= data.val() || auth.uid === 'market-publisher' || data.parent().child('ownerId').val() === root.child('sims_accounts').child(auth.uid).child('playerId').val() || (newData.val() === 0 && newData.parent().child('robbed').child('by').val() === root.child('sims_accounts').child(auth.uid).child('playerId').val() && newData.parent().child('robbed').child('t').val() !== data.parent().child('robbed').child('t').val()) || (data.parent().child('allow').child(root.child('sims_accounts').child(auth.uid).child('playerId').val()).child('amt').isNumber() && data.parent().child('allow').child(root.child('sims_accounts').child(auth.uid).child('playerId').val()).child('t').val() > now - 1209600000 && data.parent().child('allow').child(root.child('sims_accounts').child(auth.uid).child('playerId').val()).child('amt').val() >= (data.val() - newData.val()) && (!newData.parent().child('allow').child(root.child('sims_accounts').child(auth.uid).child('playerId').val()).exists() || newData.parent().child('allow').child(root.child('sims_accounts').child(auth.uid).child('playerId').val()).child('amt').val() === data.parent().child('allow').child(root.child('sims_accounts').child(auth.uid).child('playerId').val()).child('amt').val() - (data.val() - newData.val()))))"
         },
@@ -1478,7 +1479,7 @@
     },
     "sims_jobs": {
       "$uid": {
-        ".read": "((auth != null && (auth.token.firebase.sign_in_provider === 'google.com' || auth.token.firebase.sign_in_provider === 'anonymous' || (auth.token.firebase.sign_in_provider === 'password' && auth.token.email_verified === true))) && auth.uid === $uid)",
+        ".read": "(((auth != null && (auth.token.firebase.sign_in_provider === 'google.com' || auth.token.firebase.sign_in_provider === 'anonymous' || (auth.token.firebase.sign_in_provider === 'password' && auth.token.email_verified === true))) && auth.uid === $uid)) || (auth != null && auth.uid === 'job-worker')",
         ".write": "auth != null && auth.uid === 'job-worker'",
         ".validate": "newData.hasChildren(['day','count','imported'])"
       }
@@ -1674,6 +1675,7 @@
               }
             },
             "vaultMoney": {
+              ".read": "auth != null && auth.uid === 'job-worker'",
               ".write": "auth != null && auth.uid === 'job-worker'",
               ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1000000 && (!data.exists() || newData.val() >= data.val() || auth.uid === 'market-publisher' || data.parent().child('ownerId').val() === root.child('sims_accounts').child(auth.uid).child('playerId').val() || (newData.val() === 0 && newData.parent().child('robbed').child('by').val() === root.child('sims_accounts').child(auth.uid).child('playerId').val() && newData.parent().child('robbed').child('t').val() !== data.parent().child('robbed').child('t').val()) || (data.parent().child('allow').child(root.child('sims_accounts').child(auth.uid).child('playerId').val()).child('amt').isNumber() && data.parent().child('allow').child(root.child('sims_accounts').child(auth.uid).child('playerId').val()).child('t').val() > now - 1209600000 && data.parent().child('allow').child(root.child('sims_accounts').child(auth.uid).child('playerId').val()).child('amt').val() >= (data.val() - newData.val()) && (!newData.parent().child('allow').child(root.child('sims_accounts').child(auth.uid).child('playerId').val()).exists() || newData.parent().child('allow').child(root.child('sims_accounts').child(auth.uid).child('playerId').val()).child('amt').val() === data.parent().child('allow').child(root.child('sims_accounts').child(auth.uid).child('playerId').val()).child('amt').val() - (data.val() - newData.val()))))"
             },
