@@ -138,7 +138,8 @@ function showCoach(): void {
   const c = coachFor(current(), {
     nick: String(game.player.myData.nick || ''),
     apt: myApt(),
-    room: room === null ? 1 : (room % game.ROOMS_PER_APT) + 1,
+    // lo stesso numero della porta e della riga sotto i parametri (su tutto il condominio)
+    room: room === null ? 1 : room + 1,
     mission: welcomeIndex(),
     hint: welcomeHint(),
   });
