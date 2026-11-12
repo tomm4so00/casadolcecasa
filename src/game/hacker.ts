@@ -51,7 +51,7 @@ function tagText(now: number): { text: string; hot: boolean } {
   switch (hackerPhase(now, d)) {
     case 'announced':
       return {
-        text: `💻 Attacco di ${HACKER_SHORT} alle ${clockText(d.startAt)} · tra ${untilText(d.startAt - now)}`,
+        text: `💻 Hack alle ${clockText(d.startAt)}`,
         hot: d.startAt - now < 15 * 60000,
       };
     case 'active':
