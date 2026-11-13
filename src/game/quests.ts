@@ -12,6 +12,7 @@ import { missionsOf, welcomeFinished } from './welcome-rules.js';
 import { restartWelcome, welcomeHint } from './welcome.js';
 import type { GuideDest } from './guide-rules.js';
 import { questHooks } from './quest-hooks.js';
+import { tickFirstVisit } from './first-visit.js';
 import { bindMissionRows, esc, followButton, missionRow } from './quest-view.js';
 import { dailyQuest, dailySection, tickDaily, weekMedal } from './daily.js';
 import {
@@ -64,6 +65,7 @@ function view(): QuestView {
 /** Ogni secondo (da checkMissions): posti visti, missioni fatte, premi e trofei. */
 export async function tickQuests(): Promise<void> {
   if (!game.session.saveReady || game.player.isDead || busy) return;
+  tickFirstVisit();
   const s = state();
   const env: string = game.view.activeEnvironment;
   if (QUEST_PLACES.includes(env) && !s.visited[env]) s.visited = { ...s.visited, [env]: true };
@@ -251,7 +253,24 @@ function bonusSection(following: string | null): string {
       s.bonus[b.id] ? '' : followButton(b.id, following),
     ),
   ).join('');
-  return `<section class="qs-chapter qs-bonus"><div class="qs-head"><b>⭐ Missioni bonus</b><span>medaglie</span></div><ul>${rows}</ul></section>`;
+  const done = BONUS.every((b) => s.bonus[b.id]);
+  return `<section class="qs-chapter qs-bonus${done ? ' done' : ''}"><div class="qs-head"><b>⭐ Missioni bonus</b><span>medaglie</span></div><ul>${rows}</ul></section>`;
+}
+
+/** Una sezione finita (capitolo, benvenuto, bonus, missioni di oggi tutte fatte). */
+const finished = (html: string): boolean => /^<section class="qs-chapter[^"]*\bdone\b/.test(html);
+
+/** Le sezioni della finestra: prima quelle con qualcosa da fare, in fondo quelle finite. */
+function sectionsInOrder(following: string | null): string {
+  const open = chaptersOpen();
+  const all = [
+    open ? dailySection((id) => followButton(id, following)) : '',
+    welcomeSection(),
+    open ? '' : '<div class="qs-lock">🔒 Gli altri capitoli si aprono finito il Benvenuto.</div>',
+    ...CHAPTERS.map((c) => chapterSection(c, following)),
+    bonusSection(following),
+  ].filter(Boolean);
+  return [...all.filter((h) => !finished(h)), ...all.filter(finished)].join('');
 }
 
 /** La finestra con tutti i capitoli, i premi e cosa si sta seguendo. */
@@ -273,13 +292,7 @@ export function openQuests(): void {
     `<h3>📋 Missioni</h3>` +
     `<div class="qs-sub">🏆 ${trophies}/6 trofei sulla mensola della tua stanza</div>` +
     `<div class="qs-list">` +
-    (chaptersOpen() ? dailySection((id) => followButton(id, following)) : '') +
-    welcomeSection() +
-    (chaptersOpen()
-      ? ''
-      : '<div class="qs-lock">🔒 Gli altri capitoli si aprono finito il Benvenuto.</div>') +
-    CHAPTERS.map((c) => chapterSection(c, following)).join('') +
-    bonusSection(following) +
+    sectionsInOrder(following) +
     `</div>` +
     `<button type="button" class="btn-primary qs-close" style="background:#57606f">Chiudi</button>` +
     `</div>`;
@@ -290,6 +303,13 @@ export function openQuests(): void {
     if (e.target === el) close();
   };
   bindMissionRows(el);
+  // le sezioni finite sono chiuse: toccando il titolo si vedono le loro missioni
+  el.querySelectorAll<HTMLElement>('.qs-chapter.done > .qs-head').forEach((head) =>
+    head.addEventListener('click', (e) => {
+      if (!(e.target instanceof Element) || !e.target.closest('button'))
+        head.parentElement?.classList.toggle('open');
+    }),
+  );
   el.querySelectorAll<HTMLElement>('[data-follow]').forEach((b) =>
     b.addEventListener('click', () => {
       game.player.quests = { ...state(), follow: b.dataset.follow };

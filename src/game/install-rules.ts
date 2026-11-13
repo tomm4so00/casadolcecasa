@@ -45,14 +45,49 @@ export function isInAppBrowser(userAgent: string): boolean {
 }
 
 /**
- * `canInstall`: iPhone, iPad o Safari per Mac (sempre, a mano), oppure Android e computer quando
- * il browser ha detto che si può installare. Mai se il gioco è già aperto come app, né dopo "Più tardi" finché il gioco resta
- * aperto: alla prossima apertura l'avviso torna.
+ * Come si installa su questo browser. `apple` e `mac`: passaggi a mano. `wait`: il browser avvisa
+ * da sé quando si può (Chrome, Edge…); se non avvisa, il gioco è già installato e non si dice
+ * niente. `android`: browser Android senza quell'avviso (Firefox…), passaggi a mano dal menu.
+ * `other`: computer con un browser che non installa (Firefox): si consiglia Chrome o Edge.
  */
-export function shouldOfferInstall(state: {
+export type InstallWay = 'apple' | 'mac' | 'wait' | 'android' | 'other';
+
+export function installWay(env: {
+  appleMobile: boolean;
+  macSafari: boolean;
+  android: boolean;
+  promptSupported: boolean;
+}): InstallWay {
+  if (env.appleMobile) return 'apple';
+  if (env.macSafari) return 'mac';
+  if (env.promptSupported) return 'wait';
+  return env.android ? 'android' : 'other';
+}
+
+/**
+ * Che cosa chiede l'avviso in basso: installare l'app o salvare il personaggio. Prima l'app (è
+ * l'icona sul telefono a far tornare a giocare), poi, dentro l'app, il salvataggio. Ma dove l'app
+ * installata o il browser consigliato non vedono i dati di questo browser (`dataStays` falso:
+ * iPhone, iPad, Safari per Mac, Instagram & co., Firefox sul computer) un ospite ripartirebbe da
+ * zero: lì si salva prima.
+ */
+export function installStep(state: {
+  /** c'è un modo di installare da qui */
   canInstall: boolean;
   standalone: boolean;
-  dismissed: boolean;
-}): boolean {
-  return state.canInstall && !state.standalone && !state.dismissed;
+  guest: boolean;
+  dataStays: boolean;
+}): 'install' | 'save' | 'none' {
+  if (state.standalone) return state.guest ? 'save' : 'none';
+  if (!state.canInstall) return 'none';
+  return state.guest && !state.dataStays ? 'save' : 'install';
+}
+
+/** Avviso grande o barretta: "Più tardi" lo riduce, toccandola si riapre. Resta finché serve. */
+export function installView(
+  step: 'install' | 'save' | 'none',
+  collapsed: boolean,
+): 'banner' | 'bar' | 'none' {
+  if (step === 'none') return 'none';
+  return collapsed ? 'bar' : 'banner';
 }

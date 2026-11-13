@@ -23,7 +23,12 @@ export interface MovePayload {
   session?: boolean;
   /** la memoria del gioco (localStorage) */
   ls: Record<string, string>;
+  /** partito dalla vecchia app installata: il nuovo sito spiega come installare quella nuova */
+  app?: boolean;
 }
+
+/** La memoria del nuovo sito: "chi gioca qui ha ancora la vecchia app, non quella nuova". */
+export const OLD_APP_KEY = 'sims_old_app';
 
 /** La chiave con cui Firebase tiene l'accesso nella memoria del browser. */
 export const authStorageKey = (apiKey: string): string => `firebase:authUser:${apiKey}:[DEFAULT]`;
@@ -87,5 +92,7 @@ export function readMove(hash: string, now: number, apiKey: string): MovePayload
     p.user.apiKey === apiKey
       ? p.user
       : undefined;
-  return { v: 1, t: p.t, user, session: p.session === true, ls };
+  const out: MovePayload = { v: 1, t: p.t, user, session: p.session === true, ls };
+  if (p.app === true) out.app = true;
+  return out;
 }

@@ -21,6 +21,11 @@ function currentUser(): Promise<firebase.User | null> {
   });
 }
 
+/** Aperta dall'icona della vecchia app, non da una scheda del browser. */
+const installed =
+  matchMedia('(display-mode: standalone)').matches ||
+  (navigator as Navigator & { standalone?: boolean }).standalone === true;
+
 async function payload(): Promise<MovePayload> {
   const ls: [string, string][] = [];
   try {
@@ -33,6 +38,7 @@ async function payload(): Promise<MovePayload> {
     // memoria bloccata: si porta solo l'accesso
   }
   const out: MovePayload = { v: 1, t: Date.now(), ls: movableStorage(ls) };
+  if (installed) out.app = true;
   try {
     const user = await currentUser();
     if (user) {
@@ -46,10 +52,11 @@ async function payload(): Promise<MovePayload> {
   return out;
 }
 
-const installed = matchMedia('(display-mode: standalone)').matches;
 const button = document.getElementById('go') as HTMLAnchorElement;
 const status = document.getElementById('status') as HTMLElement;
 button.href = TARGET + location.search;
+// Dalla vecchia app il nuovo sito si apre nel browser vero: dentro l'app non si può installare.
+if (installed) button.target = '_blank';
 
 void payload().then((p) => {
   const url = moveUrl(TARGET, location.search, p);

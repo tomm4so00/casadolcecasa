@@ -3,6 +3,68 @@ import { game } from './context.js';
 import { dom, browser } from './runtime.js';
 import { musicFor } from './music-rules.js';
 export { musicFor };
+// ---------------------------------------------------------------- volumi
+
+/** Volume degli effetti e della musica, da 0 a 1: le barre del pannello audio (hud-menus.ts). */
+const vols: Record<'sound' | 'music', number | null> = { sound: null, music: null };
+const volKey = (k: string): string => game.session.LS_PREFIX + 'sims_' + k + '_vol';
+
+function volume(k: 'sound' | 'music'): number {
+  if (vols[k] === null) {
+    let v = 1;
+    try {
+      const saved = localStorage.getItem(volKey(k));
+      if (saved !== null && Number.isFinite(Number(saved))) v = Number(saved);
+    } catch {
+      // senza memoria del browser si parte a volume pieno
+    }
+    vols[k] = Math.max(0, Math.min(1, v));
+  }
+  return vols[k]!;
+}
+export const soundVolume = (): number => volume('sound');
+export const musicVolume = (): number => volume('music');
+
+/** Tutti gli effetti passano da qui: un solo regolatore per il loro volume. */
+let sfxBus: GainNode | null = null;
+function sfxOut(): AudioNode {
+  if (!sfxBus || sfxBus.context !== game.audioCtx) {
+    sfxBus = game.audioCtx.createGain() as GainNode;
+    sfxBus.gain.value = soundVolume();
+    sfxBus.connect(game.audioCtx.destination);
+  }
+  return sfxBus;
+}
+
+function saveVolume(k: 'sound' | 'music', v: number, on: boolean): void {
+  try {
+    localStorage.setItem(volKey(k), String(v));
+    localStorage.setItem(game.session.LS_PREFIX + 'sims_' + k, on ? 'on' : 'off');
+  } catch {
+    // al peggio vale fino alla chiusura del gioco
+  }
+}
+
+/** Barra degli effetti: a 0 gli effetti si spengono. */
+export function setSoundVolume(v: number): void {
+  vols.sound = Math.max(0, Math.min(1, v));
+  game.soundOn = vols.sound > 0;
+  saveVolume('sound', vols.sound, game.soundOn);
+  if (sfxBus) sfxBus.gain.value = vols.sound;
+  updateSoundButton();
+}
+
+/** Barra della musica: a 0 la musica si spegne. */
+export function setMusicVolume(v: number): void {
+  vols.music = Math.max(0, Math.min(1, v));
+  const was = game.musicOn;
+  game.musicOn = vols.music > 0;
+  saveVolume('music', vols.music, game.musicOn);
+  game.MUSIC.vol = -1; // musicTick riporta subito il volume dove serve
+  if (game.musicOn && !was) musicUnlock();
+  updateSoundButton();
+}
+
 export function sfx(type?: GameValue): GameValue {
   if (!game.soundOn) return;
   try {
@@ -23,7 +85,7 @@ export function sfx(type?: GameValue): GameValue {
       g.gain.setValueAtTime(vol, t0 + start);
       g.gain.exponentialRampToValueAtTime(0.001, t0 + start + dur);
       o.connect(g);
-      g.connect(game.audioCtx.destination);
+      g.connect(sfxOut());
       o.start(t0 + start);
       o.stop(t0 + start + dur + 0.02);
     };
@@ -49,7 +111,7 @@ export function sfx(type?: GameValue): GameValue {
       g.gain.linearRampToValueAtTime(0.001, t0 + start + dur);
       src.connect(f);
       f.connect(g);
-      g.connect(game.audioCtx.destination);
+      g.connect(sfxOut());
       src.start(t0 + start);
     };
     // una nota per nome (es. 'C5', 'F#4'), più comoda delle frequenze per le melodie
@@ -62,6 +124,11 @@ export function sfx(type?: GameValue): GameValue {
     ): void => tone(game.midiHz(game.midiOf(name)), start, dur, wave, vol);
     const sounds: GameValue = {
       shower: (): GameValue => noise(0, 3.6, 0.06, 3200),
+      // il "ding" del tutorial: un passo della guida d'arrivo, la riga «prima volta qui»
+      hint: (): void => {
+        tone(880, 0, 0.12, 'sine', 0.04);
+        tone(1175, 0.09, 0.22, 'sine', 0.035);
+      },
       sleep: (): GameValue =>
         [523, 440, 349].forEach(
           (fr?: GameValue, i?: GameValue): GameValue => tone(fr, i * 0.22, 0.4, 'sine', 0.06),
@@ -106,7 +173,7 @@ export function sfx(type?: GameValue): GameValue {
         g.gain.linearRampToValueAtTime(0.05, t0 + 0.4);
         g.gain.linearRampToValueAtTime(0.001, t0 + 0.46);
         o.connect(g);
-        g.connect(game.audioCtx.destination);
+        g.connect(sfxOut());
         o.start(t0);
         o.stop(t0 + 0.5);
         noise(0.47, 0.18, 0.12, 600);
@@ -139,7 +206,7 @@ export function sfx(type?: GameValue): GameValue {
           g.gain.linearRampToValueAtTime(0.09, t0 + start + 0.04);
           g.gain.exponentialRampToValueAtTime(0.001, t0 + start + dur);
           o.connect(g);
-          g.connect(game.audioCtx.destination);
+          g.connect(sfxOut());
           o.start(t0 + start);
           o.stop(t0 + start + dur + 0.02);
         }
@@ -400,7 +467,7 @@ export function musicTick(..._args: GameValue[]): GameValue {
     const want: GameValue = musicWant(),
       bus: GameValue = musicBus(),
       now: GameValue = game.audioCtx.currentTime;
-    let target: GameValue = want ? (game.player.isSleeping ? 0.18 : 0.55) : 0;
+    let target: GameValue = want ? (game.player.isSleeping ? 0.18 : 0.55) * musicVolume() : 0;
     // durante un effetto importante (bacio, furto, livello…) la musica si abbassa
     if (target && (game.MUSIC.duckUntil || 0) > now) target = Math.round(target * 25) / 100;
     if (game.MUSIC.vol !== target) {
@@ -451,8 +518,10 @@ export function toggleMusic(..._args: GameValue[]): GameValue {
   if (game.musicOn) musicUnlock();
 }
 
+/** Il pulsante dell'audio: 🔇 solo se effetti e musica sono spenti tutti e due. */
 export function updateSoundButton(..._args: GameValue[]): GameValue {
-  dom('btn-sound').textContent = game.soundOn ? '🔊' : '🔇';
+  const b = dom('btn-sound');
+  if (b) b.textContent = game.soundOn || game.musicOn ? '🔊' : '🔇';
   updateMusicButton();
 }
 

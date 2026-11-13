@@ -33,9 +33,11 @@ import {
 import { toggleMusic, toggleSound } from './audio.js';
 import { openLeaderboard, openMissions } from './missions.js';
 import { reloadForUpdate } from './saves.js';
-import { dismissInstall, installApp } from './install.js';
+import { dismissInstall, installApp, openInstall, saveForInstall } from './install.js';
 import { openChat, openProfile, restoreFromCode, showIntro } from './interface.js';
 import { toggleNotify } from './needs.js';
+import { toggleHudMenu } from './hud-menus.js';
+import { openGuide } from './guide-book.js';
 import { bizInvest, bizWithdraw, openBizSite } from './business.js';
 import { BUSINESSES, type BusinessId } from '../../shared/market.js';
 import { closeGlobalChat, openGlobalChat, sendChat } from './chat.js';
@@ -81,10 +83,14 @@ export const uiActions: Readonly<Record<string, UiAction>> = {
   openMissions: () => openMissions(),
   dismissInstall: () => dismissInstall(),
   installApp: () => installApp(),
+  openInstall: () => openInstall(),
+  saveForInstall: () => saveForInstall(),
   toggleSound: () => toggleSound(),
   toggleMusic: () => toggleMusic(),
-  showIntro: ([arg0]) => showIntro(Boolean(arg0)),
+  // il pulsante ❓ apre la guida per argomenti; senza argomento è il benvenuto della prima volta
+  showIntro: ([arg0]) => (arg0 ? openGuide() : showIntro(false)),
   toggleNotify: () => toggleNotify(),
+  toggleHudMenu: (args) => toggleHudMenu(String(args[0] ?? '')),
   openLeaderboard: () => openLeaderboard(),
   openProfile: () => openProfile(),
   openChat: () => openChat(),

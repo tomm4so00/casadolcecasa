@@ -31,6 +31,7 @@ import { blockedByDeletion, requestDeletion } from './deletion.js';
 import { openBlockedList } from './blocks.js';
 import { isModerator, openModPanel, stoppedByMute } from './moderation.js';
 import { startPlayersHud } from './players-hud.js';
+import { startHudMenus } from './hud-menus.js';
 import { dayNumber } from './game-clock.js';
 import { renderArtSite, startArtMarket } from './art-market.js';
 import { startProjects } from './projects.js';
@@ -550,6 +551,7 @@ export async function startGame(..._args: GameValue[]): Promise<GameValue> {
   lifetime.setTimeout(() => void applyDailyPerks(), 4000);
   lifetime.setInterval(() => void applyDailyPerks(), 60000);
   startPlayersHud();
+  startHudMenus();
   startArtMarket();
   startGossip();
   startPaintingTitles();

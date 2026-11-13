@@ -131,7 +131,7 @@ export const DAILY_MISSIONS: DailyMission[] = [
     id: 'chat',
     kind: 'vicini',
     title: '💬 Tre messaggi',
-    hint: '💬 Scrivi tre messaggi nella chat del condominio.',
+    hint: '💬 Tocca 💬 a destra, scegli «Chat del condominio» e scrivi tre messaggi.',
     reward: 15,
     stat: 'chats',
     need: 3,
