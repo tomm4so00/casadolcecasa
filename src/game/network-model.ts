@@ -8,6 +8,9 @@ export interface OnlinePlayer extends PresenceInfo {
   name: string;
   x: number;
   y: number;
+  /** Velocità (unità al secondo), per farlo camminare fra un messaggio e l'altro (remote-motion.ts). */
+  vx?: number;
+  vy?: number;
   env: string;
   /** Stanza privata in cui si trova (indice globale), solo dentro PLAYER_ROOM. */
   roomIdx?: number | null;

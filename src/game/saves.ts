@@ -65,7 +65,7 @@ import { worldNode } from './world-db.js';
 import { cabinetOpen } from './cabinet.js';
 import { currentCrack } from './crack.js';
 import { decodeFood, encodeFood } from './food-rules.js';
-import { PRESENCE_TICK_MS, presenceSend } from './presence-send-rules.js';
+import { PRESENCE_TICK_MS, presenceSend, velocity } from './presence-send-rules.js';
 
 /** Segna la presenza come offline, con l'ora del server in cui il giocatore è uscito. */
 export const OFFLINE_MARK = { offline: true, offAt: { '.sv': 'timestamp' } };
@@ -653,12 +653,96 @@ export function normalizeRooms(val?: unknown): RoomState[] {
 /** Soldi nella cassaforte di chi prende una stanza per la prima volta. */
 export const START_MONEY = 30;
 
-// Assegna la stanza con una transazione: due giocatori non possono prendere la stessa
+const MONTH = 30 * 24 * 3600 * 1000;
+
+/** Libera, oppure (solo in prova) abbandonata da più di 30 giorni con la cassaforte vuota. */
+function takeable(r: RoomState): boolean {
+  if (!r.owner && !r.ownerId) return true;
+  return (
+    game.session.OFFLINE && !!r.lastSeen && Date.now() - r.lastSeen > MONTH && !(r.vaultMoney > 0)
+  );
+}
+
+/** La stanza da prendere: la mia, se no la prima che si può prendere; -1 se è tutto pieno. */
+function pickRoom(rooms: RoomState[]): number {
+  const mine = rooms.findIndex((r) => r.ownerId === game.session.myPlayerId);
+  return mine !== -1 ? mine : rooms.findIndex(takeable);
+}
+
+/**
+ * Assegna la stanza all'ingresso. Si scrive solo la propria: tutta la lista (64 stanze, circa
+ * 17 KB) a ogni ingresso arrivava a tutti i giocatori collegati. Se la scrittura della sola
+ * stanza non va (per esempio una lista vecchia a cui manca qualche stanza), si fa come prima.
+ */
 export async function claimRoom(): Promise<void> {
+  let result: { claimed: number; full: boolean } | null = null;
+  try {
+    result = await claimRoomAlone();
+  } catch (e) {
+    console.warn('Assegnazione della sola stanza fallita, riprovo con la lista', e);
+  }
+  const { claimed, full } = result ?? (await claimRoomWholeList());
+  game.myAssignedRoomIdx = claimed;
+  if (full)
+    toast(
+      `🏠 Il condominio è pieno (${game.TOTAL_ROOMS} stanze): per ora giochi come ospite senza stanza.`,
+      5000,
+    );
+  else if (claimed === -1)
+    toast('🏠 La tua stanza non risponde: ricarica la pagina quando sei connesso.', 6000);
+  else toast(`🏠 Abiti in: ${roomLabel(claimed, game.ROOMS_PER_APT)}`);
+}
+
+/** Chi ha già la stanza aggiorna nome e ultimo ingresso; chi arriva ne prende una libera. */
+async function claimRoomAlone(): Promise<{ claimed: number; full: boolean } | null> {
+  const me = game.session.myPlayerId;
+  const nick = game.player.myData.nick;
+  const listRef = game.session.db.ref(worldNode('rooms_state'));
+  for (let attempt = 0; attempt < 4; attempt++) {
+    const snap = await withTimeout(listRef.once('value'), 8000);
+    const rooms = normalizeRooms(snap?.val());
+    const idx = pickRoom(rooms);
+    if (idx === -1) return { claimed: -1, full: true };
+    const roomRef = game.session.db.ref(worldNode('rooms_state') + '/' + idx);
+    if (rooms[idx].ownerId === me) {
+      await withTimeout(roomRef.update({ owner: nick, lastSeen: Date.now() }), 8000);
+      return { claimed: idx, full: false };
+    }
+    // una transazione sulla sola stanza: se intanto l'ha presa un altro, si rinuncia e si riprova
+    let took = false;
+    const result = await withTimeout(
+      roomRef.transaction((current: unknown) => {
+        const old = Object.assign(game.blankRoom(idx), current || {}) as RoomState;
+        took = old.ownerId === me || takeable(old);
+        if (!took) return undefined;
+        const base: RoomState =
+          old.ownerId === me
+            ? old
+            : {
+                id: old.id,
+                // chi arriva in una stanza nuova trova qualche soldo per cominciare
+                vaultMoney: START_MONEY,
+                ...(old.pendingDeath ? { pendingDeath: old.pendingDeath } : {}),
+              };
+        return { ...base, owner: nick, ownerId: me, lastSeen: Date.now() };
+      }),
+      8000,
+    );
+    if (result?.committed && took) {
+      // l'elenco dei mondi sa quanti posti restano (per chi cerca un mondo pubblico)
+      rooms[idx] = { ...rooms[idx], owner: nick, ownerId: me };
+      void publishFreeRooms(game.session.worldId, countFree(rooms));
+      return { claimed: idx, full: false };
+    }
+  }
+  return null;
+}
+
+/** Il modo di prima: una transazione su tutta la lista. */
+async function claimRoomWholeList(): Promise<{ claimed: number; full: boolean }> {
   let claimed = -1;
   let free = -1;
   let full = false;
-  const MONTH = 30 * 24 * 3600 * 1000;
   // Firebase annulla la transazione se nel frattempo si scrive dentro rooms_state (la
   // disposizione dei mobili salvata appena creato il personaggio): allora si riprova.
   for (let attempt = 0; attempt < 3 && claimed === -1 && !full; attempt++)
@@ -666,13 +750,7 @@ export async function claimRoom(): Promise<void> {
       const result = await withTimeout(
         game.session.db.ref(worldNode('rooms_state')).transaction((current: unknown) => {
           const rooms = normalizeRooms(current);
-          let idx = rooms.findIndex((r) => r.ownerId === game.session.myPlayerId);
-          if (idx === -1) idx = rooms.findIndex((r) => !r.owner && !r.ownerId);
-          // Stanze abbandonate da più di 30 giorni (e con cassaforte vuota) tornano libere
-          if (idx === -1 && game.session.OFFLINE)
-            idx = rooms.findIndex(
-              (r) => !!r.lastSeen && Date.now() - r.lastSeen > MONTH && !(r.vaultMoney > 0),
-            );
+          const idx = pickRoom(rooms);
           claimed = idx;
           if (idx === -1) return rooms;
           const old = rooms[idx];
@@ -703,15 +781,7 @@ export async function claimRoom(): Promise<void> {
       claimed = -1;
       console.warn('Assegnazione stanza fallita', e);
     }
-  game.myAssignedRoomIdx = claimed;
-  if (full)
-    toast(
-      `🏠 Il condominio è pieno (${game.TOTAL_ROOMS} stanze): per ora giochi come ospite senza stanza.`,
-      5000,
-    );
-  else if (claimed === -1)
-    toast('🏠 La tua stanza non risponde: ricarica la pagina quando sei connesso.', 6000);
-  else toast(`🏠 Abiti in: ${roomLabel(claimed, game.ROOMS_PER_APT)}`);
+  return { claimed, full };
 }
 
 export function syncMyPinFromRoom(): void {
@@ -809,7 +879,9 @@ export function startPresence(): void {
       console.warn('[presenza]', e);
     });
   };
-  // Invia la posizione solo quando cambia, più un battito ogni 5 s
+  // La velocità si misura fra un controllo e l'altro: gli altri la usano per farmi camminare
+  // senza un messaggio a ogni passo (presence-send-rules.ts, remote-motion.ts).
+  let prevPos = { x: 0, y: 0, env: '', at: 0 };
   lifetime.setInterval(() => {
     // da morto non si manda più niente: rimetterebbe in giro il personaggio appena tolto;
     // in pausa nemmeno: per gli altri si è usciti (al ritorno si rimanda la scheda intera)
@@ -817,10 +889,17 @@ export function startPresence(): void {
       lastSent = null;
       return;
     }
+    const pos = { x: Math.round(game.playerPos.x), y: Math.round(game.playerPos.y) };
+    const tick = performance.now();
+    const v =
+      prevPos.env === game.view.activeEnvironment
+        ? velocity(prevPos, pos, tick - prevPos.at)
+        : { vx: 0, vy: 0 };
+    prevPos = { ...pos, env: game.view.activeEnvironment, at: tick };
     const payload: Record<string, unknown> = {
       name: game.player.myData.nick,
-      x: Math.round(game.playerPos.x),
-      y: Math.round(game.playerPos.y),
+      ...pos,
+      ...v,
       env: game.view.activeEnvironment,
       roomIdx: game.view.activeEnvironment === 'PLAYER_ROOM' ? game.currentRoomIdx : null,
       apt: game.APT_ENVS.includes(game.view.activeEnvironment) ? game.currentApt : null,

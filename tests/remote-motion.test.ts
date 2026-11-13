@@ -38,6 +38,32 @@ describe('movimento degli altri giocatori', () => {
     expect(positionAt(m, 5100)).toEqual({ x: 400, y: 0 });
   });
 
+  it('con la velocità basta un punto al secondo: cammina fluido e prosegue dopo l’ultimo', () => {
+    const m = newMotion();
+    // a destra a 100 al secondo: un punto al secondo, arrivati in ritardo diverso
+    addSample(m, 1000, 0, 0, 5000, 100, 0);
+    addSample(m, 2000, 100, 0, 6030, 100, 0);
+    addSample(m, 3000, 200, 0, 7000, 100, 0);
+    const steps: number[] = [];
+    let prev = positionAt(m, 5000 + RENDER_DELAY + 100)!.x;
+    // fino a ben oltre l'ultimo punto (7000): prosegue alla stessa andatura
+    for (let t = 5000 + RENDER_DELAY + 116; t < 7000 + RENDER_DELAY + 900; t += 16) {
+      const x = positionAt(m, t)!.x;
+      steps.push(x - prev);
+      prev = x;
+    }
+    for (const s of steps) expect(s).toBeCloseTo(1.6, 5);
+  });
+
+  it('fermo non prosegue, e un passo lungo un secondo non è un salto', () => {
+    const m = newMotion();
+    addSample(m, 1000, 0, 0, 5000, 200, 0);
+    // 200 unità in un secondo: più di un salto vecchio (150), ma è dove doveva essere
+    addSample(m, 2000, 200, 0, 6000, 0, 0);
+    expect(m.buf.length).toBe(2);
+    expect(positionAt(m, 99999)).toEqual({ x: 200, y: 0 });
+  });
+
   it('ignora i messaggi doppi o arrivati fuori ordine', () => {
     const m = newMotion();
     addSample(m, 1000, 0, 0, 5000);
