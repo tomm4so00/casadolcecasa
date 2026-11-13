@@ -45,6 +45,7 @@ import { decodeRelations } from './relations-rules.js';
 import { decodeWelcome } from './welcome-rules.js';
 import { decodeQuests } from './quests-rules.js';
 import { decodeDaily } from './daily-rules.js';
+import { decodeSeenPlaces } from './first-visit-rules.js';
 import { limitedFurnitureProps, limitedRoomItems } from './limited.js';
 import {
   decodePersonality,
@@ -188,6 +189,7 @@ export function buildSaveData(): SaveV8 {
   if (game.player.welcome) data.welcome = game.player.welcome;
   if (game.player.quests) data.quests = game.player.quests;
   if (game.player.today) data.today = game.player.today;
+  if (game.player.placesSeen?.length) data.placesSeen = game.player.placesSeen;
   if (game.player.workDay) data.workDay = game.player.workDay;
   // fin dove si è letta la chat: vale su tutti i dispositivi, non solo su questo
   if (game.chatReadT > 0) data.chatReadT = game.chatReadT;
@@ -333,6 +335,7 @@ export function applySave(value: unknown): void {
   // capitoli delle missioni: chi giocava già da un giorno salta il Capitolo 1 (la sopravvivenza)
   game.player.quests = decodeQuests(s.quests);
   game.player.today = decodeDaily(s.today);
+  game.player.placesSeen = decodeSeenPlaces(s.placesSeen);
   const born = game.player.bornAt;
   if (!s.quests && (!born || Date.now() - born > OLD_PLAYER_MS)) game.player.quests.old = true;
   game.player.ownedItems = s.ownedItems || {};

@@ -64,6 +64,8 @@ function setStep(next: ArrivalStep): void {
   write('step', next);
   // l'imbuto d'ingresso (usage.ts): quanti arrivano a ogni passo
   if (next !== 'done') countUse('ingresso:arrivo_' + next);
+  // un "ding" leggero a ogni passo nuovo della guida
+  if (next !== 'done') sfx('hint');
 }
 
 /** L'arrivo è in corso: niente proposte di missione né riga delle missioni sotto i parametri. */

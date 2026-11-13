@@ -157,8 +157,38 @@
       <rect x="14" y="10" width="4" height="3" rx="1" fill="#e8d7b0" />
     </svg>
   </button>
-  <button class="btn-hud" id="btn-sound" data-action="toggleSound" title="Suoni on/off">🔊</button>
-  <button class="btn-hud" id="btn-music" data-action="toggleMusic" title="Musica on/off">🎵</button>
+  <!-- audio: un tocco apre le barre del volume e il pulsante delle notifiche (hud-menus.ts) -->
+  <div class="hud-group">
+    <button
+      class="btn-hud"
+      id="btn-sound"
+      data-action="toggleHudMenu"
+      data-args='["audio"]'
+      title="Volume e notifiche"
+    >
+      🔊
+    </button>
+    <div id="hud-menu-audio" class="hud-pop hidden">
+      <label class="hud-vol"
+        ><span>🔊 Effetti</span><input type="range" id="vol-sound" min="0" max="100" step="5" /><b
+          id="vol-sound-txt"
+        ></b
+      ></label>
+      <label class="hud-vol"
+        ><span>🎵 Musica</span><input type="range" id="vol-music" min="0" max="100" step="5" /><b
+          id="vol-music-txt"
+        ></b
+      ></label>
+      <button
+        type="button"
+        class="hud-pop-btn"
+        data-action="toggleNotify"
+        title="Avvisi quando il personaggio sta male"
+      >
+        <span id="btn-notify">🔕</span> Notifiche
+      </button>
+    </div>
+  </div>
   <button
     class="btn-hud"
     id="btn-help"
@@ -167,14 +197,6 @@
     title="Guida: come non morire"
   >
     ❓
-  </button>
-  <button
-    class="btn-hud"
-    id="btn-notify"
-    data-action="toggleNotify"
-    title="Avvisi quando il personaggio sta male"
-  >
-    🔕
   </button>
   <button class="btn-hud" id="btn-leaderboard" data-action="openLeaderboard" title="Classifica">
     🏆
@@ -187,41 +209,45 @@
   >
     🧑
   </button>
-  <button
-    class="btn-hud"
-    id="btn-chat"
-    data-action="openChat"
-    title="Scrivi un messaggio sopra la testa"
-  >
-    💬
-  </button>
-  <button
-    class="btn-hud"
-    id="btn-gchat"
-    data-action="openGlobalChat"
-    title="Chat di tutti i giocatori"
-    style="position: relative"
-  >
-    🗨️<span
-      id="gchat-badge"
-      class="hidden"
-      style="
-        position: absolute;
-        top: -4px;
-        right: -4px;
-        background: #ff4757;
-        color: #fff;
-        border-radius: 10px;
-        font-size: 0.65rem;
-        min-width: 16px;
-        height: 16px;
-        line-height: 16px;
-        text-align: center;
-        padding: 0 3px;
-      "
-      >0</span
+  <!-- messaggi: un tocco apre la chat del condominio o il fumetto sopra la testa -->
+  <div class="hud-group">
+    <button
+      class="btn-hud"
+      id="btn-gchat"
+      data-action="toggleHudMenu"
+      data-args='["chat"]'
+      title="Messaggi"
+      style="position: relative"
     >
-  </button>
+      💬<span
+        id="gchat-badge"
+        class="hidden"
+        style="
+          position: absolute;
+          top: -4px;
+          right: -4px;
+          background: #ff4757;
+          color: #fff;
+          border-radius: 10px;
+          font-size: 0.65rem;
+          min-width: 16px;
+          height: 16px;
+          line-height: 16px;
+          text-align: center;
+          padding: 0 3px;
+        "
+        >0</span
+      >
+    </button>
+    <div id="hud-menu-chat" class="hud-pop hidden">
+      <button type="button" class="hud-pop-btn hud-pop-close" data-action="openGlobalChat">
+        🗨️ Chat del condominio
+      </button>
+      <button type="button" class="hud-pop-btn hud-pop-close" data-action="openChat">
+        💭 Fumetto sopra la testa
+      </button>
+    </div>
+  </div>
   <button class="btn-hud" id="btn-sprint" data-action="toggleSprint" title="Corri">🏃</button>
 </div>
 

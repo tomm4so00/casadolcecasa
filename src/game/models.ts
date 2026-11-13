@@ -198,6 +198,8 @@ export interface CharacterState {
   quests?: QuestState;
   /** Le missioni del giorno e la serie di giorni (daily-rules.ts). */
   today?: DailyState;
+  /** I posti in cui la riga «prima volta qui» è già comparsa (first-visit-rules.ts). */
+  placesSeen?: string[];
   /** Punti delle personalità sviluppate giocando. */
   personality?: PersonalityState;
   /** Turni di lavoro iniziati oggi (massimo SHIFTS_PER_DAY). */

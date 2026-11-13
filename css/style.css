@@ -1659,6 +1659,22 @@ body.coach-open #btn-arrange {
   padding: 8px 10px;
   background: rgba(254, 202, 87, 0.06);
 }
+/* sezioni finite: chiuse in fondo, solo il titolo; un tocco le apre */
+.qs-chapter.done > .qs-head {
+  cursor: pointer;
+}
+.qs-chapter.done > .qs-head::after {
+  content: '▸';
+  margin-left: auto;
+  color: #a4b0be;
+}
+.qs-chapter.done.open > .qs-head::after {
+  content: '▾';
+}
+.qs-chapter.done:not(.open) > ul,
+.qs-chapter.done:not(.open) > .qs-now {
+  display: none;
+}
 .qs-chapter.done {
   border-color: rgba(46, 213, 115, 0.45);
   background: rgba(46, 213, 115, 0.07);
@@ -4595,4 +4611,112 @@ body.hacker-glitch::after {
   50% {
     transform: translateX(6px);
   }
+}
+
+/* Pulsanti di destra che si aprono (hud-menus.ts): il riquadro compare a sinistra del pulsante */
+.hud-group {
+  position: relative;
+}
+.hud-pop {
+  position: absolute;
+  right: calc(100% + 10px);
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 220px;
+  padding: 10px 12px;
+  background: rgba(15, 15, 25, 0.95);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(254, 202, 87, 0.5);
+  border-radius: 12px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.6);
+  z-index: 5;
+}
+.hud-pop.hidden {
+  display: none;
+}
+.hud-vol {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 2px 8px;
+  font-size: 0.8rem;
+  color: #dfe6e9;
+}
+.hud-vol input {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  width: 100%;
+  accent-color: #feca57;
+}
+.hud-vol b {
+  color: #feca57;
+  font-size: 0.75rem;
+}
+.hud-pop-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 9px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+  font-size: 0.85rem;
+  font-weight: bold;
+  text-align: left;
+  cursor: pointer;
+}
+
+/* Guida del pulsante ❓ (guide-book.ts): indice di argomenti e una pagina per argomento */
+.gb-card {
+  max-width: 420px;
+  width: 94%;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.gb-card h3 {
+  margin: 0;
+  text-align: center;
+}
+.gb-sub {
+  text-align: center;
+  font-size: 0.8rem;
+  color: #a4b0be;
+}
+.gb-list {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  overflow-y: auto;
+}
+.gb-topic {
+  padding: 12px 8px;
+  border-radius: 10px;
+  border: 1px solid rgba(254, 202, 87, 0.45);
+  background: rgba(254, 202, 87, 0.08);
+  color: #fff;
+  font-size: 0.85rem;
+  font-weight: bold;
+  cursor: pointer;
+  text-align: left;
+}
+.gb-text {
+  white-space: pre-line;
+  font-size: 0.88rem;
+  line-height: 1.45;
+  color: #dfe6e9;
+  overflow-y: auto;
+  text-align: left;
+}
+.gb-row {
+  display: flex;
+  gap: 8px;
+}
+.gb-row > * {
+  flex: 1;
 }

@@ -99,7 +99,7 @@ export const CHAPTERS: Chapter[] = [
       {
         id: 'chat',
         title: '💬 Due parole',
-        hint: '💬 Apri la chat del condominio (il fumetto a destra) e scrivi un messaggio.',
+        hint: '💬 Tocca 💬 a destra, scegli «Chat del condominio» e scrivi un messaggio.',
         reward: 15,
         done: (v) => v.chats > 0,
       },

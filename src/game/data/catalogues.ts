@@ -1509,7 +1509,7 @@ export const MUSIC_TRACKS = {
 export const INTRO_PAGES = [
   {
     title: '🏠 Benvenuto nel condominio!',
-    text: 'Il tuo personaggio vive in tempo reale: fame, sonno, igiene e felicità calano anche a gioco chiuso. Se si svuotano scende la Salute, e a zero il personaggio muore.\n\n🍝 Da noi si usa così: quando arrivi, cucini qualcosa e lo porti ai vicini. Le missioni sotto i parametri ti guidano passo passo, con un premio in Dindini (Đ) per ognuna.\n\n💻 Ogni giorno alle 11:45 Zero, lo scassinatore, annuncia a che ora attaccherà le casseforti: se vedi qualcuno scassinare la tua, dagli un pugno!\n\nCon ❓ puoi rileggere questa guida.',
+    text: 'Il tuo personaggio vive in tempo reale: fame, sonno, igiene e felicità calano anche a gioco chiuso. Se si svuotano scende la Salute, e a zero il personaggio muore.\n\n🍝 Da noi si usa così: quando arrivi, cucini qualcosa e lo porti ai vicini. Il pulsante 📋 Missioni sotto i parametri ti guida passo passo, con un premio in Dindini (Đ) per ognuna.\n\n💻 Ogni giorno alle 11:45 Zero, lo scassinatore, annuncia a che ora attaccherà le casseforti: se vedi qualcuno scassinare la tua, dagli un pugno!\n\nCon ❓ trovi la guida, divisa per argomenti.',
   },
 ];
 /** Cosa dicono i commessi, per negozio. */
