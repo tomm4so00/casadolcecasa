@@ -19,6 +19,7 @@ import {
   CREATOR_TABS,
   FURNITURE_CATALOG,
   MUSIC_TRACKS,
+  MUSIC_VARIANTS,
   INTRO_PAGES,
   SIMULATION_BOTS,
   PLAYER_ROOM_FURNITURE,
@@ -284,6 +285,7 @@ export function initializeGame() {
   };
   game.midiHz = (m?: GameValue): GameValue => 440 * Math.pow(2, (m - 69) / 12);
   game.MUSIC_TRACKS = structuredClone(MUSIC_TRACKS);
+  game.MUSIC_VARIANTS = structuredClone(MUSIC_VARIANTS);
   ['pointerdown', 'keydown', 'touchstart'].forEach(
     (ev?: GameValue): GameValue => lifetime.listen(browser, ev, musicUnlock, { passive: true }),
   );

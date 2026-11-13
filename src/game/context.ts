@@ -136,6 +136,8 @@ interface GameContext {
   midiOf: GameValue;
   midiHz: GameValue;
   MUSIC_TRACKS: GameValue;
+  /** Altri brani per tema (MUSIC_VARIANTS in catalogues.ts), alternati con MUSIC_TRACKS. */
+  MUSIC_VARIANTS: Record<string, object[]>;
   MISSIONS: GameValue;
   lastCloudSaveAt: number;
   lastCloudMoney: GameValue;
