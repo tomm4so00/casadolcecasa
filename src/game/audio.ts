@@ -1,7 +1,7 @@
 import type { GameValue } from './context.js';
 import { game } from './context.js';
 import { dom, browser } from './runtime.js';
-import { musicFor } from './music-rules.js';
+import { LOOPS_PER_TRACK, firstVariant, musicFor, nextVariant } from './music-rules.js';
 export { musicFor };
 // ---------------------------------------------------------------- volumi
 
@@ -475,19 +475,31 @@ export function musicTick(..._args: GameValue[]): GameValue {
       bus.gain.setTargetAtTime(target, now, 0.15);
       game.MUSIC.vol = target;
     }
+    // i brani del tema: quello di sempre e gli altri (MUSIC_VARIANTS), che si alternano
+    const list = want
+      ? [game.MUSIC_TRACKS[want], ...((game.MUSIC_VARIANTS || {})[want] || [])]
+      : [];
     if (want !== game.MUSIC.cur) {
       game.MUSIC.cur = want;
       game.MUSIC.step = 0;
+      game.MUSIC.loops = 0;
+      game.MUSIC.variant = firstVariant(list.length, Math.random());
       game.MUSIC.next = now + 0.08;
     }
     if (!want) return;
-    const tr: GameValue = musicParse(game.MUSIC_TRACKS[want]),
+    const tr: GameValue = musicParse(list[game.MUSIC.variant || 0] || list[0]),
       d: GameValue = 60 / tr.bpm / 2;
     if (game.MUSIC.next < now - 0.2) game.MUSIC.next = now + 0.05; // dopo una pausa non recuperare le note perse
     while (game.MUSIC.next < now + 0.3) {
       musicStep(tr, game.MUSIC.step, game.MUSIC.next, d);
       game.MUSIC.next += d;
       game.MUSIC.step = (game.MUSIC.step + 1) % (tr.C.length * 8);
+      // finito il giro: dopo LOOPS_PER_TRACK giri si passa a un altro brano dello stesso tema
+      if (game.MUSIC.step === 0 && ++game.MUSIC.loops >= LOOPS_PER_TRACK) {
+        game.MUSIC.loops = 0;
+        game.MUSIC.variant = nextVariant(list.length, game.MUSIC.variant || 0, Math.random());
+        break; // il brano nuovo ha un altro tempo: si continua al giro dopo
+      }
     }
   } catch (e: GameValue) {}
 }
