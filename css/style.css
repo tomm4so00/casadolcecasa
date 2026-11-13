@@ -1633,6 +1633,10 @@ body:has(#creator-modal:not(.hidden)) :is(#install-banner, #install-bar) {
 body.coach-open #install-bar {
   bottom: calc(max(18px, env(safe-area-inset-bottom)) + var(--coach-h, 90px) + 8px);
 }
+/* Anche l'avviso grande, sopra il riquadro della guida invece che addosso. */
+body.coach-open #install-banner {
+  bottom: calc(max(18px, env(safe-area-inset-bottom)) + var(--coach-h, 90px) + 10px);
+}
 /* Telefono in orizzontale: più largo e senza icona, per coprire meno gioco. */
 @media (max-height: 420px) {
   #install-banner {
@@ -1644,7 +1648,8 @@ body.coach-open #install-bar {
   }
 }
 
-#session-lost-banner {
+#session-lost-banner,
+#site-open-banner {
   position: fixed;
   inset: 0;
   z-index: 3000;

@@ -536,6 +536,17 @@
   </div>
 </div>
 
+<!-- Dalla cornice di itch si è passati al sito (guest.ts, continueOnSite): qui si aspetta -->
+<div id="site-open-banner" class="hidden">
+  <div class="card">
+    <h2>🌐 Stai giocando sul sito</h2>
+    <p style="margin: 12px 0; color: #ccc">
+      Il tuo personaggio ora è nella scheda di <b id="site-open-host"></b>: qui il gioco è in pausa.
+    </p>
+    <button class="btn-primary" data-action="reloadForUpdate">Torna a giocare qui</button>
+  </div>
+</div>
+
 <div id="ui-setup-screen">
   <!-- la vetrina: il cortile disegnato dal motore del gioco (scripts/vetrina.mjs), secondo l'ora -->
   <div id="setup-scene" class="setup-scene hidden" aria-hidden="true"></div>

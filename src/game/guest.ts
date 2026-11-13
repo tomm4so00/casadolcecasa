@@ -9,6 +9,7 @@ import {
   guestPendingEmail,
   saveGuestWithEmail,
   saveGuestWithGoogle,
+  handOverSession,
 } from './accounts.js';
 import { game } from './context.js';
 import { openDialog } from './interface.js';
@@ -16,6 +17,20 @@ import { toast } from './missions.js';
 import { lifetime } from './runtime.js';
 import { saveGame } from './saves.js';
 import { inFrame, openSite } from './embed.js';
+
+/**
+ * Dalla cornice di itch & co.: il gioco continua sul sito con lo stesso personaggio. Qui si salva,
+ * si lascia libero il personaggio (sennò il sito trova la scheda occupata) e si mette in pausa.
+ */
+export function continueOnSite(): void {
+  openSite(true);
+  const host = document.getElementById('site-open-host');
+  if (host) host.textContent = location.host;
+  document.getElementById('site-open-banner')?.classList.remove('hidden');
+  void saveGame(true)
+    .catch(() => false)
+    .finally(() => handOverSession());
+}
 
 /** Dopo quanti minuti di gioco l'ospite riceve l'invito a salvare (una volta sola). */
 export const GUEST_REMINDER_MINUTES = 20;
@@ -57,7 +72,7 @@ export async function offerSave(
         { label: '🌐 Apri il sito', value: 'site', color: '#2e86de', wide: true },
       ],
     });
-    if (res.action === 'site') openSite(true);
+    if (res.action === 'site') continueOnSite();
     return;
   }
   const pending = guestPendingEmail();

@@ -90,6 +90,16 @@ export function blockThisSession(): void {
   if (sessionId) loseSession(sessionId);
 }
 
+/**
+ * Il personaggio passa alla scheda del sito (dalla cornice di itch: embed.ts, guest.ts): questa
+ * smette di salvare e lascia libero il blocco delle schede, sennò il sito non lo apre.
+ */
+export function handOverSession(): void {
+  sessionValid = false;
+  releaseTab?.();
+  releaseTab = null;
+}
+
 /** Esce dall'account: questa scheda smette di salvare e lascia il Sim libero. */
 export async function signOutAccount(): Promise<void> {
   sessionValid = false;

@@ -19,8 +19,8 @@ import {
 } from './install-rules.js';
 import { OLD_APP_KEY } from './move-rules.js';
 import { browser, dom, lifetime } from './runtime.js';
-import { isGuest, offerSave } from './guest.js';
-import { inFrame, openSite } from './embed.js';
+import { continueOnSite, isGuest, offerSave } from './guest.js';
+import { inFrame } from './embed.js';
 
 /** Il vecchio "Più tardi" che rimandava di una settimana: si cancella. */
 const OLD_LATER_KEY = 'sims_install_later';
@@ -294,7 +294,7 @@ export async function saveForInstall(): Promise<void> {
 
 /** "Apri il sito" nella cornice: il gioco in una scheda nuova, con lo stesso personaggio. */
 export function openSiteFromFrame(): void {
-  openSite(true);
+  continueOnSite();
 }
 
 /** La barretta: riapre l'avviso grande. */
