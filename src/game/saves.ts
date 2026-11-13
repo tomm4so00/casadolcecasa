@@ -879,9 +879,13 @@ export function startPresence(): void {
       console.warn('[presenza]', e);
     });
   };
-  // La velocità si misura fra un controllo e l'altro: gli altri la usano per farmi camminare
-  // senza un messaggio a ogni passo (presence-send-rules.ts, remote-motion.ts).
-  let prevPos = { x: 0, y: 0, env: '', at: 0 };
+  // La velocità: gli altri la usano per farmi camminare senza un messaggio a ogni passo
+  // (presence-send-rules.ts, remote-motion.ts). Si misura sugli ultimi 300 ms: su un solo controllo
+  // oscilla (i fotogrammi fra due controlli non sono sempre gli stessi) e farebbe partire punti in
+  // più. Fermi però si è subito: altrimenti gli altri mi vedrebbero proseguire e tornare indietro.
+  const VELOCITY_WINDOW_MS = 300;
+  let recent: { x: number; y: number; at: number }[] = [];
+  let recentEnv = '';
   lifetime.setInterval(() => {
     // da morto non si manda più niente: rimetterebbe in giro il personaggio appena tolto;
     // in pausa nemmeno: per gli altri si è usciti (al ritorno si rimanda la scheda intera)
@@ -891,11 +895,14 @@ export function startPresence(): void {
     }
     const pos = { x: Math.round(game.playerPos.x), y: Math.round(game.playerPos.y) };
     const tick = performance.now();
+    if (recentEnv !== game.view.activeEnvironment) recent = [];
+    recentEnv = game.view.activeEnvironment;
+    const prev = recent[recent.length - 1];
+    const stopped = !prev || (prev.x === pos.x && prev.y === pos.y);
+    recent = recent.filter((r) => tick - r.at <= VELOCITY_WINDOW_MS);
     const v =
-      prevPos.env === game.view.activeEnvironment
-        ? velocity(prevPos, pos, tick - prevPos.at)
-        : { vx: 0, vy: 0 };
-    prevPos = { ...pos, env: game.view.activeEnvironment, at: tick };
+      stopped || !recent.length ? { vx: 0, vy: 0 } : velocity(recent[0], pos, tick - recent[0].at);
+    recent.push({ ...pos, at: tick });
     const payload: Record<string, unknown> = {
       name: game.player.myData.nick,
       ...pos,
