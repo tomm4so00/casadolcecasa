@@ -1,11 +1,11 @@
 // Movimento fluido degli altri giocatori.
-// Ognuno manda la sua posizione circa 10 volte al secondo, con l'ora d'invio. Invece di inseguire
-// l'ultima posizione arrivata (a strappi: veloce appena arriva, poi rallenta), si mostra il
-// giocatore com'era poco fa, a metà strada tra due posizioni ricevute: così cammina a velocità
-// costante anche se i messaggi arrivano in ritardo o a gruppi.
+// Ognuno manda la sua posizione circa 5 volte al secondo (presence-send-rules.ts), con l'ora
+// d'invio. Invece di inseguire l'ultima posizione arrivata (a strappi: veloce appena arriva, poi
+// rallenta), si mostra il giocatore com'era poco fa, a metà strada tra due posizioni ricevute:
+// così cammina a velocità costante anche se i messaggi arrivano in ritardo o a gruppi.
 
 /** Ritardo con cui si mostrano gli altri (ms): copre le irregolarità della rete. */
-export const RENDER_DELAY = 150;
+export const RENDER_DELAY = 250;
 /** Oltre questa distanza fra due posizioni è un salto (porta, cambio stanza): niente scivolata. */
 const TELEPORT = 150;
 /** Quanti campioni tenere. */

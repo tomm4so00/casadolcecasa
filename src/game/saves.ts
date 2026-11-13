@@ -65,6 +65,7 @@ import { worldNode } from './world-db.js';
 import { cabinetOpen } from './cabinet.js';
 import { currentCrack } from './crack.js';
 import { decodeFood, encodeFood } from './food-rules.js';
+import { PRESENCE_TICK_MS, presenceSend } from './presence-send-rules.js';
 
 /** Segna la presenza come offline, con l'ora del server in cui il giocatore è uscito. */
 export const OFFLINE_MARK = { offline: true, offAt: { '.sv': 'timestamp' } };
@@ -791,8 +792,16 @@ export function startPresence(): void {
   // aver scritto la presenza (le regole vogliono nome e posizione, e la controllano subito) e di
   // nuovo a ogni riconnessione, perché il server la usa una volta sola.
   let offlineArmed = false;
+  // Si manda solo quello che cambia (presence-send-rules.ts); `lastSent` null = la prossima volta
+  // la scheda intera: dopo una riconnessione il server può averla segnata offline.
+  let lastSent: Record<string, unknown> | null = null,
+    lastSentAt = 0,
+    lastFullAt = 0;
   game.session.db.ref('.info/connected').on('value', (s) => {
-    if (s.val() !== true) offlineArmed = false;
+    if (s.val() !== true) {
+      offlineArmed = false;
+      lastSent = null;
+    }
   });
   const armOffline = (): void => {
     Promise.resolve(playerRef.onDisconnect().update(OFFLINE_MARK)).catch((e: unknown) => {
@@ -801,12 +810,13 @@ export function startPresence(): void {
     });
   };
   // Invia la posizione solo quando cambia, più un battito ogni 5 s
-  let lastSentKey = '',
-    lastSentAt = 0;
   lifetime.setInterval(() => {
     // da morto non si manda più niente: rimetterebbe in giro il personaggio appena tolto;
-    // in pausa nemmeno: per gli altri si è usciti
-    if (game.player.isDead || game.session.dormant) return;
+    // in pausa nemmeno: per gli altri si è usciti (al ritorno si rimanda la scheda intera)
+    if (game.player.isDead || game.session.dormant) {
+      lastSent = null;
+      return;
+    }
     const payload: Record<string, unknown> = {
       name: game.player.myData.nick,
       x: Math.round(game.playerPos.x),
@@ -872,11 +882,19 @@ export function startPresence(): void {
         : {}),
       ...(game.player.isSleeping ? { bed: game.bedSlot } : {}),
     };
-    const key = JSON.stringify(payload);
     const now = Date.now();
-    if (key !== lastSentKey || now - lastSentAt > 5000) {
-      payload.t = now + game.session.serverOffset;
-      const sent = playerRef.set(payload);
+    const send = presenceSend({ last: lastSent, next: payload, now, lastSentAt, lastFullAt });
+    if (send.kind !== 'none') {
+      const t = now + game.session.serverOffset;
+      const sent =
+        send.kind === 'full'
+          ? playerRef.set({ ...payload, t })
+          : playerRef.update({ ...send.changes, t });
+      // scrittura rifiutata (per esempio la scheda non c'è più): la prossima parte intera
+      void Promise.resolve(sent).catch(() => {
+        lastSent = null;
+      });
+      if (send.kind === 'full') lastFullAt = now;
       if (!offlineArmed) {
         offlineArmed = true;
         void Promise.resolve(sent).then(armOffline, () => {
@@ -899,10 +917,10 @@ export function startPresence(): void {
       } catch {
         /* archivio del browser pieno o bloccato: il posto si ritrova dalla presenza */
       }
-      lastSentKey = key;
+      lastSent = payload;
       lastSentAt = now;
     }
-  }, 100);
+  }, PRESENCE_TICK_MS);
   game.session.db.ref(worldNode('online_players')).on('value', (snapshot) => {
     const all = snapshot.val() || {};
     // nomi e fumetti li scrivono i giocatori, anche con versioni vecchie: si copre quello che non va
