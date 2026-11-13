@@ -915,6 +915,17 @@ input:-webkit-autofill:focus {
 body.coach-open #btn-arrange {
   bottom: calc(var(--coach-h, 90px) + 30px);
 }
+/* Mentre si sposta un mobile (la lampada della missione) "Lascia" e "Ruota" salgono sopra il
+   riquadro della guida, che altrimenti li copre; la posizione è scritta nel tag, da qui serve
+   !important. La barretta "Installa", che starebbe nello stesso posto, intanto si nasconde. */
+body.coach-open #btn-place-furniture,
+body.coach-open #btn-rotate-furniture {
+  bottom: calc(max(18px, env(safe-area-inset-bottom)) + var(--coach-h, 90px) + 12px) !important;
+  z-index: 950 !important;
+}
+body:has(#btn-place-furniture:not(.hidden)) #install-bar {
+  display: none;
+}
 
 /* Modali & UI Browser */
 .fullscreen-modal {
