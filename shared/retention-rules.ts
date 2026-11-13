@@ -150,6 +150,77 @@ export function retentionReport(
   };
 }
 
+// ---------------------------------------------------------------- per provenienza
+
+/** Chi non ha una provenienza: arrivato senza ?da=, o con l'account di prima. */
+export const NO_SOURCE = 'senza link';
+
+export interface SourceRetentionRow {
+  source: string;
+  /** quanti hanno iniziato nelle settimane del resoconto */
+  size: number;
+  /** per ogni finestra: tornati su quelli per cui la finestra è già finita */
+  back: { n: number; of: number }[];
+}
+
+/**
+ * La ritenzione divisa per provenienza (sims_sources/<uid>, scritta dal gioco per gli account
+ * nuovi arrivati con ?da=…): gli account iniziati nelle `weeks` settimane che finiscono con
+ * `last`, e da `since` in poi. Ogni finestra conta solo chi l'ha già passata tutta.
+ */
+export function retentionBySource(
+  raw: Record<string, unknown> | null | undefined,
+  sources: Record<string, unknown> | null | undefined,
+  last: string,
+  since: string,
+  weeks = 8,
+): SourceRetentionRow[] {
+  const end = dayIndex(last);
+  const lo = Math.max(dayIndex(since), mondayOf(end) - 7 * (weeks - 1));
+  const groups = new Map<string, RetentionEntry[]>();
+  for (const [uid, e] of Object.entries(raw || {})) {
+    if (!isEntry(e)) continue;
+    const d = dayIndex(e.c);
+    if (d < lo || d > end) continue;
+    const s = sources?.[uid];
+    const key = typeof s === 'string' && s ? s : NO_SOURCE;
+    groups.set(key, [...(groups.get(key) || []), e]);
+  }
+  return [...groups.entries()]
+    .map(([source, list]) => ({
+      source,
+      size: list.length,
+      back: WINDOWS.map((win) => {
+        const done = list.filter((e) => dayIndex(e.c) + win.to <= end);
+        return {
+          n: done.filter((e) =>
+            Object.keys(e.a).some((k) => Number(k) >= win.from && Number(k) <= win.to),
+          ).length,
+          of: done.length,
+        };
+      }),
+    }))
+    .sort(
+      (a, b) => Number(a.source === NO_SOURCE) - Number(b.source === NO_SOURCE) || b.size - a.size,
+    );
+}
+
+/** "3 su 10 (30%)" oppure "—" se nessuno ha ancora passato la finestra. */
+export const sourceBackLabel = (b: { n: number; of: number }): string =>
+  b.of ? `${b.n} su ${b.of} (${Math.round((b.n / b.of) * 100)}%)` : '—';
+
+/** Le righe per Telegram della ritenzione per provenienza, o "" se ci sono solo quelli senza link. */
+export function retentionBySourceText(rows: SourceRetentionRow[]): string {
+  if (!rows.some((r) => r.source !== NO_SOURCE)) return '';
+  let text = `\n<b>Per provenienza</b> (nuovi delle ultime settimane)\n`;
+  for (const r of rows)
+    text +=
+      `${r.source}: <b>${r.size}</b> → ` +
+      WINDOWS.map((w, i) => `${w.label}: ${sourceBackLabel(r.back[i])}`).join(' · ') +
+      '\n';
+  return text;
+}
+
 /** "5 (42%)" oppure "—" se non si sa ancora. */
 export const backLabel = (n: number | null, size: number): string =>
   n === null ? '—' : `${n} (${size ? Math.round((n / size) * 100) : 0}%)`;

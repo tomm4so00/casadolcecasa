@@ -24,3 +24,6 @@ firebase/backups/
 
 # configurazioni temporanee di scripts/deploy-site.mjs
 firebase.*.json
+
+# zip da caricare su itch.io (npm run itch)
+itch/*.zip

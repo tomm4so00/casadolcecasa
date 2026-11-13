@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { funnel, funnelText, ranking, reportWeek, usageReportText } from '../shared/usage-rules';
+import {
+  funnel,
+  funnelBySource,
+  funnelBySourceText,
+  funnelText,
+  ranking,
+  reportWeek,
+  usageReportText,
+} from '../shared/usage-rules';
 import { backNextDay } from '../shared/retention-rules';
 import { sendUsageReport, type UsageReportDatabase } from '../server/src/usage-report';
 
@@ -124,5 +132,26 @@ describe("imbuto d'ingresso", () => {
       started: 2,
       back: 1,
     });
+  });
+});
+
+describe('imbuto per provenienza (?da=itch…)', () => {
+  it('raccoglie i passi di ogni provenienza, dalla più frequentata', () => {
+    const now = Date.UTC(2026, 10, 13, 12);
+    const day = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Rome' }).format(now);
+    const usage = {
+      [day]: {
+        'ingresso:visto': { n: 30, p: 20 },
+        'ingresso:itch:visto': { n: 12, p: 10 },
+        'ingresso:itch:gioca_subito': { n: 6, p: 6 },
+        'ingresso:telegram:visto': { n: 3, p: 3 },
+        'ingresso:arrivo_cook': { n: 4, p: 4 },
+      },
+    };
+    const rows = funnelBySource(usage, now);
+    expect(rows.map((r) => r.source)).toEqual(['itch', 'telegram']);
+    expect(rows[0].steps).toEqual([10, 6, 0, 0, 0]);
+    expect(funnelBySourceText(rows)).toContain('<b>itch</b>: visto 10 · gioca subito 6');
+    expect(funnelBySourceText([])).toBe('');
   });
 });

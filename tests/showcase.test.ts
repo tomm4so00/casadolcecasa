@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { onlineText, sceneFor } from '../src/game/showcase-rules';
+import { aliveText, onlineText, sceneFor } from '../src/game/showcase-rules';
 
 describe('vetrina della prima schermata', () => {
   it("sceglie l'immagine secondo l'ora di Roma", () => {
@@ -16,5 +16,7 @@ describe('vetrina della prima schermata', () => {
     expect(onlineText(1)).toBe('1 vicino online adesso');
     expect(onlineText(12)).toBe('12 vicini online adesso');
     expect(onlineText(0)).toBe('0 vicini online adesso');
+    expect(aliveText(1)).toBe('1 vicino vivo');
+    expect(aliveText(14)).toBe('14 vicini vivi');
   });
 });

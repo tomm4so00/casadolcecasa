@@ -698,6 +698,17 @@ input:-webkit-autofill:focus {
   border: 0;
   box-shadow: none;
 }
+/* Le due righe della prima schermata, una accanto all'altra (sotto, se non ci stanno). */
+.setup-counts {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0 8px;
+}
+.setup-alive b {
+  font-size: 0.85rem;
+  font-weight: normal;
+}
 .setup-online-count {
   display: inline-flex;
   align-items: center;
@@ -915,6 +926,23 @@ input:-webkit-autofill:focus {
 body.coach-open #btn-arrange {
   bottom: calc(var(--coach-h, 90px) + 30px);
 }
+/* Mentre si sposta un mobile (la lampada della missione) "Lascia" e "Ruota" salgono sopra il
+   riquadro della guida, che altrimenti li copre; la posizione è scritta nel tag, da qui serve
+   !important. La barretta "Installa", che starebbe nello stesso posto, intanto si nasconde. */
+body.coach-open #btn-place-furniture,
+body.coach-open #btn-rotate-furniture {
+  bottom: calc(max(18px, env(safe-area-inset-bottom)) + var(--coach-h, 90px) + 12px) !important;
+  z-index: 950 !important;
+}
+body:has(#btn-place-furniture:not(.hidden)) #install-bar {
+  display: none;
+}
+/* Avviso e barretta (installa, salva, sito) solo dentro il gioco: sulla prima schermata e nella
+   creazione del personaggio coprirebbero "Gioca subito" ed "Entra in casa". */
+body:has(#ui-setup-screen:not(.hidden)) :is(#install-banner, #install-bar),
+body:has(#creator-modal:not(.hidden)) :is(#install-banner, #install-bar) {
+  display: none;
+}
 
 /* Modali & UI Browser */
 .fullscreen-modal {
@@ -1035,6 +1063,24 @@ body.coach-open #btn-arrange {
   color: rgba(255, 255, 255, 0.45);
   pointer-events: none;
   user-select: none;
+}
+/* Schermo intero, solo dentro la cornice di itch & co. (embed.ts): in alto a destra, sotto la
+   versione, sopra anche alla prima schermata. */
+#btn-fullscreen {
+  position: fixed;
+  top: 20px;
+  right: 8px;
+  z-index: 3100;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 8px;
+  background: rgba(20, 20, 32, 0.8);
+  color: #fff;
+  font-size: 1.15rem;
+  line-height: 1;
+  cursor: pointer;
 }
 
 /* Notifiche in-game (sostituiscono gli alert bloccanti) */
@@ -1587,6 +1633,10 @@ body.coach-open #btn-arrange {
 body.coach-open #install-bar {
   bottom: calc(max(18px, env(safe-area-inset-bottom)) + var(--coach-h, 90px) + 8px);
 }
+/* Anche l'avviso grande, sopra il riquadro della guida invece che addosso. */
+body.coach-open #install-banner {
+  bottom: calc(max(18px, env(safe-area-inset-bottom)) + var(--coach-h, 90px) + 10px);
+}
 /* Telefono in orizzontale: più largo e senza icona, per coprire meno gioco. */
 @media (max-height: 420px) {
   #install-banner {
@@ -1598,7 +1648,8 @@ body.coach-open #install-bar {
   }
 }
 
-#session-lost-banner {
+#session-lost-banner,
+#site-open-banner {
   position: fixed;
   inset: 0;
   z-index: 3000;

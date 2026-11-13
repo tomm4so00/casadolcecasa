@@ -9,7 +9,15 @@ import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { changeLabel, funnel, ranking, romeDay, shareOf } from '../shared/usage-rules.ts';
+import {
+  SOURCE_STEPS,
+  funnelBySource,
+  changeLabel,
+  funnel,
+  ranking,
+  romeDay,
+  shareOf,
+} from '../shared/usage-rules.ts';
 import { backNextDay } from '../shared/retention-rules.ts';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
@@ -57,7 +65,29 @@ function funnelSection(f, back) {
   return html;
 }
 
-function page(rows, now, f, back) {
+/** L'imbuto diviso per provenienza (?da=itch…): una riga per provenienza. */
+function sourceSection(list) {
+  const head =
+    '<h2>Da dove arrivano</h2><p class="muted">Chi è arrivato con un link ?da=… (itch, telegram…): dispositivi diversi a ogni passo, sommati sui 7 giorni.</p>';
+  if (!list.length) return head.replace('</p>', ' Ancora nessuno.</p>');
+  return (
+    head +
+    '<table><thead><tr><th>Provenienza</th>' +
+    SOURCE_STEPS.map((s) => `<th class="num">${esc(s.label)}</th>`).join('') +
+    '</tr></thead><tbody>' +
+    list
+      .map(
+        (r) =>
+          `<tr><td>${esc(r.source)}</td>` +
+          r.steps.map((n) => `<td class="num">${n}</td>`).join('') +
+          '</tr>',
+      )
+      .join('') +
+    '</tbody></table>'
+  );
+}
+
+function page(rows, now, f, back, sources) {
   const max = Math.max(1, ...rows.map((r) => r.n));
   const table = (kind, title) => {
     const list = rows.filter((r) => r.kind === kind);
@@ -97,7 +127,7 @@ th,td{padding:7px 10px;border-bottom:1px solid var(--line);text-align:left}th{fo
 <p class="muted">${PROJECT === 'casadolcecasa-prova' ? 'Gioco di prova' : 'Gioco di tutti'} · ultimi 7 giorni
 rispetto ai 7 prima · aggiornato il ${esc(when)}. "Giocatori al giorno": quanti giocatori diversi
 in media ogni giorno, senza nomi.</p>
-${funnelSection(f, back)}${table('posto', 'I posti')}${table('funzione', 'Le funzioni')}
+${funnelSection(f, back)}${sourceSection(sources)}${table('posto', 'I posti')}${table('funzione', 'Le funzioni')}
 </main></body></html>`;
 }
 
@@ -112,7 +142,8 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
       ? backNextDay(read('/sims_retention'), romeDay(now - 6 * 86_400_000), romeDay(now), since)
       : null;
   const file = join(mkdtempSync(join(tmpdir(), 'classifica-')), 'contatori.html');
-  writeFileSync(file, page(rows, now, f, back));
+  const sources = funnelBySource(usage, now);
+  writeFileSync(file, page(rows, now, f, back, sources));
   if (args.includes('--testo')) {
     console.log(`Classifica (${PROJECT}), ultimi 7 giorni:`);
     for (const r of rows)
@@ -135,6 +166,15 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
       `  Primo turno ${f.firstShift}` +
         (back ? `, tornati il giorno dopo ${back.back} su ${back.started} nuovi` : ''),
     );
+    console.log(
+      'Da dove arrivano (?da=…, dispositivi, 7 giorni):' +
+        (sources.length ? '' : ' ancora nessuno'),
+    );
+    for (const r of sources)
+      console.log(
+        `  ${r.source.padEnd(16)} ` +
+          SOURCE_STEPS.map((st, i) => `${st.label} ${r.steps[i]}`).join(' · '),
+      );
   }
   // si apre nel browser predefinito
   if (!args.includes('--non-aprire'))

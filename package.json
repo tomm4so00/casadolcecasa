@@ -1,6 +1,6 @@
 {
   "name": "casa-dolce-casa",
-  "version": "0.41.0",
+  "version": "0.42.0",
   "private": true,
   "type": "module",
   "engines": {
@@ -35,7 +35,8 @@
     "test:rules": "firebase emulators:exec --only database --project demo-casadolcecasa \"node tests/world-rules-emulator.mjs && node tests/guest-rules-emulator.mjs && node tests/theft-block-emulator.mjs && node tests/taste-emulator.mjs && node tests/couples-emulator.mjs && node tests/trash-emulator.mjs && node tests/criminal-tries-emulator.mjs && node tests/inventory-rules-emulator.mjs && node tests/weed-market-emulator.mjs && node tests/suggestions-emulator.mjs && node tests/job-rules-emulator.mjs && node tests/safe-pin-emulator.mjs && node tests/usage-emulator.mjs && node tests/debit-emulator.mjs && node tests/blocks-emulator.mjs && node tests/moderation-emulator.mjs\"",
     "build:server": "npm --prefix server run build",
     "rules:check": "node firebase/rules.mjs check",
-    "rules:deploy": "node firebase/rules.mjs deploy"
+    "rules:deploy": "node firebase/rules.mjs deploy",
+    "itch": "node scripts/itch.mjs"
   },
   "dependencies": {
     "firebase": "^12.0.0"

@@ -2,6 +2,8 @@
 // va sul gruppo Telegram dei collaboratori, una volta sola (il segno è sims_meta/usageReport).
 import {
   funnel,
+  funnelBySource,
+  funnelBySourceText,
   funnelText,
   ranking,
   reportWeek,
@@ -49,7 +51,9 @@ export async function sendUsageReport(
           since,
         )
       : null;
-  const extra = funnelText(funnel(usage, due.end), back);
+  // e diviso per provenienza (?da=itch…)
+  const extra =
+    funnelText(funnel(usage, due.end), back) + funnelBySourceText(funnelBySource(usage, due.end));
   // se Telegram non risponde si riprova al giro dopo
   if (!(await send(usageReportText(ranking(usage, due.end), due.end, extra)))) return null;
   await database.ref(MARK).set(due.week);

@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
+  NO_SOURCE,
   markActive,
+  retentionBySource,
+  retentionBySourceText,
   retentionReport,
   retentionTelegramText,
   type RetentionEntry,
@@ -125,5 +128,26 @@ describe('ritenzione: il resoconto', () => {
     expect(await sendRetentionReport(db, at(12, 28, 11), send)).toBeNull();
     expect(sent).toHaveLength(1);
     expect(sent[0]).toContain('📈 <b>Ritenzione</b>');
+  });
+});
+
+describe('ritenzione per provenienza (?da=itch…)', () => {
+  it('divide i nuovi per il link con cui sono arrivati', () => {
+    const raw = {
+      a: { c: '2026-11-02', a: { 0: 1, 1: 1 } },
+      b: { c: '2026-11-03', a: { 0: 1 } },
+      c: { c: '2026-11-04', a: { 0: 1, 1: 1, 8: 1 } },
+      // iniziato da poco: conta per il giorno 1, non ancora per il giorno 7
+      d: { c: '2026-11-15', a: { 0: 1 } },
+    };
+    const sources = { a: 'itch', b: 'itch', d: 'itch' };
+    const rows = retentionBySource(raw, sources, '2026-11-20', '2026-11-01');
+    expect(rows.map((r) => r.source)).toEqual(['itch', NO_SOURCE]);
+    expect(rows[0].size).toBe(3);
+    expect(rows[0].back[0]).toEqual({ n: 1, of: 3 });
+    expect(rows[1].back[1]).toEqual({ n: 1, of: 1 });
+    expect(retentionBySourceText(rows)).toContain('itch: <b>3</b> → giorno 1: 1 su 3 (33%)');
+    // solo account senza link: niente righe nel messaggio
+    expect(retentionBySourceText(retentionBySource(raw, {}, '2026-11-15', '2026-11-01'))).toBe('');
   });
 });

@@ -19,22 +19,24 @@ function reader(data: Record<string, unknown>) {
 
 const DATA = {
   sims_online_players: {
-    p1: { x: 1 },
-    p2: { offline: true, offAt: 1 },
-    p3: { x: 2, offline: false },
+    p1: { x: 1, t: NOW - 5_000 },
+    p2: { offline: true, offAt: 1, t: NOW - 5_000 },
+    p3: { x: 2, offline: false, t: NOW - 1_000 },
+    // il telefono si è spento senza avvisare: non è segnato offline, ma non gioca da 3 giorni
+    p4: { x: 3, t: NOW - 3 * 86_400_000 },
   },
   worlds: { 'CASA-X92K': {}, 'CASA-3333': {}, strano: {} },
-  'worlds/CASA-X92K/online_players': { q1: { x: 1 } },
+  'worlds/CASA-X92K/online_players': { q1: { x: 1, t: NOW } },
   'worlds/CASA-3333/online_players': { q2: { offline: true } },
 };
 
 beforeEach(() => forgetOnline());
 
 describe('quanti sono online', () => {
-  it('conta chi non è segnato offline, in tutti i mondi', async () => {
-    expect(countPresent(DATA.sims_online_players)).toBe(2);
-    expect(countPresent(null)).toBe(0);
-    expect(await countOnline(reader(DATA).read)).toBe(3);
+  it('online chi manda il battito da poco, vivi tutte le schede, in tutti i mondi', async () => {
+    expect(countPresent(DATA.sims_online_players, NOW)).toEqual({ online: 2, alive: 4 });
+    expect(countPresent(null, NOW)).toEqual({ online: 0, alive: 0 });
+    expect(await countOnline(reader(DATA).read, NOW)).toEqual({ online: 3, alive: 6 });
   });
 
   it('risponde con il solo numero, ai siti del gioco, e lo riusa per un minuto', async () => {
@@ -47,7 +49,7 @@ describe('quanti sono online', () => {
         r.read,
       );
     const first = await ask(NOW);
-    expect(await first.json()).toEqual({ n: 3 });
+    expect(await first.json()).toEqual({ n: 3, vivi: 6 });
     expect(first.headers.get('access-control-allow-origin')).toBe('https://casadolcecasa.web.app');
     const reads = r.calls.length;
     await ask(NOW + ONLINE_CACHE_MS - 1);
@@ -64,6 +66,6 @@ describe('quanti sono online', () => {
       throw new Error('giù');
     });
     expect(res.status).toBe(503);
-    expect(await res.json()).toEqual({ n: null });
+    expect(await res.json()).toEqual({ n: null, vivi: null });
   });
 });

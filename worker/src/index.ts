@@ -163,7 +163,10 @@ export async function handleJob(
 
 // ---------------------------------------------------------------- chi è online
 
-/** GET /online → { n }: il numero dei giocatori collegati, per chiunque apra il gioco. */
+/**
+ * GET /online → { n, vivi }: quanti stanno giocando adesso e quanti personaggi sono vivi, per
+ * chiunque apra il gioco (le versioni vecchie leggono solo n).
+ */
 export async function handleOnline(
   request: Request,
   env: Env,
@@ -178,10 +181,11 @@ export async function handleOnline(
   if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers });
   if (request.method !== 'GET') return new Response('Solo GET', { status: 405, headers });
   try {
-    return Response.json({ n: await onlineNow(read, now) }, { headers });
+    const { online, alive } = await onlineNow(read, now);
+    return Response.json({ n: online, vivi: alive }, { headers });
   } catch (error) {
     console.error('Online non letti', String(error));
-    return Response.json({ n: null }, { status: 503, headers });
+    return Response.json({ n: null, vivi: null }, { status: 503, headers });
   }
 }
 

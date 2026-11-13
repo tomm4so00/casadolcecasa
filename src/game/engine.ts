@@ -791,7 +791,17 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
     // chi vive da solo ha la posizione già calcolata, fotogramma per fotogramma
     const motion: Motion = s.motion || (s.motion = newMotion());
     const tNow = performance.now();
-    if (!auto || auto.kind === 'still') addSample(motion, Number(op.t), op.x, op.y, tNow);
+    // la velocità fa proseguire chi cammina fra un messaggio e l'altro; chi è uscito sta fermo
+    if (!auto || auto.kind === 'still')
+      addSample(
+        motion,
+        Number(op.t),
+        op.x,
+        op.y,
+        tNow,
+        isOffline ? 0 : Number(op.vx),
+        isOffline ? 0 : Number(op.vy),
+      );
     const at =
       auto && auto.kind !== 'still'
         ? { x: op.x, y: op.y }

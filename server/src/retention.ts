@@ -2,6 +2,8 @@
 // ogni account ha giocato, e il lunedì dalle 9 il resoconto va sul gruppo Telegram, una volta sola.
 import {
   markActive,
+  retentionBySource,
+  retentionBySourceText,
   retentionReport,
   retentionTelegramText,
   romeDay,
@@ -67,7 +69,10 @@ export async function sendRetentionReport(
   if (typeof since !== 'string') return null;
   const all = (await database.ref('sims_retention').get()).val() as Record<string, unknown>;
   const report = retentionReport(all, romeDay(due.end), since);
-  if (!(await send(retentionTelegramText(report)))) return null;
+  // divisa anche per provenienza (?da=itch…, scritta dal gioco in sims_sources)
+  const sources = (await database.ref('sims_sources').get()).val() as Record<string, unknown>;
+  const bySource = retentionBySourceText(retentionBySource(all, sources, romeDay(due.end), since));
+  if (!(await send(retentionTelegramText(report) + bySource))) return null;
   await database.ref(MARK).set(due.week);
   return due.week;
 }

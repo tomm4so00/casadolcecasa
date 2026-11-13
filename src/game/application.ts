@@ -9,6 +9,7 @@ import { importRefactoredSave } from './save-model.js';
 import { mountCloudSetup } from './cloud-setup.js';
 import { OFFLINE_MARK } from './saves.js';
 import { offerInstall } from './install.js';
+import { initEmbed } from './embed.js';
 import { rememberInviteFromUrl } from './invite.js';
 import { rememberChallengeFromUrl } from './arcade.js';
 import { worldNode } from './world-db.js';
@@ -42,6 +43,8 @@ export function mountLatestGame() {
     document.body.append(testButton);
     lifetime.add(() => testButton.remove());
   }
+  // dentro la cornice di itch & co.: il pulsante dello schermo intero (embed.ts)
+  initEmbed();
   offerInstall();
   if (devMode) void import('./dev-tools.js').then((m) => m.startDevGame());
   return disposeLatestGame;

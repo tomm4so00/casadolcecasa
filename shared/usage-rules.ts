@@ -123,6 +123,52 @@ export function funnel(usage: Usage, now: number): Funnel {
   };
 }
 
+/** I passi che si guardano per provenienza (il gioco li conta come ingresso:<fonte>:<passo>). */
+export const SOURCE_STEPS = [
+  { step: 'visto', label: 'Visto' },
+  { step: 'gioca_subito', label: 'Gioca subito' },
+  { step: 'personaggio', label: 'Personaggio' },
+  { step: 'arrivo_cook', label: 'In cucina' },
+  { step: 'rientro', label: 'Rientri' },
+] as const;
+
+export interface SourceFunnelRow {
+  source: string;
+  /** dispositivi per passo (SOURCE_STEPS), sommati sui 7 giorni */
+  steps: number[];
+}
+
+/** L'imbuto diviso per provenienza (?da=itch…), dalla più frequentata. */
+export function funnelBySource(usage: Usage, now: number): SourceFunnelRow[] {
+  const t = totals(
+    usage,
+    [...Array(7)].map((_, i) => romeDay(now - i * DAY)),
+  );
+  const sources = new Set<string>();
+  for (const key of Object.keys(t)) {
+    const m = /^ingresso:([a-z0-9_-]{1,16}):[a-z0-9_]+$/.exec(key);
+    if (m) sources.add(m[1]);
+  }
+  return [...sources]
+    .map((source) => ({
+      source,
+      steps: SOURCE_STEPS.map((s) => t[`ingresso:${source}:${s.step}`]?.p || 0),
+    }))
+    .sort((a, b) => b.steps[0] - a.steps[0] || a.source.localeCompare(b.source));
+}
+
+/** Le righe per Telegram dell'imbuto per provenienza, o "" se non c'è niente. */
+export function funnelBySourceText(rows: SourceFunnelRow[]): string {
+  if (!rows.length) return '';
+  let text = `\n🔗 <b>Da dove arrivano</b> (dispositivi)\n`;
+  for (const r of rows)
+    text +=
+      `<b>${esc(r.source)}</b>: ` +
+      SOURCE_STEPS.map((s, i) => `${s.label.toLowerCase()} ${r.steps[i]}`).join(' · ') +
+      '\n';
+  return text;
+}
+
 /** "58%" rispetto al primo passo, o "" se il primo passo è a zero. */
 export const shareOf = (n: number, base: number): string =>
   base ? `${Math.round((n / base) * 100)}%` : '';
