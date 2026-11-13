@@ -6,7 +6,9 @@ import {
   isInAppBrowser,
   isIpad,
   isMacSafari,
-  shouldOfferInstall,
+  installStep,
+  installView,
+  installWay,
 } from '../src/game/install-rules.js';
 
 const IPHONE =
@@ -48,11 +50,35 @@ describe("proposta di installare l'app su iPhone, iPad, Android e computer", () 
     expect(isInAppBrowser(IPHONE)).toBe(false);
   });
 
-  it('niente avviso se il gioco è già installato, né dopo "Più tardi" finché resta aperto', () => {
-    const base = { canInstall: true, standalone: false, dismissed: false };
-    expect(shouldOfferInstall(base)).toBe(true);
-    expect(shouldOfferInstall({ ...base, standalone: true })).toBe(false);
-    expect(shouldOfferInstall({ ...base, canInstall: false })).toBe(false);
-    expect(shouldOfferInstall({ ...base, dismissed: true })).toBe(false);
+  it('l’avviso resta finché serve: "Più tardi" lo riduce a una barretta', () => {
+    expect(installView('install', false)).toBe('banner');
+    expect(installView('save', true)).toBe('bar');
+    expect(installView('none', false)).toBe('none');
+    expect(installView('none', true)).toBe('none');
+  });
+
+  it('prima l’app e poi il salvataggio, ma prima il salvataggio dove i dati non passano', () => {
+    const base = { canInstall: true, standalone: false, guest: false, dataStays: true };
+    // chi ha un account: solo l'app, e nell'app niente
+    expect(installStep(base)).toBe('install');
+    expect(installStep({ ...base, standalone: true })).toBe('none');
+    // ospite su Android o computer: prima l'app, poi dentro l'app il salvataggio
+    expect(installStep({ ...base, guest: true })).toBe('install');
+    expect(installStep({ ...base, guest: true, standalone: true })).toBe('save');
+    // ospite su iPhone, iPad, Mac, Instagram o Firefox sul computer: prima si salva
+    expect(installStep({ ...base, guest: true, dataStays: false })).toBe('save');
+    expect(installStep({ ...base, dataStays: false })).toBe('install');
+    // niente da installare (Chrome non lo propone: è già installato)
+    expect(installStep({ ...base, canInstall: false, guest: true })).toBe('none');
+  });
+
+  it('sceglie come installare: a mano, col pulsante del browser o consigliando Chrome', () => {
+    const none = { appleMobile: false, macSafari: false, android: false, promptSupported: false };
+    expect(installWay({ ...none, appleMobile: true })).toBe('apple');
+    expect(installWay({ ...none, macSafari: true })).toBe('mac');
+    expect(installWay({ ...none, android: true, promptSupported: true })).toBe('wait');
+    expect(installWay({ ...none, promptSupported: true })).toBe('wait');
+    expect(installWay({ ...none, android: true })).toBe('android'); // Firefox per Android
+    expect(installWay(none)).toBe('other'); // Firefox sul computer
   });
 });

@@ -1,7 +1,7 @@
 // Il nuovo sito riceve il trasloco (vedi move-rules.ts): prima che Firebase parta, salva l'accesso e
 // la memoria del gioco arrivati dal vecchio indirizzo, e toglie subito i dati dal link.
 import { FIREBASE_CONFIG } from '../firebase-config.js';
-import { authStorageKey, readMove } from './move-rules.js';
+import { OLD_APP_KEY, authStorageKey, readMove } from './move-rules.js';
 
 /** Vero se è appena arrivato un accesso dal vecchio indirizzo: si entra da soli, senza tocchi. */
 export let movedIn = false;
@@ -13,6 +13,8 @@ export function receiveMove(): void {
   history.replaceState(null, '', location.pathname + location.search);
   if (!payload) return;
   try {
+    // arriva dalla vecchia app: l'avviso in basso (install.ts) propone quella nuova
+    if (payload.app) localStorage.setItem(OLD_APP_KEY, '1');
     // la memoria del gioco: solo dove questo sito non ha già qualcosa di suo
     for (const [key, value] of Object.entries(payload.ls))
       if (localStorage.getItem(key) === null) localStorage.setItem(key, value);

@@ -6,8 +6,11 @@
   <img src="./icons/apple-touch-icon.png" alt="" width="52" height="52" />
   <div class="install-text">
     <strong id="install-title"
-      >Installa il gioco sul tuo <span id="install-device">iPhone</span></strong
+      >Installa <span id="install-what">il gioco</span> sul tuo
+      <span id="install-device">iPhone</span></strong
     >
+    <!-- Ospite su iPhone, iPad e Mac: prima si salva, poi si installa -->
+    <strong id="install-save-title" class="hidden">💾 Prima salva il tuo personaggio</strong>
     <ol id="install-steps">
       <li>
         Tocca
@@ -29,9 +32,16 @@
     <button id="install-now" class="install-now hidden" type="button" data-action="installApp">
       Installa
     </button>
+    <button id="install-save" class="install-now hidden" type="button" data-action="saveForInstall">
+      💾 Salva
+    </button>
     <button class="install-close" type="button" data-action="dismissInstall">Più tardi</button>
   </div>
 </div>
+<!-- Dopo "Più tardi": resta questa barretta finché il gioco non è installato -->
+<button id="install-bar" class="hidden" type="button" data-action="openInstall">
+  <span id="install-bar-text">📲 Installa il gioco</span> <span aria-hidden="true">›</span>
+</button>
 <!-- Sulla luna senza casco: bordo rosso che pulsa -->
 <div id="no-air-overlay" class="hidden"></div>
 <!-- Crollo / boom della borsa: ticker che scorre in alto -->

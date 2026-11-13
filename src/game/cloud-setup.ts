@@ -5,6 +5,7 @@ import { countUse } from './usage.js';
 import { showcase } from './showcase.js';
 import { game } from './context.js';
 import { startGame } from './interface.js';
+import { refreshInstall } from './install.js';
 import { toast } from './missions.js';
 import { lifetime } from './runtime.js';
 import type firebase from 'firebase/compat/app';
@@ -87,6 +88,8 @@ export function mountCloudSetup(root: HTMLElement): void {
       );
     }
     game.session.guest = access.anonymous;
+    // l'avviso in basso: all'ospite su iPhone chiede prima di salvare
+    refreshInstall();
     useGoogleSim(access.uid, playerId);
     localStorage.setItem(game.session.LS_PREFIX + 'sims_player_nick', nick.slice(0, 20));
     await startGame();

@@ -1564,6 +1564,29 @@ body.coach-open #btn-arrange {
     transform: translate(-50%, 20px);
   }
 }
+/* Dopo "Più tardi": una barretta bassa al centro, sotto ai pulsanti; toccata riapre l'avviso.
+   Con la riga della guida aperta sale sopra di lei. */
+#install-bar {
+  position: fixed;
+  left: 50%;
+  bottom: max(4px, env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  z-index: 950;
+  padding: 4px 14px;
+  background: rgba(20, 20, 32, 0.92);
+  border: 1px solid rgba(254, 202, 87, 0.55);
+  border-radius: 999px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
+  color: #feca57;
+  font-size: 0.78rem;
+  font-weight: bold;
+  white-space: nowrap;
+  cursor: pointer;
+  animation: install-in 0.35s ease-out;
+}
+body.coach-open #install-bar {
+  bottom: calc(max(18px, env(safe-area-inset-bottom)) + var(--coach-h, 90px) + 8px);
+}
 /* Telefono in orizzontale: più largo e senza icona, per coprire meno gioco. */
 @media (max-height: 420px) {
   #install-banner {

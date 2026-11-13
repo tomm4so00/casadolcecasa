@@ -26,6 +26,13 @@ describe('trasloco al nuovo indirizzo', () => {
     expect(readMove(hashOf(url), NOW + 5000, KEY)).toEqual(payload);
   });
 
+  it('dice se il trasloco parte dalla vecchia app installata', () => {
+    const fromApp = moveUrl('https://casadolcecasa.web.app/', '', { ...payload, app: true });
+    expect(readMove(hashOf(fromApp), NOW, KEY)?.app).toBe(true);
+    const fromBrowser = moveUrl('https://casadolcecasa.web.app/', '', payload);
+    expect(readMove(hashOf(fromBrowser), NOW, KEY)?.app).toBeUndefined();
+  });
+
   it('rifiuta i link vecchi, quelli di un altro progetto e quelli rovinati', () => {
     const url = moveUrl('https://casadolcecasa.web.app/', '', payload);
     expect(readMove(hashOf(url), NOW + MOVE_MAX_AGE_MS + 1, KEY)).toBeNull();
