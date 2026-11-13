@@ -937,6 +937,12 @@ body.coach-open #btn-rotate-furniture {
 body:has(#btn-place-furniture:not(.hidden)) #install-bar {
   display: none;
 }
+/* Avviso e barretta (installa, salva, sito) solo dentro il gioco: sulla prima schermata e nella
+   creazione del personaggio coprirebbero "Gioca subito" ed "Entra in casa". */
+body:has(#ui-setup-screen:not(.hidden)) :is(#install-banner, #install-bar),
+body:has(#creator-modal:not(.hidden)) :is(#install-banner, #install-bar) {
+  display: none;
+}
 
 /* Modali & UI Browser */
 .fullscreen-modal {
