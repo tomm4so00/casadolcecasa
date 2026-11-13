@@ -36,7 +36,8 @@
     "build:server": "npm --prefix server run build",
     "rules:check": "node firebase/rules.mjs check",
     "rules:deploy": "node firebase/rules.mjs deploy",
-    "itch": "node scripts/itch.mjs"
+    "itch": "node scripts/itch.mjs",
+    "video": "node scripts/video.mjs"
   },
   "dependencies": {
     "firebase": "^12.0.0"
