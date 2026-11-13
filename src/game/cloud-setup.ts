@@ -6,6 +6,8 @@ import { showcase } from './showcase.js';
 import { game } from './context.js';
 import { startGame } from './interface.js';
 import { refreshInstall } from './install.js';
+import { recordSource } from './source.js';
+import { inFrame, openSite } from './embed.js';
 import { toast } from './missions.js';
 import { lifetime } from './runtime.js';
 import type firebase from 'firebase/compat/app';
@@ -90,6 +92,8 @@ export function mountCloudSetup(root: HTMLElement): void {
     game.session.guest = access.anonymous;
     // l'avviso in basso: all'ospite su iPhone chiede prima di salvare
     refreshInstall();
+    // da dove è arrivato (?da=itch…): per la ritenzione divisa per provenienza
+    recordSource();
     useGoogleSim(access.uid, playerId);
     localStorage.setItem(game.session.LS_PREFIX + 'sims_player_nick', nick.slice(0, 20));
     await startGame();
@@ -260,7 +264,8 @@ export function mountCloudSetup(root: HTMLElement): void {
     show('verify');
   });
   panel.querySelectorAll<HTMLButtonElement>('[data-setup-login]').forEach((button) => {
-    lifetime.listen(button, 'click', () => show('login'));
+    // nella cornice di itch & co. l'accesso spesso è bloccato: si entra dal sito
+    lifetime.listen(button, 'click', () => (inFrame() ? openSite(false) : show('login')));
   });
   panel.querySelectorAll<HTMLButtonElement>('[data-setup-home]').forEach((button) => {
     lifetime.listen(button, 'click', () => show('home'));

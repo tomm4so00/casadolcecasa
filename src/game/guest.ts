@@ -15,6 +15,7 @@ import { openDialog } from './interface.js';
 import { toast } from './missions.js';
 import { lifetime } from './runtime.js';
 import { saveGame } from './saves.js';
+import { inFrame, openSite } from './embed.js';
 
 /** Dopo quanti minuti di gioco l'ospite riceve l'invito a salvare (una volta sola). */
 export const GUEST_REMINDER_MINUTES = 20;
@@ -42,6 +43,23 @@ export async function offerSave(
   title = '💾 Salva il tuo personaggio',
   intro?: string,
 ): Promise<void> {
+  // nella cornice di itch & co. Google spesso non si apre: si salva dal sito, dove il
+  // personaggio arriva con il trasloco (embed.ts)
+  if (inFrame()) {
+    const res = await openDialog({
+      title,
+      text:
+        (intro || `Ti piace ${game.player.myData.nick}? Salvalo per non perderlo.`) +
+        `\n\nQui dentro il salvataggio con Google spesso non funziona: apri il gioco su ${location.host}, ` +
+        'in una scheda nuova. Il tuo personaggio viene con te e lì lo salvi con Google o con l’email.',
+      buttons: [
+        { label: 'Più tardi', value: null, color: '#57606f' },
+        { label: '🌐 Apri il sito', value: 'site', color: '#2e86de', wide: true },
+      ],
+    });
+    if (res.action === 'site') openSite(true);
+    return;
+  }
   const pending = guestPendingEmail();
   const res = await openDialog({
     title,

@@ -3078,6 +3078,13 @@
         }
       }
     },
+    "sims_sources": {
+      ".read": "auth != null && auth.uid === 'market-publisher'",
+      "$uid": {
+        ".write": "auth != null && auth.uid === $uid && !data.exists() && newData.exists()",
+        ".validate": "newData.isString() && newData.val().matches(/^[a-z0-9_-]{1,16}$/)"
+      }
+    },
     "sims_blocks": {
       "$pid": {
         ".read": "((auth != null && (auth.token.firebase.sign_in_provider === 'google.com' || auth.token.firebase.sign_in_provider === 'anonymous' || (auth.token.firebase.sign_in_provider === 'password' && auth.token.email_verified === true))) && root.child('sims_accounts').child(auth.uid).child('playerId').isString()) && root.child('sims_accounts').child(auth.uid).child('playerId').val() === $pid",

@@ -11,11 +11,14 @@ import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   WINDOWS,
+  NO_SOURCE,
   backLabel,
   dayIndex,
   dayString,
+  retentionBySource,
   retentionReport,
   romeDay,
+  sourceBackLabel,
 } from '../shared/retention-rules.ts';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
@@ -38,7 +41,30 @@ const esc = (s) => String(s).replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
 const short = (day) => day.slice(5).split('-').reverse().join('/');
 const weekLabel = (monday) => `${short(monday)}–${short(dayString(dayIndex(monday) + 6))}`;
 
-function page(r, since) {
+/** La ritenzione per provenienza (?da=itch…): una riga per provenienza. */
+function sourceSection(list) {
+  const head =
+    '<h2>Per provenienza</h2><p class="muted">Gli account nuovi delle ultime 8 settimane, divisi per il link con cui sono arrivati (?da=itch, telegram…). Ogni finestra conta solo chi l&#39;ha già passata tutta.</p>';
+  if (!list.some((r) => r.source !== NO_SOURCE))
+    return head.replace('</p>', ' Ancora nessuno arrivato con un link.</p>');
+  return (
+    head +
+    '<div class="wrap"><table><thead><tr><th>Provenienza</th><th class="num">Nuovi</th>' +
+    WINDOWS.map((w) => `<th class="num">${w.label}</th>`).join('') +
+    '</tr></thead><tbody>' +
+    list
+      .map(
+        (r) =>
+          `<tr><td>${esc(r.source)}</td><td class="num">${r.size}</td>` +
+          r.back.map((b) => `<td class="num">${esc(sourceBackLabel(b))}</td>`).join('') +
+          '</tr>',
+      )
+      .join('') +
+    '</tbody></table></div>'
+  );
+}
+
+function page(r, since, bySource) {
   const rows = r.cohorts
     .map(
       (c) =>
@@ -88,6 +114,7 @@ ${
 <p class="muted">"—": il periodo non è ancora finito per tutti quelli della settimana.</p>`
     : '<p class="muted">Ancora nessun giocatore nuovo da seguire.</p>'
 }
+${sourceSection(bySource)}
 </main></body></html>`;
 }
 
@@ -99,8 +126,12 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     typeof since === 'string'
       ? retentionReport(read('/sims_retention'), last, since)
       : retentionReport({}, last, last);
+  const bySource =
+    typeof since === 'string'
+      ? retentionBySource(read('/sims_retention'), read('/sims_sources'), last, since)
+      : [];
   const file = join(mkdtempSync(join(tmpdir(), 'ritenzione-')), 'ritenzione.html');
-  writeFileSync(file, page(r, typeof since === 'string' ? since : last));
+  writeFileSync(file, page(r, typeof since === 'string' ? since : last, bySource));
   if (args.includes('--testo')) {
     console.log(`Ritenzione (${PROJECT}), dal ${r.from} al ${r.to}:`);
     if (typeof since !== 'string')
@@ -111,6 +142,11 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
       console.log(
         `Iniziati ${weekLabel(c.week)}: ${c.size} → ` +
           WINDOWS.map((w, i) => `${w.label}: ${backLabel(c.back[i], c.size)}`).join(' · '),
+      );
+    for (const s of bySource)
+      console.log(
+        `Provenienza ${s.source}: ${s.size} nuovi → ` +
+          WINDOWS.map((w, i) => `${w.label}: ${sourceBackLabel(s.back[i])}`).join(' · '),
       );
   }
   if (!args.includes('--non-aprire'))

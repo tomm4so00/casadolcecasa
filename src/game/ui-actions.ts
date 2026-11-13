@@ -33,7 +33,14 @@ import {
 import { toggleMusic, toggleSound } from './audio.js';
 import { openLeaderboard, openMissions } from './missions.js';
 import { reloadForUpdate } from './saves.js';
-import { dismissInstall, installApp, openInstall, saveForInstall } from './install.js';
+import {
+  dismissInstall,
+  installApp,
+  openInstall,
+  openSiteFromFrame,
+  saveForInstall,
+} from './install.js';
+import { toggleFullscreen } from './embed.js';
 import { openChat, openProfile, restoreFromCode, showIntro } from './interface.js';
 import { toggleNotify } from './needs.js';
 import { toggleHudMenu } from './hud-menus.js';
@@ -85,6 +92,8 @@ export const uiActions: Readonly<Record<string, UiAction>> = {
   installApp: () => installApp(),
   openInstall: () => openInstall(),
   saveForInstall: () => saveForInstall(),
+  openSiteFromFrame: () => openSiteFromFrame(),
+  toggleFullscreen: () => toggleFullscreen(),
   toggleSound: () => toggleSound(),
   toggleMusic: () => toggleMusic(),
   // il pulsante ❓ apre la guida per argomenti; senza argomento è il benvenuto della prima volta

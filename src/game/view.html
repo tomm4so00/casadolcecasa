@@ -11,6 +11,8 @@
     >
     <!-- Ospite su iPhone, iPad e Mac: prima si salva, poi si installa -->
     <strong id="install-save-title" class="hidden">💾 Prima salva il tuo personaggio</strong>
+    <!-- Dentro la cornice di itch & co. (embed.ts): si propone il sito -->
+    <strong id="install-frame-title" class="hidden">🌐 Gioca a schermo pieno sul sito</strong>
     <ol id="install-steps">
       <li>
         Tocca
@@ -32,6 +34,14 @@
     <button id="install-now" class="install-now hidden" type="button" data-action="installApp">
       Installa
     </button>
+    <button
+      id="install-site"
+      class="install-now hidden"
+      type="button"
+      data-action="openSiteFromFrame"
+    >
+      Apri il sito
+    </button>
     <button id="install-save" class="install-now hidden" type="button" data-action="saveForInstall">
       💾 Salva
     </button>
@@ -48,6 +58,17 @@
 <div id="market-ticker" class="hidden" aria-live="polite">
   <div id="market-ticker-text"></div>
 </div>
+<!-- Schermo intero, solo dentro la cornice di itch & co. (embed.ts) -->
+<button
+  id="btn-fullscreen"
+  class="hidden"
+  type="button"
+  data-action="toggleFullscreen"
+  title="Schermo intero"
+  aria-label="Schermo intero"
+>
+  ⛶
+</button>
 <!-- Versione del gioco: si aggiorna in package.json a ogni fix grande -->
 <div id="app-version"></div>
 
@@ -545,7 +566,13 @@
     <!-- Accesso online: un passo alla volta -->
     <div id="setup-online" class="hidden">
       <div class="setup-step" data-step="home">
-        <div class="setup-online-count hidden" id="setup-online-count"><i></i><span></span></div>
+        <!-- quanti giocano adesso e quanti personaggi sono vivi (showcase.ts) -->
+        <div class="setup-counts">
+          <div class="setup-online-count hidden" id="setup-online-count"><i></i><span></span></div>
+          <div class="setup-online-count setup-alive hidden" id="setup-alive-count">
+            <b aria-hidden="true">🏠</b><span></span>
+          </div>
+        </div>
         <button class="btn-primary btn-guest btn-vetrina" id="setup-guest" type="button">
           ▶&nbsp; Gioca subito
         </button>

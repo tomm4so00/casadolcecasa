@@ -20,6 +20,7 @@ import {
 import { OLD_APP_KEY } from './move-rules.js';
 import { browser, dom, lifetime } from './runtime.js';
 import { isGuest, offerSave } from './guest.js';
+import { inFrame, openSite } from './embed.js';
 
 /** Il vecchio "Più tardi" che rimandava di una settimana: si cancella. */
 const OLD_LATER_KEY = 'sims_install_later';
@@ -38,9 +39,19 @@ interface InstallPromptEvent extends Event {
  * "Installa", `android` menu del browser Android, `chrome` icona nella barra degli indirizzi (dopo
  * un "Annulla" la finestra del browser non si riapre), `other` computer che non installa,
  * `oldapp` chi è arrivato dalla vecchia app (forse è ancora dentro di lei, dove non si installa),
- * `app` il gioco già aperto come app (resta solo da salvare, se si è ospiti).
+ * `app` il gioco già aperto come app (resta solo da salvare, se si è ospiti), `frame` dentro la
+ * cornice di itch & co. (si propone il sito, con il personaggio: vedi embed.ts).
  */
-type BannerKind = 'apple' | 'mac' | 'prompt' | 'android' | 'chrome' | 'other' | 'oldapp' | 'app';
+type BannerKind =
+  | 'apple'
+  | 'mac'
+  | 'prompt'
+  | 'android'
+  | 'chrome'
+  | 'other'
+  | 'oldapp'
+  | 'app'
+  | 'frame';
 
 let installPrompt: InstallPromptEvent | null = null;
 let mountedAt = 0;
@@ -143,6 +154,8 @@ function promptText(kind: BannerKind): string {
     return isAndroid(ua)
       ? 'Nel menu ⋮ del browser scegli «Installa app» o «Aggiungi a schermata Home».'
       : "Clicca l'icona «Installa» a destra nella barra degli indirizzi.";
+  if (kind === 'frame')
+    return `Si apre ${location.host} in una scheda nuova, con il tuo personaggio: lì puoi ${isGuest() ? 'salvarlo e ' : ''}installare il gioco come app.`;
   return 'Da questo browser non si può: apri il gioco con Chrome o Edge e premi «Installa».';
 }
 
@@ -165,8 +178,14 @@ function fill(kind: BannerKind, save: boolean): void {
   dom('install-device').textContent = deviceName(kind);
   const what = fromOldApp() ? 'la nuova app' : 'il gioco';
   dom('install-what').textContent = what;
-  dom('install-bar-text').textContent = save ? '💾 Salva il personaggio' : `📲 Installa ${what}`;
-  dom('install-title').classList.toggle('hidden', save);
+  const frame = kind === 'frame' && !save;
+  dom('install-bar-text').textContent = save
+    ? '💾 Salva il personaggio'
+    : frame
+      ? '🌐 Gioca sul sito'
+      : `📲 Installa ${what}`;
+  dom('install-title').classList.toggle('hidden', save || frame);
+  dom('install-frame-title').classList.toggle('hidden', !frame);
   dom('install-save-title').classList.toggle('hidden', !save);
   // Da Instagram & co. non si può installare: prima bisogna aprire il gioco in Safari.
   const inApp = kind === 'apple' && isInAppBrowser(ua);
@@ -178,6 +197,7 @@ function fill(kind: BannerKind, save: boolean): void {
   dom('install-prompt-text').classList.toggle('hidden', !text);
   dom('install-now').classList.toggle('hidden', kind !== 'prompt');
   dom('install-save').classList.toggle('hidden', !save);
+  dom('install-site').classList.toggle('hidden', !frame);
 }
 
 /** Mostra l'avviso qualche secondo dopo l'apertura del gioco. */
@@ -199,6 +219,11 @@ export function offerInstall(): void {
     localStorage.removeItem(OLD_LATER_KEY);
   } catch {
     // Memoria del browser bloccata: non c'era niente da cancellare.
+  }
+  // dentro la cornice di itch & co. non si installa: si propone il sito, col personaggio
+  if (inFrame()) {
+    showBanner('frame');
+    return;
   }
   if (standalone()) {
     // questa è già la nuova app: la vecchia non conta più, resta da salvare (se si è ospiti)
@@ -265,6 +290,11 @@ export function dismissInstall(): void {
 /** "Salva" dell'ospite: la finestra di sempre (Google o email); salvato, il gioco riparte. */
 export async function saveForInstall(): Promise<void> {
   await offerSave();
+}
+
+/** "Apri il sito" nella cornice: il gioco in una scheda nuova, con lo stesso personaggio. */
+export function openSiteFromFrame(): void {
+  openSite(true);
 }
 
 /** La barretta: riapre l'avviso grande. */

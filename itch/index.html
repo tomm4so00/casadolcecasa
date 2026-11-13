@@ -1,0 +1,37 @@
+<!doctype html>
+<!--
+  La pagina che si carica su itch.io (npm run itch la mette nello zip). Mostra il gioco del sito a
+  tutta grandezza, con ?da=itch per contare chi arriva da qui: il gioco è sempre quello del sito,
+  aggiornato insieme a lui, e su itch non c'è mai niente da ricaricare. Dentro la cornice il gioco
+  propone di aprire il sito con lo stesso personaggio (src/game/embed.ts).
+-->
+<html lang="it">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Casa dolce casa</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        background: #0f0f18;
+        overflow: hidden;
+      }
+      iframe {
+        display: block;
+        width: 100%;
+        height: 100%;
+        border: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <iframe
+      src="__GAME_URL__?da=itch"
+      title="Casa dolce casa"
+      allow="fullscreen; autoplay; clipboard-write; web-share"
+      allowfullscreen
+    ></iframe>
+  </body>
+</html>

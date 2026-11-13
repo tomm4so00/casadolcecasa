@@ -9,6 +9,8 @@ import 'firebase/compat/database';
 import { game } from './context.js';
 import { lifetime } from './runtime.js';
 import { romeDay } from '../../shared/job-pay-rules.js';
+import { sourceCounter } from './source-rules.js';
+import { currentSource } from './source.js';
 
 /** Com'è fatta una voce: "posto:bar", "lavoro:ufficio", "chat"… (le regole vogliono lo stesso). */
 export const USAGE_KEY_RE = /^[a-z0-9_:-]{1,40}$/;
@@ -33,6 +35,9 @@ export function countUse(what: string): void {
     .catch(() => {
       /* un contatore perso non conta: non si disturba il giocatore */
     });
+  // i passi dell'ingresso anche per provenienza (?da=itch…): ingresso:itch:gioca_subito
+  const bySource = sourceCounter(what, currentSource());
+  if (bySource) countUse(bySource);
 }
 
 /** Ogni posto in cui si entra: si guarda una volta al secondo dove si è. */

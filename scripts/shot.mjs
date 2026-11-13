@@ -9,6 +9,7 @@
 //                  "wait": 1200 }]                              attesa prima dello scatto (ms)
 // opzioni (JSON): { "hour": 21, "phone": true, "scale": 2 }      ora del giorno, telefono, zoom
 //                 "portrait": true                               telefono in verticale
+//                 "size": [960, 600]                             finestra di questa misura (itch.io)
 import { chromium } from '@playwright/test';
 import { createServer } from 'vite';
 
@@ -26,11 +27,13 @@ const browser = await chromium.launch(
   process.platform === 'win32' ? { channel: 'msedge', args: ['--disable-gpu'] } : {},
 );
 const page = await browser.newPage({
-  viewport: opts.phone
-    ? opts.portrait
-      ? { width: 390, height: 844 }
-      : { width: 844, height: 390 }
-    : { width: 1280, height: 800 },
+  viewport: opts.size
+    ? { width: opts.size[0], height: opts.size[1] }
+    : opts.phone
+      ? opts.portrait
+        ? { width: 390, height: 844 }
+        : { width: 844, height: 390 }
+      : { width: 1280, height: 800 },
   deviceScaleFactor: opts.scale || 1,
   hasTouch: !!opts.phone,
   isMobile: !!opts.phone,

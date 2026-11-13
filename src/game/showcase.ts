@@ -2,7 +2,7 @@
 // motore del gioco (scripts/vetrina.mjs), di giorno, al tramonto o di notte secondo l'ora di
 // Roma, e quanti vicini sono online adesso (lo dice il Worker: chi arriva non ha ancora un
 // account per leggerlo da sé).
-import { onlineText, sceneFor } from './showcase-rules.js';
+import { aliveText, onlineText, sceneFor } from './showcase-rules.js';
 import { WORKER_URL } from './worker-client.js';
 
 const romeHour = (): number =>
@@ -26,7 +26,10 @@ export function showcase(root: HTMLElement): void {
   void showOnline(root);
 }
 
-/** Il numero dei vicini online; se il Worker non risponde in 4 secondi la riga non compare. */
+/**
+ * Quanti vicini giocano adesso e quanti sono vivi; se il Worker non risponde in 4 secondi le
+ * righe non compaiono.
+ */
 async function showOnline(root: HTMLElement): Promise<void> {
   const pill = root.querySelector<HTMLElement>('#setup-online-count');
   if (!pill) return;
@@ -34,10 +37,16 @@ async function showOnline(root: HTMLElement): Promise<void> {
   const timer = setTimeout(() => controller.abort(), 4000);
   try {
     const res = await fetch(WORKER_URL + '/online', { signal: controller.signal });
-    const { n } = (await res.json()) as { n: unknown };
-    if (typeof n !== 'number' || n < 0) return;
-    pill.querySelector('span')!.textContent = onlineText(n);
-    pill.classList.remove('hidden');
+    const { n, vivi } = (await res.json()) as { n: unknown; vivi: unknown };
+    if (typeof n === 'number' && n >= 0) {
+      pill.querySelector('span')!.textContent = onlineText(n);
+      pill.classList.remove('hidden');
+    }
+    const alive = root.querySelector<HTMLElement>('#setup-alive-count');
+    if (alive && typeof vivi === 'number' && vivi >= 0) {
+      alive.querySelector('span')!.textContent = aliveText(vivi);
+      alive.classList.remove('hidden');
+    }
   } catch {
     // senza numero la vetrina resta com'è
   } finally {

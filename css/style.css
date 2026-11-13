@@ -698,6 +698,17 @@ input:-webkit-autofill:focus {
   border: 0;
   box-shadow: none;
 }
+/* Le due righe della prima schermata, una accanto all'altra (sotto, se non ci stanno). */
+.setup-counts {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0 8px;
+}
+.setup-alive b {
+  font-size: 0.85rem;
+  font-weight: normal;
+}
 .setup-online-count {
   display: inline-flex;
   align-items: center;
@@ -1046,6 +1057,24 @@ body:has(#btn-place-furniture:not(.hidden)) #install-bar {
   color: rgba(255, 255, 255, 0.45);
   pointer-events: none;
   user-select: none;
+}
+/* Schermo intero, solo dentro la cornice di itch & co. (embed.ts): in alto a destra, sotto la
+   versione, sopra anche alla prima schermata. */
+#btn-fullscreen {
+  position: fixed;
+  top: 20px;
+  right: 8px;
+  z-index: 3100;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 8px;
+  background: rgba(20, 20, 32, 0.8);
+  color: #fff;
+  font-size: 1.15rem;
+  line-height: 1;
+  cursor: pointer;
 }
 
 /* Notifiche in-game (sostituiscono gli alert bloccanti) */
