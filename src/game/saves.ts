@@ -25,10 +25,10 @@ import { canPlaySession } from './accounts.js';
 import type { SaveV8, ValidatedSave } from './save-model.js';
 import { version as appVersion } from '../../package.json';
 import { updateAvailable } from '../../shared/app-version.js';
-import type { RoomState, SceneMap } from './models.js';
+import type { CharacterState, RoomState, SceneMap } from './models.js';
 import type { OnlinePlayer } from './network-model.js';
 import { decodeSaveV8 } from './save-model.js';
-import { absentDeath, advanceAbsence } from './absent-death-rules.js';
+import { absencePass, absentDeath, advanceAbsence, needsCopy } from './absent-death-rules.js';
 import { deathCauses, encodeDeathCauses } from './death-cause-rules.js';
 import { type CryoPass, frozenMs } from '../../shared/cryo-rules.js';
 import { loadMyCryo } from './cryo.js';
@@ -469,7 +469,8 @@ function durationText(seconds: number): string {
 
 // Il tempo scorre anche a gioco chiuso (nessun limite di ore): ricalcolo i bisogni per il tempo di assenza.
 // Se il gioco era stato chiuso mentre il personaggio dormiva, continua a dormire finché il sonno non arriva a 100%.
-// Con la criogenesi il tempo passato in capsula non conta, né per lui né per i suoi animali.
+// Con la criogenesi il tempo passato in capsula non conta, né per lui né per i suoi animali (con i
+// pass nuovi in capsula si entra solo quando si starebbe per morire: absencePass).
 export function catchUpOffline(
   s: Pick<ValidatedSave, 'savedAt' | 'sleeping'>,
   cryo: CryoPass | null = null,
@@ -478,6 +479,13 @@ export function catchUpOffline(
   const away = (now - (s.savedAt || 0)) / 1000;
   if (!s.savedAt || !isFinite(away) || away <= 0) return;
 
+  // con i pass nuovi la capsula conta solo da quando il personaggio starebbe per morire
+  cryo = absencePass(
+    cryo,
+    needsCopy(game.player as unknown as CharacterState),
+    s.savedAt,
+    needsRules(),
+  );
   advanceAbsence(game.player, s.savedAt, now, needsRules(), cryo);
   const frozen = frozenMs(cryo, s.savedAt, now);
   // gli animali: il loro orologio della fame va avanti di quanto è durata la capsula

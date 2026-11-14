@@ -458,6 +458,7 @@ try {
       'negozio_mobili',
       'banca',
       'commissariato',
+      'criogenesi',
       'laboratorio',
       'CIMITERO',
       'lavoro_cantiere',

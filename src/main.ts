@@ -5,6 +5,8 @@ import { receiveMove } from './game/move.js';
 import { captureSource } from './game/source.js';
 // i capitoli delle missioni si agganciano al gioco (game/quest-hooks.ts)
 import './game/quests.js';
+// e il centro di criogenesi (game/cryo-hooks.ts)
+import './game/cryo-center.js';
 
 // prima di tutto: da dove arriva chi apre il gioco (?da=itch…), poi un eventuale trasloco dal
 // vecchio indirizzo o dalla cornice di itch, prima che Firebase parta

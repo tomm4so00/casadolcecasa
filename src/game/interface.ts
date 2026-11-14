@@ -18,7 +18,8 @@ import {
   requireAccount,
   startGuestReminder,
 } from './guest.js';
-import { openCryo, watchCryo } from './cryo.js';
+import { myCryo, openCryo, watchCryo } from './cryo.js';
+import { cryoActive } from '../../shared/cryo-rules.js';
 import { flushPendingPay } from './job-server.js';
 import { startDormancy } from './dormancy.js';
 import { ensureTerms } from './terms.js';
@@ -475,8 +476,10 @@ export async function startGame(..._args: GameValue[]): Promise<GameValue> {
   reapAbsentPlayers();
   game.currentApt = hasRoom() ? game.aptOfRoom(game.myAssignedRoomIdx) : 0;
   game.view.currentRoomTitle = game.saloonTitle();
-  // si riparte dall'ultima posizione (chi dorme o è svenuto ha già il suo posto, qui sotto)
-  if (!devMode && !game.player.isSleeping && !game.fainted) await resumeLastSpot();
+  // si riparte dall'ultima posizione (chi dorme o è svenuto ha già il suo posto, qui sotto); chi
+  // era in criogenesi si risveglia nella sua capsula anche se era uscito dormendo
+  if (!devMode && !game.fainted && (!game.player.isSleeping || cryoActive(myCryo(), Date.now())))
+    await resumeLastSpot();
   // il personaggio nuovo arriva in cortile con la valigia e le chiavi (arrival.ts)
   bindCoach();
   // la freccetta gialla sul pulsante che il passo della missione dice di toccare

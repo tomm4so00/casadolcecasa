@@ -31,6 +31,7 @@ import { CRACK_MS, HACKER_SHORT } from '../../shared/hacker-rules.js';
 import { hackerActive } from './hacker.js';
 import { setCrack } from './crack.js';
 import { enterPolice } from './police.js';
+import { CRYO_ENV, CRYO_TITLE } from './cryo-hooks.js';
 import { absenceReport } from './autoplay.js';
 import { dropInTrash } from './trash.js';
 import { purchaseItem, sellItem, spendMoney, creditMoney } from './economy.js';
@@ -337,6 +338,7 @@ const ENV_MAPS: Record<string, string> = {
   negozio_vestiti: 'clothesStoreFurniture',
   banca: 'bankFurniture',
   commissariato: 'policeFurniture',
+  criogenesi: 'cryoFurniture',
   laboratorio: 'artStudioFurniture',
   galleria: 'galleryFurniture',
   ingegneria: 'engineeringFurniture',
@@ -503,6 +505,7 @@ const OUTSIDE_MENU: Record<'' | 'fun', string[]> = {
     'btn-act-work',
     'btn-act-bank',
     'btn-act-police',
+    'btn-act-cryo',
     'btn-act-art',
     'btn-act-eng',
     'btn-act-cemetery',
@@ -570,6 +573,20 @@ export async function resumeLastSpot(): Promise<boolean> {
       if (local && local.id === game.session.myPlayerId) op = local;
     } catch (e: GameValue) {}
   if (!op || !Number.isFinite(op.x) || !Number.isFinite(op.y)) return false;
+  // è entrato in capsula mentre era via (con i pass nuovi: quando stava per morire): ci si
+  // risveglia lì, al centro di criogenesi
+  const offAt: number = Number(op.offAt) || 0;
+  const back = Date.now() + game.session.serverOffset;
+  const inPod = Number(op.rsc) || offAt;
+  if (
+    offAt &&
+    (Number(op.frz) || 0) > inPod &&
+    back >= inPod &&
+    back - offAt > CRYO_WAKE_AFTER_MS
+  ) {
+    wakeFromCryo();
+    return true;
+  }
   // mentre si era via il personaggio è vissuto da solo (autoplay.ts): si riparte da lì
   const report = op.offAt
     ? absenceReport(op, Date.now() + game.session.serverOffset, game.moneyLevel)
@@ -619,6 +636,27 @@ export async function resumeLastSpot(): Promise<boolean> {
     y: Math.max(game.Y0 + 30, Math.min(game.Y1 - 30, op.y)),
   };
   return true;
+}
+
+/** Dopo quanto tempo fuori ci si risveglia nella capsula (un'uscita di pochi secondi non conta). */
+const CRYO_WAKE_AFTER_MS = 60_000;
+
+/** Il risveglio dalla capsula: davanti alla propria, al centro di criogenesi. */
+function wakeFromCryo(): void {
+  game.player.isSleeping = false;
+  game.view.activeEnvironment = CRYO_ENV;
+  game.view.currentRoomTitle = CRYO_TITLE;
+  applyRoomBounds(CRYO_ENV);
+  dom('btn-return-home').classList.add('hidden');
+  // la tua capsula è in fondo, a x 0 (CRYO_FURNITURE.myPod): appena fuori dal vetro
+  game.playerPos = { x: 0, y: -195 };
+  lifetime.setTimeout(() => {
+    sfx('wake');
+    toast(
+      '🧊 Ti risvegli dalla capsula di criogenesi: mentre eri via, per te il tempo si è fermato.',
+      6000,
+    );
+  }, 1200);
 }
 
 /**
@@ -1255,6 +1293,13 @@ export async function doActivity(type?: GameValue): Promise<void> {
     return;
   } else if (type === 'police') {
     enterPolice();
+    return;
+  } else if (type === 'cryo') {
+    // il centro di criogenesi: si entra dalla porta davanti (cryo-center.ts)
+    game.view.activeEnvironment = CRYO_ENV;
+    game.view.currentRoomTitle = CRYO_TITLE;
+    dom('btn-return-home').classList.add('hidden');
+    game.playerPos = { x: 0, y: 225 };
     return;
   } else if (type === 'bank') {
     game.view.activeEnvironment = 'banca';

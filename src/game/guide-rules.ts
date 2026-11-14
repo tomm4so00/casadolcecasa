@@ -131,6 +131,7 @@ const FUN_BUTTONS: Record<string, string> = {
 const EXIT_BUTTONS: Record<string, string> = {
   banca: 'btn-act-bank',
   commissariato: 'btn-act-police',
+  criogenesi: 'btn-act-cryo',
   laboratorio: 'btn-act-art',
   ingegneria: 'btn-act-eng',
   CIMITERO: 'btn-act-cemetery',

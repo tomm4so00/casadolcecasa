@@ -1,5 +1,17 @@
 import { describe, expect, it } from 'vitest';
-import { NEEDS_RULES, absentDeath, needsStateFromSave } from '../src/game/absent-death-rules';
+import {
+  NEEDS_RULES,
+  absentDeath,
+  needsStateFromSave,
+  rescueAt,
+} from '../src/game/absent-death-rules';
+import {
+  CRYO_ABANDON_RESCUE_MS,
+  CRYO_RESCUE_SINCE,
+  abandonRescuedPass,
+  cryoRescues,
+  rescuedPass,
+} from '../shared/cryo-rules';
 import { advanceNeeds } from '../src/game/simulation';
 import { maintainGame } from '../server/src/maintenance.js';
 import { localDatabase } from '../src/game/database.js';
@@ -116,5 +128,42 @@ describe('morte mentre si è via', () => {
       expect((await db.ref('sims_saves/' + id + '/dead').get()).exists()).toBe(false);
     expect((await db.ref('sims_rooms_state/1/ownerId').get()).val()).toBe('p_gioca');
     expect((await db.ref('sims_rooms_state/2/ownerId').get()).val()).toBe('p_online');
+  });
+});
+
+describe('criogenesi: la capsula salva chi sta per morire', () => {
+  const D = 24 * H;
+  it('pass nuovo: muore solo chi non è coperto; il pass vecchio mette in pausa da subito', () => {
+    const save = starving(NOW - 10 * H);
+    // pass nuovo, comprato dopo il cambio di regola: entra in capsula a salute 10 e non muore
+    const nuovo = { since: CRYO_RESCUE_SINCE + 1000, until: CRYO_RESCUE_SINCE + 400 * D };
+    const at = save.savedAt;
+    const s = { ...save, savedAt: Math.max(at, nuovo.since) };
+    expect(absentDeath(s, {}, s.savedAt + 30 * H, NEEDS_RULES, nuovo)).toBeNull();
+    // senza pass muore
+    expect(absentDeath(s, {}, s.savedAt + 30 * H)).not.toBeNull();
+  });
+
+  it('il momento del salvataggio: salute al 10% o il giorno prima dei 10 giorni', () => {
+    const from = CRYO_RESCUE_SINCE + D;
+    // già a salute 10: subito
+    expect(rescueAt(needsStateFromSave(starving(from)), from, NEEDS_RULES)).toBe(from);
+    // con i bisogni pieni la salute regge quasi 9 giorni: si entra prima dell'abbandono
+    const full = needsStateFromSave({ savedAt: from });
+    const at = rescueAt(full, from, NEEDS_RULES);
+    expect(at).toBeGreaterThan(from + 5 * D);
+    expect(at).toBeLessThanOrEqual(from + CRYO_ABANDON_RESCUE_MS);
+  });
+
+  it('il pass di un’assenza: regola nuova dal salvataggio, vecchia da subito', () => {
+    const vecchio = { since: CRYO_RESCUE_SINCE - D, until: CRYO_RESCUE_SINCE + 30 * D };
+    const nuovo = { since: CRYO_RESCUE_SINCE, until: CRYO_RESCUE_SINCE + 30 * D };
+    const from = CRYO_RESCUE_SINCE + D;
+    expect(cryoRescues(vecchio)).toBe(false);
+    expect(rescuedPass(vecchio, from + 3 * D)).toEqual(vecchio);
+    expect(rescuedPass(nuovo, from + 3 * D)).toEqual({ since: from + 3 * D, until: nuovo.until });
+    // si salverebbe dopo la scadenza: niente capsula
+    expect(rescuedPass(nuovo, nuovo.until + 1)).toBeNull();
+    expect(abandonRescuedPass(nuovo, from)?.since).toBe(from + CRYO_ABANDON_RESCUE_MS);
   });
 });

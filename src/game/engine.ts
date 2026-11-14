@@ -765,6 +765,8 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
     const op: OnlinePlayer = shown.op;
     const auto = shown.view;
     if (op.env !== game.view.activeEnvironment) return;
+    // in criogenesi dorme dentro la sua capsula: la disegna la capsula (render/cryo.ts)
+    if (op.act === 'cryo') return;
     const state = presenceState(
       op,
       alive,

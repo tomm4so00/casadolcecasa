@@ -78,6 +78,7 @@ import { startShower, startToilet, startWash } from './bathroom.js';
 import { sfx } from './audio.js';
 import { openBankCounter } from './bank.js';
 import { POLICE_ENV, policeAct, policePrompt } from './police.js';
+import { CRYO_ENV, cryoCenterHooks } from './cryo-hooks.js';
 import { trashAct, trashPrompt } from './trash.js';
 import { openProjects, pressLaunchButton, rocketLaunch } from './projects.js';
 import { managePainting, openPaintStudio } from './paint-studio.js';
@@ -587,6 +588,11 @@ const POLICE = shop(
   (key) => policeAct(key),
 );
 
+const CRYO_CENTER = shop(
+  (key) => cryoCenterHooks.prompt(key),
+  (key) => cryoCenterHooks.act(key),
+);
+
 const ARCADE = shop(
   (key, item) =>
     key === 'arcadeConsole'
@@ -781,6 +787,7 @@ const PLACES: Record<string, Place> = {
   growshop: GROW_SHOP,
   banca: BANK,
   [POLICE_ENV]: POLICE,
+  [CRYO_ENV]: CRYO_CENTER,
   sala_giochi: ARCADE,
   scommesse: BETTING,
   laboratorio: ART_STUDIO,

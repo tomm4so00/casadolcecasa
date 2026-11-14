@@ -10,6 +10,7 @@ import {
   type CryoPass,
   cryoActive,
   cryoForever,
+  cryoRescues,
   decodeCryo,
 } from '../../shared/cryo-rules.js';
 import { game } from './context.js';
@@ -98,9 +99,15 @@ export async function openCryo(): Promise<void> {
   const res = await openDialog({
     title: '🧊 Criogenesi',
     text:
-      "Non puoi entrare per un po'? Con la criogenesi il tuo personaggio va in pausa quando esci: " +
-      'fame, sonno, igiene, felicità e salute non calano, i tuoi animali non hanno fame e il ' +
-      `conto alla rovescia dei ${ABANDON_DAYS} giorni si ferma. Quando entri, giochi normalmente.` +
+      "Non puoi entrare per un po'? Con la criogenesi, mentre sei via il tuo personaggio vive da " +
+      'solo come sempre, ma non muore: quando sta per morire (salute al 10%, o il giorno prima ' +
+      `dei ${ABANDON_DAYS} giorni di assenza) entra nella sua capsula al Centro di Criogenesi. ` +
+      'Da lì tutto si ferma: i parametri non calano più, i tuoi animali non hanno fame e il conto ' +
+      'alla rovescia si ferma. Quando rientri ti risvegli nella capsula e giochi normalmente.' +
+      (active && !cryoRescues(current)
+        ? '\n\nℹ️ Il tuo pass è stato comprato prima di questa regola: per te la capsula resta come ' +
+          'allora, in pausa da subito appena esci.'
+        : '') +
       `\n\n${CRYO_DAYS} giorni a ${CRYO_PRICE}: se ricompri prima della scadenza, i giorni si sommano.` +
       (CRYO_LIFETIME_LINK
         ? `\n♾️ Pass a vita a ${CRYO_LIFETIME_PRICE}: la capsula non scade più.`

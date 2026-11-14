@@ -1,6 +1,7 @@
 // Criogenesi: un pass a pagamento (30 giorni, oppure a vita) che mette il personaggio in capsula mentre il
 // giocatore è via. Durante la capsula il tempo non passa per lui: i bisogni non calano, gli
-// animali non hanno fame e il conto alla rovescia della morte per abbandono si ferma. Quando il
+// animali non hanno fame e il conto alla rovescia della morte per abbandono si ferma. Con i
+// pass nuovi (cryoRescues) in capsula si entra solo quando si starebbe per morire: vedi sotto. Quando il
 // giocatore è in partita si gioca normalmente: la capsula vale solo per le assenze.
 //
 // Queste regole le usano il gioco, la manutenzione sul server e la funzione che riceve i
@@ -96,3 +97,40 @@ export function realTimeAfterAwake(
   if (pass.until <= start || plain <= start) return plain;
   return plain + (pass.until - start);
 }
+
+// ---------------------------------------------------------------- il salvataggio in capsula
+
+/**
+ * Dai pass comprati da questo giorno la capsula non mette in pausa subito: mentre il giocatore è
+ * via il personaggio vive come tutti, e solo quando sta per morire la capsula lo salva e da lì
+ * tutto si ferma. I pass comprati prima restano come erano stati venduti: pausa da subito.
+ * Un pass allungato tiene il suo `since`, quindi anche la sua regola.
+ */
+export const CRYO_RESCUE_SINCE = Date.UTC(2026, 10, 15);
+
+/** Sta per morire: la salute è scesa fin qui. */
+export const CRYO_RESCUE_HEALTH = 10;
+
+/**
+ * Sta per morire di abbandono: è via da così tanto (il giorno prima dei 10 giorni, dopo cui il
+ * personaggio muore).
+ */
+export const CRYO_ABANDON_RESCUE_MS = 9 * 24 * 3600000;
+
+/** Il pass segue la regola nuova (la capsula salva chi sta per morire). */
+export const cryoRescues = (pass: CryoPass | null): boolean =>
+  !!pass && pass.since >= CRYO_RESCUE_SINCE;
+
+/**
+ * Il pass come vale per un'assenza, se il personaggio entra in capsula a `rescueAt` (ms; Infinity
+ * se in quell'assenza non starebbe mai per morire). Con la regola vecchia il pass resta com'è.
+ */
+export function rescuedPass(pass: CryoPass | null, rescueAt: number): CryoPass | null {
+  if (!pass || !cryoRescues(pass)) return pass;
+  const since = Math.max(pass.since, rescueAt);
+  return Number.isFinite(since) && since < pass.until ? { since, until: pass.until } : null;
+}
+
+/** Il pass di un'assenza da `from` guardando solo l'abbandono (chi non ha i bisogni sotto mano). */
+export const abandonRescuedPass = (pass: CryoPass | null, from: number): CryoPass | null =>
+  rescuedPass(pass, from + CRYO_ABANDON_RESCUE_MS);
