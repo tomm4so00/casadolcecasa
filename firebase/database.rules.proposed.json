@@ -745,6 +745,9 @@
             ".validate": "$i.matches(/^[0-7]$/) && newData.isString() && newData.val().matches(/^(trofeo|medaglia)_[a-z]{3,12}$/)"
           }
         },
+        "parties": {
+          ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 500"
+        },
         "sale": {
           "$slot": {
             ".validate": "$slot.matches(/^p[1-3]$/) && newData.hasChildren(['price','t','nextOfferAt']) && newData.child('price').isNumber() && newData.child('price').val() >= 1 && newData.child('price').val() <= 100000 && newData.child('t').isNumber() && newData.child('nextOfferAt').isNumber() && (!newData.child('round').exists() || newData.child('round').isNumber())"
@@ -2155,6 +2158,9 @@
               "$i": {
                 ".validate": "$i.matches(/^[0-7]$/) && newData.isString() && newData.val().matches(/^(trofeo|medaglia)_[a-z]{3,12}$/)"
               }
+            },
+            "parties": {
+              ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 500"
             },
             "sale": {
               "$slot": {

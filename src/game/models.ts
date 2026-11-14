@@ -192,6 +192,8 @@ export interface CharacterState {
   relations?: RelationBook;
   /** Trofei dei capitoli e medaglie delle missioni bonus (render/trophies.ts). */
   trophies?: string[];
+  /** Le spille delle feste del condominio: i giorni in cui c’era (party-rules.ts). */
+  parties?: string[];
   /** Missioni di benvenuto: a che punto si è. */
   welcome?: WelcomeState;
   /** I capitoli delle missioni e le missioni bonus (quests-rules.ts). */

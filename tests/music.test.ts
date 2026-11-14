@@ -63,6 +63,9 @@ describe('musica', () => {
     expect(musicFor('luna')).toBe('space');
     expect(musicFor('lavoro_ufficio')).toBe('work');
     expect(musicFor('SALOON')).toBe('home');
-    expect(new Set(Object.keys(ENV_STYLE).map(musicFor)).size).toBeGreaterThanOrEqual(12);
+    // alla festa del condominio, in cortile si balla (solo lì)
+    expect(musicFor('CORTILE', true)).toBe('party');
+    expect(musicFor('bar', true)).toBe('bar');
+    expect(new Set(Object.keys(ENV_STYLE).map((e) => musicFor(e))).size).toBeGreaterThanOrEqual(12);
   });
 });

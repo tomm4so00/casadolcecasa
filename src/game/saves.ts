@@ -44,6 +44,7 @@ import { decodeRomance } from './romance-rules.js';
 import { decodeRelations } from './relations-rules.js';
 import { decodeWelcome } from './welcome-rules.js';
 import { decodeQuests } from './quests-rules.js';
+import { decodeParties } from './party-rules.js';
 import { decodeDaily } from './daily-rules.js';
 import { decodeSeenPlaces } from './first-visit-rules.js';
 import { limitedFurnitureProps, limitedRoomItems } from './limited.js';
@@ -191,6 +192,7 @@ export function buildSaveData(): SaveV8 {
   if (game.player.quests) data.quests = game.player.quests;
   if (game.player.today) data.today = game.player.today;
   if (game.player.placesSeen?.length) data.placesSeen = game.player.placesSeen;
+  if (game.player.parties?.length) data.parties = game.player.parties;
   if (game.player.workDay) data.workDay = game.player.workDay;
   // fin dove si è letta la chat: vale su tutti i dispositivi, non solo su questo
   if (game.chatReadT > 0) data.chatReadT = game.chatReadT;
@@ -337,6 +339,7 @@ export function applySave(value: unknown): void {
   game.player.quests = decodeQuests(s.quests);
   game.player.today = decodeDaily(s.today);
   game.player.placesSeen = decodeSeenPlaces(s.placesSeen);
+  game.player.parties = decodeParties(s.parties);
   const born = game.player.bornAt;
   if (!s.quests && (!born || Date.now() - born > OLD_PLAYER_MS)) game.player.quests.old = true;
   game.player.ownedItems = s.ownedItems || {};
@@ -633,6 +636,20 @@ export function publishRoomLayout(): void {
     .ref(`${worldNode('rooms_state')}/${game.myAssignedRoomIdx}/layout`)
     .set(JSON.parse(key));
   publishTrophies();
+  publishParties();
+}
+
+let lastPartiesKey = '';
+/** Quante spille ci sono sulla bacheca delle feste, perché le veda chi viene in visita. */
+export function publishParties(): void {
+  if (!hasRoom() || game.session.OFFLINE) return;
+  const n = (game.player.parties || []).length;
+  const key = `${game.myAssignedRoomIdx}:${n}`;
+  if (key === lastPartiesKey) return;
+  lastPartiesKey = key;
+  game.session.db
+    .ref(`${worldNode('rooms_state')}/${game.myAssignedRoomIdx}/parties`)
+    .set(n || null);
 }
 
 let lastTrophiesKey = '';

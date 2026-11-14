@@ -7,6 +7,7 @@
 // tranne il Giocatore d'azzardo: 3 giocate alla slot al giorno, contate al rientro.
 import type { PersonalityId } from './personality-rules.js';
 import { SLOT_BET, reelSymbol, slotWin, type SlotSymbol } from './betting-rules.js';
+import { partyAt } from './party-rules.js';
 
 /** I parametri di chi è via calano tante volte più piano: da pieni durano circa una settimana. */
 export const ABSENCE_SLOWDOWN = 7;
@@ -164,10 +165,25 @@ export const AUTOPLAY_PLACES = {
     ],
     label: '👮 passa dal commissariato',
   },
+  // la festa del condominio (party-rules.ts): tutti davanti alla fontana. I punti stanno tutti
+  // dalla stessa parte, così nessun tratto passa dentro la vasca
+  festa: {
+    env: 'CORTILE',
+    points: [
+      [-85, 50],
+      [0, 52],
+      [85, 50],
+      [85, 95],
+      [0, 98],
+      [-85, 95],
+    ],
+    label: '🎉 alla festa del condominio',
+  },
 } as const satisfies Record<string, AutoplayPlace>;
 
 export type PlaceId = keyof typeof AUTOPLAY_PLACES;
-const PLACE_IDS = Object.keys(AUTOPLAY_PLACES) as PlaceId[];
+/** I posti che si scelgono a caso: la festa no, ci si va solo quando c'è. */
+const PLACE_IDS = (Object.keys(AUTOPLAY_PLACES) as PlaceId[]).filter((p) => p !== 'festa');
 
 /** I posti di ogni personalità. */
 export const PERSONALITY_PLACES: Record<PersonalityId, PlaceId[]> = {
@@ -290,7 +306,8 @@ export function autoplayAt(info: AutoplayInfo, t: number): AutoplayView {
   if (t < info.offAt + AUTOPLAY_GRACE_MS) return { kind: 'still' };
   if ((info.bedAt > 0 && t >= info.bedAt) || isNight(t)) return { kind: 'bed' };
   const slot = Math.floor(t / SLOT_MS);
-  const place = placeFor(info, slot);
+  // alla festa del condominio scendono tutti in cortile, così non è mai vuota
+  const place = partyAt(t) ? 'festa' : placeFor(info, slot);
   const p = AUTOPLAY_PLACES[place] as AutoplayPlace;
   const speed = speedAt(needAt(info, slot * SLOT_MS));
   const legs = legsOf(info.pid, slot, p, speed);

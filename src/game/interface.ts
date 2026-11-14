@@ -24,6 +24,7 @@ import { flushPendingPay } from './job-server.js';
 import { startDormancy } from './dormancy.js';
 import { ensureTerms } from './terms.js';
 import { startHacker } from './hacker.js';
+import { partyHooks } from './party-hooks.js';
 import { startSuggestions } from './suggestions.js';
 import { leavePartner, myPartner, startCouples } from './couples.js';
 import { startTrash } from './trash.js';
@@ -539,6 +540,8 @@ export async function startGame(..._args: GameValue[]): Promise<GameValue> {
   startUsage();
   // Zero, lo scassinatore: riga sotto i parametri, annuncio delle 11:45, ladri alla mia cassaforte
   startHacker();
+  // la festa del condominio: avvisi e spilla della serata
+  partyHooks.start();
   // coppie: cuori accanto ai nomi, insieme, anniversari
   startCouples();
   // la cassetta dei suggerimenti: i collaboratori vedono quanti messaggi nuovi ci sono

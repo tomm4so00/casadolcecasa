@@ -7,6 +7,8 @@ import { captureSource } from './game/source.js';
 import './game/quests.js';
 // e il centro di criogenesi (game/cryo-hooks.ts)
 import './game/cryo-center.js';
+// e la festa del condominio (game/party-hooks.ts)
+import './game/party.js';
 
 // prima di tutto: da dove arriva chi apre il gioco (?da=itch…), poi un eventuale trasloco dal
 // vecchio indirizzo o dalla cornice di itch, prima che Firebase parta

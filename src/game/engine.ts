@@ -110,6 +110,8 @@ import { officerLook } from './render/police.js';
 import { CRACK_MS } from '../../shared/hacker-rules.js';
 import { giftDrawables } from './taste.js';
 import { heartFor } from './couples.js';
+import { drawPartyCourtyard } from './render/party.js';
+import { partyAt } from './party-rules.js';
 
 /** Lo stesso aspetto con gli occhi rossi (dopo una canna). */
 const withStonedEyes = (look: GameValue, on: boolean): GameValue =>
@@ -1006,6 +1008,12 @@ export function renderEnvironment(delta?: GameValue, animTime?: GameValue): Game
   if (game.view.activeEnvironment === 'luna') dark = 0.12; // nello spazio c'è sempre il sole
   if (game.view.activeEnvironment === 'base_lunare') dark = 0.2; // dentro la base: luci accese
   applyLighting(dark, lights, st);
+  // la festa del condominio: festoni, striscione, coriandoli e fuochi sopra il cortile
+  if (
+    game.view.activeEnvironment === 'CORTILE' &&
+    partyAt(Date.now() + (game.session.serverOffset || 0))
+  )
+    drawPartyCourtyard(performance.now() / 1000);
   labels.forEach((l?: GameValue): GameValue => l());
   drawSleepThoughts();
   // Titolo stanza (più in basso se in alto scorre il ticker della borsa)

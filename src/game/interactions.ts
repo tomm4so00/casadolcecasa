@@ -76,6 +76,8 @@ import { DEALERS } from './dealer-rules.js';
 import { showGraveInfo } from './render/graveyard.js';
 import { startShower, startToilet, startWash } from './bathroom.js';
 import { sfx } from './audio.js';
+import { partyHooks } from './party-hooks.js';
+import { partyPinsHere } from './render/party.js';
 import { openBankCounter } from './bank.js';
 import { POLICE_ENV, policeAct, policePrompt } from './police.js';
 import { CRYO_ENV, cryoCenterHooks } from './cryo-hooks.js';
@@ -309,6 +311,7 @@ const PLAYER_ROOM: Place = {
       return { text: mine ? `🖼️ ${name || item.name}` : `🖼️ Ammira ${name || 'il quadro'}` };
     }
     if (key === 'collectShelf') return shelfPrompt(mine);
+    if (key === 'partyBoard') return { text: '📌 Bacheca delle feste (' + partyPinsHere() + ')' };
     if (key === 'trashBin') return trashPrompt();
     if (key === 'tv') return { text: '📺 Guarda la TV' };
     if (key === 'cabinet') return { text: '🕹️ Gioca al cabinato' };
@@ -348,6 +351,10 @@ const PLAYER_ROOM: Place = {
       const n = visitedCopy(key);
       if (!isMyRoomNow() && n) await makeOffer(key, n);
       else toast(`💎 ${item?.name || ''}: edizione limitata. Puoi spostarlo con 🛠️ Arreda.`, 4000);
+    } else if (key === 'partyBoard') {
+      const owner = game.roomsState[game.currentRoomIdx ?? -1]?.owner || '';
+      sfx('click');
+      toast(partyHooks.boardText(isMyRoomNow(), partyPinsHere(), owner), 7000);
     } else if (key === 'collectShelf') {
       const room: GameValue = game.roomsState[game.currentRoomIdx ?? -1];
       if (isMyRoomNow()) await openShelf();
