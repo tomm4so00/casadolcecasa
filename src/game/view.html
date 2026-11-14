@@ -586,16 +586,18 @@
     <!-- Accesso online: un passo alla volta -->
     <div id="setup-online" class="hidden">
       <div class="setup-step" data-step="home">
-        <!-- quanti giocano adesso e quanti personaggi sono vivi (showcase.ts) -->
-        <div class="setup-counts">
-          <div class="setup-online-count hidden" id="setup-online-count"><i></i><span></span></div>
-          <div class="setup-online-count setup-alive hidden" id="setup-alive-count">
-            <b aria-hidden="true">🏠</b><span></span>
-          </div>
-        </div>
+        <!-- cosa si fa nel gioco, in tre righe -->
+        <ul class="setup-pitch">
+          <li><b aria-hidden="true">🧑</b>Crea il tuo personaggio</li>
+          <li><b aria-hidden="true">🛋️</b>Arreda la tua stanza</li>
+          <li><b aria-hidden="true">💬</b>Vicini veri, in tempo reale</li>
+        </ul>
+        <!-- quanti giocano adesso, quanti ci vivono, le stanze libere (showcase.ts) -->
+        <div class="setup-counts" id="setup-counts"></div>
         <button class="btn-primary btn-guest btn-vetrina" id="setup-guest" type="button">
           ▶&nbsp; Gioca subito
         </button>
+        <p class="setup-free">Gratis · senza registrarti</p>
         <button class="btn-link setup-have" type="button" data-setup-login>
           Ho già un personaggio →
         </button>

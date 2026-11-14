@@ -181,11 +181,11 @@ export async function handleOnline(
   if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers });
   if (request.method !== 'GET') return new Response('Solo GET', { status: 405, headers });
   try {
-    const { online, alive } = await onlineNow(read, now);
-    return Response.json({ n: online, vivi: alive }, { headers });
+    const { online, alive, free } = await onlineNow(read, now);
+    return Response.json({ n: online, vivi: alive, liberi: free }, { headers });
   } catch (error) {
     console.error('Online non letti', String(error));
-    return Response.json({ n: null, vivi: null }, { status: 503, headers });
+    return Response.json({ n: null, vivi: null, liberi: null }, { status: 503, headers });
   }
 }
 

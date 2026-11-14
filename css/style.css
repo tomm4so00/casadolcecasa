@@ -698,16 +698,48 @@ input:-webkit-autofill:focus {
   border: 0;
   box-shadow: none;
 }
-/* Le due righe della prima schermata, una accanto all'altra (sotto, se non ci stanno). */
+/* Cosa si fa nel gioco: tre righe sopra i contatori. */
+.setup-pitch {
+  list-style: none;
+  margin: 0 auto 14px;
+  padding: 12px 18px;
+  width: fit-content;
+  border-radius: 16px;
+  background: rgba(15, 15, 24, 0.62);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 600;
+  text-align: left;
+}
+.setup-pitch li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 3px 0;
+}
+.setup-pitch b {
+  width: 1.4em;
+  text-align: center;
+  font-weight: normal;
+}
+/* Le scritte dei vicini, una accanto all'altra (sotto, se non ci stanno). */
 .setup-counts {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
   gap: 0 8px;
 }
-.setup-alive b {
+.setup-online-count b {
   font-size: 0.85rem;
   font-weight: normal;
+}
+.setup-free {
+  margin: 8px 0 0;
+  text-align: center;
+  color: #d8dcea;
+  font-size: 0.85rem;
+  font-weight: 600;
 }
 .setup-online-count {
   display: inline-flex;

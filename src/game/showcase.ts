@@ -2,7 +2,7 @@
 // motore del gioco (scripts/vetrina.mjs), di giorno, al tramonto o di notte secondo l'ora di
 // Roma, e quanti vicini sono online adesso (lo dice il Worker: chi arriva non ha ancora un
 // account per leggerlo da sé).
-import { aliveText, onlineText, sceneFor } from './showcase-rules.js';
+import { countPills, sceneFor } from './showcase-rules.js';
 import { WORKER_URL } from './worker-client.js';
 
 const romeHour = (): number =>
@@ -27,26 +27,28 @@ export function showcase(root: HTMLElement): void {
 }
 
 /**
- * Quanti vicini giocano adesso e quanti sono vivi; se il Worker non risponde in 4 secondi le
- * righe non compaiono.
+ * Quanti vicini giocano adesso, quanti ci vivono e le stanze libere (countPills); se il Worker non
+ * risponde in 4 secondi le scritte non compaiono.
  */
 async function showOnline(root: HTMLElement): Promise<void> {
-  const pill = root.querySelector<HTMLElement>('#setup-online-count');
-  if (!pill) return;
+  const box = root.querySelector<HTMLElement>('#setup-counts');
+  if (!box) return;
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 4000);
   try {
     const res = await fetch(WORKER_URL + '/online', { signal: controller.signal });
-    const { n, vivi } = (await res.json()) as { n: unknown; vivi: unknown };
-    if (typeof n === 'number' && n >= 0) {
-      pill.querySelector('span')!.textContent = onlineText(n);
-      pill.classList.remove('hidden');
-    }
-    const alive = root.querySelector<HTMLElement>('#setup-alive-count');
-    if (alive && typeof vivi === 'number' && vivi >= 0) {
-      alive.querySelector('span')!.textContent = aliveText(vivi);
-      alive.classList.remove('hidden');
-    }
+    const pills = countPills((await res.json()) as Record<string, unknown>);
+    box.replaceChildren(
+      ...pills.map((p) => {
+        const el = document.createElement('div');
+        el.className = 'setup-online-count';
+        const mark = document.createElement(p.live ? 'i' : 'b');
+        mark.textContent = p.icon;
+        mark.setAttribute('aria-hidden', 'true');
+        el.append(mark, Object.assign(document.createElement('span'), { textContent: p.text }));
+        return el;
+      }),
+    );
   } catch {
     // senza numero la vetrina resta com'è
   } finally {
