@@ -5,7 +5,8 @@
 // Un personaggio resta nella presenza finché è vivo (chi esce resta segnato `offline`): le schede
 // sono i vivi. Online è solo chi ha mandato il battito (ogni 5 secondi mentre gioca) da poco: un
 // telefono che si spegne o perde la rete senza avvisare non viene segnato offline, e la sua scheda
-// resterebbe "online" per giorni.
+// resterebbe "online" per giorni. Le stanze libere sono la somma dei posti liberi dell'elenco dei
+// mondi (sims_worlds), quello in cui il gioco cerca posto per chi arriva.
 
 /** Legge un percorso del database; `shallow` = solo le chiavi del primo livello. */
 export type OnlineReader = (path: string, shallow?: boolean) => Promise<unknown>;
@@ -21,10 +22,12 @@ export interface PlayerCounts {
   online: number;
   /** personaggi vivi (le schede della presenza) */
   alive: number;
+  /** stanze libere in tutti i mondi */
+  free: number;
 }
 
 /** Online e vivi in un nodo della presenza. */
-export function countPresent(node: unknown, now: number): PlayerCounts {
+export function countPresent(node: unknown, now: number): Omit<PlayerCounts, 'free'> {
   const out = { online: 0, alive: 0 };
   if (!node || typeof node !== 'object') return out;
   for (const p of Object.values(node as Record<string, unknown>)) {
@@ -37,9 +40,23 @@ export function countPresent(node: unknown, now: number): PlayerCounts {
   return out;
 }
 
-/** Online e vivi, in tutti i mondi. */
+/** Le stanze libere secondo l'elenco dei mondi (ogni mondo ne ha al massimo 64). */
+export function countFreeRooms(index: unknown): number {
+  let free = 0;
+  if (index && typeof index === 'object')
+    for (const w of Object.values(index as Record<string, unknown>)) {
+      const f = (w as { free?: unknown } | null)?.free;
+      if (typeof f === 'number' && f > 0) free += Math.min(64, Math.floor(f));
+    }
+  return free;
+}
+
+/** Online, vivi e stanze libere, in tutti i mondi. */
 export async function countOnline(read: OnlineReader, now: number): Promise<PlayerCounts> {
-  const total = countPresent(await read('sims_online_players'), now);
+  const total = {
+    ...countPresent(await read('sims_online_players'), now),
+    free: countFreeRooms(await read('sims_worlds')),
+  };
   const worlds = await read('worlds', true);
   if (worlds && typeof worlds === 'object')
     for (const code of Object.keys(worlds))

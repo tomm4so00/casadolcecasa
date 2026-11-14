@@ -1,6 +1,12 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { type Env, handleOnline } from '../worker/src/index.js';
-import { ONLINE_CACHE_MS, countOnline, countPresent, forgetOnline } from '../worker/src/online.js';
+import {
+  ONLINE_CACHE_MS,
+  countFreeRooms,
+  countOnline,
+  countPresent,
+  forgetOnline,
+} from '../worker/src/online.js';
 
 const NOW = Date.UTC(2026, 10, 12, 18, 0, 0);
 const env = { GAME_ORIGINS: 'https://casadolcecasa.web.app' } as Env;
@@ -26,6 +32,7 @@ const DATA = {
     p4: { x: 3, t: NOW - 3 * 86_400_000 },
   },
   worlds: { 'CASA-X92K': {}, 'CASA-3333': {}, strano: {} },
+  sims_worlds: { 'CASA-0001': { free: 49 }, 'CASA-X92K': { free: 60, createdAt: 1 } },
   'worlds/CASA-X92K/online_players': { q1: { x: 1, t: NOW } },
   'worlds/CASA-3333/online_players': { q2: { offline: true } },
 };
@@ -36,7 +43,7 @@ describe('quanti sono online', () => {
   it('online chi manda il battito da poco, vivi tutte le schede, in tutti i mondi', async () => {
     expect(countPresent(DATA.sims_online_players, NOW)).toEqual({ online: 2, alive: 4 });
     expect(countPresent(null, NOW)).toEqual({ online: 0, alive: 0 });
-    expect(await countOnline(reader(DATA).read, NOW)).toEqual({ online: 3, alive: 6 });
+    expect(await countOnline(reader(DATA).read, NOW)).toEqual({ online: 3, alive: 6, free: 109 });
   });
 
   it('risponde con il solo numero, ai siti del gioco, e lo riusa per un minuto', async () => {
@@ -49,7 +56,7 @@ describe('quanti sono online', () => {
         r.read,
       );
     const first = await ask(NOW);
-    expect(await first.json()).toEqual({ n: 3, vivi: 6 });
+    expect(await first.json()).toEqual({ n: 3, vivi: 6, liberi: 109 });
     expect(first.headers.get('access-control-allow-origin')).toBe('https://casadolcecasa.web.app');
     const reads = r.calls.length;
     await ask(NOW + ONLINE_CACHE_MS - 1);
@@ -66,6 +73,19 @@ describe('quanti sono online', () => {
       throw new Error('giù');
     });
     expect(res.status).toBe(503);
-    expect(await res.json()).toEqual({ n: null, vivi: null });
+    expect(await res.json()).toEqual({ n: null, vivi: null, liberi: null });
+  });
+
+  it('somma le stanze libere dei mondi, ignorando i valori strani', () => {
+    expect(countFreeRooms(null)).toBe(0);
+    expect(
+      countFreeRooms({
+        a: { free: 3 },
+        b: { free: -2 },
+        c: { free: 999 },
+        d: null,
+        e: { free: 'x' },
+      }),
+    ).toBe(67);
   });
 });
