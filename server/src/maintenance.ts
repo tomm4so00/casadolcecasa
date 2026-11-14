@@ -11,9 +11,21 @@ import {
   petDiesAt,
 } from '../../shared/pet-rules.js';
 import { graveFromSave, releaseRoomsOf } from '../../shared/death-rules.js';
-import { type CryoPass, awakeMs, decodeCryo, realTimeAfterAwake } from '../../shared/cryo-rules.js';
+import {
+  type CryoPass,
+  abandonRescuedPass,
+  awakeMs,
+  decodeCryo,
+  realTimeAfterAwake,
+} from '../../shared/cryo-rules.js';
 import { hashPin, recoverPin } from '../../shared/safe-pin-rules.js';
-import { ACTIVE_MARGIN_MS, absentDeath } from '../../src/game/absent-death-rules.js';
+import {
+  ACTIVE_MARGIN_MS,
+  NEEDS_RULES,
+  absencePass,
+  absentDeath,
+  needsStateFromSave,
+} from '../../src/game/absent-death-rules.js';
 import { ABANDON_DAYS, ABANDON_MS } from '../../src/game/autoplay-rules.js';
 import { encodeDeathCauses } from '../../src/game/death-cause-rules.js';
 import { announceRaids } from './street.js';
@@ -215,7 +227,12 @@ export async function maintainWorld(
         room.pendingDeath ||
         typeof room.ownerId !== 'string' ||
         typeof room.lastSeen !== 'number' ||
-        awakeMs(cryo.get(room.ownerId) ?? null, room.lastSeen, now) <= DEATH_AFTER_MS
+        // con i pass nuovi la capsula salva dal giorno prima dei 10 giorni
+        awakeMs(
+          abandonRescuedPass(cryo.get(room.ownerId) ?? null, room.lastSeen),
+          room.lastSeen,
+          now,
+        ) <= DEATH_AFTER_MS
       )
         continue;
       expired.push({
@@ -237,7 +254,11 @@ export async function maintainWorld(
       const reference = database.ref('sims_saves/' + player.id);
       const stored = (await reference.get()).val();
       const save = record(stored) ? stored : { savedAt: now, moneyLevel: 0, gameMinutes: 0 };
-      const deadAt = realTimeAfterAwake(cryo.get(player.id) ?? null, player.lastSeen, ABANDON_MS);
+      const deadAt = realTimeAfterAwake(
+        abandonRescuedPass(cryo.get(player.id) ?? null, player.lastSeen),
+        player.lastSeen,
+        ABANDON_MS,
+      );
       await reference.update({
         ...(!record(stored) ? save : {}),
         dead: true,
@@ -479,7 +500,7 @@ export function deathWarningText(
   now: number,
   cryo: CryoPass | null = null,
 ) {
-  const diesAt = realTimeAfterAwake(cryo, lastSeen, DEATH_AFTER_MS);
+  const diesAt = realTimeAfterAwake(abandonRescuedPass(cryo, lastSeen), lastSeen, DEATH_AFTER_MS);
   const hours = Math.max(1, Math.round((diesAt - now) / 3600000));
   return {
     title: `⚠️ ${name} sta per morire!`,
@@ -519,7 +540,7 @@ export async function sendDeathWarnings(
     const { ownerId, lastSeen } = room;
     if (typeof ownerId !== 'string' || !linked.has(ownerId) || typeof lastSeen !== 'number')
       continue;
-    const pass = cryo.get(ownerId) ?? null;
+    const pass = abandonRescuedPass(cryo.get(ownerId) ?? null, lastSeen);
     // in criogenesi il conto alla rovescia è fermo: conta solo il tempo fuori dalla capsula
     const away = awakeMs(pass, lastSeen, now);
     if (away < DEATH_AFTER_MS - WARN_BEFORE_MS || away >= DEATH_AFTER_MS) continue;
@@ -562,8 +583,14 @@ export async function sendPetWarnings(
     if (typeof save.savedAt === 'number' && now - save.savedAt < 10 * 60000) continue;
     const pets = decodePets(save.pets);
     // con il padrone in criogenesi l'animale non ha fame: la sua fine si sposta in avanti
-    const pass = cryo.get(playerId) ?? null;
     const absentFrom = typeof save.savedAt === 'number' ? save.savedAt : now;
+    // con i pass nuovi la capsula conta solo da quando il padrone starebbe per morire
+    const pass = absencePass(
+      cryo.get(playerId) ?? null,
+      needsStateFromSave(save),
+      absentFrom,
+      NEEDS_RULES,
+    );
     const diesAtOf = (k: PetKind) => {
       const p = pets[k]!;
       return realTimeAfterAwake(

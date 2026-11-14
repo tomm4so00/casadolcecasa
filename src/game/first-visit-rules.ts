@@ -22,6 +22,8 @@ export const FIRST_VISIT: Record<string, string> = {
   lavoro: '💼 Ogni turno paga di più con l’esperienza. Si fanno pochi turni al giorno.',
   banca: '🏦 In banca i soldi sono al sicuro da Zero e dai ladri. Qui c’è anche la borsa.',
   commissariato: '🚓 Porta le prove dei furti e paga le multe.',
+  criogenesi:
+    '🧊 Qui il tuo personaggio si iberna: quando esci dal gioco, il tempo per lui si ferma.',
   laboratorio: '🎨 Dipingi al cavalletto e metti i quadri all’asta.',
   galleria: '🖼️ I quadri del condominio: guarda, vota e fai offerte.',
   ingegneria: '🔧 Tutti insieme versate le quote per costruire il razzo.',

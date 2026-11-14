@@ -7,7 +7,14 @@ import { type NeedsRules, advanceNeeds } from './simulation.js';
 import type { CharacterState } from './models.js';
 import { decodeFlu } from './flu-rules.js';
 import { decodePillTimers } from './pill-rules.js';
-import { type CryoPass, awakeSpans } from '../../shared/cryo-rules.js';
+import {
+  CRYO_ABANDON_RESCUE_MS,
+  CRYO_RESCUE_HEALTH,
+  type CryoPass,
+  awakeSpans,
+  cryoRescues,
+  rescuedPass,
+} from '../../shared/cryo-rules.js';
 import { type DeathCause, deathCauses } from './death-cause-rules.js';
 import { ABSENCE_SLOWDOWN, BED_THRESHOLD } from './autoplay-rules.js';
 
@@ -50,6 +57,56 @@ export function advanceAbsence(
   const slow = absenceRules(rules);
   for (const [start, end] of awakeSpans(cryo, from, to))
     advanceNeeds(state, (end - start) / 1000, end, slow);
+}
+
+/**
+ * Quando, in un'assenza da `from` senza capsula, il personaggio starebbe per morire: la salute
+ * scende a CRYO_RESCUE_HEALTH, o arriva il giorno prima della morte per abbandono (il primo dei
+ * due). È lì che con i pass nuovi entra in capsula (cryo-rules.ts). Precisione: un quarto d'ora.
+ */
+export function rescueAt(state: CharacterState, from: number, rules: NeedsRules): number {
+  const deadline = from + CRYO_ABANDON_RESCUE_MS;
+  const s = structuredClone(state);
+  const slow = absenceRules(rules);
+  // avanti a passi di un quarto d'ora, come la previsione del letto: una simulazione sola
+  for (let t = from; t < deadline; t += BED_CHECK_MS) {
+    if (s.healthLevel <= CRYO_RESCUE_HEALTH) return t;
+    advanceNeeds(s, BED_CHECK_MS / 1000, t + BED_CHECK_MS, slow);
+  }
+  return deadline;
+}
+
+/**
+ * Il pass come vale per un'assenza che parte da `from` con i bisogni di `state`: con i pass nuovi
+ * comincia quando il personaggio starebbe per morire (rescueAt), con quelli vecchi subito.
+ */
+export function absencePass(
+  pass: CryoPass | null,
+  state: CharacterState,
+  from: number,
+  rules: NeedsRules,
+): CryoPass | null {
+  return cryoRescues(pass) ? rescuedPass(pass, rescueAt(state, from, rules)) : pass;
+}
+
+/** Solo i bisogni di un personaggio (una copia: i calcoli dell'assenza non toccano quello vero). */
+export function needsCopy(p: CharacterState): CharacterState {
+  return {
+    healthLevel: p.healthLevel,
+    sleepLevel: p.sleepLevel,
+    hungerLevel: p.hungerLevel,
+    hygieneLevel: p.hygieneLevel,
+    happinessLevel: p.happinessLevel,
+    isSleeping: !!p.isSleeping,
+    sleepGainedSinceLastHealthBoost: p.sleepGainedSinceLastHealthBoost || 0,
+    ownedFurniture: p.ownedFurniture || {},
+    drug: { ...(p.drug || { active: false }) },
+    flu: p.flu ? structuredClone(p.flu) : p.flu,
+    pill: { ...(p.pill || {}) },
+    gameMinutes: p.gameMinutes || 0,
+    needsZeroSince: p.needsZeroSince || 0,
+    isDead: false,
+  } as unknown as CharacterState;
 }
 
 /**
@@ -155,6 +212,8 @@ export function absentDeath(
 ): { deadAt: number; gameMinutes: number; causes: DeathCause[] } | null {
   const from = num(save.savedAt, 0);
   if (!from || now <= from || save.dead === true) return null;
+  // con i pass nuovi la capsula conta solo da quando starebbe per morire
+  cryo = absencePass(cryo, needsStateFromSave(save, ownedFurniture), from, rules);
   if (after(save, ownedFurniture, now, rules, cryo).healthLevel > 0) return null;
   let lo = from,
     hi = now;

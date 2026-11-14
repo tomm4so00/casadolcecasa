@@ -1,10 +1,10 @@
 {
-  "total": 3354,
+  "total": 3353,
   "files": {
     "src/game/activity.ts": 2,
     "src/game/arcade.ts": 12,
     "src/game/audio.ts": 138,
-    "src/game/autoplay.ts": 9,
+    "src/game/autoplay.ts": 8,
     "src/game/bank.ts": 3,
     "src/game/bathroom.ts": 6,
     "src/game/cabinet.ts": 10,

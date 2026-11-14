@@ -24,6 +24,8 @@ export const ENV_MUSIC: Record<string, string> = {
   galleria: 'artlab',
   ingegneria: 'engineering',
   luna: 'space',
+  // la criogenesi: musica sospesa, come nello spazio
+  criogenesi: 'space',
   base_lunare: 'space',
 };
 

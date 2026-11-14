@@ -64,6 +64,7 @@ export const RESUMABLE_ENVS = new Set([
   'negozio_mobili',
   'banca',
   'commissariato',
+  'criogenesi',
   'laboratorio',
   'galleria',
   'ingegneria',

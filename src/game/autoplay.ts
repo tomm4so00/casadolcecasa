@@ -3,10 +3,10 @@
 // (il diario dell'assenza e le giocate alla slot del Giocatore d'azzardo).
 import type { GameValue } from './context.js';
 import { game } from './context.js';
-import { forecastBedAt, lowestNeed } from './absent-death-rules.js';
+import { forecastBedAt, lowestNeed, needsCopy, rescueAt } from './absent-death-rules.js';
 import { needsRules } from './needs-rules.js';
 import { myCryo } from './cryo.js';
-import { cryoActive } from '../../shared/cryo-rules.js';
+import { cryoActive, cryoRescues } from '../../shared/cryo-rules.js';
 import type { CharacterState } from './models.js';
 import {
   type PersonalityId,
@@ -24,33 +24,13 @@ import {
   autoplayAt,
   minutesText,
 } from './autoplay-rules.js';
-import { PLAYER_ROOM_FURNITURE } from './data/catalogues.js';
+import { CRYO_PODS, PLAYER_ROOM_FURNITURE } from './data/catalogues.js';
 
 const serverNow = (): number => Date.now() + (game.session?.serverOffset || 0);
 
 // ---------------------------------------------------------------- cosa si pubblica
 
-let forecast = { at: 0, bedAt: 0 };
-
-/** Solo i bisogni (la previsione non tocca il personaggio vero). */
-function needsCopy(p: GameValue): CharacterState {
-  return {
-    healthLevel: p.healthLevel,
-    sleepLevel: p.sleepLevel,
-    hungerLevel: p.hungerLevel,
-    hygieneLevel: p.hygieneLevel,
-    happinessLevel: p.happinessLevel,
-    isSleeping: !!p.isSleeping,
-    sleepGainedSinceLastHealthBoost: p.sleepGainedSinceLastHealthBoost || 0,
-    ownedFurniture: p.ownedFurniture || {},
-    drug: { ...(p.drug || { active: false }) },
-    flu: p.flu ? structuredClone(p.flu) : p.flu,
-    pill: { ...(p.pill || {}) },
-    gameMinutes: p.gameMinutes || 0,
-    needsZeroSince: p.needsZeroSince || 0,
-    isDead: false,
-  } as unknown as CharacterState;
-}
+let forecast = { at: 0, bedAt: 0, rescueAt: 0 };
 
 /**
  * Cosa serve agli altri per far vivere il mio personaggio quando esco: quando tornerà a letto
@@ -59,14 +39,21 @@ function needsCopy(p: GameValue): CharacterState {
  */
 export function autoplayPresence(): Record<string, unknown> {
   const now = serverNow();
+  const cryo = myCryo();
+  const frozen = !!cryo && cryoActive(cryo, Date.now());
   if (now - forecast.at > 60_000) {
-    forecast = { at: now, bedAt: forecastBedAt(needsCopy(game.player), now, needsRules()) };
+    const needs = needsCopy(game.player as unknown as CharacterState);
+    forecast = {
+      at: now,
+      bedAt: forecastBedAt(needs, now, needsRules()),
+      // con i pass nuovi: quando entrerebbe in capsula, cioè quando starebbe per morire
+      rescueAt: frozen && cryoRescues(cryo) ? rescueAt(needs, now, needsRules()) : 0,
+    };
   }
   const state = game.player.personality;
   const got = obtainedPersonality(state);
   const second = secondPersonality(state);
   const lead = got ? null : state ? leadingPersonality(state) : null;
-  const cryo = myCryo();
   return {
     bedAt: forecast.bedAt,
     nd: Math.round(lowestNeed(game.player as unknown as CharacterState)),
@@ -75,7 +62,10 @@ export function autoplayPresence(): Record<string, unknown> {
       : {}),
     ...(second ? { pers2: second } : {}),
     ...(lead ? { lead } : {}),
-    ...(cryo && cryoActive(cryo, Date.now()) ? { frz: cryo.until } : {}),
+    // in criogenesi fino a `frz`; con i pass nuovi ci si entra solo da `rsc` (sta per morire)
+    ...(frozen
+      ? { frz: cryo!.until, ...(forecast.rescueAt ? { rsc: forecast.rescueAt } : {}) }
+      : {}),
   };
 }
 
@@ -96,6 +86,63 @@ const isId = (v: unknown): v is PersonalityId =>
     'vigilante',
   ].includes(v);
 
+// ---------------------------------------------------------------- in criogenesi
+
+/** Il centro di criogenesi (cryo-center.ts), dove dorme chi ha la criogenesi attiva. */
+export const CRYO_CENTER_ENV = 'criogenesi';
+
+/**
+ * È offline e dentro la capsula: la criogenesi è pagata fino a `frz` e, con i pass nuovi, è già
+ * arrivato il momento `rsc` in cui stava per morire (lo pubblica chi esce, autoplayPresence).
+ */
+export function inCryo(
+  op: { offline?: unknown; frz?: unknown; rsc?: unknown } | null | undefined,
+  alive: boolean,
+  now: number,
+): boolean {
+  return (
+    !!op && !!(op.offline || !alive) && (Number(op.frz) || 0) > now && now >= (Number(op.rsc) || 0)
+  );
+}
+
+export interface CryoSleeper {
+  id: string;
+  name: string;
+  /** vestiti e corpo come li pubblica nella presenza (li legge chi disegna, render/cryo.ts) */
+  look: string;
+  body: string;
+}
+
+let sleepersCache: { at: number; list: CryoSleeper[] } = { at: -1, list: [] };
+
+/**
+ * I vicini addormentati nelle capsule, uno per capsula (CRYO_PODS), sempre nello stesso ordine:
+ * chi entra per primo in criogenesi resta nella sua capsula. Se sono più delle capsule, gli
+ * ultimi arrivati non si vedono (ma per loro il tempo è fermo lo stesso).
+ */
+export function cryoSleepers(): CryoSleeper[] {
+  const now = Date.now();
+  if (now - sleepersCache.at < 500) return sleepersCache.list;
+  const server = serverNow();
+  const list: (CryoSleeper & { offAt: number })[] = [];
+  for (const [id, op] of Object.entries(game.onlinePlayers || {})) {
+    if (id === game.session.myPlayerId || !op) continue;
+    // senza battito da più di due minuti è uscito anche se non è segnato offline
+    const alive = !op.offline && server - (Number(op.t) || 0) < 120_000;
+    if (!inCryo(op, alive, server)) continue;
+    list.push({
+      id,
+      name: String(op.name || ''),
+      look: String(op.look || ''),
+      body: String(op.body || ''),
+      offAt: Number(op.offAt) || 0,
+    });
+  }
+  list.sort((a, b) => a.offAt - b.offAt || a.id.localeCompare(b.id));
+  sleepersCache = { at: now, list: list.slice(0, CRYO_PODS.length) };
+  return sleepersCache.list;
+}
+
 /** Cosa sappiamo di un personaggio offline per farlo vivere, oppure null (resta com'è). */
 export function autoplayInfo(
   id: string,
@@ -104,8 +151,8 @@ export function autoplayInfo(
   now: number,
 ): AutoplayInfo | null {
   if (!op || !(op.offline || !alive)) return null;
-  // chi è uscito dormendo resta a letto; chi è in criogenesi resta fermo nella capsula
-  if (op.act === 'sleep' || op.act === 'rocket' || (Number(op.frz) || 0) > now) return null;
+  // chi è uscito dormendo resta a letto; chi è in capsula ci resta (shownPresence lo mette lì)
+  if (op.act === 'sleep' || op.act === 'rocket' || inCryo(op, alive, now)) return null;
   const offAt = Number(op.offAt) || Number(op.t) || 0;
   if (!offAt) return null;
   return {
@@ -148,6 +195,27 @@ export function shownPresence(
   alive: boolean,
   now: number,
 ): { op: GameValue; view: AutoplayView | null } {
+  // in criogenesi: nella sua capsula del centro (la disegna la capsula stessa, cryo.ts), anche
+  // se era uscito dormendo
+  if (inCryo(op, alive, now)) {
+    const i = cryoSleepers().findIndex((s) => s.id === id);
+    const pod = CRYO_PODS[i];
+    return {
+      op: {
+        ...op,
+        env: pod ? CRYO_CENTER_ENV : '',
+        roomIdx: null,
+        apt: null,
+        x: pod ? pod.x : 0,
+        y: pod ? pod.y : 0,
+        act: 'cryo',
+        say: '',
+        sleep: undefined,
+        place: 'In criogenesi 🧊',
+      },
+      view: null,
+    };
+  }
   const info = autoplayInfo(id, op, alive, now);
   if (!info) return { op, view: null };
   const view = autoplayAt(info, now);

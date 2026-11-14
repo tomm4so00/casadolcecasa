@@ -29,7 +29,9 @@ import { localDatabase } from '../src/game/database.js';
 import { Lifetime } from '../src/game/lifetime.js';
 import { MemoryStorage } from './helpers.js';
 
-const NOW = 1_800_000_000_000;
+// prima del cambio di regola (CRYO_RESCUE_SINCE): qui si prova la capsula che mette in pausa da
+// subito, quella dei pass comprati prima
+const NOW = 1_790_000_000_000;
 const H = 3600000;
 const D = 24 * H;
 

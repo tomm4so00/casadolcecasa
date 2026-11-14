@@ -13,6 +13,19 @@ import {
 import { drawCollectStand, wallCollectShelf } from './collectibles.js';
 import { wallTrophyShelf } from './trophies.js';
 import {
+  drawCryoConsole,
+  drawCryoDesk,
+  drawCryoInfo,
+  drawCryoMist,
+  drawCryoPod,
+  drawDewarCart,
+  drawMyPod,
+  drawNitrogenTank,
+  wallCryoPipes,
+  wallCryoScreen,
+  wallCryoSign,
+} from './cryo.js';
+import {
   drawBookshelfProp,
   drawBottleShelfProp,
   drawCoatRackProp,
@@ -219,6 +232,11 @@ export function registerDrawers(): void {
     stove: drawStove,
     fridge: drawFridge,
     bankCounter: drawBankCounter,
+    // centro di criogenesi: accettazione, console, la tua capsula e il totem
+    cryoDesk: drawCryoDesk,
+    cryoConsole: drawCryoConsole,
+    myPod: drawMyPod,
+    cryoInfo: drawCryoInfo,
     // commissariato
     policeCounter: drawPoliceCounter,
     cell: drawHoldingCell,
@@ -304,6 +322,11 @@ export function registerDrawers(): void {
     // banca: caveau in 3D e divisori della zona del personale
     bankVault: drawBankVault,
     bankRail: drawBankRail,
+    // centro di criogenesi: le capsule, i serbatoi, il carrello dell'azoto e la nebbia
+    cryoPod: drawCryoPod,
+    nitrogenTank: drawNitrogenTank,
+    dewarCart: drawDewarCart,
+    cryoMist: drawCryoMist,
     // commissariato: divisori, armadio blindato, scrivanie con gli agenti e la bandiera
     policeRail: drawPoliceRail,
     gunLocker: drawGunLocker,
@@ -431,6 +454,8 @@ export function registerDrawers(): void {
     gallerySign: wallGallerySign,
     policeCrest: wallPoliceCrest,
     policeDoor: wallPoliceDoor,
+    cryoPipes: wallCryoPipes,
+    cryoSign: wallCryoSign,
   };
   game.WALL_DECOR_DYNAMIC = {
     clock: wallClock,
@@ -450,6 +475,7 @@ export function registerDrawers(): void {
     galleryPainting: wallGalleryPainting,
     // commissariato: la cassa della polizia, con il contatore che cambia
     policeSafe: wallPoliceSafe,
+    cryoScreen: wallCryoScreen,
     // base lunare: vetrata, schermi e oblò si muovono
     mbPanorama: wallPanorama,
     mbStatus: wallStatusScreen,

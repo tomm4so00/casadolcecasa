@@ -3058,6 +3058,75 @@ export const POLICE_FURNITURE = {
   doorExit: { x: 0, y: 220, w: 60, h: 15, z: 110, name: 'Torna Fuori 🚪', moveable: false },
 };
 
+// ---------------------------------------------------------------- centro di criogenesi
+/** Metà larghezza e profondità del centro di criogenesi (vedi room-size.ts). */
+export const CRYO_HALF = { x: 380, y: 280 };
+
+/**
+ * Le capsule dei vicini: sei sul muro di fondo (in mezzo, a x 0, c'è la tua: CRYO_FURNITURE.myPod)
+ * e quattro sul muro di sinistra, girate verso il centro. Dentro ci sono i giocatori in
+ * criogenesi (autoplay.ts, cryoSleepers), una capsula a testa.
+ */
+export const CRYO_PODS: { x: number; y: number; w: number; h: number; face: 'back' | 'left' }[] = [
+  ...[-300, -225, -150, -75, 75, 150].map((x) => ({
+    x,
+    y: -245,
+    w: 58,
+    h: 48,
+    face: 'back' as const,
+  })),
+  ...[-150, -70, 10, 90].map((y) => ({ x: -345, y, w: 48, h: 58, face: 'left' as const })),
+];
+
+// Centro di criogenesi: le capsule lungo il muro di fondo e quello di sinistra (una è la tua), la
+// console di controllo al centro, i serbatoi d'azoto nell'angolo a destra, l'accettazione
+// davanti a destra e la sala d'attesa davanti a sinistra.
+export const CRYO_FURNITURE = {
+  // l'accettazione: la tecnica in camice dietro il bancone (cryo.ts, la finestra della criogenesi)
+  cryoDesk: {
+    x: 240,
+    y: 120,
+    w: 150,
+    h: 44,
+    z: 52,
+    name: 'Accettazione 🧊',
+    moveable: false,
+    depthCorner: 'frontLeft',
+  },
+  // la console al centro: tre monitor con i parametri delle capsule e il tecnico che li guarda
+  cryoConsole: {
+    x: -40,
+    y: -70,
+    w: 170,
+    h: 50,
+    z: 40,
+    name: 'Console di controllo 📊',
+    moveable: false,
+  },
+  // la capsula del giocatore, in mezzo alla fila di fondo
+  myPod: {
+    x: 0,
+    y: -245,
+    w: 58,
+    h: 48,
+    z: 132,
+    name: 'La tua capsula 🧊',
+    moveable: false,
+    face: 'back',
+  },
+  // il totem con le istruzioni, per chi entra
+  cryoInfo: {
+    x: 70,
+    y: 175,
+    w: 30,
+    h: 18,
+    z: 70,
+    name: 'Come funziona ℹ️',
+    moveable: false,
+  },
+  doorExit: { x: 0, y: 270, w: 60, h: 15, z: 110, name: 'Torna Fuori 🚪', moveable: false },
+};
+
 // Laboratorio artistico: tre postazioni da pittura e l'uscita.
 export const ART_STUDIO_FURNITURE = {
   easel1: {
@@ -4167,6 +4236,24 @@ export const ENV_DECOR = {
     // la bacheca appesa al muro (il pulsante è quello di POLICE_FURNITURE.noticeBoard)
     { kind: 'noticeBoard', x: -316, y: -30, w: 6, h: 76, z: 96, solid: false, flat: true },
   ],
+  criogenesi: [
+    // la nebbia fredda sul pavimento: sotto tutto il resto, non si urta
+    { kind: 'cryoMist', x: 0, y: -200, w: 1, h: 1, z: 0, solid: false, depth: -5000 },
+    // le capsule dei vicini in criogenesi (CRYO_PODS), sul muro di fondo e su quello di sinistra
+    ...CRYO_PODS.map((p, i) => ({ kind: 'cryoPod', ...p, z: 132, sleeper: i })),
+    // l'angolo dei serbatoi d'azoto liquido, con il carrello del vaso Dewar davanti
+    { kind: 'nitrogenTank', x: 250, y: -235, w: 50, h: 50, z: 170 },
+    { kind: 'nitrogenTank', x: 320, y: -235, w: 50, h: 50, z: 170 },
+    { kind: 'nitrogenTank', x: 330, y: -160, w: 44, h: 44, z: 140 },
+    { kind: 'dewarCart', x: 230, y: -150, w: 40, h: 30, z: 60 },
+    // la sala d'attesa davanti a sinistra
+    { kind: 'waitingChairs', x: -250, y: 175, w: 80, h: 20, z: 35, label: "Sala d'attesa" },
+    { kind: 'waitingChairs', x: -250, y: 235, w: 80, h: 20, z: 35 },
+    { kind: 'cooler', x: -345, y: 240, w: 22, h: 22, z: 70 },
+    { kind: 'plant', x: -110, y: 245, w: 26, h: 26, z: 60 },
+    { kind: 'plant', x: 350, y: 245, w: 26, h: 26, z: 60 },
+    { kind: 'plant', x: 350, y: 40, w: 24, h: 24, z: 56 },
+  ],
   negozio_mobili: [
     { kind: 'plant', x: -490, y: -335, w: 26, h: 26, z: 60 },
     { kind: 'plant', x: 490, y: -335, w: 26, h: 26, z: 60 },
@@ -4575,6 +4662,36 @@ export const ENV_STYLE = {
     lights: [
       { x: -80, y: -40, z: 0, r: 220, color: '255,240,210' },
       { x: 90, y: 20, z: 0, r: 220, color: '255,240,210' },
+    ],
+  },
+  // centro di criogenesi: piastrelle bianche, pareti grigio ghiaccio con la fascia azzurra, luce
+  // fredda dei neon e il bagliore delle capsule
+  criogenesi: {
+    floor: 'tilesFull',
+    floorColor: '#dfe7ee',
+    wall: '#e4ebf1',
+    wallStyle: 'wainscot',
+    trim: '#2b6f9e',
+    wallH: 200,
+    decor: {
+      // parete di fondo: u = x + 380 · parete sinistra: u = 280 - y
+      back: [
+        { t: 'cryoPipes' },
+        { t: 'cryoSign', u: 380 },
+        { t: 'cryoScreen', u: 525 },
+        { t: 'clock', u: 740, top: 26 },
+      ],
+      left: [
+        { t: 'poster', u: 75, text: 'ZONA FREDDA −196 °C', color: '#2b6f9e', w: 110, top: 70 },
+        { t: 'cryoScreen', u: 470, small: true },
+      ],
+    },
+    lights: [
+      { x: -150, y: -200, z: 0, r: 260, color: '170,225,255' },
+      { x: 120, y: -200, z: 0, r: 240, color: '170,225,255' },
+      { x: -300, y: -30, z: 0, r: 220, color: '170,225,255' },
+      { x: 220, y: 110, z: 0, r: 220, color: '245,248,255' },
+      { x: -200, y: 200, z: 0, r: 200, color: '245,248,255' },
     ],
   },
   // commissariato: linoleum grigio, pareti chiare con lo zoccolo blu della Polizia, neon freddi
