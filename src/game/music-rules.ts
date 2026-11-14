@@ -29,7 +29,9 @@ export const ENV_MUSIC: Record<string, string> = {
   base_lunare: 'space',
 };
 
-export function musicFor(env?: unknown): string {
+/** Il tema di un ambiente; con la festa del condominio in corso, in cortile si balla. */
+export function musicFor(env?: unknown, party = false): string {
+  if (party && env === 'CORTILE') return 'party';
   if (typeof env === 'string' && env.indexOf('lavoro_') === 0) return 'work';
   return (typeof env === 'string' && ENV_MUSIC[env]) || 'home';
 }

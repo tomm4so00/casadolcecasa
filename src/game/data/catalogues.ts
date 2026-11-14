@@ -1504,6 +1504,25 @@ export const MUSIC_TRACKS = {
     drums: '. . . . . . . h',
     arp: [0, 1, 2, 1, 0, 1, 2, 1],
   },
+  // la festa del condominio, in cortile (party-rules.ts): allegra, da battere le mani
+  party: {
+    bpm: 132,
+    lead: 'square',
+    chords: 'C G Am F C G F G',
+    melody: [
+      'E5 G5 C6 . C6 D6 E6 .',
+      'D6 . B5 G5 D6 . B5 .',
+      'C6 E6 A5 . C6 B5 A5 .',
+      'F5 A5 C6 . A5 . F5 .',
+      'G5 . C6 E6 G6 . E6 C6',
+      'D6 . G5 B5 D6 . G6 .',
+      'A5 C6 F6 . E6 D6 C6 .',
+      'B5 . D6 . G6 . . .',
+    ],
+    bass: 'R r R r R r R r',
+    drums: 'kh h sh h kh kh sh h',
+    arp: [0, 1, 2, 1, 0, 2, 1, 2],
+  },
 };
 
 /**
@@ -1567,6 +1586,47 @@ export const MUSIC_VARIANTS: Record<string, (typeof MUSIC_TRACKS)[keyof typeof M
       ],
       bass: 'R . F . R . F .',
       drums: 'k . h . s . h .',
+    },
+  ],
+  // la festa del condominio: tre brani da ballare in 30 minuti
+  party: [
+    // battimani: tutti in cerchio intorno alla fontana
+    {
+      bpm: 126,
+      lead: 'p25',
+      chords: 'F C Dm Bb F C Bb C',
+      melody: [
+        'A5 . A5 C6 F6 . C6 .',
+        'G5 . G5 C6 E6 . C6 .',
+        'A5 . D6 . F6 E6 D6 .',
+        'Bb5 . D6 . F6 . D6 .',
+        'C6 A5 F5 A5 C6 . F6 .',
+        'E6 . C6 . G5 . C6 .',
+        'D6 . Bb5 . F5 . D6 .',
+        'E6 . G6 . C6 . . .',
+      ],
+      bass: 'R r R r R r R r',
+      drums: 'k h s h k k s h',
+      arp: [0, 2, 1, 2, 0, 2, 1, 2],
+    },
+    // trenino: veloce e un po' scemo, come alle feste vere
+    {
+      bpm: 140,
+      lead: 'square',
+      chords: 'G D Em C G D C D',
+      melody: [
+        'B5 . D6 B5 G5 . B5 .',
+        'A5 . F#5 A5 D6 . A5 .',
+        'G5 B5 E6 . B5 . G5 .',
+        'E5 G5 C6 . G5 . E5 .',
+        'D6 . B5 . G5 B5 D6 G6',
+        'F#6 . D6 . A5 . D6 .',
+        'E6 . C6 . G5 . E6 .',
+        'D6 . A5 . F#5 . . .',
+      ],
+      bass: 'R . r R R . r R',
+      drums: 'kh h sh h kh h sh sh',
+      arp: [0, 1, 2, 0, 1, 2, 0, 1],
     },
   ],
   courtyard: [
@@ -2277,6 +2337,18 @@ export const PLAYER_ROOM_FURNITURE = {
     h: 8,
     z: 80,
     name: 'Mensola dei trofei 🏆',
+    moveable: true,
+    wallItem: true,
+  },
+  // Bacheca delle feste del condominio (render/party.ts): una spilla per ogni festa a cui si è
+  // stati; scorre lungo le pareti come i quadri. Parte a sinistra, tra il quadro e la cassaforte.
+  partyBoard: {
+    x: -185,
+    y: -36,
+    w: 58,
+    h: 8,
+    z: 80,
+    name: 'Bacheca delle feste 📌',
     moveable: true,
     wallItem: true,
   },
@@ -4345,6 +4417,7 @@ export const ENV_STYLE = {
         { t: 'roomPainting', side: 'back' },
         { t: 'collectShelf', side: 'back' },
         { t: 'trophyShelf', side: 'back' },
+        { t: 'partyBoard', side: 'back' },
         { t: 'window', u: 200, w: 64, h: 52 },
         { t: 'windowDepth', side: 'back', u: 200, w: 64, h: 52, curtains: true },
       ],
@@ -4354,6 +4427,7 @@ export const ENV_STYLE = {
         { t: 'roomPainting', side: 'left' },
         { t: 'collectShelf', side: 'left' },
         { t: 'trophyShelf', side: 'left' },
+        { t: 'partyBoard', side: 'left' },
       ],
     },
     lights: [],

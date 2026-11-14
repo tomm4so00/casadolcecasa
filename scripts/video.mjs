@@ -235,7 +235,8 @@ for (const name of names) {
     `🎬 ${name}: ${frames.length} fotogrammi (${(frames.length / FPS).toFixed(1)} s), monto il video…`,
   );
   if (frames.length) await encode(frames, file);
-  for (const d of dirs) rmSync(d, { recursive: true, force: true });
+  // TIENI_FOTO=1 lascia le foto, per guardare un fotogramma senza aprire il video
+  if (!process.env.TIENI_FOTO) for (const d of dirs) rmSync(d, { recursive: true, force: true });
   console.log('✅', file);
 }
 await browser.close();

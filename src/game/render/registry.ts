@@ -12,6 +12,7 @@ import {
 } from './construction.js';
 import { drawCollectStand, wallCollectShelf } from './collectibles.js';
 import { wallTrophyShelf } from './trophies.js';
+import { wallPartyBoard } from './party.js';
 import {
   drawCryoConsole,
   drawCryoDesk,
@@ -471,6 +472,7 @@ export function registerDrawers(): void {
     adScreen: wallAdScreen,
     collectShelf: wallCollectShelf,
     trophyShelf: wallTrophyShelf,
+    partyBoard: wallPartyBoard,
     // i quadri della mostra cambiano mentre si guarda: si disegnano a ogni fotogramma
     galleryPainting: wallGalleryPainting,
     // commissariato: la cassa della polizia, con il contatore che cambia

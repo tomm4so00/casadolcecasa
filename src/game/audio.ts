@@ -2,6 +2,7 @@ import type { GameValue } from './context.js';
 import { game } from './context.js';
 import { dom, browser } from './runtime.js';
 import { LOOPS_PER_TRACK, firstVariant, musicFor, nextVariant } from './music-rules.js';
+import { partyAt } from './party-rules.js';
 export { musicFor };
 // ---------------------------------------------------------------- volumi
 
@@ -458,7 +459,7 @@ export function musicStep(tr?: GameValue, s?: GameValue, t?: GameValue, d?: Game
 
 export function musicWant(..._args: GameValue[]): GameValue {
   if (!game.musicOn || game.player.isDead) return null;
-  return musicFor(game.view.activeEnvironment);
+  return musicFor(game.view.activeEnvironment, !!partyAt(Date.now()));
 }
 
 export function musicTick(..._args: GameValue[]): GameValue {
